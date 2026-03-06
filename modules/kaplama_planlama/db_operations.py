@@ -796,6 +796,131 @@ def update_recete_sure(recete_no: int, toplam_sure_dk: int):
         print(f"[KaplamaPlanlama] Recete sure guncelleme hatasi: {e}")
 
 
+def hesapla_kapasite(vardiya_sayisi: int = 3, gun_sayisi: int = 5) -> Dict:
+    """
+    Hat ve recete bazli haftalik maksimum kapasite hesapla.
+
+    Mantik:
+    - Haftalik toplam dakika = vardiya_suresi * vardiya_sayisi * gun_sayisi
+    - Hat bazli kapasite: hatta kac farkli is paralel donebilir (bara sayisi)
+    - Recete bazli: haftalik_dk / cevrim_suresi = max cevrim sayisi
+    - Ortak kazan kisiti: ayni kazani kullanan receteler toplam sureyi paylasmak zorunda
+    """
+    VARDIYA_SURE_DK = 480
+    haftalik_dk = VARDIYA_SURE_DK * vardiya_sayisi * gun_sayisi
+
+    result = {
+        'haftalik_dk': haftalik_dk,
+        'vardiya_sayisi': vardiya_sayisi,
+        'gun_sayisi': gun_sayisi,
+        'hatlar': {},      # hat_tipi -> {toplam_dk, recete_sayisi, ...}
+        'receteler': [],   # her recete icin kapasite detayi
+        'darbogaz_kazanlar': [],  # en yogun kazanlar
+    }
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # Tum aktif receteler ve sureleri
+            cursor.execute("""
+                SELECT rt.recete_no, rt.recete_adi, rt.recete_aciklama, rt.hat_tipi,
+                       rt.toplam_sure_dk
+                FROM kaplama.plc_recete_tanimlari rt
+                WHERE rt.aktif = 1 AND rt.toplam_sure_dk IS NOT NULL AND rt.toplam_sure_dk > 0
+                ORDER BY rt.hat_tipi, rt.recete_no
+            """)
+            receteler = cursor.fetchall()
+
+            # Son 7 gundeki gercek uretim verileri (recete basina gunluk cevrim sayisi)
+            cursor.execute("""
+                SELECT recete_no,
+                       COUNT(*) as toplam_islem,
+                       COUNT(*) / 7.0 as gunluk_ort_islem,
+                       COUNT(DISTINCT CAST(tarih_doldurma AS DATE)) as aktif_gun
+                FROM uretim.plc_tarihce
+                WHERE tarih_doldurma >= DATEADD(DAY, -7, GETDATE())
+                  AND recete_no IS NOT NULL AND recete_adim = 1
+                GROUP BY recete_no
+            """)
+            gercek_uretim = {}
+            for row in cursor.fetchall():
+                gercek_uretim[row[0]] = {
+                    'toplam_cevrim_7gun': row[1],
+                    'gunluk_ort_cevrim': float(row[2]),
+                    'aktif_gun': row[3],
+                }
+
+            # Ortak kazan yogunlugu - darbogaz tespiti
+            cursor.execute("""
+                SELECT kazan_no,
+                       COUNT(DISTINCT recete_no) as recete_sayisi,
+                       SUM(CASE WHEN recete_zamani > 0 THEN recete_zamani ELSE 0 END) / 60.0 as toplam_mesgul_dk,
+                       COUNT(*) as toplam_islem
+                FROM uretim.plc_tarihce
+                WHERE tarih_doldurma >= DATEADD(DAY, -7, GETDATE())
+                  AND kazan_no IS NOT NULL AND recete_no IS NOT NULL
+                GROUP BY kazan_no
+                HAVING COUNT(DISTINCT recete_no) > 3
+                ORDER BY COUNT(*) DESC
+            """)
+            for row in cursor.fetchall():
+                kazan_no = row[0]
+                # Kazanin haftalik kullanim orani
+                mesgul_dk = float(row[2]) if row[2] else 0
+                doluluk = min(100, (mesgul_dk / haftalik_dk) * 100) if haftalik_dk > 0 else 0
+                result['darbogaz_kazanlar'].append({
+                    'kazan_no': kazan_no,
+                    'recete_sayisi': row[1],
+                    'mesgul_dk': mesgul_dk,
+                    'toplam_islem': row[3],
+                    'doluluk_pct': round(doluluk, 1),
+                })
+
+            # Hat bazli ve recete bazli kapasite
+            hat_data = {}
+            for rec in receteler:
+                rec_no, rec_adi, rec_acik, hat_tipi, cevrim_dk = rec
+
+                if hat_tipi not in hat_data:
+                    hat_data[hat_tipi] = {
+                        'recete_sayisi': 0,
+                        'toplam_cevrim_dk': 0,
+                    }
+                hat_data[hat_tipi]['recete_sayisi'] += 1
+
+                # Teorik kapasite: haftalik dakika / cevrim suresi
+                max_cevrim_haftalik = haftalik_dk // cevrim_dk if cevrim_dk > 0 else 0
+
+                # Gercek uretim verisi
+                gercek = gercek_uretim.get(rec_no, {})
+                gercek_gunluk = gercek.get('gunluk_ort_cevrim', 0)
+                gercek_haftalik = round(gercek_gunluk * gun_sayisi)
+                gercek_7gun = gercek.get('toplam_cevrim_7gun', 0)
+
+                # Kullanim orani
+                kullanim_pct = round((gercek_haftalik / max_cevrim_haftalik) * 100, 1) if max_cevrim_haftalik > 0 else 0
+
+                result['receteler'].append({
+                    'recete_no': rec_no,
+                    'recete_adi': rec_adi,
+                    'recete_aciklama': rec_acik,
+                    'hat_tipi': hat_tipi,
+                    'cevrim_dk': cevrim_dk,
+                    'max_cevrim_haftalik': max_cevrim_haftalik,
+                    'gercek_cevrim_7gun': gercek_7gun,
+                    'gercek_haftalik_ort': gercek_haftalik,
+                    'kullanim_pct': kullanim_pct,
+                })
+
+            result['hatlar'] = hat_data
+
+    except Exception as e:
+        print(f"[KaplamaPlanlama] Kapasite hesaplama hatasi: {e}")
+
+    return result
+
+
 def update_plan_durum(plan_id: int, durum: str):
     """Plan durumunu güncelle"""
     try:

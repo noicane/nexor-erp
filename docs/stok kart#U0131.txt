@@ -1,0 +1,63 @@
+┌─────────────────────────────────────────────────────────────┐
+│                      STOK KARTI                              │
+├─────────────────────────────────────────────────────────────┤
+│ 📌 KİMLİK                                                   │
+│    • Stok Kodu (sizin)                                      │
+│    • Müşteri Stok Kodu                                      │
+│    • Müşteri Parça No                                       │
+│    • Ürün Adı                                               │
+│    • Cari (müşteri) ← ZORUNLU BAĞLANTI                      │
+│    • Revizyon No / Tarih                                    │
+├─────────────────────────────────────────────────────────────┤
+│ 📐 FİZİKSEL                                                 │
+│    • Malzeme Cinsi (Çelik, Döküm, Aluminyum, Paslanmaz...)  │
+│    • Yüzey Alanı (m²) ← STL'den                             │
+│    • Ağırlık (kg)                                           │
+│    • Boyutlar (Boy x En x Yükseklik mm)                     │
+├─────────────────────────────────────────────────────────────┤
+│ 🎨 KAPLAMA                                                  │
+│    • Kaplama Tipi (ZN/Ni, KTL, Alkali ZN...)               │
+│    • Pasivasyon (Mavi, Sarı, Siyah, Şeffaf...)             │
+│    • Kalınlık Min/Max/Hedef (µm)                            │
+│    • Renk / RAL Kodu                                        │
+├─────────────────────────────────────────────────────────────┤
+│ ⚙️ ÜRETİM PARAMETRELERİ                                     │
+│    • Varsayılan Hat                                         │
+│    • Askı Tipi                                              │
+│    • Askı Adedi (askıya kaç parça)                          │
+│    • Bara Adedi (baraya kaç askı) ← 5 askı = 1 bara         │
+│    • Pitch (mm)                                             │
+│    • Yönlendirme (0°, 90°, Eğimli)                          │
+│    • Özel Talimatlar (maskeleme vs.)                        │
+├─────────────────────────────────────────────────────────────┤
+│ 📦 PAKETLEME                                                │
+│    • Paketleme Tipi                                         │
+│    • Kutu İçi Adet                                          │
+│    • Palet Kutu Adet                                        │
+├─────────────────────────────────────────────────────────────┤
+│ 🔬 KALİTE & İZLENEBİLİRLİK                                  │
+│    • Lot Takibi Zorunlu mu?                                 │
+│    • Lot Kuralları                                          │
+│    • Kabul Kriterleri                                       │
+│    • Özel Kontrol Gereksinimleri                            │
+├─────────────────────────────────────────────────────────────┤
+│ 📄 REÇETE (İşlem Adımları) ← AYRI TABLO                     │
+│    1. Sıcak Yağ Alma → 5 dk, 60°C                          │
+│    2. Durulama → 2 dk                                       │
+│    3. Asidik Yağ Alma → 3 dk                               │
+│    4. ZN/Ni Kaplama → 25 dk, 8A, 6V                        │
+│    5. Pasivasyon → 30 sn                                    │
+│    ... (Bu aynı zamanda KONTROL PLANI)                      │
+├─────────────────────────────────────────────────────────────┤
+│ 💰 FİYATLANDIRMA                                            │
+│    • Fiyat Tipi (Adet / m² / kg)                            │
+│    • Birim Fiyat                                            │
+│    • Para Birimi                                            │
+├─────────────────────────────────────────────────────────────┤
+│ 📎 DOSYALAR                                                 │
+│    • STL Dosyası                                            │
+│    • Teknik Resim (PDF/DWG)                                 │
+│    • Ürün Fotoğrafı                                         │
+│    • PPAP Dokümanları                                       │
+│    • Test Sonuçları                                         │
+└─────────────────────────────────────────────────────────────┘

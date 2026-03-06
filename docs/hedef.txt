@@ -1,0 +1,202 @@
+FASON KAPLAMA ERP/MES - TAM MODÜL HARİTASI
+1. MÜŞTERİ & SİPARİŞ YÖNETİMİ
+
+Cari kart yönetimi (Zirve senkronizasyonu)
+Müşteri bazlı özel spesifikasyonlar (kaplama kalınlığı, tuz testi süresi vb.)
+Müşteri OEM gereksinimleri tanımlama
+Teklif yönetimi (3D yüzey hesaplama ile otomatik fiyatlama)
+Sözleşme/fiyat listesi yönetimi
+Müşteri portal (sipariş durumu takibi - ileride)
+
+2. GİRİŞ & EMANET STOK
+
+Gelen irsaliye kayıt
+Parça tanımlama (yeni parça → 3D tarama → yüzey hesaplama)
+Giriş kalite kontrol (görsel, sayım, hasar tespiti)
+Emanet stok takibi (müşteri bazlı)
+Barkod/QR kod ile parça etiketleme
+Depo lokasyon yönetimi (raf, koridor, alan)
+FIFO takibi
+
+3. İŞ EMRİ & PLANLAMA
+
+İş emri oluşturma (hat bazlı)
+Rota/reçete tanımlama (ön işlem → kaplama → son işlem)
+Kapasite planlama (hat bazlı günlük/haftalık)
+Termin takibi ve gecikme alarmları
+Önceliklendirme (müşteri/aciliyet bazlı)
+Askı/jiğ planlama (hangi parça hangi askıya)
+Parti/lot boyutu optimizasyonu
+
+4. ÜRETİM & HAT YÖNETİMİ (MES)
+
+Gerçek zamanlı üretim takibi
+S7-1500 entegrasyonu:
+
+Banyo parametreleri (pH, sıcaklık, iletkenlik, akım yoğunluğu)
+Proses süreleri
+Rektifiyör değerleri
+Konveyör hızı
+
+
+Operatör terminalleri (iş emri başlat/bitir)
+Askı/jiğ takibi
+Duruş kayıtları (planlı/plansız)
+OEE hesaplama (hat bazlı)
+Enerji tüketimi takibi
+
+5. BANYO & KİMYASAL YÖNETİM
+
+Banyo tanım kartları
+Kimyasal stok takibi
+Takviye hesaplama (amper-saat, m² bazlı)
+Banyo analiz sonuçları kayıt
+Banyo ömrü takibi
+Atık yönetimi ve bertaraf kayıtları
+Tedarikçi kimyasal lot takibi
+Güvenlik bilgi formları (SDS) yönetimi
+
+6. KALİTE YÖNETİMİ (16949 UYUMLU)
+6.1 Giriş Kalite:
+
+Gelen parça muayene
+Tedarikçi değerlendirme
+
+6.2 Proses Kalite:
+
+Kontrol planı entegrasyonu
+SPC (Xbar-R, Cpk, Ppk)
+Proses onay (ilk parça onayı)
+Görsel muayene kayıtları
+
+6.3 Laboratuvar:
+
+Test tanımları (tuz sisi, kaplama kalınlığı, yapışma, sertlik vb.)
+Ölçüm cihazı entegrasyonu (XRF, tuz sisi kabini, mikrometre)
+Test sonuç girişi ve değerlendirme
+Spesifikasyon kontrolü (müşteri bazlı toleranslar)
+Test sertifikası oluşturma
+
+6.4 Kalibrasyon:
+
+Ölçüm cihazı envanteri
+Kalibrasyon planı ve takibi
+Kalibrasyon sertifikaları
+Hatırlatma/uyarı sistemi
+
+6.5 Uygunsuzluk & İyileştirme:
+
+Dahili red/hurda kayıt
+Müşteri şikayet yönetimi
+8D rapor oluşturma
+Kök neden analizi (5 Why, balık kılçığı)
+Düzeltici/önleyici faaliyet takibi (CAPA)
+Maliyet takibi (kalitesizlik maliyeti)
+
+6.6 PPAP Desteği:
+
+PPAP dosyası oluşturma
+Kontrol planı
+PFMEA entegrasyonu
+Proses akış şeması
+MSA kayıtları
+
+7. BAKIM YÖNETİMİ (TPM)
+
+Ekipman kartları
+Periyodik bakım planları
+Kestirimci bakım (S7 verilerinden)
+Arıza kayıt ve takip
+Yedek parça stok yönetimi
+Bakım maliyeti analizi
+MTBF/MTTR hesaplama
+
+8. SEVKİYAT & LOJİSTİK
+
+Sevk planlaması
+Çıkış irsaliye oluşturma
+Paketleme listesi
+Müşteri bazlı ambalaj gereksinimleri
+Araç yükleme planı
+Teslimat onayı takibi
+
+9. FATURALAMA & ZİRVE ENTEGRASYONU
+
+Otomatik fatura oluşturma (irsaliyeden)
+Zirve'ye fatura aktarımı
+Cari mutabakat
+Hakediş takibi (dönemsel faturalama)
+
+10. SATIN ALMA & TEDARİKÇİ
+
+Kimyasal/malzeme talep
+Satın alma siparişi
+Tedarikçi değerlendirme
+Tedarikçi kalite performansı
+
+11. İNSAN KAYNAKLARI (TEMEL)
+
+Personel kartları
+Yetkinlik matrisi
+Eğitim takibi (16949 için zorunlu)
+Eğitim etkinlik değerlendirme
+Vardiya planlama
+Operatör yetkilendirme (hangi hatta çalışabilir)
+
+12. DOKÜMANTASYON (16949)
+
+Doküman yönetimi (prosedür, talimat)
+Revizyon kontrolü
+Dağıtım ve onay takibi
+Kayıt saklama süreleri
+
+13. RAPORLAMA & ANALİZ
+
+Üretim raporları (günlük/haftalık/aylık)
+Kalite dashboardları
+Müşteri bazlı performans
+Hat bazlı verimlilik
+Maliyet analizleri
+KPI takibi
+Yönetim gözden geçirme raporları
+
+14. SİSTEM & ENTEGRASYON
+
+Kullanıcı yetkilendirme (rol bazlı)
+Denetim izi (audit trail - kim, ne zaman, ne değiştirdi)
+Yedekleme
+S7-1500 haberleşme (OPC-UA / Snap7)
+Zirve entegrasyonu (API/veritabanı)
+Barkod/QR yazıcı entegrasyonu
+E-posta bildirimleri
+
+
+ÖNCELİKLENDİRME ÖNERİSİ
+Faz 1 - META'dan Çıkış (Temel):
+
+Müşteri/cari yönetimi + Zirve senkron
+Gelen irsaliye & emanet stok
+İş emri yönetimi
+Sevkiyat & çıkış irsaliye
+Faturalama & Zirve entegrasyonu
+
+Faz 2 - MES Güçlendirme:
+
+S7-1500 entegrasyonu
+Banyo/kimyasal yönetimi
+Gelişmiş üretim takibi
+
+Faz 3 - Kalite & 16949:
+
+Laboratuvar modülü
+SPC & kontrol planı
+Kalibrasyon
+8D & CAPA
+
+Faz 4 - Optimizasyon:
+
+İleri planlama
+Kestirimci bakım
+İleri raporlama/BI
+
+Bu harita hakkında ne düşünüyorsunuz? Eklemek veya çıkarmak istediğiniz modüller var mı?okey mükemmel devam edebil

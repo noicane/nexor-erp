@@ -1,0 +1,272 @@
+MİMARİ YAKLAŞIM: API-FIRST TASARIM
+┌─────────────────────────────────────────────────────────────────┐
+│                        FRONTEND                                  │
+│  ┌─────────────────┐              ┌─────────────────┐           │
+│  │   PySide6       │              │   Web (React/   │           │
+│  │   (Masaüstü)    │              │   Vue) - İLERİDE│           │
+│  └────────┬────────┘              └────────┬────────┘           │
+│           │                                │                     │
+│           └──────────┬─────────────────────┘                     │
+│                      ▼                                           │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    REST API (FastAPI)                       ││
+│  │         Tüm iş mantığı burada - Tek kaynak                  ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                      │                                           │
+│  ┌───────────────────┼───────────────────────────────────────┐  │
+│  │                   ▼              BACKEND                   │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐         │  │
+│  │  │ Üretim  │ │ Kalite  │ │ Stok    │ │ Planlama│ ...     │  │
+│  │  │ Modülü  │ │ Modülü  │ │ Modülü  │ │ Modülü  │         │  │
+│  │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘         │  │
+│  │       └───────────┴───────────┴───────────┘               │  │
+│  │                       │                                    │  │
+│  │                       ▼                                    │  │
+│  │              ┌─────────────────┐                          │  │
+│  │              │   ORM Katmanı   │                          │  │
+│  │              │  (SQLAlchemy)   │                          │  │
+│  │              └────────┬────────┘                          │  │
+│  └───────────────────────┼───────────────────────────────────┘  │
+│                          ▼                                       │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                     SQL SERVER                              ││
+│  │    ┌──────────┐    ┌──────────┐    ┌──────────┐            ││
+│  │    │Production│    │ Quality  │    │Inventory │            ││
+│  │    │    DB    │    │    DB    │    │    DB    │            ││
+│  │    └──────────┘    └──────────┘    └──────────┘            ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                   ENTEGRASYONLAR                            ││
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐       ││
+│  │  │ S7-1500 │  │  Zirve  │  │ Barkod  │  │  E-Mail │       ││
+│  │  │ OPC-UA  │  │   API   │  │ Yazıcı  │  │  SMTP   │       ││
+│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘       ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+TEKNOLOJİ SEÇİMİ
+KatmanTeknolojiNeden?Backend APIFastAPI (Python)Async, hızlı, otomatik OpenAPI dokümantasyonuORMSQLAlchemy 2.0Mevcut SQL Server ile uyumlu, güçlüMasaüstü UIPySide6Mevcut bilginiz, zengin UIWeb UI (ileride)React veya VueAPI'yi aynı şekilde tüketirPLC HaberleşmeOPC-UA (asyncua)Endüstriyel standartÖnbelleklemeRedisPerformans, session yönetimiGörev KuyruğuCeleryArka plan işleri (rapor, bildirim)
+
+PROJE KLASÖR YAPISI
+atmo_logic_erp/
+│
+├── backend/                     # FastAPI Backend
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py              # FastAPI app başlangıç
+│   │   ├── config.py            # Ayarlar
+│   │   │
+│   │   ├── api/                 # API Endpoints
+│   │   │   ├── __init__.py
+│   │   │   ├── v1/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── router.py    # Ana router
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── customers.py
+│   │   │   │   ├── orders.py
+│   │   │   │   ├── production.py
+│   │   │   │   ├── quality.py
+│   │   │   │   ├── inventory.py
+│   │   │   │   ├── laboratory.py
+│   │   │   │   ├── maintenance.py
+│   │   │   │   └── reports.py
+│   │   │
+│   │   ├── core/                # Çekirdek işlevler
+│   │   │   ├── __init__.py
+│   │   │   ├── security.py      # JWT, şifreleme
+│   │   │   ├── dependencies.py  # Dependency injection
+│   │   │   └── exceptions.py    # Özel hatalar
+│   │   │
+│   │   ├── models/              # SQLAlchemy Modelleri
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py
+│   │   │   ├── customer.py
+│   │   │   ├── order.py
+│   │   │   ├── work_order.py
+│   │   │   ├── production.py
+│   │   │   ├── quality.py
+│   │   │   ├── inventory.py
+│   │   │   ├── bath.py
+│   │   │   ├── laboratory.py
+│   │   │   └── maintenance.py
+│   │   │
+│   │   ├── schemas/             # Pydantic Şemaları (Request/Response)
+│   │   │   ├── __init__.py
+│   │   │   ├── customer.py
+│   │   │   ├── order.py
+│   │   │   ├── production.py
+│   │   │   └── ...
+│   │   │
+│   │   ├── services/            # İş Mantığı
+│   │   │   ├── __init__.py
+│   │   │   ├── customer_service.py
+│   │   │   ├── order_service.py
+│   │   │   ├── production_service.py
+│   │   │   ├── quality_service.py
+│   │   │   ├── spc_service.py
+│   │   │   ├── cost_calculator.py
+│   │   │   └── ...
+│   │   │
+│   │   ├── integrations/        # Dış Sistem Entegrasyonları
+│   │   │   ├── __init__.py
+│   │   │   ├── plc/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── opc_client.py
+│   │   │   │   └── s7_handler.py
+│   │   │   ├── zirve/
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── zirve_sync.py
+│   │   │   └── printers/
+│   │   │       └── barcode_printer.py
+│   │   │
+│   │   ├── db/                  # Veritabanı
+│   │   │   ├── __init__.py
+│   │   │   ├── session.py       # DB bağlantı
+│   │   │   └── repositories/    # Data Access Layer
+│   │   │       ├── __init__.py
+│   │   │       ├── base.py
+│   │   │       ├── customer_repo.py
+│   │   │       └── ...
+│   │   │
+│   │   └── utils/               # Yardımcı fonksiyonlar
+│   │       ├── __init__.py
+│   │       ├── datetime_utils.py
+│   │       └── validators.py
+│   │
+│   ├── tests/                   # Backend testleri
+│   ├── alembic/                 # DB migration
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── desktop/                     # PySide6 Masaüstü Uygulaması
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   │
+│   │   ├── api_client/          # Backend API ile iletişim
+│   │   │   ├── __init__.py
+│   │   │   ├── base_client.py
+│   │   │   ├── auth_client.py
+│   │   │   ├── customer_client.py
+│   │   │   ├── production_client.py
+│   │   │   └── ...
+│   │   │
+│   │   ├── views/               # UI Ekranları
+│   │   │   ├── __init__.py
+│   │   │   ├── main_window.py
+│   │   │   ├── dashboard/
+│   │   │   ├── customers/
+│   │   │   ├── orders/
+│   │   │   ├── production/
+│   │   │   ├── quality/
+│   │   │   ├── laboratory/
+│   │   │   └── reports/
+│   │   │
+│   │   ├── widgets/             # Özel widgetlar
+│   │   │   ├── __init__.py
+│   │   │   ├── data_table.py
+│   │   │   ├── charts.py
+│   │   │   └── ...
+│   │   │
+│   │   ├── resources/           # Görseller, stiller
+│   │   │   ├── icons/
+│   │   │   ├── images/
+│   │   │   └── styles/
+│   │   │
+│   │   └── utils/
+│   │       └── ...
+│   │
+│   └── requirements.txt
+│
+├── web/                         # Web Frontend (İLERİDE)
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── services/            # API calls
+│   │   └── ...
+│   └── package.json
+│
+├── shared/                      # Ortak tanımlar
+│   ├── constants.py
+│   └── enums.py
+│
+├── docs/                        # Dokümantasyon
+│   ├── api/
+│   ├── user_guide/
+│   └── database/
+│
+├── scripts/                     # Yardımcı scriptler
+│   ├── db_init.py
+│   └── data_migration.py
+│
+├── docker-compose.yml
+├── .env.example
+└── README.md
+
+API TASARIM ÖRNEĞİ
+/api/v1/
+│
+├── /auth
+│   ├── POST   /login
+│   ├── POST   /logout
+│   └── POST   /refresh
+│
+├── /customers
+│   ├── GET    /                    # Liste
+│   ├── POST   /                    # Yeni müşteri
+│   ├── GET    /{id}                # Detay
+│   ├── PUT    /{id}                # Güncelle
+│   ├── GET    /{id}/orders         # Müşteri siparişleri
+│   └── GET    /{id}/specifications # Müşteri spesifikasyonları
+│
+├── /receiving                       # Gelen İrsaliye
+│   ├── GET    /
+│   ├── POST   /
+│   ├── GET    /{id}
+│   └── POST   /{id}/quality-check  # Giriş kalite kontrol
+│
+├── /work-orders
+│   ├── GET    /
+│   ├── POST   /
+│   ├── GET    /{id}
+│   ├── PUT    /{id}/status
+│   ├── POST   /{id}/start
+│   └── POST   /{id}/complete
+│
+├── /production
+│   ├── GET    /lines                # Hat listesi
+│   ├── GET    /lines/{id}/status    # Hat durumu (PLC'den)
+│   ├── GET    /lines/{id}/params    # Anlık parametreler
+│   ├── GET    /dashboard            # Üretim dashboard
+│   └── GET    /oee                  # OEE verileri
+│
+├── /baths
+│   ├── GET    /
+│   ├── GET    /{id}
+│   ├── GET    /{id}/parameters      # Güncel banyo değerleri
+│   ├── POST   /{id}/analysis        # Analiz sonucu gir
+│   └── POST   /{id}/replenishment   # Takviye kaydı
+│
+├── /quality
+│   ├── GET    /inspections
+│   ├── POST   /inspections
+│   ├── GET    /spc/{param}          # SPC grafik verisi
+│   ├── POST   /nonconformance       # Uygunsuzluk kaydı
+│   └── GET    /8d-reports
+│
+├── /laboratory
+│   ├── GET    /tests
+│   ├── POST   /tests
+│   ├── GET    /tests/{id}
+│   └── POST   /tests/{id}/results
+│
+├── /shipments
+│   ├── GET    /
+│   ├── POST   /
+│   └── POST   /{id}/invoice         # Fatura oluştur → Zirve
+│
+└── /reports
+    ├── GET    /production/daily
+    ├── GET    /quality/summary
+    └── GET    /kpi/dashboard

@@ -1,0 +1,4620 @@
+============================================================
+ATMO LOGIC ERP - DATABASE YAPISI
+============================================================
+Database: AtmoLogicERP
+Tarih   : 2026-02-13 22:08:55.653
+============================================================
+ 
+ 
+============================================================
+1. GENEL BILGILER
+============================================================
+ 
+Toplam Tablo Sayisi    : 132
+Toplam Kolon Sayisi    : 2519
+Toplam FK Sayisi       : 229
+ 
+ 
+============================================================
+2. SEMALARA GORE TABLO LISTESI
+============================================================
+ 
+--- KALİTE ---
+  * etiket_kuyrugu (14 kolon, 5 kayit)
+  * final_kontrol (13 kolon, 14 kayit)
+  * final_kontrol_hatalar (5 kolon, 2 kayit)
+  * fkk_atama (11 kolon, 0 kayit)
+  * fmea (22 kolon, 0 kayit)
+  * fmea_ekip (5 kolon, 0 kayit)
+  * fmea_satirlar (27 kolon, 0 kayit)
+  * giris_kontrol_kayitlari (7 kolon, 0 kayit)
+  * giris_kontrol_kriterleri (19 kolon, 0 kayit)
+  * giris_kontrol_sonuclari (9 kolon, 0 kayit)
+  * kalibrasyon_kayitlari (13 kolon, 0 kayit)
+  * kalibrasyon_planlari (9 kolon, 0 kayit)
+  * kataforez_hata_kayitlari (20 kolon, 0 kayit)
+  * kataforez_hata_tipleri (11 kolon, 7 kayit)
+  * kontrol_hatalar (6 kolon, 2 kayit)
+  * kontrol_is_emirleri (16 kolon, 118 kayit)
+  * kontrol_plan_satirlar (18 kolon, 0 kayit)
+  * kontrol_planlari (17 kolon, 0 kayit)
+  * muayene_detaylar (12 kolon, 19 kayit)
+  * muayeneler (19 kolon, 9 kayit)
+  * olcum_cihazlari (17 kolon, 1 kayit)
+  * proses_kontrol (12 kolon, 5 kayit)
+  * proses_kontrol_hatalar (5 kolon, 36 kayit)
+  * red_karar (10 kolon, 0 kayit)
+  * spc_olcumler (18 kolon, 0 kayit)
+  * test_sonuclari (13 kolon, 0 kayit)
+  * test_talep_testler (7 kolon, 0 kayit)
+  * test_talepleri (17 kolon, 0 kayit)
+  * uretim_redler (17 kolon, 2 kayit)
+  * urun_kontrol_gereksinimleri (7 kolon, 0 kayit)
+  * uygunsuzluk_aksiyonlar (15 kolon, 6 kayit)
+  * uygunsuzluklar (24 kolon, 1 kayit)
+ 
+--- SİPARİS ---
+  * cikis_irsaliye_satirlar (11 kolon, 9 kayit)
+  * cikis_irsaliyeleri (21 kolon, 3 kayit)
+  * fatura_satirlar (14 kolon, 0 kayit)
+  * faturalar (22 kolon, 0 kayit)
+  * giris_irsaliye_satirlar (14 kolon, 54 kayit)
+  * giris_irsaliyeleri (12 kolon, 26 kayit)
+  * is_emirleri (48 kolon, 54 kayit)
+  * is_emri_lotlar (11 kolon, 0 kayit)
+  * is_emri_operasyonlar (12 kolon, 0 kayit)
+  * is_emri_stok_hareketi (24 kolon, 0 kayit)
+  * sevkiyat_detaylari (10 kolon, 0 kayit)
+  * sevkiyatlar (15 kolon, 0 kayit)
+ 
+--- STOK ---
+  * depo_cikis (13 kolon, 0 kayit)
+  * depo_cikis_emirleri (18 kolon, 54 kayit)
+  * depo_lokasyonlar (8 kolon, 0 kayit)
+  * depolar (12 kolon, 4 kayit)
+  * emanet_stok (12 kolon, 0 kayit)
+  * hareket_event_log (7 kolon, 187 kayit)
+  * hareket_log (38 kolon, 0 kayit)
+  * kimyasallar (12 kolon, 0 kayit)
+  * lot_durum_gecmisi (8 kolon, 0 kayit)
+  * stok_bakiye (32 kolon, 0 kayit)
+  * stok_hareketleri (16 kolon, 461 kayit)
+  * urun_agaci (22 kolon, 1 kayit)
+  * urun_birimleri (6 kolon, 0 kayit)
+  * urun_cari_kodlari (9 kolon, 0 kayit)
+  * urun_dosyalar (14 kolon, 0 kayit)
+  * urun_fiyatlari (17 kolon, 0 kayit)
+  * urun_kategorileri (11 kolon, 7 kayit)
+  * urun_ozellikleri (6 kolon, 0 kayit)
+  * urun_recete (32 kolon, 0 kayit)
+  * urun_spesifikasyonlar (13 kolon, 0 kayit)
+  * urun_tipleri (14 kolon, 7 kayit)
+  * urunler (69 kolon, 3572 kayit)
+ 
+--- TANİM ---
+  * akis_adim (15 kolon, 46 kayit)
+  * akis_adim_tipleri (7 kolon, 10 kayit)
+  * akis_sablon (11 kolon, 11 kayit)
+  * ambalaj_turleri (7 kolon, 7 kayit)
+  * aski_tipleri (9 kolon, 6 kayit)
+  * banyo_tipleri (10 kolon, 24 kayit)
+  * birimler (6 kolon, 20 kayit)
+  * depo_bolumleri (17 kolon, 0 kayit)
+  * depo_raflari (23 kolon, 0 kayit)
+  * depo_sorumlulari (16 kolon, 0 kayit)
+  * depo_tipleri (13 kolon, 15 kayit)
+  * depolar (33 kolon, 23 kayit)
+  * dosya_tipleri (7 kolon, 8 kayit)
+  * durus_nedenleri (7 kolon, 14 kayit)
+  * ekipman_kategorileri (7 kolon, 14 kayit)
+  * ekipman_tipleri (8 kolon, 22 kayit)
+  * etiket_elementleri (24 kolon, 0 kayit)
+  * etiket_sablonlari (19 kolon, 10 kayit)
+  * hareket_tipleri (18 kolon, 19 kayit)
+  * hat_bolumleri (16 kolon, 2 kayit)
+  * hat_giris_cikis (9 kolon, 2 kayit)
+  * hat_pozisyonlar (38 kolon, 112 kayit)
+  * hat_robotlar (27 kolon, 4 kayit)
+  * hata_turleri (9 kolon, 25 kayit)
+  * ilceler (5 kolon, 0 kayit)
+  * kaplama_tipleri (8 kolon, 6 kayit)
+  * kaplama_turleri (8 kolon, 7 kayit)
+  * kimyasal_kategoriler (5 kolon, 8 kayit)
+  * lot_durum_tipleri (8 kolon, 13 kayit)
+  * malzeme_cinsleri (7 kolon, 9 kayit)
+  * musteri_etiket_atamalari (6 kolon, 0 kayit)
+  * oem_standartlari (8 kolon, 9 kayit)
+  * para_birimleri (7 kolon, 4 kayit)
+  * pasivasyon_tipleri (8 kolon, 7 kayit)
+  * pozisyon_tipleri (7 kolon, 7 kayit)
+  * prosesler (21 kolon, 4 kayit)
+  * rota_adimlar (13 kolon, 9 kayit)
+  * rotalar (15 kolon, 6 kayit)
+  * sehirler (6 kolon, 10 kayit)
+  * test_turleri (12 kolon, 7 kayit)
+  * ulkeler (5 kolon, 9 kayit)
+  * uretim_hatlari (23 kolon, 4 kayit)
+  * vardiyalar (8 kolon, 4 kayit)
+  * yonlendirme_tipleri (7 kolon, 5 kayit)
+ 
+--- URETİM ---
+  * aski_jigler (17 kolon, 0 kayit)
+  * banyo_analiz_sonuclari (29 kolon, 20 kayit)
+  * banyo_parametre_log (6 kolon, 0 kayit)
+  * banyo_parametre_tanimlari (11 kolon, 0 kayit)
+  * banyo_takviyeler (11 kolon, 0 kayit)
+  * banyo_tanimlari (40 kolon, 51 kayit)
+  * bara_takip (11 kolon, 0 kayit)
+  * durus_kayitlari (12 kolon, 0 kayit)
+  * is_emirleri (35 kolon, 0 kayit)
+  * kataforez_maliyet (22 kolon, 0 kayit)
+  * lab_event_log (23 kolon, 15 kayit)
+  * planlama (23 kolon, 0 kayit)
+  * plc_cache (17 kolon, 75 kayit)
+  * plc_sync_durum (7 kolon, 1 kayit)
+  * plc_tarihce (19 kolon, 4923685 kayit)
+  * sokum_giris (12 kolon, 0 kayit)
+  * sokum_is_emirleri (17 kolon, 0 kayit)
+  * uretim_kayitlari (15 kolon, 0 kayit)
+  * vardiya_detay (13 kolon, 0 kayit)
+  * vardiya_trend (10 kolon, 0 kayit)
+  * vardiya_uretim (15 kolon, 2 kayit)
+  * yuzey_alan_hesaplama (17 kolon, 0 kayit)
+ 
+ 
+============================================================
+3. DETAYLI TABLO YAPILARI
+============================================================
+ 
+------------------------------------------------------------
+Tablo: kalite.etiket_kuyrugu
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  proses_kontrol_id [bigint] NULL
+  lot_no [nvarchar(100)] NOT NULL
+  stok_kodu [nvarchar(50)] NULL
+  stok_adi [nvarchar(200)] NULL
+  musteri [nvarchar(200)] NULL
+  miktar [int] NOT NULL
+  kontrolcu_id [uniqueidentifier] NULL
+  kontrolcu_adi [nvarchar(100)] NULL
+  kontrol_tarihi [datetime] NULL
+  basildi_mi [bit] NULL DEFAULT ((0))
+  basim_tarihi [datetime] NULL
+  basim_sayisi [int] NULL DEFAULT ((0))
+  olusturma_tarihi [datetime] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__etiket_k__3213E83F55627400 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_etiket_kuyrugu_proses_kontrol (proses_kontrol_id) -> kalite.proses_kontrol (id)
+ 
+INDEXES:
+  IX: IX_etiket_kuyrugu_basildi_mi (basildi_mi)
+  IX: IX_etiket_kuyrugu_kontrol_tarihi (kontrol_tarihi)
+  IX: IX_etiket_kuyrugu_lot_no (lot_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.final_kontrol
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  is_emri_id [bigint] NOT NULL
+  lot_no [nvarchar(100)] NULL
+  kontrol_miktar [decimal(18,4)] NOT NULL
+  saglam_adet [decimal(18,4)] NULL DEFAULT ((0))
+  hatali_adet [decimal(18,4)] NULL DEFAULT ((0))
+  kontrol_eden_id [bigint] NULL
+  kontrol_tarihi [datetime2] NULL DEFAULT (getdate())
+  sonuc [nvarchar(40)] NULL
+  aciklama [nvarchar(1000)] NULL
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__final_ko__3213E83F6A35B553 (id)
+ 
+INDEXES:
+  IX: IX_final_kontrol_isemri (is_emri_id)
+  IX: IX_final_kontrol_lot (lot_no)
+  IX: IX_final_kontrol_tarih (kontrol_tarihi)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.final_kontrol_hatalar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  final_kontrol_id [bigint] NOT NULL
+  hata_turu_id [bigint] NOT NULL
+  adet [int] NULL DEFAULT ((0))
+  aciklama [nvarchar(500)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__final_ko__3213E83F6F3F7027 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__final_kon__final__5B196B42 (final_kontrol_id) -> kalite.final_kontrol (id)
+ 
+INDEXES:
+  IX: IX_final_kontrol_hatalar_kontrol (final_kontrol_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.fkk_atama
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  atama_no [nvarchar(30)] NOT NULL
+  kaynak_lot_no [nvarchar(50)] NOT NULL
+  hedef_lot_no [nvarchar(50)] NULL
+  kaynak_miktar [decimal(18,2)] NOT NULL
+  atanan_miktar [decimal(18,2)] NOT NULL
+  kalan_miktar [decimal(18,2)] NULL
+  atayan_id [bigint] NULL
+  atama_zamani [datetime2] NULL DEFAULT (getdate())
+  aciklama [nvarchar(500)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__fkk_atam__3213E83F558C85B2 (id)
+ 
+INDEXES:
+  IX: UQ__fkk_atam__F944808986DA67B0 [UNIQUE] (atama_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.fmea
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  fmea_no [nvarchar(30)] NOT NULL
+  fmea_tipi [nvarchar(20)] NOT NULL DEFAULT ('PROSES')
+  revizyon [int] NULL DEFAULT ((1))
+  urun_id [bigint] NULL
+  proses_id [bigint] NULL
+  kaplama_turu_id [bigint] NULL
+  cari_id [bigint] NULL
+  kontrol_plani_id [bigint] NULL
+  baslik [nvarchar(200)] NOT NULL
+  aciklama [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  revizyon_tarihi [datetime2] NULL
+  gecerlilik_tarihi [date] NULL
+  hazirlayan_id [bigint] NULL
+  onaylayan_id [bigint] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('TASLAK')
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__fmea__3213E83FCBEA427C (id)
+ 
+INDEXES:
+  IX: IX_fmea_no [UNIQUE] (fmea_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.fmea_ekip
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  fmea_id [bigint] NOT NULL
+  personel_id [bigint] NOT NULL
+  rol [nvarchar(50)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__fmea_eki__3213E83F4A02C6BE (id)
+ 
+FOREIGN KEYS:
+  FK: FK__fmea_ekip__fmea___22800C64 (fmea_id) -> kalite.fmea (id)
+ 
+INDEXES:
+  IX: IX_fmea_ekip_fmea (fmea_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.fmea_satirlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  fmea_id [bigint] NOT NULL
+  sira_no [int] NOT NULL
+  proses_adimi [nvarchar(200)] NOT NULL
+  fonksiyon [nvarchar(200)] NULL
+  potansiyel_hata_modu [nvarchar(500)] NOT NULL
+  potansiyel_hata_etkisi [nvarchar(500)] NULL
+  potansiyel_hata_nedeni [nvarchar(500)] NULL
+  siddet [int] NOT NULL DEFAULT ((1))
+  olasilik [int] NOT NULL DEFAULT ((1))
+  tespit [int] NOT NULL DEFAULT ((1))
+  rpn [int] NULL
+  mevcut_onleme_kontrolu [nvarchar(500)] NULL
+  mevcut_tespit_kontrolu [nvarchar(500)] NULL
+  onerilen_aksiyon [nvarchar(500)] NULL
+  aksiyon_sorumlu_id [bigint] NULL
+  aksiyon_hedef_tarih [date] NULL
+  aksiyon_tamamlanma_tarihi [date] NULL
+  yeni_siddet [int] NULL
+  yeni_olasilik [int] NULL
+  yeni_tespit [int] NULL
+  yeni_rpn [int] NULL
+  ozel_karakteristik [bit] NULL DEFAULT ((0))
+  sinif [nvarchar(10)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__fmea_sat__3213E83F3C779C16 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__fmea_sati__fmea___19EAC663 (fmea_id) -> kalite.fmea (id)
+ 
+INDEXES:
+  IX: IX_fmea_satirlar_fmea (fmea_id)
+  IX: IX_fmea_satirlar_rpn (fmea_id, siddet, olasilik, tespit)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.giris_kontrol_kayitlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  lot_no [nvarchar(200)] NOT NULL
+  kontrol_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  kontrol_eden_id [bigint] NULL
+  sonuc [nvarchar(40)] NOT NULL
+  genel_not [nvarchar(2000)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__giris_ko__3213E83F89BC276D (id)
+ 
+INDEXES:
+  IX: IX_giris_kontrol_kayitlari_lot (lot_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.giris_kontrol_kriterleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  sira_no [int] NOT NULL DEFAULT ((1))
+  ad [nvarchar(200)] NOT NULL
+  kategori [nvarchar(40)] NULL
+  kontrol_tipi [nvarchar(40)] NOT NULL DEFAULT ('CHECKBOX')
+  aciklama [nvarchar(1000)] NULL
+  birim [nvarchar(40)] NULL
+  min_deger [decimal(18,4)] NULL
+  max_deger [decimal(18,4)] NULL
+  hedef_deger [decimal(18,4)] NULL
+  secenekler [nvarchar(1000)] NULL
+  zorunlu_mu [bit] NOT NULL DEFAULT ((1))
+  kritik_mi [bit] NOT NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__giris_ko__3213E83F71F17948 (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.giris_kontrol_sonuclari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  lot_no [nvarchar(200)] NOT NULL
+  kriter_id [bigint] NOT NULL
+  sonuc [nvarchar(40)] NULL
+  olcum_degeri [decimal(18,4)] NULL
+  secenek_degeri [nvarchar(200)] NULL
+  notlar [nvarchar(1000)] NULL
+  kontrol_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  kontrol_eden_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__giris_ko__3213E83FDFC8BB6E (id)
+ 
+FOREIGN KEYS:
+  FK: FK_giris_kontrol_sonuclari_kriter (kriter_id) -> kalite.giris_kontrol_kriterleri (id)
+ 
+INDEXES:
+  IX: IX_giris_kontrol_sonuclari_kriter (kriter_id)
+  IX: IX_giris_kontrol_sonuclari_lot (lot_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kalibrasyon_kayitlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  cihaz_id [bigint] NOT NULL
+  kalibrasyon_tarihi [date] NOT NULL
+  gecerlilik_tarihi [date] NOT NULL
+  yapan_firma [nvarchar(100)] NOT NULL
+  sertifika_no [nvarchar(50)] NULL
+  sertifika_yolu [nvarchar(500)] NULL
+  sonuc [nvarchar(20)] NOT NULL
+  maliyet [decimal(18,2)] NULL
+  notlar [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__kalibras__3213E83F70161612 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_kalibrasyon_kayitlari_cihaz (cihaz_id) -> kalite.olcum_cihazlari (id)
+  FK: FK_kalibrasyon_kayitlari_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_kalibrasyon_kayitlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kalibrasyon_planlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  cihaz_id [bigint] NOT NULL
+  kalibrasyon_periyodu_ay [int] NOT NULL
+  son_kalibrasyon_tarihi [date] NULL
+  sonraki_kalibrasyon_tarihi [date] NOT NULL
+  kalibrasyon_firma [nvarchar(100)] NULL
+  notlar [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__kalibras__3213E83F9D921840 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_kalibrasyon_planlari_cihaz (cihaz_id) -> kalite.olcum_cihazlari (id)
+ 
+INDEXES:
+  IX: IX_kalibrasyon_planlari_sonraki (sonraki_kalibrasyon_tarihi)
+  IX: UQ_kalibrasyon_planlari_cihaz [UNIQUE] (cihaz_id)
+  IX: UQ_kalibrasyon_planlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kataforez_hata_kayitlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  hata_tipi_id [bigint] NOT NULL
+  banyo_id [bigint] NOT NULL
+  parti_no [nvarchar(50)] NULL
+  urun_id [bigint] NULL
+  tespit_tarihi [datetime2] NOT NULL
+  tespit_eden_id [bigint] NOT NULL
+  hata_aciklamasi [nvarchar(MAX)] NULL
+  hata_miktari [int] NULL
+  etkilenen_alan_m2 [decimal(10,4)] NULL
+  fotograf_path [nvarchar(500)] NULL
+  kok_neden [nvarchar(MAX)] NULL
+  alinan_aksiyonlar [nvarchar(MAX)] NULL
+  durum [nvarchar(20)] NOT NULL DEFAULT ('AÇIK')
+  cozum_tarihi [datetime2] NULL
+  kapatan_id [bigint] NULL
+  tahmini_maliyet_tl [decimal(15,2)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__katafore__3213E83F0975F5E1 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__kataforez__hata___79BDEDF3 (hata_tipi_id) -> kalite.kataforez_hata_tipleri (id)
+  FK: FK__kataforez__banyo__7AB2122C (banyo_id) -> uretim.banyo_tanimlari (id)
+  FK: FK__kataforez__urun___7BA63665 (urun_id) -> stok.urunler (id)
+  FK: FK__kataforez__tespi__7C9A5A9E (tespit_eden_id) -> ik.personeller (id)
+  FK: FK__kataforez__kapat__7E82A310 (kapatan_id) -> ik.personeller (id)
+ 
+INDEXES:
+  IX: IX_kataforez_hata_banyo (banyo_id, tespit_tarihi)
+  IX: IX_kataforez_hata_durum (durum)
+  IX: IX_kataforez_hata_tespit_tarihi (tespit_tarihi)
+  IX: UQ__katafore__7F427931A07EAA81 [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kataforez_hata_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NULL DEFAULT (newid())
+  hata_kodu [nvarchar(20)] NOT NULL
+  hata_adi [nvarchar(100)] NOT NULL
+  kategori [nvarchar(50)] NULL
+  gorunum_aciklama [nvarchar(MAX)] NULL
+  olasi_nedenler [nvarchar(MAX)] NULL
+  cozum_onerileri [nvarchar(MAX)] NULL
+  oncelik_seviyesi [int] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__katafore__3213E83F5F22291D (id)
+ 
+INDEXES:
+  IX: UQ__katafore__DA7001BE4C6670B9 [UNIQUE] (hata_kodu)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kontrol_hatalar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  kontrol_id [int] NOT NULL
+  hata_turu_id [int] NULL
+  adet [int] NULL DEFAULT ((1))
+  aciklama [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__kontrol___3213E83F437AD363 (id)
+ 
+INDEXES:
+  IX: IX_kontrol_hatalar_kontrol (kontrol_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kontrol_is_emirleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  is_emri_id [int] NOT NULL
+  personel_id [uniqueidentifier] NULL
+  atama_tarihi [datetime] NULL
+  baslama_tarihi [datetime] NULL
+  bitis_tarihi [datetime] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  sonuc [nvarchar(20)] NULL
+  red_nedeni [nvarchar(500)] NULL
+  notlar [nvarchar(1000)] NULL
+  olusturma_tarihi [datetime] NULL DEFAULT (getdate())
+  tahmini_sure_dk [int] NULL
+  gercek_sure_dk [int] NULL
+  kontrol_miktar [int] NULL
+  saglam_miktar [int] NULL
+  hatali_miktar [int] NULL
+ 
+PRIMARY KEY:
+  PK: PK__kontrol___3213E83F584B0EEE (id)
+ 
+INDEXES:
+  IX: IX_kontrol_is_emirleri_atama_tarihi (atama_tarihi)
+  IX: IX_kontrol_is_emirleri_durum (durum)
+  IX: IX_kontrol_is_emirleri_is_emri_id (is_emri_id)
+  IX: IX_kontrol_is_emirleri_personel_id (personel_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kontrol_plan_satirlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  plan_id [bigint] NOT NULL
+  sira_no [int] NOT NULL
+  operasyon [nvarchar(100)] NOT NULL
+  kontrol_ozelligi [nvarchar(200)] NOT NULL
+  spesifikasyon [nvarchar(200)] NULL
+  min_deger [decimal(18,4)] NULL
+  max_deger [decimal(18,4)] NULL
+  olcum_metodu [nvarchar(100)] NULL
+  olcum_cihazi [nvarchar(100)] NULL
+  numune_boyutu [nvarchar(50)] NULL
+  frekans [nvarchar(50)] NULL
+  reaksiyon_plani [nvarchar(500)] NULL
+  kayit_formu [nvarchar(100)] NULL
+  kritik_mi [bit] NULL DEFAULT ((0))
+  spc_uygulanacak_mi [bit] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__kontrol___3213E83F67674D67 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_kontrol_plan_satirlar_plan (plan_id) -> kalite.kontrol_planlari (id)
+ 
+INDEXES:
+  IX: UQ_kontrol_plan_satirlar [UNIQUE] (plan_id, sira_no)
+  IX: UQ_kontrol_plan_satirlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.kontrol_planlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  plan_no [nvarchar(30)] NOT NULL
+  revizyon [int] NULL DEFAULT ((1))
+  urun_id [bigint] NULL
+  kaplama_turu_id [bigint] NULL
+  cari_id [bigint] NULL
+  gecerlilik_baslangic [date] NOT NULL
+  gecerlilik_bitis [date] NULL
+  hazirlayan_id [bigint] NULL
+  onaylayan_id [bigint] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('TASLAK')
+  notlar [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__kontrol___3213E83F9AF5D198 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_kontrol_planlari_urun (urun_id) -> stok.urunler (id)
+  FK: FK_kontrol_planlari_kaplama_turu (kaplama_turu_id) -> tanim.kaplama_turleri (id)
+  FK: FK_kontrol_planlari_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_kontrol_planlari_hazirlayan (hazirlayan_id) -> ik.personeller (id)
+  FK: FK_kontrol_planlari_onaylayan (onaylayan_id) -> ik.personeller (id)
+  FK: FK_kontrol_planlari_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_kontrol_planlari_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_kontrol_planlari_plan_no_rev [UNIQUE] (plan_no, revizyon)
+  IX: UQ_kontrol_planlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.muayene_detaylar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  muayene_id [bigint] NOT NULL
+  kontrol_plan_satir_id [bigint] NULL
+  kontrol_ozelligi [nvarchar(200)] NOT NULL
+  olcum_degeri [decimal(18,4)] NULL
+  olcum_degeri_metin [nvarchar(200)] NULL
+  min_deger [decimal(18,4)] NULL
+  max_deger [decimal(18,4)] NULL
+  sonuc [nvarchar(20)] NOT NULL
+  hata_turu_id [bigint] NULL
+  notlar [nvarchar(500)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__muayene___3213E83F65EDC476 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_muayene_detaylar_muayene (muayene_id) -> kalite.muayeneler (id)
+  FK: FK_muayene_detaylar_kontrol_plan_satir (kontrol_plan_satir_id) -> kalite.kontrol_plan_satirlar (id)
+  FK: FK_muayene_detaylar_hata_turu (hata_turu_id) -> tanim.hata_turleri (id)
+ 
+INDEXES:
+  IX: UQ_muayene_detaylar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.muayeneler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  muayene_no [nvarchar(30)] NOT NULL
+  muayene_tipi [nvarchar(30)] NOT NULL
+  tarih [datetime2] NOT NULL
+  is_emri_id [bigint] NULL
+  urun_id [bigint] NOT NULL
+  lot_no [nvarchar(50)] NULL
+  kontrol_plani_id [bigint] NULL
+  muayeneci_id [bigint] NOT NULL
+  numune_miktari [decimal(10,2)] NULL
+  kontrol_miktari [decimal(10,2)] NULL
+  kabul_miktari [decimal(10,2)] NULL
+  red_miktari [decimal(10,2)] NULL
+  sonuc [nvarchar(20)] NOT NULL
+  notlar [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__muayenel__3213E83F6BC00787 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_muayeneler_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_muayeneler_urun (urun_id) -> stok.urunler (id)
+  FK: FK_muayeneler_kontrol_plani (kontrol_plani_id) -> kalite.kontrol_planlari (id)
+  FK: FK_muayeneler_muayeneci (muayeneci_id) -> ik.personeller (id)
+  FK: FK_muayeneler_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_muayeneler_is_emri (is_emri_id)
+  IX: IX_muayeneler_sonuc (sonuc)
+  IX: IX_muayeneler_tarih (tarih)
+  IX: IX_muayeneler_urun (urun_id)
+  IX: UQ_muayeneler_muayene_no [UNIQUE] (muayene_no)
+  IX: UQ_muayeneler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.olcum_cihazlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  cihaz_kodu [nvarchar(30)] NOT NULL
+  cihaz_adi [nvarchar(100)] NOT NULL
+  marka [nvarchar(50)] NULL
+  model [nvarchar(50)] NULL
+  seri_no [nvarchar(50)] NULL
+  olcum_araligi [nvarchar(100)] NULL
+  cozunurluk [nvarchar(50)] NULL
+  lokasyon [nvarchar(100)] NULL
+  sorumlu_id [bigint] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('AKTIF')
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__olcum_ci__3213E83F02D8D0CD (id)
+ 
+FOREIGN KEYS:
+  FK: FK_olcum_cihazlari_sorumlu (sorumlu_id) -> ik.personeller (id)
+  FK: FK_olcum_cihazlari_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_olcum_cihazlari_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_olcum_cihazlari_cihaz_kodu [UNIQUE] (cihaz_kodu)
+  IX: UQ_olcum_cihazlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.proses_kontrol
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  bara_takip_id [bigint] NULL
+  is_emri_id [bigint] NOT NULL
+  toplam_adet [int] NULL
+  saglam_adet [int] NULL
+  hatali_adet [int] NULL
+  kalinlik_olcum [decimal(10,2)] NULL
+  kontrol_eden_id [bigint] NULL
+  kontrol_tarihi [datetime2] NULL DEFAULT (getdate())
+  not_text [nvarchar(500)] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('TAMAMLANDI')
+  lot_no [nvarchar(50)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__proses_k__3213E83FB90F03E5 (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.proses_kontrol_hatalar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  proses_kontrol_id [bigint] NOT NULL
+  hata_turu_id [bigint] NOT NULL
+  adet [int] NOT NULL
+  aciklama [nvarchar(500)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__proses_k__3213E83F8AA97C4D (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.red_karar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  lot_no [nvarchar(50)] NOT NULL
+  hata_turu_id [bigint] NULL
+  miktar [decimal(18,2)] NOT NULL
+  karar [nvarchar(20)] NOT NULL
+  hedef_depo_id [bigint] NULL
+  kararci_id [bigint] NULL
+  karar_zamani [datetime2] NULL DEFAULT (getdate())
+  aciklama [nvarchar(500)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__red_kara__3213E83F3DAD3520 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_red_karar_hata_turu (hata_turu_id) -> tanim.hata_turleri (id)
+  FK: FK_red_karar_depo (hedef_depo_id) -> tanim.depolar (id)
+  FK: FK_red_karar_kararci (kararci_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_red_karar_karar (karar)
+  IX: IX_red_karar_lot (lot_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.spc_olcumler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  tarih [datetime2] NOT NULL
+  hat_id [bigint] NOT NULL
+  parametre_adi [nvarchar(100)] NOT NULL
+  urun_id [bigint] NULL
+  is_emri_id [bigint] NULL
+  olcum_1 [decimal(18,4)] NULL
+  olcum_2 [decimal(18,4)] NULL
+  olcum_3 [decimal(18,4)] NULL
+  olcum_4 [decimal(18,4)] NULL
+  olcum_5 [decimal(18,4)] NULL
+  ortalama [decimal(18,4)] NULL
+  aralik [decimal(18,4)] NULL
+  ust_kontrol_limiti [decimal(18,4)] NULL
+  alt_kontrol_limiti [decimal(18,4)] NULL
+  kural_ihlali [nvarchar(100)] NULL
+  operator_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__spc_olcu__3213E83F61B86B64 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_spc_olcumler_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_spc_olcumler_urun (urun_id) -> stok.urunler (id)
+  FK: FK_spc_olcumler_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_spc_olcumler_operator (operator_id) -> ik.personeller (id)
+ 
+INDEXES:
+  IX: IX_spc_olcumler_hat_param (hat_id, parametre_adi, tarih)
+  IX: UQ_spc_olcumler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.test_sonuclari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  talep_test_id [bigint] NOT NULL
+  tarih [datetime2] NOT NULL
+  analist_id [bigint] NOT NULL
+  cihaz_id [bigint] NULL
+  olcum_degeri [decimal(18,4)] NULL
+  olcum_birimi [nvarchar(20)] NULL
+  sonuc [nvarchar(20)] NOT NULL
+  sertifika_no [nvarchar(50)] NULL
+  rapor_yolu [nvarchar(500)] NULL
+  notlar [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__test_son__3213E83F50A50179 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_test_sonuclari_talep_test (talep_test_id) -> kalite.test_talep_testler (id)
+  FK: FK_test_sonuclari_analist (analist_id) -> ik.personeller (id)
+  FK: FK_test_sonuclari_cihaz (cihaz_id) -> kalite.olcum_cihazlari (id)
+ 
+INDEXES:
+  IX: UQ_test_sonuclari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.test_talep_testler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  talep_id [bigint] NOT NULL
+  test_turu_id [bigint] NOT NULL
+  ozel_spesifikasyon [nvarchar(200)] NULL
+  min_deger [decimal(18,4)] NULL
+  max_deger [decimal(18,4)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__test_tal__3213E83FE4A3EABC (id)
+ 
+FOREIGN KEYS:
+  FK: FK_test_talep_testler_talep (talep_id) -> kalite.test_talepleri (id)
+  FK: FK_test_talep_testler_test_turu (test_turu_id) -> tanim.test_turleri (id)
+ 
+INDEXES:
+  IX: UQ_test_talep_testler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.test_talepleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  talep_no [nvarchar(30)] NOT NULL
+  tarih [datetime2] NOT NULL
+  talep_eden_id [bigint] NOT NULL
+  is_emri_id [bigint] NULL
+  muayene_id [bigint] NULL
+  urun_id [bigint] NOT NULL
+  lot_no [nvarchar(50)] NULL
+  numune_sayisi [int] NULL
+  oncelik [nvarchar(20)] NULL DEFAULT ('NORMAL')
+  talep_nedeni [nvarchar(100)] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  notlar [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__test_tal__3213E83F97449873 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_test_talepleri_talep_eden (talep_eden_id) -> ik.personeller (id)
+  FK: FK_test_talepleri_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_test_talepleri_muayene (muayene_id) -> kalite.muayeneler (id)
+  FK: FK_test_talepleri_urun (urun_id) -> stok.urunler (id)
+  FK: FK_test_talepleri_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_test_talepleri_durum (durum)
+  IX: IX_test_talepleri_tarih (tarih)
+  IX: UQ_test_talepleri_talep_no [UNIQUE] (talep_no)
+  IX: UQ_test_talepleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.uretim_redler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  is_emri_id [int] NULL
+  lot_no [nvarchar(50)] NULL
+  red_miktar [int] NULL
+  kontrol_id [int] NULL
+  red_tarihi [datetime] NULL DEFAULT (getdate())
+  kontrol_eden_id [int] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  islem_tipi [nvarchar(20)] NULL
+  aciklama [nvarchar(500)] NULL
+  olusturma_tarihi [datetime] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime] NULL
+  karar [varchar(20)] NULL
+  karar_veren_id [bigint] NULL
+  karar_tarihi [datetime2] NULL
+  karar_notu [nvarchar(500)] NULL
+  hata_turu_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__uretim_r__3213E83FCE59EA89 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_uretim_redler_hata_turu (hata_turu_id) -> tanim.hata_turleri (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.urun_kontrol_gereksinimleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  stok_kodu [nvarchar(50)] NOT NULL
+  yetkinlik_id [uniqueidentifier] NOT NULL
+  min_seviye [int] NULL DEFAULT ((3))
+  kontrol_suresi_dk [int] NULL DEFAULT ((5))
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__urun_kon__3213E83F9AF8910F (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.uygunsuzluk_aksiyonlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  uygunsuzluk_id [bigint] NOT NULL
+  aksiyon_tipi [nvarchar(30)] NOT NULL
+  d_adimi [int] NULL
+  aciklama [nvarchar(MAX)] NOT NULL
+  sorumlu_id [bigint] NOT NULL
+  hedef_tarih [date] NULL
+  tamamlanma_tarihi [date] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  dogrulama_tarihi [date] NULL
+  dogrulayan_id [bigint] NULL
+  etkinlik_degerlendirme [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__uygunsuz__3213E83FC30C0660 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_uygunsuzluk_aksiyonlar_uygunsuzluk (uygunsuzluk_id) -> kalite.uygunsuzluklar (id)
+  FK: FK_uygunsuzluk_aksiyonlar_sorumlu (sorumlu_id) -> ik.personeller (id)
+  FK: FK_uygunsuzluk_aksiyonlar_dogrulayan (dogrulayan_id) -> ik.personeller (id)
+  FK: FK_uygunsuzluk_aksiyonlar_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_uygunsuzluk_aksiyonlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: kalite.uygunsuzluklar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kayit_no [nvarchar(30)] NOT NULL
+  kayit_tipi [nvarchar(30)] NOT NULL
+  kayit_tarihi [date] NOT NULL
+  bildiren_id [bigint] NOT NULL
+  cari_id [bigint] NULL
+  urun_id [bigint] NULL
+  is_emri_id [bigint] NULL
+  lot_no [nvarchar(50)] NULL
+  etkilenen_miktar [decimal(18,4)] NULL
+  hata_turu_id [bigint] NULL
+  hata_tanimi [nvarchar(MAX)] NOT NULL
+  tespit_yeri [nvarchar(100)] NULL
+  oncelik [nvarchar(20)] NULL DEFAULT ('ORTA')
+  durum [nvarchar(30)] NULL DEFAULT ('ACIK')
+  sorumlu_id [bigint] NULL
+  hedef_kapanis_tarihi [date] NULL
+  kapanis_tarihi [date] NULL
+  maliyet [decimal(18,2)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__uygunsuz__3213E83FA3FADA6B (id)
+ 
+FOREIGN KEYS:
+  FK: FK_uygunsuzluklar_bildiren (bildiren_id) -> ik.personeller (id)
+  FK: FK_uygunsuzluklar_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_uygunsuzluklar_urun (urun_id) -> stok.urunler (id)
+  FK: FK_uygunsuzluklar_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_uygunsuzluklar_hata_turu (hata_turu_id) -> tanim.hata_turleri (id)
+  FK: FK_uygunsuzluklar_sorumlu (sorumlu_id) -> ik.personeller (id)
+  FK: FK_uygunsuzluklar_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_uygunsuzluklar_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_uygunsuzluklar_cari (cari_id)
+  IX: IX_uygunsuzluklar_durum (durum)
+  IX: IX_uygunsuzluklar_tarih (kayit_tarihi)
+  IX: UQ_uygunsuzluklar_kayit_no [UNIQUE] (kayit_no)
+  IX: UQ_uygunsuzluklar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.cikis_irsaliye_satirlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  irsaliye_id [bigint] NOT NULL
+  satir_no [int] NOT NULL
+  is_emri_id [bigint] NOT NULL
+  urun_id [bigint] NOT NULL
+  miktar [decimal(18,4)] NOT NULL
+  birim_id [bigint] NOT NULL
+  lot_no [nvarchar(50)] NULL
+  ambalaj_turu_id [bigint] NULL
+  koli_adedi [int] NULL
+ 
+PRIMARY KEY:
+  PK: PK__cikis_ir__3213E83F8D78DDA5 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_cikis_irsaliye_satirlar_irsaliye (irsaliye_id) -> siparis.cikis_irsaliyeleri (id)
+  FK: FK_cikis_irsaliye_satirlar_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_cikis_irsaliye_satirlar_urun (urun_id) -> stok.urunler (id)
+  FK: FK_cikis_irsaliye_satirlar_birim (birim_id) -> tanim.birimler (id)
+  FK: FK_cikis_irsaliye_satirlar_ambalaj_turu (ambalaj_turu_id) -> tanim.ambalaj_turleri (id)
+ 
+INDEXES:
+  IX: UQ_cikis_irsaliye_satirlar [UNIQUE] (irsaliye_id, satir_no)
+  IX: UQ_cikis_irsaliye_satirlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.cikis_irsaliyeleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  irsaliye_no [nvarchar(30)] NOT NULL
+  cari_id [bigint] NOT NULL
+  teslimat_adresi_id [bigint] NULL
+  tarih [date] NOT NULL
+  sevk_tarihi [datetime2] NULL
+  teslim_eden_id [bigint] NULL
+  tasiyici_firma [nvarchar(100)] NULL
+  arac_plaka [nvarchar(15)] NULL
+  sofor_adi [nvarchar(100)] NULL
+  durum [nvarchar(20)] NOT NULL DEFAULT ('TASLAK')
+  fatura_id [bigint] NULL
+  notlar [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__cikis_ir__3213E83FFE3816F7 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_cikis_irsaliyeleri_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_cikis_irsaliyeleri_teslimat_adresi (teslimat_adresi_id) -> musteri.cari_adresler (id)
+  FK: FK_cikis_irsaliyeleri_teslim_eden (teslim_eden_id) -> ik.personeller (id)
+  FK: FK_cikis_irsaliyeleri_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_cikis_irsaliyeleri_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+  FK: FK_cikis_irsaliyeleri_fatura (fatura_id) -> siparis.faturalar (id)
+ 
+INDEXES:
+  IX: IX_cikis_irsaliyeleri_cari (cari_id)
+  IX: IX_cikis_irsaliyeleri_durum (durum)
+  IX: IX_cikis_irsaliyeleri_tarih (tarih)
+  IX: UQ_cikis_irsaliyeleri_irsaliye_no [UNIQUE] (irsaliye_no)
+  IX: UQ_cikis_irsaliyeleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.fatura_satirlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  fatura_id [bigint] NOT NULL
+  satir_no [int] NOT NULL
+  cikis_irsaliye_satir_id [bigint] NULL
+  urun_id [bigint] NOT NULL
+  aciklama [nvarchar(500)] NULL
+  miktar [decimal(18,4)] NOT NULL
+  birim_id [bigint] NOT NULL
+  birim_fiyat [decimal(18,6)] NOT NULL
+  tutar [decimal(18,2)] NULL
+  kdv_orani [decimal(5,2)] NULL DEFAULT ((20))
+  kdv_tutari [decimal(18,2)] NULL
+  toplam [decimal(18,2)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__fatura_s__3213E83F4CB211FA (id)
+ 
+FOREIGN KEYS:
+  FK: FK_fatura_satirlar_urun (urun_id) -> stok.urunler (id)
+  FK: FK_fatura_satirlar_birim (birim_id) -> tanim.birimler (id)
+  FK: FK_fatura_satirlar_fatura (fatura_id) -> siparis.faturalar (id)
+  FK: FK_fatura_satirlar_cikis_irsaliye_satir (cikis_irsaliye_satir_id) -> siparis.cikis_irsaliye_satirlar (id)
+ 
+INDEXES:
+  IX: UQ_fatura_satirlar [UNIQUE] (fatura_id, satir_no)
+  IX: UQ_fatura_satirlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.faturalar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  fatura_no [nvarchar(30)] NOT NULL
+  fatura_tipi [nvarchar(20)] NOT NULL
+  cari_id [bigint] NOT NULL
+  tarih [date] NOT NULL
+  vade_tarihi [date] NULL
+  para_birimi_id [bigint] NOT NULL
+  kur [decimal(18,6)] NULL DEFAULT ((1))
+  ara_toplam [decimal(18,2)] NULL
+  kdv_toplam [decimal(18,2)] NULL
+  genel_toplam [decimal(18,2)] NULL
+  durum [nvarchar(20)] NOT NULL DEFAULT ('TASLAK')
+  zirve_fatura_id [nvarchar(50)] NULL
+  notlar [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__faturala__3213E83F4A4A44AC (id)
+ 
+FOREIGN KEYS:
+  FK: FK_faturalar_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_faturalar_para_birimi (para_birimi_id) -> tanim.para_birimleri (id)
+  FK: FK_faturalar_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_faturalar_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_faturalar_cari (cari_id)
+  IX: IX_faturalar_durum (durum)
+  IX: IX_faturalar_tarih (tarih)
+  IX: UQ_faturalar_fatura_no [UNIQUE] (fatura_no)
+  IX: UQ_faturalar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.giris_irsaliye_satirlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  irsaliye_id [bigint] NOT NULL
+  satir_no [int] NOT NULL
+  stok_kodu [nvarchar(50)] NOT NULL
+  stok_adi [nvarchar(200)] NULL
+  miktar [decimal(18,4)] NOT NULL
+  birim [nvarchar(20)] NULL DEFAULT ('ADET')
+  kaplama [nvarchar(100)] NULL
+  lot_no [nvarchar(50)] NULL
+  termin_tarihi [date] NULL
+  kalite_durumu [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  notlar [nvarchar(500)] NULL
+  depo_id [bigint] NULL
+  hedef_raf_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__giris_ir__3213E83FBFE832B0 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_giris_satirlar_irsaliye (irsaliye_id) -> siparis.giris_irsaliyeleri (id)
+ 
+INDEXES:
+  IX: IX_giris_satirlar_irsaliye (irsaliye_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.giris_irsaliyeleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  irsaliye_no [nvarchar(100)] NULL
+  cari_unvani [nvarchar(500)] NULL
+  cari_irsaliye_no [nvarchar(50)] NULL
+  tarih [date] NOT NULL
+  teslim_alan [nvarchar(100)] NULL
+  arac_plaka [nvarchar(50)] NULL
+  sofor_adi [nvarchar(200)] NULL
+  durum [nvarchar(20)] NOT NULL DEFAULT ('TASLAK')
+  notlar [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__giris_ir__3213E83FF649FB73 (id)
+ 
+INDEXES:
+  IX: UQ_giris_irsaliyeleri_no [UNIQUE] (irsaliye_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.is_emirleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  is_emri_no [nvarchar(30)] NOT NULL
+  tarih [date] NOT NULL
+  cari_id [bigint] NULL
+  giris_irsaliye_satir_id [bigint] NULL
+  urun_id [bigint] NULL
+  hat_id [bigint] NULL
+  kaplama_turu_id [bigint] NULL
+  planlanan_miktar [decimal(18,4)] NOT NULL
+  birim_id [bigint] NULL
+  lot_no [nvarchar(50)] NULL
+  oncelik [int] NULL DEFAULT ((5))
+  planlanan_baslama [datetime2] NULL
+  planlanan_bitis [datetime2] NULL
+  fiili_baslama [datetime2] NULL
+  fiili_bitis [datetime2] NULL
+  uretilen_miktar [decimal(18,4)] NULL
+  fire_miktar [decimal(18,4)] NULL
+  durum [nvarchar(20)] NOT NULL DEFAULT ('TASLAK')
+  spesifikasyon_id [bigint] NULL
+  ozel_talimatlar [nvarchar(MAX)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+  cari_unvani [nvarchar(200)] NULL
+  stok_kodu [nvarchar(50)] NULL
+  stok_adi [nvarchar(200)] NULL
+  kaplama_tipi [nvarchar(50)] NULL
+  toplam_miktar [decimal(18,4)] NULL
+  birim [nvarchar(20)] NULL DEFAULT ('ADET')
+  aski_adet [int] NULL
+  bara_adet [int] NULL
+  toplam_bara [int] NULL
+  tahmini_sure_dk [int] NULL
+  termin_tarihi [date] NULL
+  planlanan_baslangic [datetime2] NULL
+  gercek_baslangic [datetime2] NULL
+  gercek_bitis [datetime2] NULL
+  uretim_notu [nvarchar(MAX)] NULL
+  giren_bara [int] NULL
+  cikan_bara [int] NULL
+  baslama_tarihi [datetime] NULL
+  bitis_tarihi [datetime] NULL
+ 
+PRIMARY KEY:
+  PK: PK__is_emirl__3213E83F90D42806 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_is_emirleri_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_is_emirleri_urun (urun_id) -> stok.urunler (id)
+  FK: FK_is_emirleri_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_is_emirleri_kaplama_turu (kaplama_turu_id) -> tanim.kaplama_turleri (id)
+  FK: FK_is_emirleri_birim (birim_id) -> tanim.birimler (id)
+  FK: FK_is_emirleri_spesifikasyon (spesifikasyon_id) -> stok.urun_spesifikasyonlar (id)
+  FK: FK_is_emirleri_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_is_emirleri_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_is_emirleri_cari (cari_id)
+  IX: IX_is_emirleri_durum (durum)
+  IX: IX_is_emirleri_hat (hat_id)
+  IX: IX_is_emirleri_planlanan (planlanan_baslama)
+  IX: IX_is_emirleri_tarih (tarih)
+  IX: IX_is_emirleri_urun (urun_id)
+  IX: UQ_is_emirleri_is_emri_no [UNIQUE] (is_emri_no)
+  IX: UQ_is_emirleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.is_emri_lotlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  is_emri_id [bigint] NOT NULL
+  lot_no [nvarchar(50)] NOT NULL
+  giris_irsaliye_id [bigint] NULL
+  miktar [decimal(18,4)] NOT NULL
+  birim [nvarchar(20)] NULL DEFAULT ('ADET')
+  cikis_durumu [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  cikis_tarihi [datetime2] NULL
+  cikan_miktar [decimal(18,4)] NULL DEFAULT ((0))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__is_emri___3213E83FFDE716BF (id)
+ 
+FOREIGN KEYS:
+  FK: FK_is_emri_lotlar_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+ 
+INDEXES:
+  IX: IX_is_emri_lotlar_is_emri (is_emri_id)
+  IX: IX_is_emri_lotlar_lot (lot_no)
+  IX: UQ_is_emri_lotlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.is_emri_operasyonlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  is_emri_id [bigint] NOT NULL
+  sira_no [int] NOT NULL
+  operasyon_adi [nvarchar(100)] NOT NULL
+  hat_id [bigint] NULL
+  planlanan_sure_dk [int] NULL
+  fiili_sure_dk [int] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  baslama_zamani [datetime2] NULL
+  bitis_zamani [datetime2] NULL
+  operator_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__is_emri___3213E83F701DD520 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_is_emri_operasyonlar_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_is_emri_operasyonlar_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_is_emri_operasyonlar_operator (operator_id) -> ik.personeller (id)
+ 
+INDEXES:
+  IX: UQ_is_emri_operasyonlar [UNIQUE] (is_emri_id, sira_no)
+  IX: UQ_is_emri_operasyonlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.is_emri_stok_hareketi
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  is_emri_id [bigint] NOT NULL
+  stok_bakiye_id [bigint] NOT NULL
+  lot_no [nvarchar(100)] NOT NULL
+  urun_id [bigint] NOT NULL
+  tahsis_miktar [decimal(18,4)] NOT NULL
+  cikis_miktar [decimal(18,4)] NOT NULL DEFAULT ((0))
+  uretilen_miktar [decimal(18,4)] NOT NULL DEFAULT ((0))
+  fire_miktar [decimal(18,4)] NOT NULL DEFAULT ((0))
+  iade_miktar [decimal(18,4)] NOT NULL DEFAULT ((0))
+  durum [nvarchar(40)] NOT NULL DEFAULT ('TAHSIS')
+  hat_id [bigint] NULL
+  tahsis_hareket_id [bigint] NULL
+  cikis_hareket_id [bigint] NULL
+  giris_hareket_id [bigint] NULL
+  tahsis_zamani [datetime2] NOT NULL DEFAULT (getdate())
+  cikis_zamani [datetime2] NULL
+  uretim_baslama_zamani [datetime2] NULL
+  uretim_bitis_zamani [datetime2] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__is_emri___3213E83F37EC5FF7 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_is_emri_stok_hareketi_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_is_emri_stok_hareketi_stok_bakiye (stok_bakiye_id) -> stok.stok_bakiye (id)
+ 
+INDEXES:
+  IX: IX_is_emri_stok_hareketi_durum (durum)
+  IX: IX_is_emri_stok_hareketi_is_emri_id (is_emri_id)
+  IX: IX_is_emri_stok_hareketi_lot_no (lot_no)
+  IX: IX_is_emri_stok_hareketi_stok_bakiye_id (stok_bakiye_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.sevkiyat_detaylari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  sevkiyat_id [bigint] NOT NULL
+  sira_no [int] NULL DEFAULT ((1))
+  lot_no [nvarchar(50)] NULL
+  stok_kodu [nvarchar(50)] NULL
+  stok_adi [nvarchar(255)] NULL
+  miktar [decimal(18,4)] NULL
+  birim [nvarchar(20)] NULL DEFAULT ('ADET')
+  is_emri_id [bigint] NULL
+  okutma_zamani [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__sevkiyat__3213E83F7A0AD6F5 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_sevkiyat_detay_sevkiyat (sevkiyat_id) -> siparis.sevkiyatlar (id)
+ 
+INDEXES:
+  IX: IX_sevkiyat_detay_lot (lot_no)
+  IX: IX_sevkiyat_detay_sevkiyat (sevkiyat_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: siparis.sevkiyatlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  sevkiyat_no [nvarchar(30)] NOT NULL
+  tarih [date] NOT NULL
+  cari_id [bigint] NULL
+  cari_unvani [nvarchar(255)] NULL
+  tasiyici_firma [nvarchar(100)] NULL
+  plaka [nvarchar(20)] NULL
+  sofor_adi [nvarchar(100)] NULL
+  notlar [nvarchar(MAX)] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('HAZIRLANIYOR')
+  tamamlanma_tarihi [datetime2] NULL
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__sevkiyat__3213E83F2BBA5214 (id)
+ 
+INDEXES:
+  IX: IX_sevkiyat_cari (cari_id)
+  IX: IX_sevkiyat_no [UNIQUE] (sevkiyat_no)
+  IX: IX_sevkiyat_tarih (tarih)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.depo_cikis
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  is_emri_id [bigint] NOT NULL
+  stok_bakiye_id [bigint] NOT NULL
+  lot_no [nvarchar(50)] NULL
+  urun_id [bigint] NULL
+  miktar [decimal(18,4)] NOT NULL
+  birim [nvarchar(20)] NULL DEFAULT ('ADET')
+  cikis_tarihi [datetime2] NULL DEFAULT (getdate())
+  hedef_hat_id [bigint] NULL
+  islem_yapan_id [bigint] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('CIKTI')
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__depo_cik__3213E83FA610262E (id)
+ 
+FOREIGN KEYS:
+  FK: FK__depo_ciki__is_em__78BEDCC2 (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK__depo_ciki__stok___79B300FB (stok_bakiye_id) -> stok.stok_bakiye (id)
+ 
+INDEXES:
+  IX: IX_depo_cikis_is_emri (is_emri_id)
+  IX: IX_depo_cikis_lot (lot_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.depo_cikis_emirleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  emir_no [nvarchar(20)] NOT NULL
+  is_emri_id [bigint] NULL
+  planlama_id [bigint] NULL
+  lot_no [nvarchar(50)] NULL
+  stok_kodu [nvarchar(50)] NULL
+  stok_adi [nvarchar(200)] NULL
+  kaynak_depo_id [bigint] NOT NULL
+  hedef_depo_id [bigint] NOT NULL
+  talep_miktar [decimal(18,4)] NOT NULL
+  transfer_miktar [decimal(18,4)] NULL DEFAULT ((0))
+  durum [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  talep_tarihi [datetime2] NULL DEFAULT (getdate())
+  tamamlanma_tarihi [datetime2] NULL
+  olusturan_id [bigint] NULL
+  tamamlayan_id [bigint] NULL
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__depo_cik__3213E83F0E963A51 (id)
+ 
+INDEXES:
+  IX: IX_depo_cikis_emirleri_durum (durum)
+  IX: IX_depo_cikis_emirleri_lot (lot_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.depo_lokasyonlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  depo_id [bigint] NOT NULL
+  lokasyon_kodu [nvarchar(30)] NOT NULL
+  aciklama [nvarchar(100)] NULL
+  kapasite [decimal(10,2)] NULL
+  birim_id [bigint] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__depo_lok__3213E83FB41D35F5 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_depo_lokasyonlar_depo (depo_id) -> stok.depolar (id)
+  FK: FK_depo_lokasyonlar_birim (birim_id) -> tanim.birimler (id)
+ 
+INDEXES:
+  IX: UQ_depo_lokasyonlar_depo_kod [UNIQUE] (depo_id, lokasyon_kodu)
+  IX: UQ_depo_lokasyonlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.depolar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  depo_tipi [nvarchar(30)] NOT NULL
+  lokasyon [nvarchar(200)] NULL
+  sorumlu_id [bigint] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__depolar__3213E83FFC8C782B (id)
+ 
+FOREIGN KEYS:
+  FK: FK_depolar_sorumlu (sorumlu_id) -> ik.personeller (id)
+  FK: FK_depolar_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_depolar_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_depolar_kod [UNIQUE] (kod)
+  IX: UQ_depolar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.emanet_stok
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  cari_id [bigint] NOT NULL
+  urun_id [bigint] NOT NULL
+  giris_irsaliye_id [bigint] NULL
+  lot_no [nvarchar(50)] NULL
+  giren_miktar [decimal(18,4)] NOT NULL
+  kalan_miktar [decimal(18,4)] NOT NULL
+  giris_tarihi [datetime2] NOT NULL
+  durum [nvarchar(20)] NOT NULL DEFAULT ('BEKLIYOR')
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__emanet_s__3213E83F8D2F251C (id)
+ 
+FOREIGN KEYS:
+  FK: FK_emanet_stok_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_emanet_stok_urun (urun_id) -> stok.urunler (id)
+  FK: FK_emanet_stok_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_emanet_stok_cari (cari_id)
+  IX: IX_emanet_stok_durum (durum)
+  IX: IX_emanet_stok_urun (urun_id)
+  IX: UQ_emanet_stok_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.hareket_event_log
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  lot_no [nvarchar(100)] NULL
+  event_tipi [nvarchar(50)] NULL
+  event_durumu [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  event_zamani [datetime2] NULL DEFAULT (getdate())
+  depo_id [int] NULL
+  miktar [float] NULL
+ 
+PRIMARY KEY:
+  PK: PK__hareket___3213E83F3BFF7B80 (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.hareket_log
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  hareket_no [nvarchar(60)] NOT NULL
+  hareket_tipi_id [bigint] NOT NULL
+  hareket_tipi_kod [nvarchar(40)] NOT NULL
+  stok_bakiye_id [bigint] NOT NULL
+  lot_no [nvarchar(100)] NOT NULL
+  parent_lot_no [nvarchar(200)] NULL
+  urun_id [bigint] NOT NULL
+  stok_kodu [nvarchar(200)] NULL
+  stok_adi [nvarchar(800)] NULL
+  miktar [decimal(18,4)] NOT NULL
+  birim [nvarchar(40)] NULL
+  onceki_miktar [decimal(18,4)] NULL
+  sonraki_miktar [decimal(18,4)] NULL
+  kaynak_depo_id [bigint] NULL
+  kaynak_depo_kod [nvarchar(40)] NULL
+  hedef_depo_id [bigint] NULL
+  hedef_depo_kod [nvarchar(40)] NULL
+  referans_tip [nvarchar(60)] NULL
+  referans_id [bigint] NULL
+  is_emri_id [bigint] NULL
+  is_emri_no [nvarchar(60)] NULL
+  kalite_durumu_onceki [nvarchar(40)] NULL
+  kalite_durumu_sonraki [nvarchar(40)] NULL
+  kalite_kontrol_id [bigint] NULL
+  hareket_zamani [datetime2] NOT NULL DEFAULT (getdate())
+  yapan_id [bigint] NULL
+  yapan_adi [nvarchar(200)] NULL
+  aciklama [nvarchar(1000)] NULL
+  iptal_mi [bit] NOT NULL DEFAULT ((0))
+  iptal_zamani [datetime2] NULL
+  iptal_nedeni [nvarchar(500)] NULL
+  iptal_eden_id [bigint] NULL
+  iptal_hareket_id [bigint] NULL
+  kaynak_ekran [nvarchar(100)] NULL
+  ip_adresi [nvarchar(50)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__hareket___3213E83FD2B4AD30 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_hareket_log_hareket_tipi (hareket_tipi_id) -> tanim.hareket_tipleri (id)
+  FK: FK_hareket_log_stok_bakiye (stok_bakiye_id) -> stok.stok_bakiye (id)
+ 
+INDEXES:
+  IX: IX_hareket_log_hareket_no (hareket_no)
+  IX: IX_hareket_log_hareket_tipi_id (hareket_tipi_id)
+  IX: IX_hareket_log_hareket_zamani (hareket_zamani)
+  IX: IX_hareket_log_is_emri_id (is_emri_id)
+  IX: IX_hareket_log_lot_no (lot_no)
+  IX: IX_hareket_log_stok_bakiye_id (stok_bakiye_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.kimyasallar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_id [bigint] NOT NULL
+  kategori_id [bigint] NOT NULL
+  tedarikci_id [bigint] NULL
+  uretici [nvarchar(100)] NULL
+  tehlike_sinifi [nvarchar(50)] NULL
+  sds_dokuman_yolu [nvarchar(500)] NULL
+  depolama_sicaklik_min [decimal(5,2)] NULL
+  depolama_sicaklik_max [decimal(5,2)] NULL
+  yogunluk [decimal(8,4)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__kimyasal__3213E83F373F5273 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_kimyasallar_urun (urun_id) -> stok.urunler (id)
+  FK: FK_kimyasallar_kategori (kategori_id) -> tanim.kimyasal_kategoriler (id)
+  FK: FK_kimyasallar_tedarikci (tedarikci_id) -> musteri.cariler (id)
+ 
+INDEXES:
+  IX: UQ_kimyasallar_urun [UNIQUE] (urun_id)
+  IX: UQ_kimyasallar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.lot_durum_gecmisi
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  lot_no [nvarchar(50)] NOT NULL
+  eski_durum [nvarchar(30)] NULL
+  yeni_durum [nvarchar(30)] NOT NULL
+  neden [nvarchar(100)] NULL
+  aciklama [nvarchar(500)] NULL
+  degistiren_id [bigint] NULL
+  degisim_zamani [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__lot_duru__3213E83FB18329C9 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_lot_durum_gecmisi_kullanici (degistiren_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_lot_durum_gecmisi_lot (lot_no)
+  IX: IX_lot_durum_gecmisi_tarih (degisim_zamani)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.stok_bakiye
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  urun_id [bigint] NOT NULL
+  depo_id [bigint] NOT NULL
+  lokasyon_id [bigint] NULL
+  lot_no [nvarchar(50)] NULL
+  miktar [decimal(18,4)] NOT NULL DEFAULT ((0))
+  rezerve_miktar [decimal(18,4)] NOT NULL DEFAULT ((0))
+  kullanilabilir_miktar [decimal(19,4)] NULL
+  son_hareket_tarihi [datetime2] NULL
+  parent_lot_no [nvarchar(100)] NULL
+  kalite_durumu [nvarchar(40)] NULL DEFAULT ('BEKLIYOR')
+  irsaliye_satir_id [bigint] NULL
+  palet_no [int] NULL
+  toplam_palet [int] NULL
+  stok_kodu [nvarchar(100)] NULL
+  stok_adi [nvarchar(400)] NULL
+  cari_unvani [nvarchar(400)] NULL
+  kaplama_tipi [nvarchar(200)] NULL
+  birim [nvarchar(40)] NULL DEFAULT ('ADET')
+  giris_tarihi [datetime2] NULL
+  olusturan_id [bigint] NULL
+  durum [nvarchar(30)] NULL DEFAULT ('BEKLIYOR')
+  kalite_durumu_v2 [nvarchar(40)] NULL DEFAULT ('BEKLIYOR')
+  uretim_durumu [nvarchar(40)] NULL DEFAULT ('BEKLIYOR')
+  giris_hareket_id [bigint] NULL
+  son_hareket_id [bigint] NULL
+  toplam_hareket_sayisi [int] NULL DEFAULT ((0))
+  bloke_mi [bit] NULL DEFAULT ((0))
+  bloke_nedeni [nvarchar(500)] NULL
+  bloke_tarihi [datetime2] NULL
+  bloke_eden_id [bigint] NULL
+  durum_kodu [nvarchar(30)] NULL DEFAULT ('KABUL')
+ 
+PRIMARY KEY:
+  PK: PK__stok_bak__3213E83FBD95D995 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_stok_bakiye_depo (depo_id) -> tanim.depolar (id)
+  FK: FK_stok_bakiye_urun (urun_id) -> stok.urunler (id)
+  FK: FK_stok_bakiye_lokasyon (lokasyon_id) -> stok.depo_lokasyonlar (id)
+ 
+INDEXES:
+  IX: IX_stok_bakiye_depo (depo_id)
+  IX: IX_stok_bakiye_depo_durum (depo_id, durum_kodu)
+  IX: IX_stok_bakiye_durum (durum_kodu)
+  IX: IX_stok_bakiye_irsaliye_satir (irsaliye_satir_id)
+  IX: IX_stok_bakiye_kalite_durumu (kalite_durumu)
+  IX: IX_stok_bakiye_parent_lot (parent_lot_no)
+  IX: IX_stok_bakiye_urun (urun_id)
+  IX: UQ_stok_bakiye [UNIQUE] (urun_id, depo_id, lokasyon_id, lot_no)
+  IX: UQ_stok_bakiye_no_both [UNIQUE] (urun_id, depo_id)
+  IX: UQ_stok_bakiye_no_lok [UNIQUE] (urun_id, depo_id, lot_no)
+  IX: UQ_stok_bakiye_no_lot [UNIQUE] (urun_id, depo_id, lokasyon_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.stok_hareketleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  hareket_tipi [nvarchar(30)] NOT NULL
+  hareket_nedeni [nvarchar(30)] NOT NULL
+  tarih [datetime2] NOT NULL
+  urun_id [bigint] NOT NULL
+  depo_id [bigint] NOT NULL
+  lokasyon_id [bigint] NULL
+  miktar [decimal(18,4)] NOT NULL
+  birim_id [bigint] NOT NULL
+  lot_no [nvarchar(50)] NULL
+  referans_tip [nvarchar(30)] NULL
+  referans_id [bigint] NULL
+  aciklama [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__stok_har__3213E83F39E00E39 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_stok_hareketleri_urun (urun_id) -> stok.urunler (id)
+  FK: FK_stok_hareketleri_lokasyon (lokasyon_id) -> stok.depo_lokasyonlar (id)
+  FK: FK_stok_hareketleri_birim (birim_id) -> tanim.birimler (id)
+  FK: FK_stok_hareketleri_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_stok_hareketleri_depo (depo_id) -> tanim.depolar (id)
+ 
+INDEXES:
+  IX: IX_stok_hareketleri_depo_tarih (depo_id, tarih)
+  IX: IX_stok_hareketleri_referans (referans_tip, referans_id)
+  IX: IX_stok_hareketleri_tarih (tarih)
+  IX: IX_stok_hareketleri_urun_tarih (urun_id, tarih)
+  IX: UQ_stok_hareketleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_agaci
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  ana_urun_id [bigint] NOT NULL
+  bilesen_urun_id [bigint] NOT NULL
+  miktar [decimal(18,6)] NOT NULL DEFAULT ((1))
+  birim_id [bigint] NULL
+  bilesen_tipi [nvarchar(20)] NOT NULL DEFAULT ('MALZEME')
+  recete_adim_id [bigint] NULL
+  alternatif_grup [int] NULL
+  varyasyon_kodu [nvarchar(20)] NULL
+  fire_orani [decimal(5,2)] NULL DEFAULT ((0))
+  gecerlilik_baslangic [date] NULL
+  gecerlilik_bitis [date] NULL
+  aciklama [nvarchar(500)] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__urun_aga__3213E83FD4A4F3AC (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_agaci_ana (ana_urun_id) -> stok.urunler (id)
+  FK: FK_urun_agaci_bilesen (bilesen_urun_id) -> stok.urunler (id)
+ 
+INDEXES:
+  IX: IX_urun_agaci_ana (ana_urun_id)
+  IX: IX_urun_agaci_ana_urun (ana_urun_id)
+  IX: IX_urun_agaci_bilesen (bilesen_urun_id)
+  IX: IX_urun_agaci_bilesen_urun (bilesen_urun_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_birimleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  urun_id [bigint] NOT NULL
+  birim_id [bigint] NOT NULL
+  ana_birim_mi [bit] NULL DEFAULT ((0))
+  carpan [decimal(18,6)] NULL DEFAULT ((1))
+  barkod [nvarchar(50)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__urun_bir__3213E83F02C44F9B (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_birim_urun (urun_id) -> stok.urunler (id)
+ 
+INDEXES:
+  IX: UQ_urun_birim [UNIQUE] (urun_id, birim_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_cari_kodlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  urun_id [bigint] NOT NULL
+  cari_id [bigint] NOT NULL
+  cari_stok_kodu [nvarchar(100)] NULL
+  cari_stok_adi [nvarchar(250)] NULL
+  cari_barkod [nvarchar(50)] NULL
+  temin_suresi_gun [int] NULL
+  min_siparis_miktari [decimal(18,4)] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__urun_car__3213E83F999EF8B1 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_cari_urun (urun_id) -> stok.urunler (id)
+ 
+INDEXES:
+  IX: UQ_urun_cari [UNIQUE] (urun_id, cari_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_dosyalar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_id [bigint] NOT NULL
+  dosya_tipi [nvarchar(30)] NOT NULL
+  dosya_adi [nvarchar(200)] NOT NULL
+  dosya_yolu [nvarchar(500)] NOT NULL
+  dosya_boyutu_kb [int] NULL
+  mime_type [nvarchar(100)] NULL
+  aciklama [nvarchar(500)] NULL
+  revizyon_no [nvarchar(20)] NULL
+  gecerlilik_tarihi [date] NULL
+  yukleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  yukleyen_id [bigint] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__urun_dos__3213E83F74BEECD7 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_dosyalar_urun (urun_id) -> stok.urunler (id)
+  FK: FK_urun_dosyalar_yukleyen (yukleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_urun_dosyalar_tipi (dosya_tipi)
+  IX: IX_urun_dosyalar_urun (urun_id)
+  IX: UQ_urun_dosyalar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_fiyatlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_id [bigint] NOT NULL
+  fiyat_tipi [nvarchar(20)] NOT NULL
+  fiyat [decimal(18,4)] NOT NULL
+  para_birimi [nvarchar(3)] NULL DEFAULT ('TRY')
+  kdv_dahil [bit] NULL DEFAULT ((0))
+  kdv_orani [decimal(5,2)] NULL DEFAULT ((20))
+  gecerlilik_baslangic [date] NULL
+  gecerlilik_bitis [date] NULL
+  cari_id [bigint] NULL
+  min_miktar [decimal(18,4)] NULL
+  max_miktar [decimal(18,4)] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__urun_fiy__3213E83F473A7612 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_fiyat_urun (urun_id) -> stok.urunler (id)
+ 
+INDEXES:
+  IX: IX_urun_fiyat_urun (urun_id, fiyat_tipi)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_kategorileri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  ust_kategori_id [bigint] NULL
+  seviye [int] NULL DEFAULT ((1))
+  tam_yol [nvarchar(500)] NULL
+  aciklama [nvarchar(500)] NULL
+  sira_no [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__urun_kat__3213E83F664A964A (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_kat_ust (ust_kategori_id) -> stok.urun_kategorileri (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_ozellikleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  urun_id [bigint] NOT NULL
+  ozellik_adi [nvarchar(100)] NOT NULL
+  ozellik_degeri [nvarchar(500)] NULL
+  birim [nvarchar(20)] NULL
+  sira_no [int] NULL DEFAULT ((0))
+ 
+PRIMARY KEY:
+  PK: PK__urun_oze__3213E83F8D702ABF (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_ozellik_urun (urun_id) -> stok.urunler (id)
+ 
+INDEXES:
+  IX: IX_urun_ozellik (urun_id)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_recete
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_id [bigint] NOT NULL
+  sira_no [int] NOT NULL
+  islem_adi [nvarchar(100)] NOT NULL
+  banyo_tipi_id [bigint] NULL
+  pozisyon_id [bigint] NULL
+  sure_sn [int] NULL
+  sicaklik_min [decimal(5,2)] NULL
+  sicaklik_max [decimal(5,2)] NULL
+  sicaklik_hedef [decimal(5,2)] NULL
+  ph_min [decimal(4,2)] NULL
+  ph_max [decimal(4,2)] NULL
+  ph_hedef [decimal(4,2)] NULL
+  akim_min [decimal(10,2)] NULL
+  akim_max [decimal(10,2)] NULL
+  akim_hedef [decimal(10,2)] NULL
+  gerilim_hedef [decimal(10,2)] NULL
+  ozel_parametre [nvarchar(500)] NULL
+  kontrol_noktasi_mi [bit] NULL DEFAULT ((0))
+  kontrol_tipi [nvarchar(50)] NULL
+  kontrol_frekansi [nvarchar(50)] NULL
+  kontrol_metodu [nvarchar(200)] NULL
+  kabul_kriteri [nvarchar(500)] NULL
+  olcum_aleti [nvarchar(100)] NULL
+  kayit_formu [nvarchar(100)] NULL
+  aciklama [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__urun_rec__3213E83F7B651E8B (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_recete_urun (urun_id) -> stok.urunler (id)
+  FK: FK_urun_recete_banyo_tipi (banyo_tipi_id) -> tanim.banyo_tipleri (id)
+  FK: FK_urun_recete_pozisyon (pozisyon_id) -> tanim.hat_pozisyonlar (id)
+  FK: FK_urun_recete_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_urun_recete_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_urun_recete_urun (urun_id)
+  IX: UQ_urun_recete_sira [UNIQUE] (urun_id, sira_no)
+  IX: UQ_urun_recete_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_spesifikasyonlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_id [bigint] NOT NULL
+  kaplama_turu_id [bigint] NOT NULL
+  oem_standart_id [bigint] NULL
+  min_kalinlik_um [decimal(8,2)] NULL
+  max_kalinlik_um [decimal(8,2)] NULL
+  hedef_kalinlik_um [decimal(8,2)] NULL
+  tuz_testi_saat [int] NULL
+  ozel_talimatlar [nvarchar(MAX)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__urun_spe__3213E83FE6FCB652 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urun_spesifikasyonlar_urun (urun_id) -> stok.urunler (id)
+  FK: FK_urun_spesifikasyonlar_kaplama_turu (kaplama_turu_id) -> tanim.kaplama_turleri (id)
+  FK: FK_urun_spesifikasyonlar_oem_standart (oem_standart_id) -> tanim.oem_standartlari (id)
+  FK: FK_urun_spesifikasyonlar_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_urun_spesifikasyonlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urun_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aciklama [nvarchar(500)] NULL
+  stok_takibi [bit] NULL DEFAULT ((1))
+  lot_takibi [bit] NULL DEFAULT ((0))
+  seri_takibi [bit] NULL DEFAULT ((0))
+  negatif_stok [bit] NULL DEFAULT ((0))
+  uretim_yapilir [bit] NULL DEFAULT ((0))
+  satin_alinir [bit] NULL DEFAULT ((1))
+  satilir [bit] NULL DEFAULT ((0))
+  maliyet_yontemi [nvarchar(20)] NULL DEFAULT ('FIFO')
+  aktif_mi [bit] NULL DEFAULT ((1))
+  sira_no [int] NULL DEFAULT ((0))
+ 
+PRIMARY KEY:
+  PK: PK__urun_tip__3213E83F36FB183A (id)
+ 
+INDEXES:
+  IX: UQ__urun_tip__DFD8EB9E175DD40E [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: stok.urunler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_kodu [nvarchar(50)] NOT NULL
+  urun_adi [nvarchar(250)] NOT NULL
+  cari_id [bigint] NULL
+  musteri_parca_no [nvarchar(100)] NULL
+  urun_tipi [nvarchar(20)] NOT NULL
+  birim_id [bigint] NOT NULL
+  kaplama_turu_id [bigint] NULL
+  yuzey_alani_m2 [decimal(12,6)] NULL
+  agirlik_kg [decimal(12,6)] NULL
+  teknik_resim_no [nvarchar(50)] NULL
+  stl_dosya_yolu [nvarchar(500)] NULL
+  resim_yolu [nvarchar(500)] NULL
+  min_stok [decimal(18,4)] NULL
+  max_stok [decimal(18,4)] NULL
+  kritik_stok [decimal(18,4)] NULL
+  raf_omru_gun [int] NULL
+  notlar [nvarchar(MAX)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+  revizyon_no [nvarchar(20)] NULL
+  revizyon_tarihi [date] NULL
+  malzeme_cinsi_id [bigint] NULL
+  en_mm [decimal(10,2)] NULL
+  boy_mm [decimal(10,2)] NULL
+  yukseklik_mm [decimal(10,2)] NULL
+  pasivasyon_tipi_id [bigint] NULL
+  renk_kodu [nvarchar(20)] NULL
+  ral_kodu [nvarchar(20)] NULL
+  kalinlik_min_um [decimal(8,2)] NULL
+  kalinlik_max_um [decimal(8,2)] NULL
+  kalinlik_hedef_um [decimal(8,2)] NULL
+  varsayilan_hat_id [bigint] NULL
+  aski_tipi_id [bigint] NULL
+  aski_adedi [int] NULL
+  bara_adedi [int] NULL
+  pitch_mm [decimal(8,2)] NULL
+  yonlendirme_tipi_id [bigint] NULL
+  ozel_talimatlar [nvarchar(MAX)] NULL
+  maskeleme_talimati [nvarchar(MAX)] NULL
+  ambalaj_turu_id [bigint] NULL
+  kutu_ici_adet [int] NULL
+  palet_kutu_adet [int] NULL
+  ozel_paketleme_notu [nvarchar(500)] NULL
+  lot_takibi_zorunlu [bit] NULL DEFAULT ((0))
+  lot_kurallari [nvarchar(500)] NULL
+  kabul_kriterleri [nvarchar(MAX)] NULL
+  ozel_kontrol_gereksinimleri [nvarchar(MAX)] NULL
+  tuz_testi_saat [int] NULL
+  oem_standart_id [bigint] NULL
+  fiyat_tipi [nvarchar(20)] NULL
+  birim_fiyat [decimal(18,6)] NULL
+  para_birimi_id [bigint] NULL
+  akis_sablon_id [bigint] NULL
+  kategori_id [bigint] NULL
+  urun_tipi_id [bigint] NULL
+  varsayilan_tedarikci_id [bigint] NULL
+  barkod [nvarchar(50)] NULL
+  temin_suresi_gun [int] NULL
+  ekonomik_siparis_miktari [decimal(18,4)] NULL
+  final_kontrol_suresi_sn [int] NULL
+  recete_no [nvarchar(50)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__urunler__3213E83F7821C954 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_urunler_akis_sablon (akis_sablon_id) -> tanim.akis_sablon (id)
+  FK: FK_urunler_malzeme_cinsi (malzeme_cinsi_id) -> tanim.malzeme_cinsleri (id)
+  FK: FK_urunler_pasivasyon_tipi (pasivasyon_tipi_id) -> tanim.pasivasyon_tipleri (id)
+  FK: FK_urunler_varsayilan_hat (varsayilan_hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_urunler_aski_tipi (aski_tipi_id) -> tanim.aski_tipleri (id)
+  FK: FK_urunler_yonlendirme_tipi (yonlendirme_tipi_id) -> tanim.yonlendirme_tipleri (id)
+  FK: FK_urunler_ambalaj_turu (ambalaj_turu_id) -> tanim.ambalaj_turleri (id)
+  FK: FK_urunler_oem_standart (oem_standart_id) -> tanim.oem_standartlari (id)
+  FK: FK_urunler_para_birimi (para_birimi_id) -> tanim.para_birimleri (id)
+  FK: FK_urunler_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_urunler_birim (birim_id) -> tanim.birimler (id)
+  FK: FK_urunler_kaplama_turu (kaplama_turu_id) -> tanim.kaplama_turleri (id)
+  FK: FK_urunler_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_urunler_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_urunler_aktif (aktif_mi)
+  IX: IX_urunler_cari (cari_id)
+  IX: IX_urunler_kaplama (kaplama_turu_id)
+  IX: IX_urunler_kaplama_turu (kaplama_turu_id)
+  IX: IX_urunler_malzeme (malzeme_cinsi_id)
+  IX: IX_urunler_urun_tipi (urun_tipi)
+  IX: UQ_urunler_urun_kodu [UNIQUE] (urun_kodu)
+  IX: UQ_urunler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.akis_adim
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  sablon_id [bigint] NOT NULL
+  sira [int] NOT NULL
+  adim_tipi_id [int] NOT NULL
+  hedef_depo_tipi_id [bigint] NULL
+  hedef_depo_id [bigint] NULL
+  zorunlu [bit] NULL DEFAULT ((1))
+  atlanabilir [bit] NULL DEFAULT ((0))
+  atlama_kosulu [nvarchar(500)] NULL
+  kalite_kontrol_gerekli [bit] NULL DEFAULT ((0))
+  bekleme_suresi_dk [int] NULL
+  max_bekleme_suresi_dk [int] NULL
+  sonraki_adim_otomatik [bit] NULL DEFAULT ((0))
+  aciklama [nvarchar(200)] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__akis_adi__3213E83F5DAA97F9 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_akis_adim_sablon (sablon_id) -> tanim.akis_sablon (id)
+  FK: FK_akis_adim_tip (adim_tipi_id) -> tanim.akis_adim_tipleri (id)
+  FK: FK_akis_adim_depo_tipi (hedef_depo_tipi_id) -> tanim.depo_tipleri (id)
+  FK: FK_akis_adim_depo (hedef_depo_id) -> tanim.depolar (id)
+ 
+INDEXES:
+  IX: UQ_akis_adim_sira [UNIQUE] (sablon_id, sira)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.akis_adim_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(50)] NOT NULL
+  aciklama [nvarchar(200)] NULL
+  ikon [nvarchar(50)] NULL
+  renk [nvarchar(20)] NULL
+  sira [int] NULL DEFAULT ((0))
+ 
+PRIMARY KEY:
+  PK: PK__akis_adi__3213E83FAC1A05A8 (id)
+ 
+INDEXES:
+  IX: UQ__akis_adi__DFD8EB9EBF52C260 [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.akis_sablon
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aciklama [nvarchar(500)] NULL
+  varsayilan_mi [bit] NULL DEFAULT ((0))
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__akis_sab__3213E83F415D5D10 (id)
+ 
+INDEXES:
+  IX: UQ__akis_sab__DFD8EB9E6023E10D [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.ambalaj_turleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  max_kapasite [decimal(10,2)] NULL
+  birim_id [bigint] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__ambalaj___3213E83F9D3E5CB5 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_ambalaj_turleri_birim (birim_id) -> tanim.birimler (id)
+ 
+INDEXES:
+  IX: UQ_ambalaj_turleri_kod [UNIQUE] (kod)
+  IX: UQ_ambalaj_turleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.aski_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  max_agirlik_kg [decimal(10,2)] NULL
+  max_uzunluk_mm [decimal(10,2)] NULL
+  aciklama [nvarchar(500)] NULL
+  resim_yolu [nvarchar(500)] NULL
+  sira [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__aski_tip__3213E83F09A9BDB3 (id)
+ 
+INDEXES:
+  IX: UQ_aski_tipleri_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.banyo_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(30)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  kategori [nvarchar(30)] NOT NULL
+  kimyasal_gerekli_mi [bit] NULL DEFAULT ((0))
+  sicaklik_gerekli_mi [bit] NULL DEFAULT ((0))
+  ph_gerekli_mi [bit] NULL DEFAULT ((0))
+  akim_gerekli_mi [bit] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__banyo_ti__3213E83FFC15B170 (id)
+ 
+INDEXES:
+  IX: UQ_banyo_tipleri_kod [UNIQUE] (kod)
+  IX: UQ_banyo_tipleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.birimler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(10)] NOT NULL
+  ad [nvarchar(50)] NOT NULL
+  kategori [nvarchar(30)] NOT NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__birimler__3213E83F9972022B (id)
+ 
+INDEXES:
+  IX: UQ_birimler_kod [UNIQUE] (kod)
+  IX: UQ_birimler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.depo_bolumleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  depo_id [bigint] NOT NULL
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  kat_no [int] NULL
+  bolum_tipi [nvarchar(50)] NULL
+  alan_m2 [decimal(10,2)] NULL
+  kapasite_palet [int] NULL
+  sicaklik_min [decimal(5,2)] NULL
+  sicaklik_max [decimal(5,2)] NULL
+  sira_no [int] NULL
+  renk_kodu [nvarchar(7)] NULL
+  notlar [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__depo_bol__3213E83F234EF92A (id)
+ 
+FOREIGN KEYS:
+  FK: FK__depo_bolu__depo___0FA2421A (depo_id) -> tanim.depolar (id)
+ 
+INDEXES:
+  IX: IX_depo_bolumleri_depo (depo_id)
+  IX: UQ_depo_bolum_kod [UNIQUE] (depo_id, kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.depo_raflari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  depo_id [bigint] NOT NULL
+  bolum_id [bigint] NULL
+  kod [nvarchar(30)] NOT NULL
+  barkod [nvarchar(50)] NULL
+  koridor [nvarchar(10)] NULL
+  sira [int] NULL
+  kat [int] NULL
+  pozisyon [int] NULL
+  genislik_cm [decimal(6,2)] NULL
+  derinlik_cm [decimal(6,2)] NULL
+  yukseklik_cm [decimal(6,2)] NULL
+  max_agirlik_kg [decimal(10,2)] NULL
+  dolu_mu [bit] NOT NULL DEFAULT ((0))
+  rezerve_mi [bit] NOT NULL DEFAULT ((0))
+  raf_tipi [nvarchar(50)] NULL
+  ozel_kosul [nvarchar(100)] NULL
+  sira_no [int] NULL
+  notlar [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__depo_raf__3213E83FB3524797 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__depo_rafl__depo___174363E2 (depo_id) -> tanim.depolar (id)
+  FK: FK__depo_rafl__bolum__1837881B (bolum_id) -> tanim.depo_bolumleri (id)
+ 
+INDEXES:
+  IX: IX_depo_raflari_barkod (barkod)
+  IX: IX_depo_raflari_bolum (bolum_id)
+  IX: IX_depo_raflari_depo (depo_id)
+  IX: UQ_depo_raf_kod [UNIQUE] (depo_id, kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.depo_sorumlulari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  depo_id [bigint] NOT NULL
+  personel_id [bigint] NOT NULL
+  sorumluluk_tipi [nvarchar(50)] NOT NULL
+  baslangic_tarihi [date] NOT NULL DEFAULT (getdate())
+  bitis_tarihi [date] NULL
+  tam_yetki_mi [bit] NOT NULL DEFAULT ((0))
+  giris_yetkisi [bit] NOT NULL DEFAULT ((1))
+  cikis_yetkisi [bit] NOT NULL DEFAULT ((1))
+  transfer_yetkisi [bit] NOT NULL DEFAULT ((0))
+  sayim_yetkisi [bit] NOT NULL DEFAULT ((0))
+  notlar [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__depo_sor__3213E83F0C7A6FDE (id)
+ 
+FOREIGN KEYS:
+  FK: FK__depo_soru__depo___21C0F255 (depo_id) -> tanim.depolar (id)
+ 
+INDEXES:
+  IX: IX_depo_sorumlulari_depo (depo_id)
+  IX: IX_depo_sorumlulari_personel (personel_id)
+  IX: UQ_depo_sorumlu [UNIQUE] (depo_id, personel_id, sorumluluk_tipi)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.depo_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aciklama [nvarchar(500)] NULL
+  ikon [nvarchar(50)] NULL
+  renk_kodu [nvarchar(7)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  kategori [nvarchar(20)] NULL
+  kalite_kontrol_zorunlu [bit] NULL DEFAULT ((0))
+  sira_no [int] NULL DEFAULT ((0))
+ 
+PRIMARY KEY:
+  PK: PK__depo_tip__3213E83F681EC299 (id)
+ 
+INDEXES:
+  IX: UQ__depo_tip__DFD8EB9E3E66F2FF [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.depolar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  kisa_ad [nvarchar(30)] NULL
+  depo_tipi_id [bigint] NOT NULL
+  adres [nvarchar(500)] NULL
+  sehir_id [bigint] NULL
+  ilce_id [bigint] NULL
+  enlem [decimal(10,7)] NULL
+  boylam [decimal(10,7)] NULL
+  alan_m2 [decimal(10,2)] NULL
+  yukseklik_m [decimal(5,2)] NULL
+  kapasite_palet [int] NULL
+  kapasite_ton [decimal(10,2)] NULL
+  sicaklik_min [decimal(5,2)] NULL
+  sicaklik_max [decimal(5,2)] NULL
+  nem_min [decimal(5,2)] NULL
+  nem_max [decimal(5,2)] NULL
+  telefon [nvarchar(20)] NULL
+  email [nvarchar(100)] NULL
+  sira_no [int] NULL
+  renk_kodu [nvarchar(7)] NULL
+  ikon [nvarchar(50)] NULL
+  notlar [nvarchar(MAX)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__depolar__3213E83FA4F8FED0 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__depolar__depo_ti__0524B3A7 (depo_tipi_id) -> tanim.depo_tipleri (id)
+  FK: FK__depolar__sehir_i__0618D7E0 (sehir_id) -> tanim.sehirler (id)
+  FK: FK__depolar__ilce_id__070CFC19 (ilce_id) -> tanim.ilceler (id)
+ 
+INDEXES:
+  IX: IX_depolar_aktif (aktif_mi)
+  IX: IX_depolar_tip (depo_tipi_id)
+  IX: UQ__depolar__DFD8EB9E59762C6F [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.dosya_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kod [nvarchar(30)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  uzantilar [nvarchar(200)] NULL
+  ikon [nvarchar(50)] NULL
+  sira [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__dosya_ti__3213E83FFA3EBE6A (id)
+ 
+INDEXES:
+  IX: UQ_dosya_tipleri_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.durus_nedenleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  kategori [nvarchar(50)] NOT NULL
+  oee_etkisi [bit] NULL DEFAULT ((1))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__durus_ne__3213E83F11C02F34 (id)
+ 
+INDEXES:
+  IX: UQ_durus_nedenleri_kod [UNIQUE] (kod)
+  IX: UQ_durus_nedenleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.ekipman_kategorileri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(30)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  ust_kategori_id [bigint] NULL
+  ikon [nvarchar(50)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__ekipman___3213E83F38CD4BC2 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_ekipman_kategorileri_ust (ust_kategori_id) -> tanim.ekipman_kategorileri (id)
+ 
+INDEXES:
+  IX: UQ_ekipman_kategorileri_kod [UNIQUE] (kod)
+  IX: UQ_ekipman_kategorileri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.ekipman_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kategori_id [bigint] NOT NULL
+  kod [nvarchar(30)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  varsayilan_bakim_periyodu_gun [int] NULL
+  kritik_mi [bit] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__ekipman___3213E83F8C3C563F (id)
+ 
+FOREIGN KEYS:
+  FK: FK_ekipman_tipleri_kategori (kategori_id) -> tanim.ekipman_kategorileri (id)
+ 
+INDEXES:
+  IX: UQ_ekipman_tipleri_kod [UNIQUE] (kod)
+  IX: UQ_ekipman_tipleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.etiket_elementleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  sablon_id [bigint] NOT NULL
+  element_tipi [nvarchar(40)] NOT NULL
+  element_adi [nvarchar(100)] NOT NULL
+  x_mm [decimal(8,2)] NOT NULL DEFAULT ((0))
+  y_mm [decimal(8,2)] NOT NULL DEFAULT ((0))
+  genislik_mm [decimal(8,2)] NULL
+  yukseklik_mm [decimal(8,2)] NULL
+  font_adi [nvarchar(100)] NULL DEFAULT ('Helvetica')
+  font_boyut [int] NULL DEFAULT ((10))
+  font_kalin [bit] NULL DEFAULT ((0))
+  font_italik [bit] NULL DEFAULT ((0))
+  metin_hiza [nvarchar(20)] NULL DEFAULT ('LEFT')
+  veri_alani [nvarchar(100)] NULL
+  sabit_metin [nvarchar(500)] NULL
+  format_pattern [nvarchar(100)] NULL
+  barkod_tipi [nvarchar(40)] NULL
+  barkod_yukseklik_mm [decimal(8,2)] NULL
+  barkod_metin_goster [bit] NULL DEFAULT ((1))
+  cizgi_kalinlik [decimal(4,2)] NULL DEFAULT ((0.5))
+  arka_plan_renk [nvarchar(20)] NULL
+  yazi_renk [nvarchar(20)] NULL DEFAULT ('#000000')
+  sira_no [int] NOT NULL DEFAULT ((0))
+  gorunur_mu [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__etiket_e__3213E83FE75197B2 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_etiket_elementleri_sablon (sablon_id) -> tanim.etiket_sablonlari (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.etiket_sablonlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  sablon_kodu [nvarchar(60)] NOT NULL
+  sablon_adi [nvarchar(200)] NOT NULL
+  sablon_tipi [nvarchar(40)] NOT NULL DEFAULT ('PALET')
+  aciklama [nvarchar(1000)] NULL
+  genislik_mm [decimal(8,2)] NOT NULL DEFAULT ((100))
+  yukseklik_mm [decimal(8,2)] NOT NULL DEFAULT ((50))
+  sayfa_sutun [int] NOT NULL DEFAULT ((2))
+  sayfa_satir [int] NOT NULL DEFAULT ((5))
+  kenar_bosluk_mm [decimal(8,2)] NULL DEFAULT ((5))
+  tasarim_json [nvarchar(MAX)] NULL
+  onizleme_resim [nvarchar(MAX)] NULL
+  varsayilan_mi [bit] NOT NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__etiket_s__3213E83F180F8AA7 (id)
+ 
+INDEXES:
+  IX: UQ_etiket_sablonlari_kod [UNIQUE] (sablon_kodu)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.hareket_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(40)] NOT NULL
+  ad [nvarchar(200)] NOT NULL
+  yon [nvarchar(20)] NOT NULL
+  aciklama [nvarchar(1000)] NULL
+  kaynak_depo_kategorileri [nvarchar(MAX)] NULL
+  hedef_depo_kategorileri [nvarchar(MAX)] NULL
+  is_emri_zorunlu [bit] NOT NULL DEFAULT ((0))
+  kalite_kontrol_tetikle [bit] NOT NULL DEFAULT ((0))
+  kaynak_stok_azalt [bit] NOT NULL DEFAULT ((1))
+  hedef_stok_artir [bit] NOT NULL DEFAULT ((1))
+  ikon [nvarchar(100)] NULL
+  renk_kodu [nvarchar(14)] NULL
+  sira_no [int] NOT NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__hareket___3213E83F04E37F63 (id)
+ 
+INDEXES:
+  IX: UQ_hareket_tipleri_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.hat_bolumleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aciklama [nvarchar(500)] NULL
+  plc_ip_adresi [nvarchar(50)] NULL
+  plc_rack [int] NULL
+  plc_slot [int] NULL
+  sql_veri_kaynagi [nvarchar(500)] NULL
+  sql_veritabani [nvarchar(100)] NULL
+  sira [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__hat_bolu__3213E83FCD499904 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_hat_bolumleri_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_hat_bolumleri_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_hat_bolumleri_kod [UNIQUE] (kod)
+  IX: UQ_hat_bolumleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.hat_giris_cikis
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  hat_id [bigint] NULL
+  hat_tipi [nvarchar(20)] NOT NULL
+  hat_adi [nvarchar(100)] NULL
+  giris_pozisyon_no [int] NOT NULL DEFAULT ((1))
+  cikis_pozisyon_no [int] NOT NULL
+  ortak_pozisyonlar [nvarchar(100)] NULL
+  ozel_pozisyonlar [nvarchar(100)] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__hat_giri__3213E83FD4574882 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__hat_giris__hat_i__64D7DFA6 (hat_id) -> tanim.uretim_hatlari (id)
+ 
+INDEXES:
+  IX: UQ__hat_giri__4EF92F36929EB1D0 [UNIQUE] (hat_tipi)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.hat_pozisyonlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  hat_id [bigint] NOT NULL
+  pozisyon_no [int] NOT NULL
+  sensor_no [int] NULL
+  plc_pozisyon_adi [nvarchar(50)] NULL
+  ad [nvarchar(100)] NOT NULL
+  kisa_ad [nvarchar(30)] NULL
+  pozisyon_tipi_id [bigint] NOT NULL
+  banyo_tipi_id [bigint] NULL
+  tank_tipi [nvarchar(20)] NULL
+  gecis_tipi [nvarchar(20)] NULL
+  sira_no [int] NOT NULL
+  hacim_lt [decimal(10,2)] NULL
+  sicaklik_min [decimal(5,2)] NULL
+  sicaklik_max [decimal(5,2)] NULL
+  sicaklik_hedef [decimal(5,2)] NULL
+  ph_min [decimal(4,2)] NULL
+  ph_max [decimal(4,2)] NULL
+  ph_hedef [decimal(4,2)] NULL
+  akim_min [decimal(10,2)] NULL
+  akim_max [decimal(10,2)] NULL
+  akim_hedef [decimal(10,2)] NULL
+  bekleme_suresi_sn [int] NULL
+  sql_tablo_adi [nvarchar(100)] NULL
+  sql_sicaklik_kolon [nvarchar(100)] NULL
+  sql_ph_kolon [nvarchar(100)] NULL
+  sql_akim_kolon [nvarchar(100)] NULL
+  sql_durum_kolon [nvarchar(100)] NULL
+  notlar [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__hat_pozi__3213E83F81007EB4 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_hat_pozisyonlar_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_hat_pozisyonlar_pozisyon_tipi (pozisyon_tipi_id) -> tanim.pozisyon_tipleri (id)
+  FK: FK_hat_pozisyonlar_banyo_tipi (banyo_tipi_id) -> tanim.banyo_tipleri (id)
+  FK: FK_hat_pozisyonlar_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_hat_pozisyonlar_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_hat_pozisyonlar_banyo_tipi (banyo_tipi_id)
+  IX: IX_hat_pozisyonlar_hat (hat_id)
+  IX: UQ_hat_pozisyonlar_hat_pozno [UNIQUE] (hat_id, pozisyon_no)
+  IX: UQ_hat_pozisyonlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.hat_robotlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  hat_id [bigint] NOT NULL
+  robot_no [int] NOT NULL
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  robot_tipi [nvarchar(50)] NULL
+  marka [nvarchar(50)] NULL
+  model [nvarchar(50)] NULL
+  seri_no [nvarchar(50)] NULL
+  pozisyon_baslangic [int] NULL
+  pozisyon_bitis [int] NULL
+  max_tasima_kg [decimal(10,2)] NULL
+  sql_tablo_adi [nvarchar(100)] NULL
+  sql_durum_kolon [nvarchar(100)] NULL
+  sql_pozisyon_kolon [nvarchar(100)] NULL
+  kurulum_tarihi [date] NULL
+  garanti_bitis [date] NULL
+  notlar [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__hat_robo__3213E83F380E4440 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_hat_robotlar_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_hat_robotlar_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_hat_robotlar_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_hat_robotlar_hat (hat_id)
+  IX: UQ_hat_robotlar_kod [UNIQUE] (kod)
+  IX: UQ_hat_robotlar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.hata_turleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  kategori [nvarchar(50)] NULL
+  onem_derecesi [int] NULL DEFAULT ((3))
+  aciklama [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  sira_no [int] NULL DEFAULT ((0))
+ 
+PRIMARY KEY:
+  PK: PK__hata_tur__3213E83F93FBA5AF (id)
+ 
+INDEXES:
+  IX: UQ_hata_turleri_kod [UNIQUE] (kod)
+  IX: UQ_hata_turleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.ilceler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  sehir_id [bigint] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__ilceler__3213E83F8A7703F6 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_ilceler_sehir (sehir_id) -> tanim.sehirler (id)
+ 
+INDEXES:
+  IX: UQ_ilceler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.kaplama_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  uretim_depo_id [bigint] NULL
+  sira_no [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__kaplama___3213E83F0D881227 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_kaplama_tipleri_depo (uretim_depo_id) -> tanim.depolar (id)
+ 
+INDEXES:
+  IX: UQ__kaplama___DFD8EB9E49A1F3E6 [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.kaplama_turleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aciklama [nvarchar(500)] NULL
+  renk_kodu [nvarchar(7)] NULL
+  sira [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__kaplama___3213E83FF1EA2C51 (id)
+ 
+INDEXES:
+  IX: UQ_kaplama_turleri_kod [UNIQUE] (kod)
+  IX: UQ_kaplama_turleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.kimyasal_kategoriler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__kimyasal__3213E83F254F1800 (id)
+ 
+INDEXES:
+  IX: UQ_kimyasal_kategoriler_kod [UNIQUE] (kod)
+  IX: UQ_kimyasal_kategoriler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.lot_durum_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  kod [nvarchar(30)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aciklama [nvarchar(500)] NULL
+  renk [nvarchar(20)] NULL
+  sira_no [int] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__lot_duru__3213E83FDC5CA448 (id)
+ 
+INDEXES:
+  IX: UQ__lot_duru__DFD8EB9E2965B244 [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.malzeme_cinsleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  yogunluk [decimal(8,4)] NULL
+  aciklama [nvarchar(500)] NULL
+  sira [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__malzeme___3213E83FE10D5D57 (id)
+ 
+INDEXES:
+  IX: UQ_malzeme_cinsleri_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.musteri_etiket_atamalari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  cari_id [bigint] NOT NULL
+  sablon_id [bigint] NOT NULL
+  etiket_tipi [nvarchar(40)] NOT NULL DEFAULT ('PALET')
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__musteri___3213E83F314AB3A1 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_musteri_etiket_cari (cari_id) -> musteri.cariler (id)
+  FK: FK_musteri_etiket_sablon (sablon_id) -> tanim.etiket_sablonlari (id)
+ 
+INDEXES:
+  IX: UQ_musteri_etiket [UNIQUE] (cari_id, etiket_tipi)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.oem_standartlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(50)] NOT NULL
+  ad [nvarchar(200)] NOT NULL
+  oem_firma [nvarchar(100)] NULL
+  aciklama [nvarchar(1000)] NULL
+  dokuman_yolu [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__oem_stan__3213E83FB5815565 (id)
+ 
+INDEXES:
+  IX: UQ_oem_standartlari_kod [UNIQUE] (kod)
+  IX: UQ_oem_standartlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.para_birimleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(3)] NOT NULL
+  sembol [nvarchar(5)] NOT NULL
+  ad [nvarchar(50)] NOT NULL
+  varsayilan_mi [bit] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__para_bir__3213E83F30194046 (id)
+ 
+INDEXES:
+  IX: UQ_para_birimleri_kod [UNIQUE] (kod)
+  IX: UQ_para_birimleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.pasivasyon_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  renk_kodu [nvarchar(7)] NULL
+  kaplama_turu_id [bigint] NULL
+  aciklama [nvarchar(500)] NULL
+  sira [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__pasivasy__3213E83FB96BE80A (id)
+ 
+FOREIGN KEYS:
+  FK: FK_pasivasyon_tipleri_kaplama (kaplama_turu_id) -> tanim.kaplama_turleri (id)
+ 
+INDEXES:
+  IX: UQ_pasivasyon_tipleri_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.pozisyon_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(30)] NOT NULL
+  ad [nvarchar(50)] NOT NULL
+  ikon [nvarchar(50)] NULL
+  renk_kodu [nvarchar(7)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__pozisyon__3213E83F7FAE14C9 (id)
+ 
+INDEXES:
+  IX: UQ_pozisyon_tipleri_kod [UNIQUE] (kod)
+  IX: UQ_pozisyon_tipleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.prosesler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(40)] NOT NULL
+  ad [nvarchar(200)] NOT NULL
+  kisa_ad [nvarchar(60)] NULL
+  hat_id [bigint] NULL
+  giris_depo_id [bigint] NULL
+  cikis_depo_id [bigint] NULL
+  standart_sure_dk [int] NULL DEFAULT ((60))
+  min_sure_dk [int] NULL DEFAULT ((30))
+  max_sure_dk [int] NULL DEFAULT ((120))
+  vardiya_kapasite_bara [int] NULL DEFAULT ((300))
+  renk_kodu [nvarchar(14)] NULL DEFAULT ('#6366f1')
+  ikon [nvarchar(100)] NULL
+  sira_no [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NULL DEFAULT ((1))
+  silindi_mi [bit] NULL DEFAULT ((0))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__prosesle__3213E83F3A2920AC (id)
+ 
+INDEXES:
+  IX: IX_prosesler_hat (hat_id)
+  IX: IX_prosesler_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.rota_adimlar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  rota_id [bigint] NOT NULL
+  proses_id [bigint] NOT NULL
+  sira_no [int] NOT NULL
+  giris_depo_id [bigint] NULL
+  cikis_depo_id [bigint] NULL
+  ara_kalite_kontrol [bit] NULL DEFAULT ((0))
+  final_adim_mi [bit] NULL DEFAULT ((0))
+  min_bekleme_dk [int] NULL DEFAULT ((0))
+  max_bekleme_dk [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__rota_adi__3213E83F575D8615 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_rota_adimlar_rota (rota_id) -> tanim.rotalar (id)
+  FK: FK_rota_adimlar_proses (proses_id) -> tanim.prosesler (id)
+ 
+INDEXES:
+  IX: IX_rota_adimlar_rota (rota_id, sira_no)
+  IX: IX_rota_adimlar_unique [UNIQUE] (rota_id, sira_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.rotalar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(40)] NOT NULL
+  ad [nvarchar(200)] NOT NULL
+  aciklama [nvarchar(1000)] NULL
+  toplam_sure_dk [int] NULL DEFAULT ((0))
+  adim_sayisi [int] NULL DEFAULT ((1))
+  renk_kodu [nvarchar(14)] NULL DEFAULT ('#22c55e')
+  sira_no [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NULL DEFAULT ((1))
+  silindi_mi [bit] NULL DEFAULT ((0))
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__rotalar__3213E83FE653FA2C (id)
+ 
+INDEXES:
+  IX: IX_rotalar_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.sehirler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  ulke_id [bigint] NOT NULL
+  plaka_kodu [nvarchar(5)] NULL
+  ad [nvarchar(100)] NOT NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__sehirler__3213E83F4524C67E (id)
+ 
+FOREIGN KEYS:
+  FK: FK_sehirler_ulke (ulke_id) -> tanim.ulkeler (id)
+ 
+INDEXES:
+  IX: UQ_sehirler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.test_turleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  kategori [nvarchar(50)] NULL
+  birim_id [bigint] NULL
+  varsayilan_min [decimal(18,4)] NULL
+  varsayilan_max [decimal(18,4)] NULL
+  test_suresi_saat [decimal(8,2)] NULL
+  metot_standardi [nvarchar(50)] NULL
+  aciklama [nvarchar(1000)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__test_tur__3213E83FC066ADB9 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_test_turleri_birim (birim_id) -> tanim.birimler (id)
+ 
+INDEXES:
+  IX: UQ_test_turleri_kod [UNIQUE] (kod)
+  IX: UQ_test_turleri_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.ulkeler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(3)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__ulkeler__3213E83F289DA837 (id)
+ 
+INDEXES:
+  IX: UQ_ulkeler_kod [UNIQUE] (kod)
+  IX: UQ_ulkeler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.uretim_hatlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  hat_bolum_id [bigint] NULL
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  kisa_ad [nvarchar(30)] NULL
+  kaplama_turu_id [bigint] NULL
+  hat_tipi [nvarchar(30)] NOT NULL
+  sira_no [int] NULL DEFAULT ((0))
+  robot_sayisi [int] NULL DEFAULT ((0))
+  toplam_pozisyon [int] NULL DEFAULT ((0))
+  devir_suresi_dk [int] NULL
+  kapasite_saat_m2 [decimal(10,2)] NULL
+  renk_kodu [nvarchar(7)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  silindi_mi [bit] NOT NULL DEFAULT ((0))
+  silinme_tarihi [datetime2] NULL
+  silen_id [bigint] NULL
+  vardiya_kapasite_bara [int] NULL DEFAULT ((350))
+ 
+PRIMARY KEY:
+  PK: PK__uretim_h__3213E83FA1F95845 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_uretim_hatlari_hat_bolum (hat_bolum_id) -> tanim.hat_bolumleri (id)
+  FK: FK_uretim_hatlari_kaplama_turu (kaplama_turu_id) -> tanim.kaplama_turleri (id)
+  FK: FK_uretim_hatlari_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_uretim_hatlari_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_uretim_hatlari_kod [UNIQUE] (kod)
+  IX: UQ_uretim_hatlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.vardiyalar
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(10)] NOT NULL
+  ad [nvarchar(50)] NOT NULL
+  baslangic_saati [time] NOT NULL
+  bitis_saati [time] NOT NULL
+  mola_suresi_dk [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__vardiyal__3213E83FBF8185B1 (id)
+ 
+INDEXES:
+  IX: UQ_vardiyalar_kod [UNIQUE] (kod)
+  IX: UQ_vardiyalar_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: tanim.yonlendirme_tipleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  aci_derece [int] NULL
+  aciklama [nvarchar(500)] NULL
+  sira [int] NULL DEFAULT ((0))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__yonlendi__3213E83F87D40EB6 (id)
+ 
+INDEXES:
+  IX: UQ_yonlendirme_tipleri_kod [UNIQUE] (kod)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.aski_jigler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(30)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  hat_id [bigint] NULL
+  tipi [nvarchar(50)] NULL
+  kapasite [int] NULL
+  max_agirlik_kg [decimal(10,2)] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('AKTIF')
+  son_bakim_tarihi [date] NULL
+  toplam_kullanim_sayisi [int] NULL DEFAULT ((0))
+  notlar [nvarchar(500)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__aski_jig__3213E83FBC8E644D (id)
+ 
+FOREIGN KEYS:
+  FK: FK_aski_jigler_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_aski_jigler_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_aski_jigler_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_aski_jigler_kod [UNIQUE] (kod)
+  IX: UQ_aski_jigler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.banyo_analiz_sonuclari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  banyo_id [bigint] NOT NULL
+  tarih [datetime2] NOT NULL
+  analist_id [bigint] NOT NULL
+  sicaklik [decimal(5,2)] NULL
+  ph [decimal(4,2)] NULL
+  iletkenlik [decimal(10,2)] NULL
+  toplam_asitlik [decimal(10,4)] NULL
+  serbest_asitlik [decimal(10,4)] NULL
+  ek_parametreler [nvarchar(MAX)] NULL
+  notlar [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  kati_madde_min [decimal(5,2)] NULL
+  kati_madde_max [decimal(5,2)] NULL
+  kati_madde_hedef [decimal(5,2)] NULL
+  pb_orani_min [decimal(4,2)] NULL
+  pb_orani_max [decimal(4,2)] NULL
+  pb_orani_hedef [decimal(4,2)] NULL
+  solvent_min [decimal(4,2)] NULL
+  solvent_max [decimal(4,2)] NULL
+  meq_min [decimal(5,2)] NULL
+  meq_max [decimal(5,2)] NULL
+  demir_ppm [decimal(10,4)] NULL
+  cinko_ppm [decimal(10,4)] NULL
+  kati_madde_yuzde [decimal(5,2)] NULL
+  pb_orani [decimal(5,2)] NULL
+  solvent_yuzde [decimal(5,2)] NULL
+  meq_degeri [decimal(10,4)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__banyo_an__3213E83F3E5480C1 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_banyo_analiz_sonuclari_banyo (banyo_id) -> uretim.banyo_tanimlari (id)
+  FK: FK_banyo_analiz_sonuclari_analist (analist_id) -> ik.personeller (id)
+ 
+INDEXES:
+  IX: IX_banyo_analiz_banyo_tarih (banyo_id, tarih)
+  IX: UQ_banyo_analiz_sonuclari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.banyo_parametre_log
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  banyo_id [bigint] NOT NULL
+  parametre_id [bigint] NOT NULL
+  deger [decimal(18,4)] NOT NULL
+  zaman_damgasi [datetime2] NOT NULL
+  alarm_durumu [nvarchar(20)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__banyo_pa__3213E83FE501CE00 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_banyo_parametre_log_banyo (banyo_id) -> uretim.banyo_tanimlari (id)
+  FK: FK_banyo_parametre_log_parametre (parametre_id) -> uretim.banyo_parametre_tanimlari (id)
+ 
+INDEXES:
+  IX: IX_banyo_parametre_log_banyo_zaman (banyo_id, zaman_damgasi)
+  IX: IX_banyo_parametre_log_zaman (zaman_damgasi)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.banyo_parametre_tanimlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  banyo_id [bigint] NOT NULL
+  parametre_adi [nvarchar(50)] NOT NULL
+  birim [nvarchar(20)] NULL
+  min_deger [decimal(18,4)] NULL
+  max_deger [decimal(18,4)] NULL
+  hedef_deger [decimal(18,4)] NULL
+  plc_tag_adresi [nvarchar(100)] NULL
+  alarm_aktif_mi [bit] NULL DEFAULT ((1))
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+ 
+PRIMARY KEY:
+  PK: PK__banyo_pa__3213E83F86F2A0A0 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_banyo_parametre_tanimlari_banyo (banyo_id) -> uretim.banyo_tanimlari (id)
+ 
+INDEXES:
+  IX: UQ_banyo_parametre_tanimlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.banyo_takviyeler
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  banyo_id [bigint] NOT NULL
+  tarih [datetime2] NOT NULL
+  kimyasal_id [bigint] NOT NULL
+  miktar [decimal(10,4)] NOT NULL
+  birim_id [bigint] NOT NULL
+  takviye_nedeni [nvarchar(100)] NULL
+  yapan_id [bigint] NOT NULL
+  notlar [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__banyo_ta__3213E83F2D006AA1 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_banyo_takviyeler_banyo (banyo_id) -> uretim.banyo_tanimlari (id)
+  FK: FK_banyo_takviyeler_kimyasal (kimyasal_id) -> stok.urunler (id)
+  FK: FK_banyo_takviyeler_birim (birim_id) -> tanim.birimler (id)
+  FK: FK_banyo_takviyeler_yapan (yapan_id) -> ik.personeller (id)
+ 
+INDEXES:
+  IX: IX_banyo_takviye_banyo_tarih (banyo_id, tarih)
+  IX: UQ_banyo_takviyeler_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.banyo_tanimlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  kod [nvarchar(20)] NOT NULL
+  ad [nvarchar(100)] NOT NULL
+  hat_id [bigint] NOT NULL
+  pozisyon_id [bigint] NULL
+  banyo_tipi_id [bigint] NOT NULL
+  hacim_lt [decimal(10,2)] NULL
+  sicaklik_min [decimal(5,2)] NULL
+  sicaklik_max [decimal(5,2)] NULL
+  sicaklik_hedef [decimal(5,2)] NULL
+  ph_min [decimal(4,2)] NULL
+  ph_max [decimal(4,2)] NULL
+  ph_hedef [decimal(4,2)] NULL
+  sql_sicaklik_tag [nvarchar(100)] NULL
+  sql_ph_tag [nvarchar(100)] NULL
+  sql_akim_tag [nvarchar(100)] NULL
+  aktif_mi [bit] NOT NULL DEFAULT ((1))
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+  iletkenlik_min [decimal(10,2)] NULL
+  iletkenlik_max [decimal(10,2)] NULL
+  iletkenlik_hedef [decimal(10,2)] NULL
+  kati_madde_min [decimal(5,2)] NULL
+  kati_madde_max [decimal(5,2)] NULL
+  kati_madde_hedef [decimal(5,2)] NULL
+  pb_orani_min [decimal(4,2)] NULL
+  pb_orani_max [decimal(4,2)] NULL
+  pb_orani_hedef [decimal(4,2)] NULL
+  solvent_min [decimal(4,2)] NULL
+  solvent_max [decimal(4,2)] NULL
+  solvent_hedef [decimal(4,2)] NULL
+  meq_min [decimal(5,2)] NULL
+  meq_max [decimal(5,2)] NULL
+  meq_hedef [decimal(5,2)] NULL
+  toplam_asit_min [decimal(10,4)] NULL
+  toplam_asit_max [decimal(10,4)] NULL
+  toplam_asit_hedef [decimal(10,4)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__banyo_ta__3213E83FE36D3AF5 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_banyo_tanimlari_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_banyo_tanimlari_pozisyon (pozisyon_id) -> tanim.hat_pozisyonlar (id)
+  FK: FK_banyo_tanimlari_banyo_tipi (banyo_tipi_id) -> tanim.banyo_tipleri (id)
+  FK: FK_banyo_tanimlari_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_banyo_tanimlari_guncelleyen (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: UQ_banyo_tanimlari_kod [UNIQUE] (kod)
+  IX: UQ_banyo_tanimlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.bara_takip
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  is_emri_id [bigint] NOT NULL
+  bara_no [int] NOT NULL
+  recete_no [int] NULL
+  aski_miktar [decimal(18,2)] NULL
+  bara_miktar [decimal(18,2)] NULL
+  giris_zamani [datetime2] NULL
+  cikis_zamani [datetime2] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('HATTA')
+  hat_id [bigint] NULL
+  olusturma_tarihi [datetime2] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__bara_tak__3213E83FD345C5C5 (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.durus_kayitlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  uretim_kayit_id [bigint] NULL
+  hat_id [bigint] NOT NULL
+  durus_nedeni_id [bigint] NOT NULL
+  baslama_zamani [datetime2] NOT NULL
+  bitis_zamani [datetime2] NULL
+  sure_dk [int] NULL
+  aciklama [nvarchar(500)] NULL
+  bakim_kayit_id [bigint] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__durus_ka__3213E83F0C0ACEF6 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_durus_kayitlari_uretim_kayit (uretim_kayit_id) -> uretim.uretim_kayitlari (id)
+  FK: FK_durus_kayitlari_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_durus_kayitlari_durus_nedeni (durus_nedeni_id) -> tanim.durus_nedenleri (id)
+  FK: FK_durus_kayitlari_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK_durus_kayitlari_bakim_kayit (bakim_kayit_id) -> bakim.bakim_kayitlari (id)
+ 
+INDEXES:
+  IX: IX_durus_kayitlari_hat (hat_id)
+  IX: IX_durus_kayitlari_zaman (baslama_zamani)
+  IX: UQ_durus_kayitlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.is_emirleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  emir_no [nvarchar(50)] NOT NULL
+  lot_no [nvarchar(50)] NOT NULL
+  parent_lot_no [nvarchar(50)] NULL
+  urun_id [int] NULL
+  stok_kodu [nvarchar(50)] NULL
+  stok_adi [nvarchar(255)] NULL
+  cari_unvani [nvarchar(255)] NULL
+  miktar [decimal(18,2)] NOT NULL
+  birim [nvarchar(20)] NULL DEFAULT ('ADET')
+  planlanan_tarih [date] NOT NULL
+  planlanan_saat [time] NULL
+  planlanan_sure_dk [int] NULL
+  hat_id [int] NULL
+  hat_kodu [nvarchar(50)] NULL
+  hat_adi [nvarchar(255)] NULL
+  vardiya_id [int] NULL
+  kaplama_tipi [nvarchar(100)] NULL
+  recete_id [int] NULL
+  kaynak_depo_id [int] NULL
+  hedef_depo_id [int] NULL
+  durum [nvarchar(50)] NULL DEFAULT ('PLANLANDI')
+  olusturma_tarihi [datetime] NULL DEFAULT (getdate())
+  onay_tarihi [datetime] NULL
+  cikis_tarihi [datetime] NULL
+  baslama_tarihi [datetime] NULL
+  bitis_tarihi [datetime] NULL
+  olusturan_kullanici_id [int] NULL
+  onaylayan_kullanici_id [int] NULL
+  notlar [nvarchar(MAX)] NULL
+  plc_hat_no [int] NULL
+  plc_baslama_zamani [datetime] NULL
+  plc_bitis_zamani [datetime] NULL
+  aktif_mi [bit] NULL DEFAULT ((1))
+  iptal_nedeni [nvarchar(500)] NULL
+ 
+PRIMARY KEY:
+  PK: PK__is_emirl__3213E83F0384AE29 (id)
+ 
+INDEXES:
+  IX: IX_is_emirleri_durum (durum)
+  IX: IX_is_emirleri_hat_id (hat_id)
+  IX: IX_is_emirleri_lot_no (lot_no)
+  IX: IX_is_emirleri_planlanan_tarih (planlanan_tarih)
+  IX: UQ__is_emirl__B3DFADA8F4401C46 [UNIQUE] (emir_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.kataforez_maliyet
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_id [bigint] NOT NULL
+  donem [date] NOT NULL
+  alan_m2 [decimal(10,4)] NULL
+  boya_tuketim_gram [decimal(10,4)] NULL
+  boya_birim_fiyat_eur_kg [decimal(10,4)] NULL
+  on_islem_maliyet_eur [decimal(10,4)] NULL
+  kimyasal_toplam_eur [decimal(10,4)] NULL
+  enerji_kwh_m2 [decimal(10,4)] NULL DEFAULT ((12.00))
+  enerji_birim_fiyat_eur_kwh [decimal(10,6)] NULL
+  enerji_toplam_eur [decimal(10,4)] NULL
+  iscilik_adam_saat [decimal(10,4)] NULL
+  iscilik_birim_fiyat_eur [decimal(10,4)] NULL
+  iscilik_toplam_eur [decimal(10,4)] NULL
+  su_tuketim_m3 [decimal(10,4)] NULL
+  su_aritma_maliyet_eur [decimal(10,4)] NULL
+  sarf_maliyet_eur [decimal(10,4)] NULL
+  toplam_maliyet_eur [decimal(10,4)] NULL
+  birim_maliyet_eur_m2 [decimal(10,4)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__katafore__3213E83FD877C6D0 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__kataforez__urun___20D7BB14 (urun_id) -> stok.urunler (id)
+  FK: FK__kataforez__olust__23B427BF (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_kataforez_maliyet_urun (urun_id, donem)
+  IX: UQ__katafore__7F42793111CE254C [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.lab_event_log
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  banyo_id [int] NOT NULL
+  analiz_id [bigint] NULL
+  event_tipi [nvarchar(50)] NOT NULL
+  event_durumu [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  event_zamani [datetime2] NULL DEFAULT (getdate())
+  sicaklik [float] NULL
+  ph [float] NULL
+  notlar [nvarchar(MAX)] NULL
+  okundu_mu [bit] NULL DEFAULT ((0))
+  analist_id [int] NULL
+  iletkenlik [float] NULL
+  toplam_asitlik [float] NULL
+  serbest_asitlik [float] NULL
+  demir_ppm [float] NULL
+  cinko_ppm [float] NULL
+  kati_madde_yuzde [float] NULL
+  pb_orani [float] NULL
+  solvent_yuzde [float] NULL
+  meq_degeri [float] NULL
+  okunma_zamani [datetime2] NULL
+  islem_yapan_id [int] NULL
+  islem_zamani [datetime2] NULL
+ 
+PRIMARY KEY:
+  PK: PK__lab_even__3213E83F4823B000 (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.planlama
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  tarih [date] NOT NULL
+  hat_id [bigint] NOT NULL
+  vardiya_id [bigint] NULL
+  is_emri_id [bigint] NULL
+  sira_no [int] NULL DEFAULT ((1))
+  baslangic_saat [time] NULL
+  bitis_saat [time] NULL
+  planlanan_bara [int] NULL
+  gercek_baslangic [datetime2] NULL
+  gercek_bitis [datetime2] NULL
+  gercek_bara [int] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('PLANLI')
+  notlar [nvarchar(500)] NULL
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  lot_id [bigint] NULL
+  stok_bakiye_id [bigint] NULL
+  baslangic_zamani [datetime2] NULL
+  bitis_zamani [datetime2] NULL
+  gerceklesen_bara [int] NULL
+ 
+PRIMARY KEY:
+  PK: PK__planlama__3213E83F565A7808 (id)
+ 
+FOREIGN KEYS:
+  FK: FK_planlama_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_planlama_vardiya (vardiya_id) -> tanim.vardiyalar (id)
+  FK: FK_planlama_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+ 
+INDEXES:
+  IX: IX_planlama_hat_tarih (hat_id, tarih)
+  IX: IX_planlama_is_emri (is_emri_id)
+  IX: IX_planlama_tarih (tarih)
+  IX: UQ_planlama_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.plc_cache
+------------------------------------------------------------
+ 
+KOLONLAR:
+  kazan_no [int] NOT NULL
+  hat_kodu [varchar(20)] NULL
+  pozisyon_adi [nvarchar(100)] NULL
+  islem_sayisi_24s [int] NULL DEFAULT ((0))
+  toplam_miktar_24s [decimal(12,2)] NULL DEFAULT ((0))
+  ilk_islem_24s [datetime] NULL
+  son_bara [int] NULL
+  recete_no [int] NULL
+  ort_sicaklik [decimal(6,2)] NULL
+  ort_akim [decimal(8,2)] NULL
+  son_islem [datetime] NULL
+  durum [varchar(20)] NULL DEFAULT ('BELIRSIZ')
+  durum_dakika [int] NULL
+  son_sync_id [bigint] NULL
+  guncelleme_tarihi [datetime] NULL DEFAULT (getdate())
+  sicaklik_uyari [bit] NULL DEFAULT ((0))
+  gunluk_bara_adet [int] NULL
+ 
+PRIMARY KEY:
+  PK: PK__plc_cach__56B5945503E9ECCC (kazan_no)
+ 
+INDEXES:
+  IX: IX_plc_cache_durum (durum)
+  IX: IX_plc_cache_hat (hat_kodu)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.plc_sync_durum
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL DEFAULT ((1))
+  son_sync_tarihi [datetime] NULL
+  son_kaynak_id [bigint] NULL DEFAULT ((0))
+  toplam_aktarim [bigint] NULL DEFAULT ((0))
+  son_hata [nvarchar(500)] NULL
+  son_hata_tarihi [datetime] NULL
+  servis_durumu [varchar(20)] NULL DEFAULT ('DURDURULDU')
+ 
+PRIMARY KEY:
+  PK: PK__plc_sync__3213E83FD98845B0 (id)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.plc_tarihce
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  kaynak_id [bigint] NOT NULL
+  kazan_no [int] NOT NULL
+  hat_kodu [varchar(20)] NULL
+  bara_no [int] NULL
+  recete_no [int] NULL
+  sicaklik [decimal(6,2)] NULL
+  akim [decimal(8,2)] NULL
+  voltaj [decimal(8,2)] NULL
+  miktar [decimal(12,2)] NULL
+  birim_miktar [decimal(12,4)] NULL
+  recete_zamani [int] NULL
+  tarih_doldurma [datetime] NULL
+  tarih_bosaltma [datetime] NULL
+  recete_adim [int] NULL
+  akim_yogunlugu [decimal(8,4)] NULL
+  oto_manual_doldurma [bit] NULL
+  oto_manual_bosaltma [bit] NULL
+  kayit_tarihi [datetime] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__plc_tari__3213E83F7F32237A (id)
+ 
+INDEXES:
+  IX: IX_plc_tarihce_hat (hat_kodu, tarih_doldurma)
+  IX: IX_plc_tarihce_kaynak (kaynak_id)
+  IX: IX_plc_tarihce_kazan_tarih (kazan_no, tarih_doldurma)
+  IX: IX_plc_tarihce_tarih (tarih_doldurma)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.sokum_giris
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  sokum_is_emri_id [int] NOT NULL
+  lot_no [nvarchar(50)] NOT NULL
+  giris_miktar [int] NOT NULL
+  kalan_miktar [int] NULL
+  kalite_durumu [nvarchar(50)] NULL
+  sokum_suresi [int] NULL
+  hedef_depo_id [int] NOT NULL
+  durum_kodu [nvarchar(50)] NULL DEFAULT ('KABUL')
+  notlar [nvarchar(500)] NULL
+  giris_yapan_id [int] NULL
+  giris_tarihi [datetime] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__sokum_gi__3213E83FE6430DDD (id)
+ 
+INDEXES:
+  IX: IX_sokum_giris_ie (sokum_is_emri_id)
+  IX: IX_sokum_giris_lot_no (lot_no)
+  IX: IX_sokum_giris_tarihi (giris_tarihi)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.sokum_is_emirleri
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  is_emri_no [nvarchar(50)] NOT NULL
+  lot_no [nvarchar(50)] NOT NULL
+  urun_id [int] NOT NULL
+  miktar [int] NOT NULL
+  sokum_tipi [nvarchar(50)] NULL DEFAULT ('Kimyasal')
+  hat_pozisyon_id [int] NULL
+  baslangic_tarihi [datetime] NULL
+  bitis_tarihi [datetime] NULL
+  tahmini_sure [int] NULL
+  sorumlu_id [int] NULL
+  olusturan_id [int] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('BEKLIYOR')
+  notlar [nvarchar(500)] NULL
+  olusturma_tarihi [datetime] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime] NULL
+  kayit_tarihi [datetime] NULL DEFAULT (getdate())
+ 
+PRIMARY KEY:
+  PK: PK__sokum_is__3213E83F472D7B52 (id)
+ 
+INDEXES:
+  IX: IX_sokum_ie_durum (durum)
+  IX: IX_sokum_ie_kayit_tarihi (kayit_tarihi)
+  IX: IX_sokum_ie_lot_no (lot_no)
+  IX: IX_sokum_ie_olusturma_tarihi (olusturma_tarihi)
+  IX: UQ__sokum_is__AE66364A195FD821 [UNIQUE] (is_emri_no)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.uretim_kayitlari
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  is_emri_id [bigint] NOT NULL
+  hat_id [bigint] NOT NULL
+  vardiya_id [bigint] NOT NULL
+  tarih [date] NOT NULL
+  baslama_zamani [datetime2] NOT NULL
+  bitis_zamani [datetime2] NULL
+  operator_id [bigint] NOT NULL
+  uretilen_miktar [decimal(18,4)] NULL
+  fire_miktar [decimal(18,4)] NULL
+  aski_sayisi [int] NULL
+  durum [nvarchar(20)] NULL DEFAULT ('DEVAM')
+  olusturma_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__uretim_k__3213E83F2093CC9B (id)
+ 
+FOREIGN KEYS:
+  FK: FK_uretim_kayitlari_is_emri (is_emri_id) -> siparis.is_emirleri (id)
+  FK: FK_uretim_kayitlari_hat (hat_id) -> tanim.uretim_hatlari (id)
+  FK: FK_uretim_kayitlari_vardiya (vardiya_id) -> tanim.vardiyalar (id)
+  FK: FK_uretim_kayitlari_operator (operator_id) -> ik.personeller (id)
+  FK: FK_uretim_kayitlari_olusturan (olusturan_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_uretim_kayitlari_durum (durum)
+  IX: IX_uretim_kayitlari_hat_tarih (hat_id, tarih)
+  IX: IX_uretim_kayitlari_is_emri (is_emri_id)
+  IX: IX_uretim_kayitlari_operator (operator_id)
+  IX: UQ_uretim_kayitlari_uuid [UNIQUE] (uuid)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.vardiya_detay
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  vardiya_uretim_id [int] NULL
+  kayit_zamani [datetime] NULL DEFAULT (getdate())
+  pozisyon_no [int] NULL
+  bara_no [int] NULL
+  hareket_tipi [nvarchar(10)] NULL
+  recete_no [int] NULL
+  sicaklik [decimal(6,2)] NULL
+  miktar [int] NULL
+  plc_kayit_id [int] NULL
+  hat_tipi [nvarchar(20)] NULL
+  akim [decimal(8,2)] NULL
+  plc_tarih_doldurma [datetime] NULL
+ 
+PRIMARY KEY:
+  PK: PK__vardiya___3213E83F4043EA3E (id)
+ 
+FOREIGN KEYS:
+  FK: FK__vardiya_d__vardi__60132A89 (vardiya_uretim_id) -> uretim.vardiya_uretim (id)
+ 
+INDEXES:
+  IX: IX_vardiya_detay_pozisyon (pozisyon_no)
+  IX: IX_vardiya_detay_zaman (kayit_zamani)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.vardiya_trend
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  vardiya_uretim_id [int] NULL
+  saat_baslangic [datetime] NOT NULL
+  saat_bitis [datetime] NOT NULL
+  hat_tipi [nvarchar(20)] NOT NULL
+  giren_bara [int] NULL DEFAULT ((0))
+  cikan_bara [int] NULL DEFAULT ((0))
+  kumulatif_giren [int] NULL DEFAULT ((0))
+  kumulatif_cikan [int] NULL DEFAULT ((0))
+  hedef_cizgisi [int] NULL DEFAULT ((0))
+ 
+PRIMARY KEY:
+  PK: PK__vardiya___3213E83F9C53E30F (id)
+ 
+FOREIGN KEYS:
+  FK: FK__vardiya_t__vardi__6C79016E (vardiya_uretim_id) -> uretim.vardiya_uretim (id)
+ 
+INDEXES:
+  IX: IX_vardiya_trend_zaman (saat_baslangic)
+  IX: UQ__vardiya___7745D658FFAE9A05 [UNIQUE] (vardiya_uretim_id, saat_baslangic, hat_tipi)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.vardiya_uretim
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [int] NOT NULL IDENTITY
+  vardiya_tarihi [date] NOT NULL
+  vardiya_baslangic [datetime] NOT NULL
+  vardiya_bitis [datetime] NOT NULL
+  hat_id [bigint] NULL
+  hat_tipi [nvarchar(20)] NULL
+  giren_bara [int] NULL DEFAULT ((0))
+  cikan_bara [int] NULL DEFAULT ((0))
+  hedef_bara [int] NULL DEFAULT ((0))
+  planlanan_bara [int] NULL DEFAULT ((0))
+  verimlilik_yuzde [decimal(5,2)] NULL
+  toplam_calisma_dk [int] NULL DEFAULT ((0))
+  toplam_bos_dk [int] NULL DEFAULT ((0))
+  olusturma_tarihi [datetime] NULL DEFAULT (getdate())
+  guncelleme_tarihi [datetime] NULL
+ 
+PRIMARY KEY:
+  PK: PK__vardiya___3213E83F97616C57 (id)
+ 
+INDEXES:
+  IX: IX_vardiya_uretim_tarih (vardiya_tarihi)
+  IX: UQ_vardiya_tarih_hat [UNIQUE] (vardiya_tarihi, hat_tipi)
+ 
+ 
+------------------------------------------------------------
+Tablo: uretim.yuzey_alan_hesaplama
+------------------------------------------------------------
+ 
+KOLONLAR:
+  id [bigint] NOT NULL IDENTITY
+  uuid [uniqueidentifier] NOT NULL DEFAULT (newid())
+  urun_id [bigint] NOT NULL
+  hesaplama_yontemi [nvarchar(50)] NULL
+  agirlik_kg [decimal(10,3)] NULL
+  kalinlik_mm [decimal(10,3)] NULL
+  hesaplanan_alan_m2 [decimal(10,4)] NULL
+  manuel_alan_m2 [decimal(10,4)] NULL
+  kullanilan_alan_m2 [decimal(10,4)] NULL
+  hedef_film_kalinlik_mikron [int] NULL DEFAULT ((20))
+  yogunluk_g_cm3 [decimal(4,2)] NULL DEFAULT ((1.3))
+  verimlilik_yuzde [decimal(5,2)] NULL DEFAULT ((95.00))
+  teorik_tuketim_g_m2 [decimal(10,4)] NULL
+  pratik_tuketim_g_m2 [decimal(10,4)] NULL
+  guncellenme_tarihi [datetime2] NOT NULL DEFAULT (getdate())
+  olusturan_id [bigint] NULL
+  guncelleyen_id [bigint] NULL
+ 
+PRIMARY KEY:
+  PK: PK__yuzey_al__3213E83FBE73C009 (id)
+ 
+FOREIGN KEYS:
+  FK: FK__yuzey_ala__urun___165A2CA1 (urun_id) -> stok.urunler (id)
+  FK: FK__yuzey_ala__olust__1B1EE1BE (olusturan_id) -> sistem.kullanicilar (id)
+  FK: FK__yuzey_ala__gunce__1C1305F7 (guncelleyen_id) -> sistem.kullanicilar (id)
+ 
+INDEXES:
+  IX: IX_yuzey_alan_urun (urun_id)
+  IX: UQ__yuzey_al__7F4279318422FC3A [UNIQUE] (uuid)
+ 
+ 
+============================================================
+4. FOREIGN KEY ILISKI HARITASI
+============================================================
+ 
+kalite.etiket_kuyrugu(proses_kontrol_id) -> kalite.proses_kontrol(id)
+kalite.final_kontrol_hatalar(final_kontrol_id) -> kalite.final_kontrol(id)
+kalite.fmea_ekip(fmea_id) -> kalite.fmea(id)
+kalite.fmea_satirlar(fmea_id) -> kalite.fmea(id)
+kalite.giris_kontrol_sonuclari(kriter_id) -> kalite.giris_kontrol_kriterleri(id)
+kalite.kalibrasyon_kayitlari(cihaz_id) -> kalite.olcum_cihazlari(id)
+kalite.kalibrasyon_kayitlari(olusturan_id) -> sistem.kullanicilar(id)
+kalite.kalibrasyon_planlari(cihaz_id) -> kalite.olcum_cihazlari(id)
+kalite.kataforez_hata_kayitlari(hata_tipi_id) -> kalite.kataforez_hata_tipleri(id)
+kalite.kataforez_hata_kayitlari(banyo_id) -> uretim.banyo_tanimlari(id)
+kalite.kataforez_hata_kayitlari(urun_id) -> stok.urunler(id)
+kalite.kataforez_hata_kayitlari(tespit_eden_id) -> ik.personeller(id)
+kalite.kataforez_hata_kayitlari(kapatan_id) -> ik.personeller(id)
+kalite.kontrol_plan_satirlar(plan_id) -> kalite.kontrol_planlari(id)
+kalite.kontrol_planlari(kaplama_turu_id) -> tanim.kaplama_turleri(id)
+kalite.kontrol_planlari(cari_id) -> musteri.cariler(id)
+kalite.kontrol_planlari(hazirlayan_id) -> ik.personeller(id)
+kalite.kontrol_planlari(onaylayan_id) -> ik.personeller(id)
+kalite.kontrol_planlari(olusturan_id) -> sistem.kullanicilar(id)
+kalite.kontrol_planlari(guncelleyen_id) -> sistem.kullanicilar(id)
+kalite.kontrol_planlari(urun_id) -> stok.urunler(id)
+kalite.muayene_detaylar(muayene_id) -> kalite.muayeneler(id)
+kalite.muayene_detaylar(kontrol_plan_satir_id) -> kalite.kontrol_plan_satirlar(id)
+kalite.muayene_detaylar(hata_turu_id) -> tanim.hata_turleri(id)
+kalite.muayeneler(olusturan_id) -> sistem.kullanicilar(id)
+kalite.muayeneler(is_emri_id) -> siparis.is_emirleri(id)
+kalite.muayeneler(urun_id) -> stok.urunler(id)
+kalite.muayeneler(kontrol_plani_id) -> kalite.kontrol_planlari(id)
+kalite.muayeneler(muayeneci_id) -> ik.personeller(id)
+kalite.olcum_cihazlari(olusturan_id) -> sistem.kullanicilar(id)
+kalite.olcum_cihazlari(guncelleyen_id) -> sistem.kullanicilar(id)
+kalite.olcum_cihazlari(sorumlu_id) -> ik.personeller(id)
+kalite.red_karar(hata_turu_id) -> tanim.hata_turleri(id)
+kalite.red_karar(kararci_id) -> sistem.kullanicilar(id)
+kalite.red_karar(hedef_depo_id) -> tanim.depolar(id)
+kalite.spc_olcumler(hat_id) -> tanim.uretim_hatlari(id)
+kalite.spc_olcumler(urun_id) -> stok.urunler(id)
+kalite.spc_olcumler(is_emri_id) -> siparis.is_emirleri(id)
+kalite.spc_olcumler(operator_id) -> ik.personeller(id)
+kalite.test_sonuclari(talep_test_id) -> kalite.test_talep_testler(id)
+kalite.test_sonuclari(analist_id) -> ik.personeller(id)
+kalite.test_sonuclari(cihaz_id) -> kalite.olcum_cihazlari(id)
+kalite.test_talep_testler(talep_id) -> kalite.test_talepleri(id)
+kalite.test_talep_testler(test_turu_id) -> tanim.test_turleri(id)
+kalite.test_talepleri(talep_eden_id) -> ik.personeller(id)
+kalite.test_talepleri(is_emri_id) -> siparis.is_emirleri(id)
+kalite.test_talepleri(muayene_id) -> kalite.muayeneler(id)
+kalite.test_talepleri(urun_id) -> stok.urunler(id)
+kalite.test_talepleri(olusturan_id) -> sistem.kullanicilar(id)
+kalite.uretim_redler(hata_turu_id) -> tanim.hata_turleri(id)
+kalite.uygunsuzluk_aksiyonlar(dogrulayan_id) -> ik.personeller(id)
+kalite.uygunsuzluk_aksiyonlar(olusturan_id) -> sistem.kullanicilar(id)
+kalite.uygunsuzluk_aksiyonlar(sorumlu_id) -> ik.personeller(id)
+kalite.uygunsuzluk_aksiyonlar(uygunsuzluk_id) -> kalite.uygunsuzluklar(id)
+kalite.uygunsuzluklar(olusturan_id) -> sistem.kullanicilar(id)
+kalite.uygunsuzluklar(bildiren_id) -> ik.personeller(id)
+kalite.uygunsuzluklar(cari_id) -> musteri.cariler(id)
+kalite.uygunsuzluklar(guncelleyen_id) -> sistem.kullanicilar(id)
+kalite.uygunsuzluklar(sorumlu_id) -> ik.personeller(id)
+kalite.uygunsuzluklar(urun_id) -> stok.urunler(id)
+kalite.uygunsuzluklar(is_emri_id) -> siparis.is_emirleri(id)
+kalite.uygunsuzluklar(hata_turu_id) -> tanim.hata_turleri(id)
+siparis.cikis_irsaliye_satirlar(irsaliye_id) -> siparis.cikis_irsaliyeleri(id)
+siparis.cikis_irsaliye_satirlar(ambalaj_turu_id) -> tanim.ambalaj_turleri(id)
+siparis.cikis_irsaliye_satirlar(birim_id) -> tanim.birimler(id)
+siparis.cikis_irsaliye_satirlar(is_emri_id) -> siparis.is_emirleri(id)
+siparis.cikis_irsaliye_satirlar(urun_id) -> stok.urunler(id)
+siparis.cikis_irsaliyeleri(fatura_id) -> siparis.faturalar(id)
+siparis.cikis_irsaliyeleri(guncelleyen_id) -> sistem.kullanicilar(id)
+siparis.cikis_irsaliyeleri(olusturan_id) -> sistem.kullanicilar(id)
+siparis.cikis_irsaliyeleri(teslimat_adresi_id) -> musteri.cari_adresler(id)
+siparis.cikis_irsaliyeleri(teslim_eden_id) -> ik.personeller(id)
+siparis.cikis_irsaliyeleri(cari_id) -> musteri.cariler(id)
+siparis.fatura_satirlar(fatura_id) -> siparis.faturalar(id)
+siparis.fatura_satirlar(cikis_irsaliye_satir_id) -> siparis.cikis_irsaliye_satirlar(id)
+siparis.fatura_satirlar(urun_id) -> stok.urunler(id)
+siparis.fatura_satirlar(birim_id) -> tanim.birimler(id)
+siparis.faturalar(cari_id) -> musteri.cariler(id)
+siparis.faturalar(para_birimi_id) -> tanim.para_birimleri(id)
+siparis.faturalar(olusturan_id) -> sistem.kullanicilar(id)
+siparis.faturalar(guncelleyen_id) -> sistem.kullanicilar(id)
+siparis.giris_irsaliye_satirlar(irsaliye_id) -> siparis.giris_irsaliyeleri(id)
+siparis.is_emirleri(olusturan_id) -> sistem.kullanicilar(id)
+siparis.is_emirleri(guncelleyen_id) -> sistem.kullanicilar(id)
+siparis.is_emirleri(hat_id) -> tanim.uretim_hatlari(id)
+siparis.is_emirleri(kaplama_turu_id) -> tanim.kaplama_turleri(id)
+siparis.is_emirleri(birim_id) -> tanim.birimler(id)
+siparis.is_emirleri(spesifikasyon_id) -> stok.urun_spesifikasyonlar(id)
+siparis.is_emirleri(cari_id) -> musteri.cariler(id)
+siparis.is_emirleri(urun_id) -> stok.urunler(id)
+siparis.is_emri_lotlar(is_emri_id) -> siparis.is_emirleri(id)
+siparis.is_emri_operasyonlar(operator_id) -> ik.personeller(id)
+siparis.is_emri_operasyonlar(hat_id) -> tanim.uretim_hatlari(id)
+siparis.is_emri_operasyonlar(is_emri_id) -> siparis.is_emirleri(id)
+siparis.is_emri_stok_hareketi(is_emri_id) -> siparis.is_emirleri(id)
+siparis.is_emri_stok_hareketi(stok_bakiye_id) -> stok.stok_bakiye(id)
+siparis.sevkiyat_detaylari(sevkiyat_id) -> siparis.sevkiyatlar(id)
+stok.depo_cikis(is_emri_id) -> siparis.is_emirleri(id)
+stok.depo_cikis(stok_bakiye_id) -> stok.stok_bakiye(id)
+stok.depo_lokasyonlar(depo_id) -> stok.depolar(id)
+stok.depo_lokasyonlar(birim_id) -> tanim.birimler(id)
+stok.depolar(sorumlu_id) -> ik.personeller(id)
+stok.depolar(olusturan_id) -> sistem.kullanicilar(id)
+stok.depolar(guncelleyen_id) -> sistem.kullanicilar(id)
+stok.emanet_stok(cari_id) -> musteri.cariler(id)
+stok.emanet_stok(urun_id) -> stok.urunler(id)
+stok.emanet_stok(olusturan_id) -> sistem.kullanicilar(id)
+stok.hareket_log(stok_bakiye_id) -> stok.stok_bakiye(id)
+stok.hareket_log(hareket_tipi_id) -> tanim.hareket_tipleri(id)
+stok.kimyasallar(urun_id) -> stok.urunler(id)
+stok.kimyasallar(kategori_id) -> tanim.kimyasal_kategoriler(id)
+stok.kimyasallar(tedarikci_id) -> musteri.cariler(id)
+stok.lot_durum_gecmisi(degistiren_id) -> sistem.kullanicilar(id)
+stok.stok_bakiye(depo_id) -> tanim.depolar(id)
+stok.stok_bakiye(urun_id) -> stok.urunler(id)
+stok.stok_bakiye(lokasyon_id) -> stok.depo_lokasyonlar(id)
+stok.stok_hareketleri(urun_id) -> stok.urunler(id)
+stok.stok_hareketleri(lokasyon_id) -> stok.depo_lokasyonlar(id)
+stok.stok_hareketleri(birim_id) -> tanim.birimler(id)
+stok.stok_hareketleri(olusturan_id) -> sistem.kullanicilar(id)
+stok.stok_hareketleri(depo_id) -> tanim.depolar(id)
+stok.urun_agaci(ana_urun_id) -> stok.urunler(id)
+stok.urun_agaci(bilesen_urun_id) -> stok.urunler(id)
+stok.urun_birimleri(urun_id) -> stok.urunler(id)
+stok.urun_cari_kodlari(urun_id) -> stok.urunler(id)
+stok.urun_dosyalar(urun_id) -> stok.urunler(id)
+stok.urun_dosyalar(yukleyen_id) -> sistem.kullanicilar(id)
+stok.urun_fiyatlari(urun_id) -> stok.urunler(id)
+stok.urun_kategorileri(ust_kategori_id) -> stok.urun_kategorileri(id)
+stok.urun_ozellikleri(urun_id) -> stok.urunler(id)
+stok.urun_recete(guncelleyen_id) -> sistem.kullanicilar(id)
+stok.urun_recete(olusturan_id) -> sistem.kullanicilar(id)
+stok.urun_recete(urun_id) -> stok.urunler(id)
+stok.urun_recete(banyo_tipi_id) -> tanim.banyo_tipleri(id)
+stok.urun_recete(pozisyon_id) -> tanim.hat_pozisyonlar(id)
+stok.urun_spesifikasyonlar(olusturan_id) -> sistem.kullanicilar(id)
+stok.urun_spesifikasyonlar(oem_standart_id) -> tanim.oem_standartlari(id)
+stok.urun_spesifikasyonlar(kaplama_turu_id) -> tanim.kaplama_turleri(id)
+stok.urun_spesifikasyonlar(urun_id) -> stok.urunler(id)
+stok.urunler(guncelleyen_id) -> sistem.kullanicilar(id)
+stok.urunler(olusturan_id) -> sistem.kullanicilar(id)
+stok.urunler(kaplama_turu_id) -> tanim.kaplama_turleri(id)
+stok.urunler(cari_id) -> musteri.cariler(id)
+stok.urunler(birim_id) -> tanim.birimler(id)
+stok.urunler(para_birimi_id) -> tanim.para_birimleri(id)
+stok.urunler(pasivasyon_tipi_id) -> tanim.pasivasyon_tipleri(id)
+stok.urunler(malzeme_cinsi_id) -> tanim.malzeme_cinsleri(id)
+stok.urunler(varsayilan_hat_id) -> tanim.uretim_hatlari(id)
+stok.urunler(aski_tipi_id) -> tanim.aski_tipleri(id)
+stok.urunler(oem_standart_id) -> tanim.oem_standartlari(id)
+stok.urunler(yonlendirme_tipi_id) -> tanim.yonlendirme_tipleri(id)
+stok.urunler(ambalaj_turu_id) -> tanim.ambalaj_turleri(id)
+stok.urunler(akis_sablon_id) -> tanim.akis_sablon(id)
+tanim.akis_adim(hedef_depo_id) -> tanim.depolar(id)
+tanim.akis_adim(hedef_depo_tipi_id) -> tanim.depo_tipleri(id)
+tanim.akis_adim(sablon_id) -> tanim.akis_sablon(id)
+tanim.akis_adim(adim_tipi_id) -> tanim.akis_adim_tipleri(id)
+tanim.ambalaj_turleri(birim_id) -> tanim.birimler(id)
+tanim.depo_bolumleri(depo_id) -> tanim.depolar(id)
+tanim.depo_raflari(depo_id) -> tanim.depolar(id)
+tanim.depo_raflari(bolum_id) -> tanim.depo_bolumleri(id)
+tanim.depo_sorumlulari(depo_id) -> tanim.depolar(id)
+tanim.depolar(sehir_id) -> tanim.sehirler(id)
+tanim.depolar(depo_tipi_id) -> tanim.depo_tipleri(id)
+tanim.depolar(ilce_id) -> tanim.ilceler(id)
+tanim.ekipman_kategorileri(ust_kategori_id) -> tanim.ekipman_kategorileri(id)
+tanim.ekipman_tipleri(kategori_id) -> tanim.ekipman_kategorileri(id)
+tanim.etiket_elementleri(sablon_id) -> tanim.etiket_sablonlari(id)
+tanim.hat_bolumleri(olusturan_id) -> sistem.kullanicilar(id)
+tanim.hat_bolumleri(guncelleyen_id) -> sistem.kullanicilar(id)
+tanim.hat_giris_cikis(hat_id) -> tanim.uretim_hatlari(id)
+tanim.hat_pozisyonlar(guncelleyen_id) -> sistem.kullanicilar(id)
+tanim.hat_pozisyonlar(olusturan_id) -> sistem.kullanicilar(id)
+tanim.hat_pozisyonlar(banyo_tipi_id) -> tanim.banyo_tipleri(id)
+tanim.hat_pozisyonlar(pozisyon_tipi_id) -> tanim.pozisyon_tipleri(id)
+tanim.hat_pozisyonlar(hat_id) -> tanim.uretim_hatlari(id)
+tanim.hat_robotlar(hat_id) -> tanim.uretim_hatlari(id)
+tanim.hat_robotlar(olusturan_id) -> sistem.kullanicilar(id)
+tanim.hat_robotlar(guncelleyen_id) -> sistem.kullanicilar(id)
+tanim.ilceler(sehir_id) -> tanim.sehirler(id)
+tanim.kaplama_tipleri(uretim_depo_id) -> tanim.depolar(id)
+tanim.musteri_etiket_atamalari(sablon_id) -> tanim.etiket_sablonlari(id)
+tanim.musteri_etiket_atamalari(cari_id) -> musteri.cariler(id)
+tanim.pasivasyon_tipleri(kaplama_turu_id) -> tanim.kaplama_turleri(id)
+tanim.rota_adimlar(rota_id) -> tanim.rotalar(id)
+tanim.rota_adimlar(proses_id) -> tanim.prosesler(id)
+tanim.sehirler(ulke_id) -> tanim.ulkeler(id)
+tanim.test_turleri(birim_id) -> tanim.birimler(id)
+tanim.uretim_hatlari(hat_bolum_id) -> tanim.hat_bolumleri(id)
+tanim.uretim_hatlari(olusturan_id) -> sistem.kullanicilar(id)
+tanim.uretim_hatlari(kaplama_turu_id) -> tanim.kaplama_turleri(id)
+tanim.uretim_hatlari(guncelleyen_id) -> sistem.kullanicilar(id)
+uretim.aski_jigler(olusturan_id) -> sistem.kullanicilar(id)
+uretim.aski_jigler(guncelleyen_id) -> sistem.kullanicilar(id)
+uretim.aski_jigler(hat_id) -> tanim.uretim_hatlari(id)
+uretim.banyo_analiz_sonuclari(analist_id) -> ik.personeller(id)
+uretim.banyo_analiz_sonuclari(banyo_id) -> uretim.banyo_tanimlari(id)
+uretim.banyo_parametre_log(parametre_id) -> uretim.banyo_parametre_tanimlari(id)
+uretim.banyo_parametre_log(banyo_id) -> uretim.banyo_tanimlari(id)
+uretim.banyo_parametre_tanimlari(banyo_id) -> uretim.banyo_tanimlari(id)
+uretim.banyo_takviyeler(banyo_id) -> uretim.banyo_tanimlari(id)
+uretim.banyo_takviyeler(kimyasal_id) -> stok.urunler(id)
+uretim.banyo_takviyeler(yapan_id) -> ik.personeller(id)
+uretim.banyo_takviyeler(birim_id) -> tanim.birimler(id)
+uretim.banyo_tanimlari(pozisyon_id) -> tanim.hat_pozisyonlar(id)
+uretim.banyo_tanimlari(hat_id) -> tanim.uretim_hatlari(id)
+uretim.banyo_tanimlari(guncelleyen_id) -> sistem.kullanicilar(id)
+uretim.banyo_tanimlari(banyo_tipi_id) -> tanim.banyo_tipleri(id)
+uretim.banyo_tanimlari(olusturan_id) -> sistem.kullanicilar(id)
+uretim.durus_kayitlari(bakim_kayit_id) -> bakim.bakim_kayitlari(id)
+uretim.durus_kayitlari(uretim_kayit_id) -> uretim.uretim_kayitlari(id)
+uretim.durus_kayitlari(durus_nedeni_id) -> tanim.durus_nedenleri(id)
+uretim.durus_kayitlari(olusturan_id) -> sistem.kullanicilar(id)
+uretim.durus_kayitlari(hat_id) -> tanim.uretim_hatlari(id)
+uretim.kataforez_maliyet(urun_id) -> stok.urunler(id)
+uretim.kataforez_maliyet(olusturan_id) -> sistem.kullanicilar(id)
+uretim.planlama(is_emri_id) -> siparis.is_emirleri(id)
+uretim.planlama(hat_id) -> tanim.uretim_hatlari(id)
+uretim.planlama(vardiya_id) -> tanim.vardiyalar(id)
+uretim.uretim_kayitlari(operator_id) -> ik.personeller(id)
+uretim.uretim_kayitlari(olusturan_id) -> sistem.kullanicilar(id)
+uretim.uretim_kayitlari(vardiya_id) -> tanim.vardiyalar(id)
+uretim.uretim_kayitlari(hat_id) -> tanim.uretim_hatlari(id)
+uretim.uretim_kayitlari(is_emri_id) -> siparis.is_emirleri(id)
+uretim.vardiya_detay(vardiya_uretim_id) -> uretim.vardiya_uretim(id)
+uretim.vardiya_trend(vardiya_uretim_id) -> uretim.vardiya_uretim(id)
+uretim.yuzey_alan_hesaplama(olusturan_id) -> sistem.kullanicilar(id)
+uretim.yuzey_alan_hesaplama(guncelleyen_id) -> sistem.kullanicilar(id)
+uretim.yuzey_alan_hesaplama(urun_id) -> stok.urunler(id)
+ 
+ 
+============================================================
+5. SEMALARA GORE OZET
+============================================================
+ 
+ 
+============================================================
+RAPOR TAMAMLANDI
+============================================================
+
+Completion time: 2026-02-13T22:08:57.6120200+03:00

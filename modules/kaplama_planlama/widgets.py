@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 NEXOR ERP - Kaplama Planlama Gorsel Bilesenler
-QPainter ile ozel widget'lar: Gauge, BanyoCard, HatDurumu, BaraStrip
+[KURUMSAL UI - v2.0]
+
+Aciklama:
+- QPainter ile ozel widget'lar
+- SicaklikGauge, DolulukHalka, BanyoCard, HatDurumu, BaraStrip
 """
 import math
 from typing import List, Dict, Optional
@@ -15,6 +19,16 @@ from PySide6.QtGui import (
     QPainterPath, QLinearGradient, QRadialGradient,
     QConicalGradient, QPaintEvent, QMouseEvent
 )
+
+
+# ── Stil Sabitleri ──
+CARD_RADIUS = 10
+LABEL_SIZE = 10
+SMALL_SIZE = 11
+BODY_SIZE = 13
+BG_DARK = "#0F1419"
+BORDER_COLOR = "#1E2736"
+GRID_COLOR = "#1E2736"
 
 
 # ══════════════════════════════════════════════════════════════
@@ -50,8 +64,8 @@ class SicaklikGauge(QWidget):
         cx, cy = w // 2, h - 8
         radius = min(w, h * 2) // 2 - 8
 
-        # Arka plan yay (koyu)
-        pen = QPen(QColor("#2A2A2A"), 6, Qt.SolidLine, Qt.RoundCap)
+        # Arka plan yay
+        pen = QPen(QColor(GRID_COLOR), 6, Qt.SolidLine, Qt.RoundCap)
         p.setPen(pen)
         arc_rect = QRectF(cx - radius, cy - radius, radius * 2, radius * 2)
         p.drawArc(arc_rect, 180 * 16, 180 * 16)
@@ -63,22 +77,21 @@ class SicaklikGauge(QWidget):
         ratio = max(0.0, min(1.0, (self._value - self._min_val) / rng))
         angle = ratio * 180
 
-        # Renk: yesil = hedefte, sari = sinirlarda, kirmizi = disinda
         hedef_ratio = (self._hedef - self._min_val) / rng if rng > 0 else 0.5
         diff = abs(ratio - hedef_ratio)
         if diff < 0.15:
-            color = QColor("#10B981")  # Yesil
+            color = QColor("#10B981")
         elif diff < 0.3:
-            color = QColor("#F59E0B")  # Sari
+            color = QColor("#F59E0B")
         else:
-            color = QColor("#EF4444")  # Kirmizi
+            color = QColor("#EF4444")
 
         pen.setColor(color)
         pen.setWidth(6)
         p.setPen(pen)
         p.drawArc(arc_rect, 180 * 16, int(angle * 16))
 
-        # Hedef cizgisi (ince beyaz)
+        # Hedef cizgisi
         hedef_angle = math.radians(180 - hedef_ratio * 180)
         hx = cx + int((radius - 2) * math.cos(hedef_angle))
         hy = cy - int((radius - 2) * math.sin(hedef_angle))
@@ -88,7 +101,7 @@ class SicaklikGauge(QWidget):
         p.drawLine(hx, hy, hx2, hy2)
 
         # Deger metni
-        p.setPen(QColor("#FFFFFF"))
+        p.setPen(QColor("#E8ECF1"))
         font = QFont("Segoe UI", 11, QFont.Bold)
         p.setFont(font)
         p.drawText(QRect(0, cy - radius // 2 - 2, w, 20), Qt.AlignCenter, f"{self._value:.1f}")
@@ -97,7 +110,7 @@ class SicaklikGauge(QWidget):
         font.setPointSize(7)
         font.setBold(False)
         p.setFont(font)
-        p.setPen(QColor("#888888"))
+        p.setPen(QColor("#8896A6"))
         p.drawText(QRect(0, cy - radius // 2 + 14, w, 14), Qt.AlignCenter, f"{self._unit}")
 
         p.end()
@@ -134,7 +147,7 @@ class DolulukHalka(QWidget):
         rect = QRectF(margin, margin, s - margin * 2, s - margin * 2)
 
         # Arka plan halka
-        pen = QPen(QColor("#2A2A2A"), 5, Qt.SolidLine, Qt.RoundCap)
+        pen = QPen(QColor(GRID_COLOR), 5, Qt.SolidLine, Qt.RoundCap)
         p.setPen(pen)
         p.drawArc(rect, 90 * 16, 360 * 16)
 
@@ -145,7 +158,7 @@ class DolulukHalka(QWidget):
         p.drawArc(rect, 90 * 16, int(-ratio * 360 * 16))
 
         # Metin
-        p.setPen(QColor("#FFFFFF"))
+        p.setPen(QColor("#E8ECF1"))
         font = QFont("Segoe UI", 9, QFont.Bold)
         p.setFont(font)
         p.drawText(self.rect(), Qt.AlignCenter, str(self._value))
@@ -160,7 +173,7 @@ class DolulukHalka(QWidget):
 class BanyoCard(QFrame):
     """Zengin banyo durum karti: sicaklik gauge + doluluk + bilgiler"""
 
-    clicked = Signal(dict)  # banyo_data
+    clicked = Signal(dict)
 
     def __init__(self, style: dict, parent=None):
         super().__init__(parent)
@@ -173,29 +186,28 @@ class BanyoCard(QFrame):
         self._setup_ui()
 
     def _setup_ui(self):
+        s = self.s
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(4)
 
-        # Baslik
         self.lbl_ad = QLabel("Banyo")
-        self.lbl_ad.setStyleSheet(f"color: {self.s['text']}; font-size: 11px; font-weight: bold;")
+        self.lbl_ad.setStyleSheet(f"color: {s['text']}; font-size: {SMALL_SIZE}px; font-weight: 600;")
         self.lbl_ad.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.lbl_ad)
 
-        # Gauge + Doluluk yan yana
+        # Gauge + Doluluk
         mid_layout = QHBoxLayout()
-        mid_layout.setSpacing(4)
+        mid_layout.setSpacing(6)
 
         self.gauge = SicaklikGauge()
         mid_layout.addWidget(self.gauge)
 
-        # Sag bilgi paneli
         info_layout = QVBoxLayout()
         info_layout.setSpacing(2)
 
         self.lbl_durum = QLabel("--")
-        self.lbl_durum.setStyleSheet(f"color: {self.s['success']}; font-size: 10px; font-weight: bold;")
+        self.lbl_durum.setStyleSheet(f"color: {s['success']}; font-size: {LABEL_SIZE}px; font-weight: 600;")
         self.lbl_durum.setAlignment(Qt.AlignCenter)
         info_layout.addWidget(self.lbl_durum)
 
@@ -206,24 +218,21 @@ class BanyoCard(QFrame):
         layout.addLayout(mid_layout)
 
         # Alt bilgiler
+        info_style = f"color: {s['text_muted']}; font-size: 9px;"
         self.lbl_recete = QLabel("Recete: -")
-        self.lbl_recete.setStyleSheet(f"color: {self.s['text_muted']}; font-size: 9px;")
+        self.lbl_recete.setStyleSheet(info_style)
         layout.addWidget(self.lbl_recete)
 
         self.lbl_akim = QLabel("Akim: -")
-        self.lbl_akim.setStyleSheet(f"color: {self.s['text_muted']}; font-size: 9px;")
+        self.lbl_akim.setStyleSheet(info_style)
         layout.addWidget(self.lbl_akim)
 
         self.lbl_sure = QLabel("Sure: -")
-        self.lbl_sure.setStyleSheet(f"color: {self.s['text_muted']}; font-size: 9px;")
+        self.lbl_sure.setStyleSheet(info_style)
         layout.addWidget(self.lbl_sure)
 
     def set_data(self, data: dict):
-        """
-        data keys: ad, kazan_no, sicaklik, sicaklik_min, sicaklik_max, sicaklik_hedef,
-                    durum, durum_dakika, recete_no, akim, son_bara, hat_kodu,
-                    aktif_aski, max_aski
-        """
+        s = self.s
         self._data = data
         ad = data.get('ad', f"Kazan {data.get('kazan_no', '?')}")
         self.lbl_ad.setText(ad)
@@ -239,17 +248,17 @@ class BanyoCard(QFrame):
         durum = data.get('durum', 'BELIRSIZ')
         durum_dk = data.get('durum_dakika', 0) or 0
         durum_renk = {
-            'AKTIF': self.s['success'],
-            'BEKLIYOR': self.s['warning'],
-            'DURDU': self.s['error'],
-        }.get(durum, self.s['text_muted'])
+            'AKTIF': s['success'],
+            'BEKLIYOR': s['warning'],
+            'DURDU': s['error'],
+        }.get(durum, s['text_muted'])
         self.lbl_durum.setText(f"{durum}\n{durum_dk}dk")
-        self.lbl_durum.setStyleSheet(f"color: {durum_renk}; font-size: 10px; font-weight: bold;")
+        self.lbl_durum.setStyleSheet(f"color: {durum_renk}; font-size: {LABEL_SIZE}px; font-weight: 600;")
 
         # Doluluk
         aktif = data.get('aktif_aski', 0) or 0
         maks = data.get('max_aski', 4) or 4
-        d_color = self.s['success'] if aktif < maks else self.s['error']
+        d_color = s['success'] if aktif < maks else s['error']
         self.doluluk.set_data(aktif, maks, color=d_color)
 
         # Alt bilgiler
@@ -258,7 +267,7 @@ class BanyoCard(QFrame):
         recete_acik = data.get('recete_aciklama', '')
         if recete_adi:
             self.lbl_recete.setText(f"R{recete}: {recete_adi}")
-            self.lbl_recete.setToolTip(f"Reçete #{recete} - {recete_adi} / {recete_acik}")
+            self.lbl_recete.setToolTip(f"Recete #{recete} - {recete_adi} / {recete_acik}")
         else:
             self.lbl_recete.setText(f"Recete: {recete}")
 
@@ -272,14 +281,13 @@ class BanyoCard(QFrame):
         bara = data.get('son_bara', '-') or '-'
         self.lbl_sure.setText(f"Bara: {bara} | {durum_dk}dk")
 
-        # Kart arka plan rengi
-        bg_alpha = "22"
-        border_alpha = "44"
+        # Kart stili: sol accent + durum rengi
         self.setStyleSheet(f"""
             QFrame[frameShape="StyledPanel"] {{
-                background: {durum_renk}{bg_alpha};
-                border: 1px solid {durum_renk}{border_alpha};
-                border-radius: 10px;
+                background: {durum_renk}11;
+                border: 1px solid {durum_renk}22;
+                border-left: 3px solid {durum_renk};
+                border-radius: {CARD_RADIUS}px;
             }}
         """)
 
@@ -308,14 +316,13 @@ class HatCanliWidget(QWidget):
         self.update()
 
     def _kazan_rect(self, idx: int) -> QRect:
-        """Kazan kutusunun piksel koordinatlari"""
         if not self._kazanlar:
             return QRect()
         cols = min(len(self._kazanlar), 12)
         rows = math.ceil(len(self._kazanlar) / cols)
-        margin = 8
+        margin = 10
         avail_w = self.width() - margin * 2
-        avail_h = self.height() - margin * 2 - 30  # baslik icin
+        avail_h = self.height() - margin * 2 - 30
         cell_w = avail_w / cols
         cell_h = avail_h / max(rows, 1)
         r, c = divmod(idx, cols)
@@ -329,19 +336,19 @@ class HatCanliWidget(QWidget):
     def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.fillRect(self.rect(), QColor("#0F0F0F"))
+        p.fillRect(self.rect(), QColor(BG_DARK))
 
         if not self._kazanlar:
-            p.setPen(QColor("#666"))
+            p.setPen(QColor("#5C6878"))
             p.setFont(QFont("Segoe UI", 12))
             p.drawText(self.rect(), Qt.AlignCenter, "PLC verisi bekleniyor...")
             p.end()
             return
 
         # Baslik
-        p.setPen(QColor("#AAAAAA"))
+        p.setPen(QColor("#8896A6"))
         p.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        p.drawText(QRect(8, 4, self.width(), 24), Qt.AlignLeft | Qt.AlignVCenter, "Hat Canli Gorunum")
+        p.drawText(QRect(10, 4, self.width(), 24), Qt.AlignLeft | Qt.AlignVCenter, "HAT CANLI GORUNUM")
 
         font_no = QFont("Segoe UI", 8, QFont.Bold)
         font_info = QFont("Segoe UI", 7)
@@ -351,36 +358,33 @@ class HatCanliWidget(QWidget):
             durum = kz.get('durum', 'BELIRSIZ')
             sicaklik = kz.get('sicaklik', 0) or 0
 
-            # Durum rengi
             color_map = {
                 'AKTIF': QColor("#10B981"),
                 'BEKLIYOR': QColor("#F59E0B"),
                 'DURDU': QColor("#EF4444"),
-                'BELIRSIZ': QColor("#555555"),
+                'BELIRSIZ': QColor("#3A4555"),
             }
-            color = color_map.get(durum, QColor("#555555"))
+            color = color_map.get(durum, QColor("#3A4555"))
 
-            # Hover efekti
             is_hover = (i == self._hover_idx)
 
-            # Kutu ciz
+            # Kutu
             path = QPainterPath()
             path.addRoundedRect(QRectF(rect), 6, 6)
 
-            # Gradient dolgu
             grad = QLinearGradient(rect.topLeft(), rect.bottomLeft())
             grad.setColorAt(0, color.darker(200) if not is_hover else color.darker(150))
             grad.setColorAt(1, color.darker(300))
             p.fillPath(path, QBrush(grad))
 
-            # Sol renk cizgisi
-            bar_rect = QRectF(rect.x(), rect.y(), 4, rect.height())
+            # Sol accent cizgisi
+            bar_rect = QRectF(rect.x(), rect.y(), 3, rect.height())
             bar_path = QPainterPath()
-            bar_path.addRoundedRect(bar_rect, 2, 2)
+            bar_path.addRoundedRect(bar_rect, 1.5, 1.5)
             p.fillPath(bar_path, QBrush(color))
 
             # Kazan no
-            p.setPen(QColor("#FFFFFF"))
+            p.setPen(QColor("#E8ECF1"))
             p.setFont(font_no)
             p.drawText(rect.adjusted(8, 3, -4, -rect.height() // 2),
                        Qt.AlignLeft | Qt.AlignVCenter, str(kz.get('kazan_no', '?')))
@@ -389,17 +393,17 @@ class HatCanliWidget(QWidget):
             if rect.height() > 35:
                 p.setFont(font_info)
                 if sicaklik > 0:
-                    p.setPen(QColor("#FFFFFF"))
+                    p.setPen(QColor("#E8ECF1"))
                     p.drawText(rect.adjusted(8, rect.height() // 2 - 4, -4, -2),
                                Qt.AlignLeft | Qt.AlignVCenter, f"{sicaklik:.1f}C")
                 else:
-                    p.setPen(QColor("#666666"))
+                    p.setPen(QColor("#5C6878"))
                     p.drawText(rect.adjusted(8, rect.height() // 2 - 4, -4, -2),
                                Qt.AlignLeft | Qt.AlignVCenter, "--")
 
-            # Hover kenarlik
+            # Hover
             if is_hover:
-                p.setPen(QPen(QColor("#FFFFFF55"), 1))
+                p.setPen(QPen(QColor("#FFFFFF44"), 1))
                 p.drawPath(path)
 
         p.end()
@@ -443,32 +447,29 @@ class BaraDurumStrip(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._bara_data: List[Dict] = []
-        self.setFixedHeight(36)
+        self.setFixedHeight(38)
         self.setMouseTracking(True)
         self._hover_idx = -1
 
     def set_data(self, bara_data: List[Dict]):
-        """
-        bara_data: [{'bara_no': 1, 'durum': 'AKTIF/BOS', 'urun_ref': '...', 'kalan_dk': 15}, ...]
-        """
         self._bara_data = bara_data
         self.update()
 
     def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.fillRect(self.rect(), QColor("#1A1A1A"))
+        p.fillRect(self.rect(), QColor(BG_DARK))
 
         if not self._bara_data:
-            p.setPen(QColor("#555"))
+            p.setPen(QColor("#5C6878"))
             p.setFont(QFont("Segoe UI", 9))
             p.drawText(self.rect(), Qt.AlignCenter, "Bara durumu bekleniyor...")
             p.end()
             return
 
         n = len(self._bara_data)
-        margin = 4
-        spacing = 3
+        margin = 6
+        spacing = 4
         total_spacing = spacing * (n - 1)
         cell_w = (self.width() - margin * 2 - total_spacing) / max(n, 1)
         h = self.height() - margin * 2
@@ -484,21 +485,20 @@ class BaraDurumStrip(QWidget):
             color_map = {
                 'AKTIF': QColor("#10B981"),
                 'PLANLANDI': QColor("#3B82F6"),
-                'BOS': QColor("#2A2A2A"),
+                'BOS': QColor("#1E2736"),
                 'BAKIM': QColor("#EF4444"),
             }
-            color = color_map.get(durum, QColor("#2A2A2A"))
+            color = color_map.get(durum, QColor("#1E2736"))
 
             is_hover = (i == self._hover_idx)
             if is_hover:
                 color = color.lighter(130)
 
             path = QPainterPath()
-            path.addRoundedRect(rect, 4, 4)
+            path.addRoundedRect(rect, 5, 5)
             p.fillPath(path, QBrush(color))
 
-            # Bara no
-            p.setPen(QColor("#FFFFFF") if durum != 'BOS' else QColor("#666666"))
+            p.setPen(QColor("#E8ECF1") if durum != 'BOS' else QColor("#5C6878"))
             p.drawText(rect, Qt.AlignCenter, f"B{bd.get('bara_no', i+1)}")
 
         p.end()
@@ -508,8 +508,8 @@ class BaraDurumStrip(QWidget):
         self._hover_idx = -1
         if self._bara_data:
             n = len(self._bara_data)
-            margin = 4
-            spacing = 3
+            margin = 6
+            spacing = 4
             cell_w = (self.width() - margin * 2 - spacing * (n - 1)) / max(n, 1)
             for i in range(n):
                 x = margin + i * (cell_w + spacing)
@@ -518,7 +518,7 @@ class BaraDurumStrip(QWidget):
                     break
         if self._hover_idx != old:
             self.update()
-        if self._hover_idx >= 0 and self._hover_idx < len(self._bara_data):
+        if 0 <= self._hover_idx < len(self._bara_data):
             bd = self._bara_data[self._hover_idx]
             tip = f"Bara {bd.get('bara_no', '?')}: {bd.get('durum', '-')}"
             if bd.get('urun_ref'):
@@ -545,41 +545,41 @@ class HatIstatistikCard(QFrame):
         self.setFrameShape(QFrame.StyledPanel)
         self.setStyleSheet(f"""
             QFrame[frameShape="StyledPanel"] {{
-                background: {self.s['input_bg']};
+                background: {self.s['card_bg']};
                 border: 1px solid {self.s['border']};
-                border-radius: 10px;
+                border-radius: {CARD_RADIUS}px;
             }}
         """)
         self._setup_ui()
 
     def _setup_ui(self):
+        s = self.s
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(6)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(8)
 
         self.lbl_hat = QLabel("Hat")
-        self.lbl_hat.setStyleSheet(f"color: {self.s['text']}; font-size: 14px; font-weight: bold;")
+        self.lbl_hat.setStyleSheet(f"color: {s['text']}; font-size: 14px; font-weight: 600;")
         layout.addWidget(self.lbl_hat)
 
-        # Istatistik satirlari
         self.stats_layout = QGridLayout()
-        self.stats_layout.setSpacing(4)
+        self.stats_layout.setSpacing(6)
 
         self._stat_labels = {}
         stats = [
-            ("aktif", "Aktif Kazan", self.s['success']),
-            ("bekliyor", "Bekliyor", self.s['warning']),
-            ("durdu", "Durdu", self.s['error']),
-            ("ort_sicaklik", "Ort. Sicaklik", self.s['info']),
-            ("toplam_miktar", "24s Uretim", self.s['text']),
-            ("bara_adet", "Bara/Gun", self.s['text_secondary']),
+            ("aktif", "AKTIF KAZAN", s['success']),
+            ("bekliyor", "BEKLIYOR", s['warning']),
+            ("durdu", "DURDU", s['error']),
+            ("ort_sicaklik", "ORT. SICAKLIK", s['info']),
+            ("toplam_miktar", "24S URETIM", s['text']),
+            ("bara_adet", "BARA/GUN", s['text_secondary']),
         ]
         for i, (key, label, color) in enumerate(stats):
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {self.s['text_muted']}; font-size: 10px;")
+            lbl.setStyleSheet(f"color: {s['text_muted']}; font-size: {LABEL_SIZE}px; font-weight: 600; letter-spacing: 1px;")
             val = QLabel("-")
             val.setObjectName(f"stat_{key}")
-            val.setStyleSheet(f"color: {color}; font-size: 12px; font-weight: bold;")
+            val.setStyleSheet(f"color: {color}; font-size: 12px; font-weight: 700;")
             val.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             row, col = divmod(i, 2)
             self.stats_layout.addWidget(lbl, row, col * 2)
@@ -613,17 +613,16 @@ class ReceteAdimWidget(QWidget):
         self._hover_idx = -1
 
     def set_adimlar(self, adimlar: List[Dict]):
-        """adimlar: [{'sira': 1, 'islem': 'Yaglama', 'sure_sn': 120, 'banyo_tipi': 'ZN', 'sicaklik': 45.0}, ...]"""
         self._adimlar = adimlar
         self.update()
 
     def paintEvent(self, event: QPaintEvent):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.fillRect(self.rect(), QColor("#0F0F0F"))
+        p.fillRect(self.rect(), QColor(BG_DARK))
 
         if not self._adimlar:
-            p.setPen(QColor("#555"))
+            p.setPen(QColor("#5C6878"))
             p.setFont(QFont("Segoe UI", 9))
             p.drawText(self.rect(), Qt.AlignCenter, "Recete adimlari bulunamadi")
             p.end()
@@ -643,7 +642,6 @@ class ReceteAdimWidget(QWidget):
             x = margin + i * (step_w + arrow_w)
             rect = QRectF(x, margin, step_w, h)
 
-            # Adim rengi (banyo tipine gore)
             banyo = (adim.get('banyo_tipi', '') or '').upper()
             if 'NI' in banyo:
                 color = QColor("#3B82F6")
@@ -663,14 +661,14 @@ class ReceteAdimWidget(QWidget):
             path.addRoundedRect(rect, 5, 5)
             p.fillPath(path, QBrush(color.darker(200)))
 
-            # Ust kenar rengi
+            # Ust accent cizgisi
             top_bar = QRectF(rect.x(), rect.y(), rect.width(), 3)
             top_path = QPainterPath()
-            top_path.addRoundedRect(top_bar, 2, 2)
+            top_path.addRoundedRect(top_bar, 1.5, 1.5)
             p.fillPath(top_path, QBrush(color))
 
             # Islem adi
-            p.setPen(QColor("#FFFFFF"))
+            p.setPen(QColor("#E8ECF1"))
             p.setFont(font_name)
             text = adim.get('islem', f"Adim {adim.get('sira', i+1)}")
             fm = QFontMetrics(font_name)
@@ -679,7 +677,7 @@ class ReceteAdimWidget(QWidget):
 
             # Sure
             p.setFont(font_info)
-            p.setPen(QColor("#CCCCCC"))
+            p.setPen(QColor("#C0C8D4"))
             sure_sn = adim.get('sure_sn', 0)
             if sure_sn >= 60:
                 sure_txt = f"{sure_sn // 60}dk {sure_sn % 60}sn"
@@ -687,13 +685,12 @@ class ReceteAdimWidget(QWidget):
                 sure_txt = f"{sure_sn}sn"
             p.drawText(rect.adjusted(3, h // 2 - 2, -3, -4), Qt.AlignLeft | Qt.AlignVCenter, sure_txt)
 
-            # Ok isareti (son adim haric)
+            # Ok isareti
             if i < n - 1:
                 ax = x + step_w + 2
                 ay = margin + h // 2
-                p.setPen(QPen(QColor("#555"), 2))
+                p.setPen(QPen(QColor("#3A4555"), 2))
                 p.drawLine(int(ax), int(ay), int(ax + arrow_w - 4), int(ay))
-                # Ok ucu
                 p.drawLine(int(ax + arrow_w - 7), int(ay - 3), int(ax + arrow_w - 4), int(ay))
                 p.drawLine(int(ax + arrow_w - 7), int(ay + 3), int(ax + arrow_w - 4), int(ay))
 
@@ -715,7 +712,7 @@ class ReceteAdimWidget(QWidget):
                     break
         if self._hover_idx != old:
             self.update()
-        if self._hover_idx >= 0 and self._hover_idx < len(self._adimlar):
+        if 0 <= self._hover_idx < len(self._adimlar):
             a = self._adimlar[self._hover_idx]
             tip = f"Adim {a.get('sira', '?')}: {a.get('islem', '-')}\n"
             tip += f"Sure: {a.get('sure_sn', 0)}sn\n"

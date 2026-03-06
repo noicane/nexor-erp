@@ -19,18 +19,28 @@ from core.database import get_db_connection
 
 def get_modern_style(theme: dict) -> dict:
     """Modern tema renkleri - TÜM MODÜLLERDE AYNI"""
+    t = theme or {}
     return {
-        'card_bg': theme.get('bg_card', '#1E1E1E'),
-        'input_bg': theme.get('bg_input', '#1A1A1A'),
-        'border': theme.get('border', '#2A2A2A'),
-        'text': theme.get('text', '#FFFFFF'),
-        'text_secondary': theme.get('text_secondary', '#AAAAAA'),
-        'text_muted': theme.get('text_muted', '#666666'),
-        'primary': theme.get('primary', '#DC2626'),
-        'success': theme.get('success', '#10B981'),
-        'warning': theme.get('warning', '#F59E0B'),
-        'error': theme.get('error', '#EF4444'),
-        'info': theme.get('info', '#3B82F6'),
+        'card_bg': t.get('bg_card', '#151B23'),
+        'input_bg': t.get('bg_input', '#232C3B'),
+        'border': t.get('border', '#1E2736'),
+        'text': t.get('text', '#E8ECF1'),
+        'text_secondary': t.get('text_secondary', '#8896A6'),
+        'text_muted': t.get('text_muted', '#5C6878'),
+        'primary': t.get('primary', '#DC2626'),
+        'primary_hover': t.get('primary_hover', '#9B1818'),
+        'success': t.get('success', '#10B981'),
+        'warning': t.get('warning', '#F59E0B'),
+        'error': t.get('error', '#EF4444'),
+        'danger': t.get('error', '#EF4444'),
+        'info': t.get('info', '#3B82F6'),
+        'bg_main': t.get('bg_main', '#0F1419'),
+        'bg_hover': t.get('bg_hover', '#1C2430'),
+        'bg_selected': t.get('bg_selected', '#1E1215'),
+        'border_light': t.get('border_light', '#2A3545'),
+        'border_input': t.get('border_input', '#1E2736'),
+        'card_solid': t.get('bg_card_solid', '#151B23'),
+        'gradient': t.get('gradient_css', ''),
     }
 
 
