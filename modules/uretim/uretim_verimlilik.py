@@ -9,9 +9,9 @@ Ortak kazan destekli analiz motoru
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QLabel, QComboBox, QPushButton, QFrame, QTabWidget, QHeaderView,
-    QMessageBox, QSplitter, QGroupBox
+    QMessageBox, QSplitter, QGroupBox, QDateEdit
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QFont, QColor, QBrush
 from datetime import datetime, timedelta
 from core.database import get_db_connection, get_plc_connection
@@ -158,7 +158,10 @@ class VerimlilikAnalizPage(QWidget):
         self.cmb_hat_tarih.addItem("Bugün (Vardiya)", "bugun")
         self.cmb_hat_tarih.addItem("Dün", "dun")
         self.cmb_hat_tarih.addItem("Son 7 Gün", "hafta")
+        self.cmb_hat_tarih.addItem("Tarih Aralığı", "aralik")
         filter_layout.addWidget(self.cmb_hat_tarih)
+
+        self.date_hat_bas, self.date_hat_bit = self._create_date_range_widgets(filter_layout, self.cmb_hat_tarih)
 
         filter_layout.addWidget(QLabel("Hat:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:15px;"))
         self.cmb_hat_filtre = QComboBox()
@@ -242,7 +245,10 @@ class VerimlilikAnalizPage(QWidget):
         self.cmb_sapma_tarih.addItem("Bugün (Vardiya)", "bugun")
         self.cmb_sapma_tarih.addItem("Dün", "dun")
         self.cmb_sapma_tarih.addItem("Son 7 Gün", "hafta")
+        self.cmb_sapma_tarih.addItem("Tarih Aralığı", "aralik")
         filter_layout.addWidget(self.cmb_sapma_tarih)
+
+        self.date_sapma_bas, self.date_sapma_bit = self._create_date_range_widgets(filter_layout, self.cmb_sapma_tarih)
 
         filter_layout.addWidget(QLabel("Sapma Tipi:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:15px;"))
         self.cmb_sapma_tipi = QComboBox()
@@ -298,7 +304,10 @@ class VerimlilikAnalizPage(QWidget):
         self.cmb_darbogaz_tarih.addItem("Bugün (Vardiya)", "bugun")
         self.cmb_darbogaz_tarih.addItem("Dün", "dun")
         self.cmb_darbogaz_tarih.addItem("Son 7 Gün", "hafta")
+        self.cmb_darbogaz_tarih.addItem("Tarih Aralığı", "aralik")
         filter_layout.addWidget(self.cmb_darbogaz_tarih)
+
+        self.date_darbogaz_bas, self.date_darbogaz_bit = self._create_date_range_widgets(filter_layout, self.cmb_darbogaz_tarih)
 
         btn = QPushButton("🔍 Tespit Et")
         btn.setStyleSheet(f"QPushButton{{background:{self.success};color:white;border:none;border-radius:6px;padding:10px 20px;font-weight:bold;}}")
@@ -346,7 +355,10 @@ class VerimlilikAnalizPage(QWidget):
         self.cmb_bara_tarih.addItem("Bugün (Vardiya)", "bugun")
         self.cmb_bara_tarih.addItem("Dün", "dun")
         self.cmb_bara_tarih.addItem("Son 2 Saat", "2saat")
+        self.cmb_bara_tarih.addItem("Tarih Aralığı", "aralik")
         filter_layout.addWidget(self.cmb_bara_tarih)
+
+        self.date_bara_bas, self.date_bara_bit = self._create_date_range_widgets(filter_layout, self.cmb_bara_tarih)
 
         filter_layout.addWidget(QLabel("Hat:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:15px;"))
         self.cmb_bara_hat = QComboBox()
@@ -427,6 +439,55 @@ class VerimlilikAnalizPage(QWidget):
     def _combo_style(self):
         return f"QComboBox{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:6px;padding:8px 12px;min-width:140px;}}"
 
+    def _date_edit_style(self):
+        return f"""QDateEdit{{
+            background:{self.bg_input};color:{self.text};border:1px solid {self.border};
+            border-radius:6px;padding:8px 12px;min-width:120px;
+        }}
+        QDateEdit::drop-down{{
+            subcontrol-origin:padding;subcontrol-position:top right;width:25px;
+            border-left:1px solid {self.border};
+        }}"""
+
+    def _create_date_range_widgets(self, layout, combo):
+        """Tarih aralığı seçici widget'ları oluştur ve layout'a ekle"""
+        lbl_bas = QLabel("Başlangıç:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:10px;")
+        date_bas = QDateEdit()
+        date_bas.setCalendarPopup(True)
+        date_bas.setDate(QDate.currentDate().addDays(-7))
+        date_bas.setDisplayFormat("dd.MM.yyyy")
+        date_bas.setStyleSheet(self._date_edit_style())
+
+        lbl_bit = QLabel("Bitiş:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:5px;")
+        date_bit = QDateEdit()
+        date_bit.setCalendarPopup(True)
+        date_bit.setDate(QDate.currentDate())
+        date_bit.setDisplayFormat("dd.MM.yyyy")
+        date_bit.setStyleSheet(self._date_edit_style())
+
+        # Başlangıçta gizle
+        lbl_bas.setVisible(False)
+        date_bas.setVisible(False)
+        lbl_bit.setVisible(False)
+        date_bit.setVisible(False)
+
+        layout.addWidget(lbl_bas)
+        layout.addWidget(date_bas)
+        layout.addWidget(lbl_bit)
+        layout.addWidget(date_bit)
+
+        # Combo değiştiğinde göster/gizle
+        def on_combo_changed():
+            is_aralik = combo.currentData() == "aralik"
+            lbl_bas.setVisible(is_aralik)
+            date_bas.setVisible(is_aralik)
+            lbl_bit.setVisible(is_aralik)
+            date_bit.setVisible(is_aralik)
+
+        combo.currentIndexChanged.connect(on_combo_changed)
+
+        return date_bas, date_bit
+
     def _style_table(self, table):
         table.setStyleSheet(f"""
             QTableWidget {{
@@ -477,10 +538,13 @@ class VerimlilikAnalizPage(QWidget):
         except Exception as e:
             print(f"Pozisyon tanımları yüklenemedi: {e}")
 
-    def _get_tarih_aralik(self, tarih_secim):
+    def _get_tarih_aralik(self, tarih_secim, date_bas=None, date_bit=None):
         now = datetime.now()
 
-        if tarih_secim == "bugun":
+        if tarih_secim == "aralik" and date_bas and date_bit:
+            baslangic = datetime(date_bas.date().year(), date_bas.date().month(), date_bas.date().day(), 0, 0, 0)
+            bitis = datetime(date_bit.date().year(), date_bit.date().month(), date_bit.date().day(), 23, 59, 59)
+        elif tarih_secim == "bugun":
             if now.hour < 7 or (now.hour == 7 and now.minute < 30):
                 baslangic = now.replace(hour=7, minute=30, second=0, microsecond=0) - timedelta(days=1)
             else:
@@ -522,7 +586,7 @@ class VerimlilikAnalizPage(QWidget):
 
         tarih_secim = self.cmb_hat_tarih.currentData()
         hat_secim = self.cmb_hat_filtre.currentData()
-        baslangic, bitis = self._get_tarih_aralik(tarih_secim)
+        baslangic, bitis = self._get_tarih_aralik(tarih_secim, self.date_hat_bas, self.date_hat_bit)
         periyot_dk = (bitis - baslangic).total_seconds() / 60
 
         try:
@@ -661,7 +725,7 @@ class VerimlilikAnalizPage(QWidget):
 
         tarih_secim = self.cmb_sapma_tarih.currentData()
         sapma_tipi = self.cmb_sapma_tipi.currentData()
-        baslangic, bitis = self._get_tarih_aralik(tarih_secim)
+        baslangic, bitis = self._get_tarih_aralik(tarih_secim, self.date_sapma_bas, self.date_sapma_bit)
 
         try:
             cursor = self.plc_conn.cursor()
@@ -824,7 +888,7 @@ class VerimlilikAnalizPage(QWidget):
             return
 
         tarih_secim = self.cmb_darbogaz_tarih.currentData()
-        baslangic, bitis = self._get_tarih_aralik(tarih_secim)
+        baslangic, bitis = self._get_tarih_aralik(tarih_secim, self.date_darbogaz_bas, self.date_darbogaz_bit)
         periyot_dk = (bitis - baslangic).total_seconds() / 60
 
         try:
@@ -973,7 +1037,7 @@ class VerimlilikAnalizPage(QWidget):
 
         tarih_secim = self.cmb_bara_tarih.currentData()
         hat_secim = self.cmb_bara_hat.currentData()
-        baslangic, bitis = self._get_tarih_aralik(tarih_secim)
+        baslangic, bitis = self._get_tarih_aralik(tarih_secim, self.date_bara_bas, self.date_bara_bit)
 
         # Giriş/çıkış pozisyonları
         if hat_secim == "KTL":
@@ -1178,7 +1242,7 @@ class VerimlilikAnalizPage(QWidget):
             return
 
         tarih_secim = self.cmb_hat_tarih.currentData()
-        baslangic, bitis = self._get_tarih_aralik(tarih_secim)
+        baslangic, bitis = self._get_tarih_aralik(tarih_secim, self.date_hat_bas, self.date_hat_bit)
 
         try:
             cursor = self.plc_conn.cursor()
