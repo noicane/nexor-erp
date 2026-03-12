@@ -374,7 +374,7 @@ PDKS_DEVICE_PORT = 4370
 # RFID KART OKUYUCU AYARLARI
 # =========================
 RFID_LOGIN_ENABLED = True
-RFID_KEYSTROKE_TIMEOUT_MS = 50    # Tuş vuruşları arası max süre (ms) - kart vs insan ayırt eder
+RFID_KEYSTROKE_TIMEOUT_MS = 150   # Tuş vuruşları arası max süre (ms) - kart vs insan ayırt eder
 RFID_MIN_CARD_LENGTH = 4          # Minimum kart ID uzunluğu
 RFID_MAX_CARD_LENGTH = 20         # Maksimum kart ID uzunluğu
 RFID_BUFFER_RESET_MS = 300        # Buffer sıfırlama süresi (ms)

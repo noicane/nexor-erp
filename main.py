@@ -1358,6 +1358,15 @@ def main():
                     main_window_ref.append(window)  # GC engelle
                     window.showMaximized()
 
+                    # Global RFID kart okuyucu servisini başlat
+                    try:
+                        from core.rfid_service import RFIDService
+                        rfid_svc = RFIDService.instance()
+                        rfid_svc.start()
+                        logger.info("Global RFID servisi başlatıldı")
+                    except Exception as rfid_err:
+                        logger.warning("RFID servisi başlatılamadı: %s", rfid_err)
+
                 except Exception as e:
                     logger.critical("Ana pencere oluşturulamadı: %s", e)
                     show_error_dialog("Ana Pencere Hatası", e)

@@ -327,9 +327,13 @@ class KaliteFinalKontrolPage(BasePage):
         self._selected_product = None
         self._ambalaj_full_paths = [None, None, None]
 
-        # RFID kart okuyucu
+        # RFID kart okuyucu (lokal - global servis yoksa fallback)
         self._rfid_reader = RFIDCardReader(self)
         self._rfid_reader.card_detected.connect(self._on_card_detected)
+
+        # Global RFID servisine bağlan (lazy load nedeniyle showEvent'te de denenecek)
+        self._global_rfid_connected = False
+        self._try_connect_global_rfid()
 
         self._setup_ui()
 
@@ -752,14 +756,44 @@ class KaliteFinalKontrolPage(BasePage):
         return card
 
     # =========================================================================
+    # GLOBAL RFID BAĞLANTISI
+    # =========================================================================
+
+    def _try_connect_global_rfid(self):
+        """Global RFID servisine bağlanmaya çalış."""
+        if self._global_rfid_connected:
+            return
+        try:
+            from core.rfid_service import RFIDService
+            svc = RFIDService.instance()
+            svc.card_detected.connect(self._on_card_detected_global)
+            self._global_rfid_connected = True
+            print("[KALITE] Global RFID servisine bağlandı")
+        except Exception as e:
+            print(f"[KALITE] Global RFID bağlantı hatası: {e}")
+
+    def showEvent(self, event):
+        """Sayfa gösterildiğinde global RFID bağlantısını kontrol et."""
+        super().showEvent(event)
+        self._try_connect_global_rfid()
+
+    # =========================================================================
     # EVENT FILTER - RFID / Barkod
     # =========================================================================
 
     def eventFilter(self, watched, event):
-        if event.type() == QEvent.Type.KeyPress:
+        # Global servis aktifse lokal reader'a gerek yok (Enter zaten global tarafından tüketiliyor)
+        if not self._global_rfid_connected and event.type() == QEvent.Type.KeyPress:
             if self._rfid_reader.process_key(event):
                 return True
         return super().eventFilter(watched, event)
+
+    def _on_card_detected_global(self, card_id):
+        """Global RFID servisinden kart algılandığında."""
+        # Sadece bu sayfa görünürse işle
+        if self.isVisible():
+            print(f"[KALITE] Global RFID kart: {card_id}")
+            self._on_card_detected(card_id)
 
     def _on_card_detected(self, card_id):
         """RFID/barkod kart okunduğunda"""
@@ -788,12 +822,12 @@ class KaliteFinalKontrolPage(BasePage):
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Personel bul
+            # Personel bul (sicil_no, kart_no veya kart_id ile)
             cursor.execute("""
                 SELECT id, uuid, ad, soyad, sicil_no, departman_id, kart_no
                 FROM ik.personeller
-                WHERE (sicil_no = ? OR kart_no = ?) AND aktif_mi = 1
-            """, (sicil_or_card, sicil_or_card))
+                WHERE (sicil_no = ? OR kart_no = ? OR kart_id = ?) AND aktif_mi = 1
+            """, (sicil_or_card, sicil_or_card, sicil_or_card))
             personel = cursor.fetchone()
 
             if not personel:

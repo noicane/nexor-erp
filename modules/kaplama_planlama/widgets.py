@@ -726,3 +726,821 @@ class ReceteAdimWidget(QWidget):
     def leaveEvent(self, event):
         self._hover_idx = -1
         self.update()
+
+
+# ══════════════════════════════════════════════════════════════
+#  KAPASİTE GÖRSEL WİDGET - Yatay bar chart ile kapasite analizi
+# ══════════════════════════════════════════════════════════════
+
+_CLR_CINKO = QColor("#F59E0B")
+_CLR_NIKEL = QColor("#3B82F6")
+_CLR_KAP_LINE = QColor("#EF4444")
+_CLR_BOS = QColor("#1E2736")
+_CLR_BG = QColor("#0F1419")
+_CLR_TEXT = QColor("#E8ECF1")
+_CLR_MUTED = QColor("#5C6878")
+_CLR_SUCCESS = QColor("#10B981")
+_CLR_WARN = QColor("#F59E0B")
+_CLR_ERR = QColor("#EF4444")
+
+
+class KapasiteGorselWidget(QWidget):
+    """Ürün bazlı kapasite bar chart - yatay stacked barlar + kapasite çizgisi"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._urunler = []
+        self._paralel_bara = 15
+        self._cevrim_dk = 90
+        self._vardiya_sayisi = 3
+        self.setMinimumHeight(350)
+
+    def set_data(self, urunler: list, paralel_bara: int = 15,
+                 cevrim_dk: int = 90, vardiya_sayisi: int = 3):
+        """
+        urunler: [{adi, tip ('cinko'/'nikel'), ihtiyac, bara_adeti, bara_gerekli}]
+        """
+        self._urunler = urunler
+        self._paralel_bara = paralel_bara
+        self._cevrim_dk = cevrim_dk
+        self._vardiya_sayisi = vardiya_sayisi
+        h = 260 + len(urunler) * 19
+        self.setMinimumHeight(max(350, h))
+        self.update()
+
+    @property
+    def _vardiya_kapasite(self):
+        cevrim_per_v = 480 // max(self._cevrim_dk, 1)
+        return cevrim_per_v * self._paralel_bara
+
+    @property
+    def _gunluk_kapasite(self):
+        return self._vardiya_kapasite * self._vardiya_sayisi
+
+    def paintEvent(self, event: QPaintEvent):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        p.fillRect(0, 0, w, h, _CLR_BG)
+
+        if not self._urunler:
+            p.setPen(_CLR_MUTED)
+            p.setFont(QFont("Segoe UI", 12))
+            p.drawText(QRect(0, 0, w, h), Qt.AlignCenter,
+                       "Ürün verisi yok.\nExcel'den veya ürün listesinden veri yükleyin.")
+            p.end()
+            return
+
+        cinko = [u for u in self._urunler if u.get('tip', '').lower() in ('cinko', 'zn')]
+        nikel = [u for u in self._urunler if u.get('tip', '').lower() in ('nikel', 'zn-ni', 'ni')]
+        cinko_bara = sum(u.get('bara_gerekli', 0) for u in cinko)
+        nikel_bara = sum(u.get('bara_gerekli', 0) for u in nikel)
+        toplam_bara = cinko_bara + nikel_bara
+        kapasite = self._gunluk_kapasite
+        max_val = max(toplam_bara, kapasite) * 1.15
+
+        LM, RM, TM = 140, 30, 70
+        bar_area_w = w - LM - RM
+        scale = bar_area_w / max_val if max_val > 0 else 1
+
+        # ── Başlık ──
+        p.setPen(_CLR_TEXT)
+        p.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        p.drawText(12, 28, "Günlük Kapasite vs İhtiyaç")
+
+        doluluk = (toplam_bara / kapasite * 100) if kapasite > 0 else 0
+        if doluluk <= 70:
+            dc, dt = _CLR_SUCCESS, "YETERLI"
+        elif doluluk <= 95:
+            dc, dt = _CLR_WARN, "SINIRDA"
+        else:
+            dc, dt = _CLR_ERR, "YETERSIZ"
+
+        p.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        p.setPen(dc)
+        fm = QFontMetrics(p.font())
+        p.drawText(w - fm.horizontalAdvance(dt) - 15, 28, dt)
+
+        p.setFont(QFont("Segoe UI", 10))
+        p.setPen(_CLR_MUTED)
+        p.drawText(12, 48,
+                   f"{self._paralel_bara} paralel bara  |  "
+                   f"{self._cevrim_dk}dk çevrim  |  "
+                   f"{self._vardiya_sayisi} vardiya  |  "
+                   f"Kapasite: {kapasite} bara/gün  |  "
+                   f"Doluluk: %{doluluk:.0f}")
+
+        # ── 3 yatay bar: Çinko, Nikel, Toplam ──
+        bar_h = min(40, (h - TM - 120) // 4)
+        bar_gap = 12
+        rows = [
+            ("Çinko", cinko, cinko_bara, _CLR_CINKO),
+            ("Nikel", nikel, nikel_bara, _CLR_NIKEL),
+            ("TOPLAM", self._urunler, toplam_bara, QColor("#8B5CF6")),
+        ]
+
+        for idx, (label, ulist, bara_t, color) in enumerate(rows):
+            y = TM + idx * (bar_h + bar_gap)
+
+            p.setPen(color)
+            p.setFont(QFont("Segoe UI", 11, QFont.Bold))
+            p.drawText(QRect(5, y, LM - 10, bar_h),
+                       Qt.AlignVCenter | Qt.AlignRight, label)
+
+            # Kapasite arka plan
+            kap_w = int(kapasite * scale)
+            p.fillRect(LM, y + 2, kap_w, bar_h - 4, _CLR_BOS)
+
+            # Ürün segmentleri
+            cx = LM
+            for u in sorted(ulist, key=lambda u: u.get('bara_gerekli', 0), reverse=True):
+                sb = u.get('bara_gerekli', 0)
+                if sb <= 0:
+                    continue
+                sw = max(2, int(sb * scale))
+                path = QPainterPath()
+                path.addRoundedRect(QRectF(cx, y + 2, sw, bar_h - 4), 3, 3)
+                p.fillPath(path, color)
+
+                if sw > 40 and idx < 2:
+                    p.setPen(QColor("white"))
+                    p.setFont(QFont("Segoe UI", 8))
+                    p.drawText(QRect(int(cx + 3), y + 2, sw - 6, bar_h - 4),
+                               Qt.AlignVCenter | Qt.AlignLeft,
+                               f"{u.get('adi', '?')[:12]} ({sb})")
+                cx += sw
+
+            p.setPen(_CLR_TEXT)
+            p.setFont(QFont("Segoe UI", 10, QFont.Bold))
+            tx = max(int(cx + 5), LM + int(bara_t * scale) + 5)
+            p.drawText(QRect(tx, y, 120, bar_h),
+                       Qt.AlignVCenter | Qt.AlignLeft, f"{bara_t} bara")
+
+        bar_bottom = TM + 3 * (bar_h + bar_gap)
+
+        # ── Kapasite çizgisi ──
+        kap_x = LM + int(kapasite * scale)
+        p.setPen(QPen(_CLR_KAP_LINE, 2, Qt.DashLine))
+        p.drawLine(kap_x, TM - 5, kap_x, bar_bottom)
+        p.setPen(_CLR_KAP_LINE)
+        p.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        p.drawText(kap_x + 5, TM + 5, f"Kapasite: {kapasite}")
+
+        # ── Vardiya çizgileri ──
+        for v in range(1, self._vardiya_sayisi + 1):
+            vx = LM + int(self._vardiya_kapasite * v * scale)
+            if vx < w - RM:
+                p.setPen(QPen(QColor("#2A3545"), 1, Qt.DotLine))
+                p.drawLine(vx, TM - 3, vx, bar_bottom)
+                p.setPen(_CLR_MUTED)
+                p.setFont(QFont("Segoe UI", 8))
+                p.drawText(vx + 3, bar_bottom + 12, f"V{v}: {self._vardiya_kapasite * v}")
+
+        # ── Alt detay tablosu ──
+        tbl_y = bar_bottom + 25
+        row_h = 19
+        has_aski = any(u.get('bara_aski', 0) > 0 for u in self._urunler)
+        if has_aski:
+            cols_w = [LM - 15, 50, 65, 55, 55, 50]
+            hdrs = ["Ürün", "Tip", "İhtiyaç", "Bara Ad.", "Askı", "Bara"]
+        else:
+            cols_w = [LM - 5, 55, 70, 60, 60]
+            hdrs = ["Ürün", "Tip", "İhtiyaç", "Bara Ad.", "Bara"]
+
+        p.setFont(QFont("Segoe UI", 9, QFont.Bold))
+        cx = 5
+        for hdr, cw in zip(hdrs, cols_w):
+            p.setPen(_CLR_MUTED)
+            p.drawText(QRect(cx, tbl_y, cw, row_h),
+                       Qt.AlignVCenter | Qt.AlignLeft, hdr)
+            cx += cw
+        p.setPen(QPen(QColor("#2A3545"), 1))
+        p.drawLine(5, tbl_y + row_h, cx, tbl_y + row_h)
+
+        p.setFont(QFont("Segoe UI", 9))
+        all_sorted = sorted(self._urunler,
+                            key=lambda u: u.get('bara_gerekli', 0), reverse=True)
+        for ri, u in enumerate(all_sorted):
+            ry = tbl_y + (ri + 1) * row_h + 2
+            if ry + row_h > h:
+                break
+
+            is_cinko = u.get('tip', '').lower() in ('cinko', 'zn')
+            if has_aski:
+                aski = u.get('bara_aski', 0)
+                vals = [
+                    u.get('adi', '?')[:20],
+                    'Çinko' if is_cinko else 'Nikel',
+                    f"{u.get('ihtiyac', 0):,}",
+                    str(u.get('bara_adeti', 0)),
+                    str(aski) if aski > 0 else '-',
+                    str(u.get('bara_gerekli', 0)),
+                ]
+            else:
+                vals = [
+                    u.get('adi', '?')[:22],
+                    'Çinko' if is_cinko else 'Nikel',
+                    f"{u.get('ihtiyac', 0):,}",
+                    str(u.get('bara_adeti', 0)),
+                    str(u.get('bara_gerekli', 0)),
+                ]
+            cx = 5
+            last_col = len(vals) - 1
+            for ci, (v, cw) in enumerate(zip(vals, cols_w)):
+                if ci == 1:
+                    p.setPen(_CLR_CINKO if is_cinko else _CLR_NIKEL)
+                elif ci == last_col:
+                    bg = u.get('bara_gerekli', 0)
+                    p.setPen(_CLR_ERR if bg >= 10 else
+                             (_CLR_WARN if bg >= 5 else _CLR_TEXT))
+                else:
+                    p.setPen(_CLR_TEXT)
+                p.drawText(QRect(cx, ry, cw, row_h),
+                           Qt.AlignVCenter | Qt.AlignLeft, v)
+                cx += cw
+
+        p.end()
+
+    def sizeHint(self):
+        n = len(self._urunler) if self._urunler else 5
+        return QSize(700, 260 + n * 19)
+
+
+# ══════════════════════════════════════════════════════════════
+#  ÇEVRİM PLAN OPTİMİZASYONU & WIDGET
+# ══════════════════════════════════════════════════════════════
+
+def optimize_cevrim_plan(urunler: list, paralel_bara: int = 15,
+                         cevrim_dk: int = 90, vardiya_sayisi: int = 3,
+                         vardiya_baslangic: str = "07:30",
+                         setup_dk: int = 10, ktl_bara_gun: int = 0,
+                         sya_tank: int = 4, yag_alma_dk: int = 15):
+    """
+    Ürünleri çevrim bazlı optimal sıraya dizer.
+    Her çevrimde paralel_bara slotunu mümkün olduğunca doldurur.
+    Baralar arası setup_dk dakika setup süresi ile saatlik plan çıkarır.
+
+    Hat modeli (pipeline):
+      - Baralar ardışık girer, aralarında setup_dk dk boşluk
+      - Her bara cevrim_dk dk sonra çıkar
+      - Bir çevrimde N bara varsa: ilk giriş T, son giriş T+(N-1)*setup
+      - Sonraki çevrim başlangıç: T + N*setup (son giriş + setup)
+
+    ktl_bara_gun: KTL hattından günlük gelen bara (ortak yağ alma kapasitesini düşürür)
+
+    Returns: {
+        'cevrimler': [[(adi, bara_aski, tip, urun_idx), ...], ...],
+        'baralar': [{cevrim, sira, adi, tip, bara_no, giris, cikis, vardiya, ...}],
+        'zaman': [{'ilk_giris', 'son_cikis', 'vardiya', ...}],
+        'vardiyalar': [{no, baslangic, bitis, cevrim_adet, bara_adet}],
+        'aski_analiz': [{...}],
+        'ozet': {...},
+    }
+    """
+    import math
+
+    vardiya_dk = 480
+    cevrim_per_v = vardiya_dk // max(cevrim_dk, 1)
+
+    # Vardiya başlangıç dakikası (gece yarısından itibaren)
+    bh, bm = [int(x) for x in vardiya_baslangic.split(':')]
+    baslangic_dk = bh * 60 + bm  # 07:30 = 450
+
+    # ── Pipeline kapasite: 1 vardiyada kaç bara alınabilir ──
+    bara_per_vardiya = vardiya_dk // max(setup_dk, 1)  # 480/10 = 48
+    bara_per_gun = bara_per_vardiya * vardiya_sayisi     # 48*3 = 144
+
+    # ── Yağ alma (SYA) kapasite hesabı ──
+    # SYA'da sya_tank adet banyo var (K5, K6, K7, K8 = 4 tank)
+    # Her bara yağ almada yag_alma_dk dakika kalır
+    # 4 tank paralel çalışır → her yag_alma_dk dakikada 4 bara işlenebilir
+    # Günlük SYA kapasitesi = tank_sayisi × (günlük_dk / yag_alma_sure)
+    gunluk_dk = vardiya_dk * vardiya_sayisi  # 480 × 3 = 1440 dk
+    yag_alma_kapasite = sya_tank * (gunluk_dk // max(yag_alma_dk, 1))
+    # Örn: 4 tank × (1440/15) = 4 × 96 = 384 bara/gün
+
+    # KTL baraları da SYA'yı kullanıyor → kalan kapasite
+    yag_alma_kalan = yag_alma_kapasite - ktl_bara_gun
+    # Örn: 384 - 130 = 254 bara/gün kalan
+
+    # Askı analizi
+    aski_analiz = []
+    for i, u in enumerate(urunler):
+        ihtiyac = u.get('ihtiyac', 0)
+        bara_adeti = u.get('bara_adeti', 1)
+        bara_aski = u.get('bara_aski', 1)
+        if ihtiyac <= 0:
+            continue
+
+        cevrim_uretim = bara_adeti * bara_aski
+        gerekli_cevrim = math.ceil(ihtiyac / max(cevrim_uretim, 1))
+        toplam_slot = gerekli_cevrim * bara_aski
+
+        verimlilik = bara_aski / max(gerekli_cevrim, 1)
+
+        aski_analiz.append({
+            'idx': i,
+            'adi': u.get('adi', '?'),
+            'tip': u.get('tip', ''),
+            'ihtiyac': ihtiyac,
+            'bara_adeti': bara_adeti,
+            'bara_aski': bara_aski,
+            'cevrim_uretim': cevrim_uretim,
+            'gerekli_cevrim': gerekli_cevrim,
+            'toplam_slot': toplam_slot,
+            'verimlilik': verimlilik,
+            'kalan_cevrim': gerekli_cevrim,
+        })
+
+    # ── Greedy bin-packing ──
+    cevrimler = []
+    for _ in range(500):
+        aktif = [a for a in aski_analiz if a['kalan_cevrim'] > 0]
+        if not aktif:
+            break
+
+        slot = []
+        kalan_bara = paralel_bara
+
+        for a in sorted(aktif,
+                        key=lambda x: (-x['bara_aski'], -x['kalan_cevrim'])):
+            if a['kalan_cevrim'] <= 0:
+                continue
+            if a['bara_aski'] <= kalan_bara:
+                slot.append((a['adi'], a['bara_aski'], a['tip'], a['idx']))
+                kalan_bara -= a['bara_aski']
+                a['kalan_cevrim'] -= 1
+
+        cevrimler.append(slot)
+
+    # ── Zaman hesaplama: setup destekli pipeline model ──
+    def _dk_to_saat(toplam_dk):
+        toplam_dk = int(toplam_dk) % (24 * 60)
+        return f"{toplam_dk // 60:02d}:{toplam_dk % 60:02d}"
+
+    baralar = []       # her fiziksel bara detayı
+    zaman = []         # çevrim bazlı özet zaman
+    vardiyalar = {}
+    cursor_dk = baslangic_dk  # pipeline imleci (dakika cinsinden)
+    toplam_bara = 0
+
+    for ci, slot in enumerate(cevrimler):
+        bara_count = sum(x[1] for x in slot)
+        ilk_giris_dk = cursor_dk
+        son_giris_dk = cursor_dk + (bara_count - 1) * setup_dk
+        son_cikis_dk = son_giris_dk + cevrim_dk
+
+        # Vardiya tespiti (ilk giriş saatine göre)
+        gecen_dk = ilk_giris_dk - baslangic_dk
+        v_no = int(gecen_dk // vardiya_dk) + 1
+        c_no_in_v = int((gecen_dk % vardiya_dk) // max(
+            bara_count * setup_dk + (cevrim_dk - bara_count * setup_dk), cevrim_dk)) + 1
+
+        zaman.append({
+            'ilk_giris': _dk_to_saat(ilk_giris_dk),
+            'son_cikis': _dk_to_saat(son_cikis_dk),
+            'ilk_giris_dk': ilk_giris_dk,
+            'son_cikis_dk': son_cikis_dk,
+            'vardiya': v_no,
+            'bara_adet': bara_count,
+        })
+
+        # Her bara için detay satırı
+        bara_sira = 0
+        for adi, aski, tip, uidx in slot:
+            for b in range(aski):
+                giris_dk = cursor_dk + bara_sira * setup_dk
+                cikis_dk = giris_dk + cevrim_dk
+                toplam_bara += 1
+
+                baralar.append({
+                    'cevrim': ci,
+                    'sira': bara_sira + 1,
+                    'adi': adi,
+                    'tip': tip,
+                    'uidx': uidx,
+                    'bara_no': f"{b+1}/{aski}",
+                    'giris': _dk_to_saat(giris_dk),
+                    'cikis': _dk_to_saat(cikis_dk),
+                    'giris_dk': giris_dk,
+                    'cikis_dk': cikis_dk,
+                    'vardiya': v_no,
+                })
+                bara_sira += 1
+
+        # Sonraki çevrim: son giriş + setup (pipeline devam)
+        cursor_dk = cursor_dk + bara_count * setup_dk
+
+        # Vardiya bilgisi
+        if v_no not in vardiyalar:
+            vardiyalar[v_no] = {
+                'no': v_no,
+                'baslangic': _dk_to_saat(ilk_giris_dk),
+                'baslangic_dk': ilk_giris_dk,
+                'bitis': _dk_to_saat(son_cikis_dk),
+                'bitis_dk': son_cikis_dk,
+                'cevrim_adet': 0,
+                'bara_adet': 0,
+            }
+        vardiyalar[v_no]['bitis'] = _dk_to_saat(son_cikis_dk)
+        vardiyalar[v_no]['bitis_dk'] = son_cikis_dk
+        vardiyalar[v_no]['cevrim_adet'] += 1
+        vardiyalar[v_no]['bara_adet'] += bara_count
+
+    vardiya_list = sorted(vardiyalar.values(), key=lambda x: x['no'])
+
+    # ── Özet hesaplar ──
+    toplam_cevrim = len(cevrimler)
+    vardiya_gerekli = len(vardiyalar)
+    toplam_slot_kullanilan = sum(sum(x[1] for x in c) for c in cevrimler)
+    toplam_slot_mevcut = toplam_cevrim * paralel_bara
+    verimlilik_pct = (toplam_slot_kullanilan / toplam_slot_mevcut * 100
+                      ) if toplam_slot_mevcut > 0 else 0
+
+    # Pipeline süre: ilk giriş → son çıkış (toplam dk)
+    toplam_sure_dk = (cursor_dk - baslangic_dk) + cevrim_dk if cevrimler else 0
+
+    # Boş çevrimler
+    bos_cevrimler = []
+    for ci, slot in enumerate(cevrimler):
+        kullanilan = sum(x[1] for x in slot)
+        bos = paralel_bara - kullanilan
+        if bos > paralel_bara * 0.5:
+            bos_cevrimler.append({
+                'cevrim': ci,
+                'vardiya': zaman[ci]['vardiya'] if ci < len(zaman) else 0,
+                'kullanilan': kullanilan,
+                'bos': bos,
+            })
+
+    # Kalan_cevrim sıfırla
+    for a in aski_analiz:
+        a['kalan_cevrim'] = a['gerekli_cevrim']
+
+    return {
+        'cevrimler': cevrimler,
+        'baralar': baralar,
+        'zaman': zaman,
+        'vardiyalar': vardiya_list,
+        'aski_analiz': sorted(aski_analiz,
+                              key=lambda x: x['verimlilik']),
+        'bos_cevrimler': bos_cevrimler,
+        'ozet': {
+            'toplam_cevrim': toplam_cevrim,
+            'toplam_bara': toplam_bara,
+            'vardiya_gerekli': vardiya_gerekli,
+            'gun_gerekli': round(vardiya_gerekli / max(vardiya_sayisi, 1), 1),
+            'verimlilik_pct': verimlilik_pct,
+            'toplam_slot': toplam_slot_mevcut,
+            'kullanilan_slot': toplam_slot_kullanilan,
+            'bos_slot': toplam_slot_mevcut - toplam_slot_kullanilan,
+            'cevrim_per_v': cevrim_per_v,
+            'baslangic': vardiya_baslangic,
+            'setup_dk': setup_dk,
+            'toplam_sure_dk': toplam_sure_dk,
+            # Pipeline kapasite bilgisi
+            'bara_per_vardiya': bara_per_vardiya,
+            'bara_per_gun': bara_per_gun,
+            'ktl_bara_gun': ktl_bara_gun,
+            'yag_alma_kapasite': yag_alma_kapasite,
+            'yag_alma_kalan': yag_alma_kalan,
+            'sya_tank': sya_tank,
+            'yag_alma_dk': yag_alma_dk,
+        },
+    }
+
+
+# Ürün renkleri - tekrar eden ürünlere tutarlı renk atamak için
+_URUN_RENK_PALETI = [
+    QColor("#F59E0B"), QColor("#3B82F6"), QColor("#10B981"), QColor("#EF4444"),
+    QColor("#8B5CF6"), QColor("#EC4899"), QColor("#06B6D4"), QColor("#F97316"),
+    QColor("#84CC16"), QColor("#E879F9"), QColor("#14B8A6"), QColor("#FB923C"),
+    QColor("#A78BFA"), QColor("#F472B6"), QColor("#22D3EE"), QColor("#FACC15"),
+    QColor("#34D399"), QColor("#FB7185"), QColor("#818CF8"), QColor("#2DD4BF"),
+]
+
+
+class CevrimPlanWidget(QWidget):
+    """Çevrim bazlı hat doluluk planı - QPainter ile grid görünüm"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._plan = None   # optimize_cevrim_plan() sonucu
+        self._paralel_bara = 15
+        self._cevrim_dk = 90
+        self._hover_cell = (-1, -1)
+        self.setMouseTracking(True)
+        self.setMinimumHeight(400)
+
+    def set_plan(self, plan: dict, paralel_bara: int = 15, cevrim_dk: int = 90):
+        self._plan = plan
+        self._paralel_bara = paralel_bara
+        self._cevrim_dk = cevrim_dk
+        cevrim_count = plan['ozet']['toplam_cevrim'] if plan else 0
+        h = 220 + max(cevrim_count, 5) * 26
+        self.setMinimumHeight(h)
+        self.update()
+
+    def paintEvent(self, event: QPaintEvent):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        p.fillRect(0, 0, w, h, _CLR_BG)
+
+        if not self._plan:
+            p.setPen(_CLR_MUTED)
+            p.setFont(QFont("Segoe UI", 12))
+            p.drawText(QRect(0, 0, w, h), Qt.AlignCenter,
+                       "Hesapla butonuna basarak çevrim planını oluşturun.")
+            p.end()
+            return
+
+        ozet = self._plan['ozet']
+        cevrimler = self._plan['cevrimler']
+        aski_analiz = self._plan['aski_analiz']
+        cevrim_per_v = ozet['cevrim_per_v']
+
+        # Ürün -> renk haritası
+        urun_renkler = {}
+        ri = 0
+        for a in aski_analiz:
+            if a['adi'] not in urun_renkler:
+                urun_renkler[a['adi']] = _URUN_RENK_PALETI[ri % len(_URUN_RENK_PALETI)]
+                ri += 1
+
+        # ── Başlık ──
+        p.setPen(_CLR_TEXT)
+        p.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        p.drawText(12, 28, "Çevrim Bazlı Hat Doluluk Planı")
+
+        ver = ozet['verimlilik_pct']
+        if ver >= 70:
+            vc, vt = _CLR_SUCCESS, f"Verimlilik: %{ver:.0f}"
+        elif ver >= 40:
+            vc, vt = _CLR_WARN, f"Verimlilik: %{ver:.0f}"
+        else:
+            vc, vt = _CLR_ERR, f"Verimlilik: %{ver:.0f}"
+        p.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        p.setPen(vc)
+        fm = QFontMetrics(p.font())
+        p.drawText(w - fm.horizontalAdvance(vt) - 15, 28, vt)
+
+        zaman = self._plan.get('zaman', [])
+        vardiyalar = self._plan.get('vardiyalar', [])
+
+        p.setFont(QFont("Segoe UI", 10))
+        p.setPen(_CLR_MUTED)
+        baslangic_str = ozet.get('baslangic', '07:30')
+        bitis_str = zaman[-1]['son_cikis'] if zaman else '?'
+        setup_dk = ozet.get('setup_dk', 10)
+        toplam_bara = ozet.get('toplam_bara', 0)
+        p.drawText(12, 48,
+                   f"{ozet['toplam_cevrim']} çevrim  |  "
+                   f"{toplam_bara} bara  |  "
+                   f"Setup: {setup_dk}dk  |  "
+                   f"{baslangic_str} → {bitis_str}  |  "
+                   f"{ozet['vardiya_gerekli']} vardiya  |  "
+                   f"{ozet['gun_gerekli']} gün")
+
+        # KTL / Yağ alma satırı (varsa)
+        ktl = ozet.get('ktl_bara_gun', 0)
+        if ktl > 0:
+            p.setFont(QFont("Segoe UI", 9))
+            sya_tank = ozet.get('sya_tank', 4)
+            yag_dk = ozet.get('yag_alma_dk', 15)
+            yag_kapasite = ozet.get('yag_alma_kapasite', 0)
+            yag_kalan = ozet.get('yag_alma_kalan', 0)
+            if yag_kalan < toplam_bara:
+                p.setPen(_CLR_ERR)
+                durum = "KAPASITE YETERSIZ"
+            elif yag_kalan < toplam_bara * 1.2:
+                p.setPen(_CLR_WARN)
+                durum = "SINIRDA"
+            else:
+                p.setPen(_CLR_SUCCESS)
+                durum = "YETERLI"
+            p.drawText(12, 62,
+                       f"SYA: {sya_tank} tank × {yag_dk}dk = {yag_kapasite} bara/gün  |  "
+                       f"KTL: -{ktl}  |  "
+                       f"Kalan: {yag_kalan}  |  "
+                       f"İhtiyaç: {toplam_bara}  →  {durum}")
+
+        # ── Askı Analizi (sol üst) ──
+        ax_y = 65
+        ktl_shown = ozet.get('ktl_bara_gun', 0) > 0
+        if ktl_shown:
+            ax_y += 18  # KTL satırı için ek boşluk
+        p.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        p.setPen(_CLR_TEXT)
+        p.drawText(12, ax_y, "Askı Analizi (darboğaz sırası):")
+
+        ax_y += 5
+        p.setFont(QFont("Segoe UI", 9))
+        col_w = [130, 40, 50, 50, 55]
+        hdrs = ["Ürün", "Askı", "Çevrim", "Slot", "Verim"]
+        cx = 12
+        for hdr, cw in zip(hdrs, col_w):
+            p.setPen(_CLR_MUTED)
+            p.drawText(QRect(cx, ax_y, cw, 16), Qt.AlignVCenter | Qt.AlignLeft, hdr)
+            cx += cw
+
+        ax_y += 17
+        for ai, a in enumerate(aski_analiz[:8]):
+            color = urun_renkler.get(a['adi'], _CLR_TEXT)
+            vals = [
+                a['adi'][:18],
+                str(a['bara_aski']),
+                str(a['gerekli_cevrim']),
+                str(a['toplam_slot']),
+                f"{a['verimlilik']:.2f}",
+            ]
+            cx = 12
+            for ci, (v, cw) in enumerate(zip(vals, col_w)):
+                if ci == 0:
+                    p.setPen(color)
+                elif ci == 4:
+                    if a['verimlilik'] < 0.1:
+                        p.setPen(_CLR_ERR)
+                    elif a['verimlilik'] < 0.5:
+                        p.setPen(_CLR_WARN)
+                    else:
+                        p.setPen(_CLR_SUCCESS)
+                else:
+                    p.setPen(_CLR_TEXT)
+                p.drawText(QRect(cx, ax_y, cw, 16),
+                           Qt.AlignVCenter | Qt.AlignLeft, v)
+                cx += cw
+            ax_y += 16
+
+        # ── Çevrim Grid ──
+        grid_top = max(ax_y + 15, 220)
+        grid_left = 130  # daha geniş: saat + V-C label sığması için
+        cell_h = 22
+        bara_w = max(20, min(40, (w - grid_left - 20) // self._paralel_bara))
+        grid_w = bara_w * self._paralel_bara
+
+        # Vardiya 1 başlık
+        if vardiyalar:
+            vd = vardiyalar[0]
+            p.setPen(QColor("#F59E0B"))
+            p.setFont(QFont("Segoe UI", 8, QFont.Bold))
+            v1_txt = f"Vardiya {vd['no']}: {vd['baslangic']} - {vd['bitis']}"
+            p.drawText(QRect(grid_left, grid_top - 30, grid_w, 14),
+                       Qt.AlignCenter, v1_txt)
+
+        # Header: bara numaraları
+        p.setFont(QFont("Segoe UI", 8))
+        for bi in range(self._paralel_bara):
+            bx = grid_left + bi * bara_w
+            p.setPen(_CLR_MUTED)
+            p.drawText(QRect(bx, grid_top - 15, bara_w, 14),
+                       Qt.AlignCenter, f"B{bi+1}")
+
+        # Çevrim satırları
+        for ci, slot in enumerate(cevrimler):
+            y = grid_top + ci * cell_h
+            if y + cell_h > h:
+                break
+
+            v_no = ci // cevrim_per_v + 1
+            c_no = ci % cevrim_per_v + 1
+
+            # Zaman bilgisi (pipeline: ilk giriş → son çıkış)
+            giris_str = zaman[ci]['ilk_giris'] if ci < len(zaman) else ''
+            cikis_str = zaman[ci]['son_cikis'] if ci < len(zaman) else ''
+            bara_cnt = zaman[ci]['bara_adet'] if ci < len(zaman) else 0
+
+            # Sol label: saat aralığı + çevrim no
+            p.setPen(_CLR_MUTED)
+            p.setFont(QFont("Segoe UI", 8))
+            p.drawText(QRect(2, y, grid_left - 5, cell_h),
+                       Qt.AlignVCenter | Qt.AlignRight,
+                       f"{giris_str}-{cikis_str}  V{v_no}-Ç{c_no}")
+
+            # Vardiya ayırıcı çizgi + vardiya bilgisi
+            if c_no == 1 and ci > 0:
+                p.setPen(QPen(_CLR_KAP_LINE, 2))
+                p.drawLine(grid_left, y - 1, grid_left + grid_w, y - 1)
+                # Vardiya başlık
+                vi = v_no - 1
+                if vi < len(vardiyalar):
+                    vd = vardiyalar[vi]
+                    p.setPen(QColor("#F59E0B"))
+                    p.setFont(QFont("Segoe UI", 7, QFont.Bold))
+                    vd_txt = f"── Vardiya {vd['no']}: {vd['baslangic']} - {vd['bitis']} ──"
+                    p.drawText(QRect(grid_left, y - 14, grid_w, 13),
+                               Qt.AlignCenter, vd_txt)
+
+            # Hücreleri çiz
+            bx = grid_left
+            for adi, aski, tip, uidx in slot:
+                color = urun_renkler.get(adi, _CLR_MUTED)
+                seg_w = aski * bara_w
+
+                # Hücre arka planı
+                path = QPainterPath()
+                path.addRoundedRect(QRectF(bx + 1, y + 1, seg_w - 2, cell_h - 2), 3, 3)
+                p.fillPath(path, color)
+
+                # Ürün adı (yeterli genişlikte ise)
+                if seg_w > 30:
+                    p.setPen(QColor("white"))
+                    p.setFont(QFont("Segoe UI", 7))
+                    p.drawText(QRect(int(bx + 3), y + 1, seg_w - 6, cell_h - 2),
+                               Qt.AlignVCenter | Qt.AlignLeft,
+                               f"{adi[:seg_w // 7]}")
+
+                bx += seg_w
+
+            # Boş slotlar
+            kullanilan = sum(x[1] for x in slot)
+            bos = self._paralel_bara - kullanilan
+            if bos > 0:
+                p.fillRect(int(bx), y + 1,
+                           bos * bara_w, cell_h - 2, QColor("#0D1117"))
+                # Boş göstergesi
+                if bos > 2:
+                    p.setPen(QColor("#2A3545"))
+                    p.setFont(QFont("Segoe UI", 7))
+                    p.drawText(QRect(int(bx), y + 1, bos * bara_w, cell_h - 2),
+                               Qt.AlignCenter, f"{bos} boş")
+
+            # Sağda yüzde
+            pct = kullanilan / self._paralel_bara * 100
+            p.setFont(QFont("Segoe UI", 8, QFont.Bold))
+            if pct >= 80:
+                p.setPen(_CLR_SUCCESS)
+            elif pct >= 40:
+                p.setPen(_CLR_WARN)
+            else:
+                p.setPen(_CLR_ERR)
+            p.drawText(QRect(grid_left + grid_w + 5, y, 50, cell_h),
+                       Qt.AlignVCenter | Qt.AlignLeft, f"%{pct:.0f}")
+
+        # ── Lejant ──
+        lej_x = grid_left + grid_w + 60
+        lej_y = grid_top
+        if lej_x + 150 < w:
+            p.setFont(QFont("Segoe UI", 9, QFont.Bold))
+            p.setPen(_CLR_TEXT)
+            p.drawText(lej_x, lej_y, "Ürünler:")
+            lej_y += 18
+
+            p.setFont(QFont("Segoe UI", 8))
+            for adi, color in urun_renkler.items():
+                if lej_y + 14 > h:
+                    break
+                p.fillRect(lej_x, lej_y + 2, 10, 10, color)
+                p.setPen(_CLR_TEXT)
+                p.drawText(lej_x + 14, lej_y + 11, adi[:15])
+                lej_y += 15
+
+        p.end()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if not self._plan:
+            return
+        cevrimler = self._plan['cevrimler']
+        zaman = self._plan.get('zaman', [])
+        baralar = self._plan.get('baralar', [])
+        grid_top = max(220, 65 + 5 + 17 + min(len(self._plan['aski_analiz']), 8) * 16 + 15)
+        ktl = self._plan['ozet'].get('ktl_bara_gun', 0)
+        if ktl > 0:
+            grid_top += 18
+        grid_left = 130
+        cell_h = 22
+        bara_w = max(20, min(40, (self.width() - grid_left - 20) // self._paralel_bara))
+
+        mx, my = event.pos().x(), event.pos().y()
+        ci = int((my - grid_top) / cell_h)
+        if 0 <= ci < len(cevrimler):
+            slot = cevrimler[ci]
+            bx = grid_left
+            for adi, aski, tip, uidx in slot:
+                seg_w = aski * bara_w
+                if bx <= mx <= bx + seg_w:
+                    a = next((x for x in self._plan['aski_analiz'] if x['idx'] == uidx), None)
+                    if a:
+                        # Bu ürünün bu çevrimdeki bara detayları
+                        cev_baralar = [b for b in baralar
+                                       if b['cevrim'] == ci and b['adi'] == adi]
+                        tip_str = f"Ürün: {a['adi']}\n"
+                        tip_str += f"Tip: {a['tip']}\n"
+                        tip_str += f"Askı: {a['bara_aski']} bara\n"
+                        if cev_baralar:
+                            tip_str += f"İlk giriş: {cev_baralar[0]['giris']}\n"
+                            tip_str += f"Son çıkış: {cev_baralar[-1]['cikis']}\n"
+                            for b in cev_baralar:
+                                tip_str += f"  Bara {b['bara_no']}: {b['giris']}→{b['cikis']}\n"
+                        tip_str += f"İhtiyaç: {a['ihtiyac']:,} adet\n"
+                        tip_str += f"Çevrim üretim: {a['cevrim_uretim']:,} adet\n"
+                        tip_str += f"Gerekli çevrim: {a['gerekli_cevrim']}"
+                        QToolTip.showText(event.globalPosition().toPoint(), tip_str, self)
+                    return
+                bx += seg_w
+
+    def sizeHint(self):
+        if self._plan:
+            n = self._plan['ozet']['toplam_cevrim']
+            return QSize(800, 220 + n * 22)
+        return QSize(800, 400)

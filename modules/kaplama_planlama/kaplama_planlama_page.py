@@ -13,9 +13,9 @@ from PySide6.QtWidgets import (
     QPushButton, QScrollArea, QTableWidget, QTableWidgetItem,
     QHeaderView, QDateEdit, QDialog, QFormLayout, QLineEdit,
     QComboBox, QSpinBox, QMessageBox, QAbstractItemView, QGridLayout,
-    QTabWidget, QSizePolicy
+    QTabWidget, QSizePolicy, QFileDialog, QTimeEdit
 )
-from PySide6.QtCore import Qt, QTimer, QDate
+from PySide6.QtCore import Qt, QTimer, QDate, QTime
 from PySide6.QtGui import QFont, QColor
 
 from components.base_page import BasePage
@@ -27,7 +27,8 @@ from .gantt_widget import GanttWidget
 from .planlama_motoru import otomatik_planla
 from .widgets import (
     BanyoCard, HatCanliWidget, BaraDurumStrip,
-    HatIstatistikCard, ReceteAdimWidget
+    HatIstatistikCard, ReceteAdimWidget, KapasiteGorselWidget,
+    CevrimPlanWidget, optimize_cevrim_plan
 )
 from . import db_operations as db
 
@@ -538,13 +539,151 @@ class KaplamaPlanlamaPage(BasePage):
         self.lbl_kap_toplam.setStyleSheet(f"color: {s['text_secondary']}; font-size: {SMALL_SIZE}px; margin-left: 12px;")
         kap_param.addWidget(self.lbl_kap_toplam)
 
+        lbl_pb = QLabel("Paralel Bara:")
+        lbl_pb.setStyleSheet(f"color: {s['text']}; font-size: {BODY_SIZE}px; margin-left: 8px;")
+        kap_param.addWidget(lbl_pb)
+
+        self.spn_kap_paralel = QSpinBox()
+        self.spn_kap_paralel.setRange(1, 30)
+        self.spn_kap_paralel.setValue(15)
+        self.spn_kap_paralel.setStyleSheet(_input_style(s))
+        self.spn_kap_paralel.setFixedWidth(70)
+        kap_param.addWidget(self.spn_kap_paralel)
+
+        lbl_cv = QLabel("Çevrim (dk):")
+        lbl_cv.setStyleSheet(f"color: {s['text']}; font-size: {BODY_SIZE}px; margin-left: 8px;")
+        kap_param.addWidget(lbl_cv)
+
+        self.spn_kap_cevrim = QSpinBox()
+        self.spn_kap_cevrim.setRange(10, 300)
+        self.spn_kap_cevrim.setValue(90)
+        self.spn_kap_cevrim.setStyleSheet(_input_style(s))
+        self.spn_kap_cevrim.setFixedWidth(70)
+        kap_param.addWidget(self.spn_kap_cevrim)
+
+        lbl_vb = QLabel("Vardiya Başlangıç:")
+        lbl_vb.setStyleSheet(f"color: {s['text']}; font-size: {BODY_SIZE}px; margin-left: 8px;")
+        kap_param.addWidget(lbl_vb)
+
+        self.time_vardiya_bas = QTimeEdit()
+        self.time_vardiya_bas.setTime(QTime(7, 30))
+        self.time_vardiya_bas.setDisplayFormat("HH:mm")
+        self.time_vardiya_bas.setStyleSheet(_input_style(s))
+        self.time_vardiya_bas.setFixedWidth(80)
+        kap_param.addWidget(self.time_vardiya_bas)
+
+        lbl_st = QLabel("Setup (dk):")
+        lbl_st.setStyleSheet(f"color: {s['text']}; font-size: {BODY_SIZE}px; margin-left: 8px;")
+        kap_param.addWidget(lbl_st)
+
+        self.spn_kap_setup = QSpinBox()
+        self.spn_kap_setup.setRange(1, 60)
+        self.spn_kap_setup.setValue(10)
+        self.spn_kap_setup.setStyleSheet(_input_style(s))
+        self.spn_kap_setup.setFixedWidth(60)
+        kap_param.addWidget(self.spn_kap_setup)
+
+        lbl_ktl = QLabel("KTL Bara/Gün:")
+        lbl_ktl.setStyleSheet(f"color: {s['text']}; font-size: {BODY_SIZE}px; margin-left: 8px;")
+        kap_param.addWidget(lbl_ktl)
+
+        self.spn_ktl_bara = QSpinBox()
+        self.spn_ktl_bara.setRange(0, 500)
+        self.spn_ktl_bara.setValue(130)
+        self.spn_ktl_bara.setStyleSheet(_input_style(s))
+        self.spn_ktl_bara.setFixedWidth(70)
+        self.spn_ktl_bara.setToolTip("KTL hattından günlük gelen bara sayısı\n(ortak yağ alma kapasitesini düşürür)")
+        kap_param.addWidget(self.spn_ktl_bara)
+
+        lbl_sya = QLabel("SYA Tank:")
+        lbl_sya.setStyleSheet(f"color: {s['text']}; font-size: {BODY_SIZE}px; margin-left: 8px;")
+        kap_param.addWidget(lbl_sya)
+
+        self.spn_sya_tank = QSpinBox()
+        self.spn_sya_tank.setRange(1, 20)
+        self.spn_sya_tank.setValue(4)
+        self.spn_sya_tank.setStyleSheet(_input_style(s))
+        self.spn_sya_tank.setFixedWidth(50)
+        self.spn_sya_tank.setToolTip("SYA (Sıcak Yağ Alma) tank sayısı\nK5, K6, K7, K8 = 4 tank")
+        kap_param.addWidget(self.spn_sya_tank)
+
+        lbl_yag = QLabel("Yağ Alma (dk):")
+        lbl_yag.setStyleSheet(f"color: {s['text']}; font-size: {BODY_SIZE}px; margin-left: 8px;")
+        kap_param.addWidget(lbl_yag)
+
+        self.spn_yag_alma = QSpinBox()
+        self.spn_yag_alma.setRange(1, 120)
+        self.spn_yag_alma.setValue(15)
+        self.spn_yag_alma.setStyleSheet(_input_style(s))
+        self.spn_yag_alma.setFixedWidth(60)
+        self.spn_yag_alma.setToolTip("Her baranın yağ almada kalma süresi (dk)")
+        kap_param.addWidget(self.spn_yag_alma)
+
         btn_kap_hesapla = QPushButton("Hesapla")
         btn_kap_hesapla.setCursor(Qt.PointingHandCursor)
         btn_kap_hesapla.setStyleSheet(_primary_btn_style(s))
         btn_kap_hesapla.clicked.connect(self._hesapla_kapasite)
         kap_param.addWidget(btn_kap_hesapla)
+
+        btn_excel = QPushButton("Excel Yükle")
+        btn_excel.setCursor(Qt.PointingHandCursor)
+        btn_excel.setStyleSheet(_success_btn_style(s))
+        btn_excel.clicked.connect(self._on_excel_yukle)
+        kap_param.addWidget(btn_excel)
+
+        btn_excel_aktar = QPushButton("Excel Aktar")
+        btn_excel_aktar.setCursor(Qt.PointingHandCursor)
+        btn_excel_aktar.setStyleSheet(_secondary_btn_style(s))
+        btn_excel_aktar.clicked.connect(self._on_plan_excel_aktar)
+        kap_param.addWidget(btn_excel_aktar)
+
+        btn_is_emri = QPushButton("İş Emri Oluştur")
+        btn_is_emri.setCursor(Qt.PointingHandCursor)
+        btn_is_emri.setStyleSheet(_primary_btn_style(s))
+        btn_is_emri.clicked.connect(self._on_is_emri_olustur)
+        kap_param.addWidget(btn_is_emri)
+
         kap_param.addStretch()
         kap_layout.addLayout(kap_param)
+
+        # ── Alt tab: Kapasite Görsel + Çevrim Plan ──
+        _scroll_style = f"""
+            QScrollArea {{ border: none; background: transparent; }}
+            QScrollBar:vertical {{ background: transparent; width: 8px; }}
+            QScrollBar::handle:vertical {{ background: {s['border']}; border-radius: 4px; min-height: 30px; }}
+        """
+
+        self.kap_alt_tabs = QTabWidget()
+        self.kap_alt_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{ border: none; background: {s['card_bg']}; }}
+            QTabBar::tab {{
+                background: {s['input_bg']}; color: {s['text_secondary']};
+                padding: 8px 18px; border: none; border-bottom: 2px solid transparent;
+                font-size: {SMALL_SIZE}px;
+            }}
+            QTabBar::tab:selected {{
+                color: {s['text']}; border-bottom: 2px solid {s['success']};
+                background: {s['card_bg']};
+            }}
+        """)
+
+        # Alt Tab 1: Kapasite bar chart
+        scroll_gorsel = QScrollArea()
+        scroll_gorsel.setWidgetResizable(True)
+        scroll_gorsel.setStyleSheet(_scroll_style)
+        self.kapasite_gorsel = KapasiteGorselWidget()
+        scroll_gorsel.setWidget(self.kapasite_gorsel)
+        self.kap_alt_tabs.addTab(scroll_gorsel, "Kapasite Özet")
+
+        # Alt Tab 2: Çevrim planı
+        scroll_cevrim = QScrollArea()
+        scroll_cevrim.setWidgetResizable(True)
+        scroll_cevrim.setStyleSheet(_scroll_style)
+        self.cevrim_plan_widget = CevrimPlanWidget()
+        scroll_cevrim.setWidget(self.cevrim_plan_widget)
+        self.kap_alt_tabs.addTab(scroll_cevrim, "Çevrim Planı")
+
+        kap_layout.addWidget(self.kap_alt_tabs, 2)
 
         # Kapasite ozet kartlari
         self.kap_cards_layout = QHBoxLayout()
@@ -1100,6 +1239,477 @@ class KaplamaPlanlamaPage(BasePage):
             self.lbl_darbogaz.setText("\n".join(lines))
         else:
             self.lbl_darbogaz.setText("Son 7 gunde darbogaz verisi bulunamadi.")
+
+        # Görsel widget'ı ürün listesinden besle
+        self._update_kapasite_gorsel()
+
+    def _update_kapasite_gorsel(self, gorsel_data=None):
+        """Kapasite görsel widget'ını güncelle"""
+        import math
+
+        if gorsel_data is None:
+            gorsel_data = []
+            for u in self.urunler:
+                if u.haftalik_ihtiyac <= 0:
+                    continue
+                bara_adeti = u.kapasite * u.stok_aski if u.kapasite > 0 and u.stok_aski > 0 else 1
+                bara_aski = u.bara_aski if u.bara_aski > 0 else 1
+                cevrim_uretim = bara_adeti * bara_aski
+                gerekli_cevrim = math.ceil(u.haftalik_ihtiyac / max(cevrim_uretim, 1))
+                bara_gerekli = gerekli_cevrim * bara_aski
+                gorsel_data.append({
+                    'adi': u.ref[:20],
+                    'tip': 'cinko' if u.tip == 'zn' else 'nikel',
+                    'ihtiyac': u.haftalik_ihtiyac,
+                    'bara_adeti': bara_adeti,
+                    'bara_aski': bara_aski,
+                    'bara_gerekli': bara_gerekli,
+                })
+
+        paralel = self.spn_kap_paralel.value()
+        cevrim = self.spn_kap_cevrim.value()
+        vardiya = self.spn_kap_vardiya.value()
+        vardiya_bas = self.time_vardiya_bas.time().toString("HH:mm")
+        setup = self.spn_kap_setup.value()
+        ktl_bara = self.spn_ktl_bara.value()
+
+        if hasattr(self, 'kapasite_gorsel'):
+            self.kapasite_gorsel.set_data(gorsel_data, paralel, cevrim, vardiya)
+
+        # Çevrim planını da güncelle
+        if hasattr(self, 'cevrim_plan_widget') and gorsel_data:
+            sya_tank = self.spn_sya_tank.value()
+            yag_alma = self.spn_yag_alma.value()
+            plan = optimize_cevrim_plan(gorsel_data, paralel, cevrim, vardiya,
+                                        vardiya_baslangic=vardiya_bas,
+                                        setup_dk=setup,
+                                        ktl_bara_gun=ktl_bara,
+                                        sya_tank=sya_tank,
+                                        yag_alma_dk=yag_alma)
+            self.cevrim_plan_widget.set_plan(plan, paralel, cevrim)
+
+    def _on_excel_yukle(self):
+        """Excel dosyasından ürün/ihtiyaç verisi yükle ve görsele aktar"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Excel Dosyası Seç", "",
+            "Excel Dosyaları (*.xlsx *.xls);;Tüm Dosyalar (*)"
+        )
+        if not file_path:
+            return
+
+        try:
+            import openpyxl
+            import math
+
+            wb = openpyxl.load_workbook(file_path, data_only=True)
+            ws = wb[wb.sheetnames[0]]
+
+            gorsel_data = []
+            # Excel format: Firma | Stok Kodu | Stok Adı | Proses | Günlük İhtiyaç | Bara Adeti | Askı Sayısı
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, values_only=True):
+                if not row or len(row) < 6:
+                    continue
+                stok_adi = row[2]
+                proses = str(row[3] or '').strip().lower()
+                ihtiyac = row[4]
+                bara_adeti = row[5]
+                aski_sayisi = row[6] if len(row) > 6 else None
+
+                if not stok_adi or not ihtiyac:
+                    continue
+
+                try:
+                    ihtiyac = int(ihtiyac)
+                    bara_adeti = int(bara_adeti) if bara_adeti else 1
+                    aski_sayisi = int(aski_sayisi) if aski_sayisi else 0
+                except (ValueError, TypeError):
+                    continue
+
+                if ihtiyac <= 0:
+                    continue
+
+                # Tip belirleme
+                if 'inko' in proses or 'zn' in proses:
+                    tip = 'cinko'
+                else:
+                    tip = 'nikel'
+
+                bara_aski = aski_sayisi if aski_sayisi > 0 else 1
+                cevrim_uretim = bara_adeti * bara_aski
+                gerekli_cevrim = math.ceil(ihtiyac / max(cevrim_uretim, 1))
+                bara_gerekli = gerekli_cevrim * bara_aski
+
+                gorsel_data.append({
+                    'adi': str(stok_adi)[:20],
+                    'tip': tip,
+                    'ihtiyac': ihtiyac,
+                    'bara_adeti': bara_adeti,
+                    'bara_aski': bara_aski,
+                    'bara_gerekli': bara_gerekli,
+                })
+
+            if not gorsel_data:
+                QMessageBox.warning(self, "Uyarı", "Excel'de geçerli ürün verisi bulunamadı.")
+                return
+
+            self._update_kapasite_gorsel(gorsel_data)
+
+            toplam_cevrim = sum(
+                math.ceil(u['ihtiyac'] / max(u['bara_adeti'] * u['bara_aski'], 1))
+                for u in gorsel_data
+            )
+            QMessageBox.information(
+                self, "Başarılı",
+                f"{len(gorsel_data)} ürün yüklendi.\n"
+                f"Toplam: {toplam_cevrim} çevrim ihtiyaç"
+            )
+
+        except ImportError:
+            QMessageBox.warning(self, "Hata", "openpyxl kütüphanesi bulunamadı.\npip install openpyxl")
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"Excel okuma hatası:\n{e}")
+
+    # ──────────────────────────────────────────────────────────
+    #  EXCEL AKTAR - Saatlik çevrim planını Excel'e yaz
+    # ──────────────────────────────────────────────────────────
+    def _on_plan_excel_aktar(self):
+        """Çevrim planını saatlik detaylı Excel'e aktarır"""
+        if not hasattr(self, 'cevrim_plan_widget') or not self.cevrim_plan_widget._plan:
+            QMessageBox.warning(self, "Uyarı", "Önce Hesapla ile çevrim planı oluşturun.")
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Excel Kaydet", f"cevrim_plani_{QDate.currentDate().toString('yyyyMMdd')}.xlsx",
+            "Excel Dosyaları (*.xlsx)"
+        )
+        if not file_path:
+            return
+
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+            plan = self.cevrim_plan_widget._plan
+            cevrimler = plan['cevrimler']
+            baralar = plan.get('baralar', [])
+            zaman = plan.get('zaman', [])
+            vardiyalar = plan.get('vardiyalar', [])
+            aski_analiz = plan['aski_analiz']
+            ozet = plan['ozet']
+            paralel = self.spn_kap_paralel.value()
+
+            wb = openpyxl.Workbook()
+
+            # Stiller
+            baslik_font = Font(bold=True, size=12, color="FFFFFF")
+            baslik_fill = PatternFill(start_color="DC2626", end_color="DC2626", fill_type="solid")
+            header_font = Font(bold=True, size=10, color="FFFFFF")
+            header_fill = PatternFill(start_color="1E3A5F", end_color="1E3A5F", fill_type="solid")
+            vardiya_font = Font(bold=True, size=10, color="F59E0B")
+            vardiya_fill = PatternFill(start_color="1A1A2E", end_color="1A1A2E", fill_type="solid")
+            ref_font = Font(bold=True, size=10, color="3B82F6")
+            ref_fill = PatternFill(start_color="0D1B2A", end_color="0D1B2A", fill_type="solid")
+            thin_border = Border(
+                left=Side(style='thin'), right=Side(style='thin'),
+                top=Side(style='thin'), bottom=Side(style='thin')
+            )
+            center = Alignment(horizontal='center', vertical='center')
+
+            # ══════════════════════════════════════════════════
+            # Sayfa 1: Bara Detay (referans referans, her bara ayrı satır)
+            # ══════════════════════════════════════════════════
+            ws1 = wb.active
+            ws1.title = "Bara Detay"
+
+            # Başlık
+            ws1.merge_cells(start_row=1, start_column=1, end_row=1, end_column=10)
+            c = ws1.cell(row=1, column=1, value="KAPLAMA HATTI - BARA BAZLI PLAN")
+            c.font = baslik_font
+            c.fill = baslik_fill
+            c.alignment = center
+
+            setup_dk = ozet.get('setup_dk', 10)
+            ktl_bara = ozet.get('ktl_bara_gun', 0)
+            ws1.cell(row=2, column=1, value=f"Başlangıç: {ozet.get('baslangic', '07:30')}")
+            ws1.cell(row=2, column=3, value=f"Setup: {setup_dk} dk")
+            ws1.cell(row=2, column=5, value=f"Toplam: {ozet.get('toplam_bara', 0)} bara")
+            ws1.cell(row=2, column=7, value=f"Süre: {ozet.get('toplam_sure_dk', 0)} dk")
+            if ktl_bara > 0:
+                ws1.cell(row=3, column=1,
+                         value=f"KTL Bara/Gün: {ktl_bara}")
+                kalan = ozet.get('yag_alma_kalan', 0)
+                c3 = ws1.cell(row=3, column=3,
+                              value=f"Yağ Alma Kalan: {kalan} bara")
+                if kalan < ozet.get('toplam_bara', 0):
+                    c3.font = Font(color="EF4444", bold=True)
+
+            headers = ["Sıra", "Referans", "Tip", "Bara No", "Çevrim",
+                        "Vardiya", "Giriş", "Çıkış", "Adet/Bara", "Askı"]
+            hdr_row = 5
+            for ci, h in enumerate(headers, 1):
+                c = ws1.cell(row=hdr_row, column=ci, value=h)
+                c.font = header_font
+                c.fill = header_fill
+                c.alignment = center
+                c.border = thin_border
+
+            row = hdr_row + 1
+            prev_ref = None
+            prev_vardiya = 0
+            tarih_str = QDate.currentDate().toString('yyyyMMdd')
+
+            for bi, b in enumerate(baralar):
+                v_no = b['vardiya']
+
+                # Vardiya ayırıcı
+                if v_no != prev_vardiya:
+                    prev_vardiya = v_no
+                    vd = next((v for v in vardiyalar if v['no'] == v_no), None)
+                    vd_txt = f"── Vardiya {v_no}"
+                    if vd:
+                        vd_txt += f": {vd['baslangic']} - {vd['bitis']} ({vd.get('bara_adet', 0)} bara)"
+                    vd_txt += " ──"
+                    ws1.merge_cells(start_row=row, start_column=1, end_row=row, end_column=10)
+                    c = ws1.cell(row=row, column=1, value=vd_txt)
+                    c.font = vardiya_font
+                    c.fill = vardiya_fill
+                    c.alignment = center
+                    row += 1
+
+                # Referans değişim ayırıcı
+                if b['adi'] != prev_ref:
+                    prev_ref = b['adi']
+                    a = next((x for x in aski_analiz if x['idx'] == b['uidx']), None)
+                    ref_txt = f"▸ {b['adi']}"
+                    if a:
+                        ref_txt += f"  (İhtiyaç: {a['ihtiyac']:,}  |  Çevrim Üretim: {a['cevrim_uretim']:,}  |  {a['gerekli_cevrim']} çevrim)"
+                    ws1.merge_cells(start_row=row, start_column=1, end_row=row, end_column=10)
+                    c = ws1.cell(row=row, column=1, value=ref_txt)
+                    c.font = ref_font
+                    c.fill = ref_fill
+                    row += 1
+
+                # Bara detay satırı
+                a = next((x for x in aski_analiz if x['idx'] == b['uidx']), None)
+                adet_bara = a['bara_adeti'] if a else 0
+
+                ws1.cell(row=row, column=1, value=bi + 1).alignment = center
+                ws1.cell(row=row, column=2, value=b['adi'])
+                ws1.cell(row=row, column=3, value=b['tip']).alignment = center
+                ws1.cell(row=row, column=4, value=b['bara_no']).alignment = center
+                ws1.cell(row=row, column=5, value=f"Ç{b['cevrim'] + 1}").alignment = center
+                ws1.cell(row=row, column=6, value=f"V{v_no}").alignment = center
+                ws1.cell(row=row, column=7, value=b['giris']).alignment = center
+                ws1.cell(row=row, column=8, value=b['cikis']).alignment = center
+                ws1.cell(row=row, column=9, value=adet_bara).alignment = center
+                ws1.cell(row=row, column=10, value=a['bara_aski'] if a else 0).alignment = center
+
+                for col in range(1, 11):
+                    ws1.cell(row=row, column=col).border = thin_border
+                row += 1
+
+            for col, w in [(1, 6), (2, 22), (3, 10), (4, 10), (5, 10),
+                           (6, 10), (7, 10), (8, 10), (9, 12), (10, 8)]:
+                ws1.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+            # ══════════════════════════════════════════════════
+            # Sayfa 2: Çevrim Özet (çevrim bazlı)
+            # ══════════════════════════════════════════════════
+            ws2 = wb.create_sheet("Çevrim Özet")
+
+            headers2 = ["Çevrim", "Vardiya", "İlk Giriş", "Son Çıkış",
+                         "Bara", "Ürünler", "Doluluk %"]
+            for ci, h in enumerate(headers2, 1):
+                c = ws2.cell(row=1, column=ci, value=h)
+                c.font = header_font
+                c.fill = header_fill
+                c.alignment = center
+                c.border = thin_border
+
+            for ci, slot in enumerate(cevrimler):
+                r = ci + 2
+                z = zaman[ci] if ci < len(zaman) else {}
+                toplam_aski = sum(x[1] for x in slot)
+                doluluk = toplam_aski / max(paralel, 1) * 100
+                urun_str = ", ".join(f"{adi}({aski})" for adi, aski, tip, uidx in slot)
+
+                ws2.cell(row=r, column=1, value=f"Ç{ci+1}").alignment = center
+                ws2.cell(row=r, column=2, value=f"V{z.get('vardiya', '?')}").alignment = center
+                ws2.cell(row=r, column=3, value=z.get('ilk_giris', '')).alignment = center
+                ws2.cell(row=r, column=4, value=z.get('son_cikis', '')).alignment = center
+                ws2.cell(row=r, column=5, value=toplam_aski).alignment = center
+                ws2.cell(row=r, column=6, value=urun_str)
+                dc = ws2.cell(row=r, column=7, value=f"%{doluluk:.0f}")
+                dc.alignment = center
+                if doluluk >= 80:
+                    dc.font = Font(color="10B981", bold=True)
+                elif doluluk >= 40:
+                    dc.font = Font(color="F59E0B", bold=True)
+                else:
+                    dc.font = Font(color="EF4444", bold=True)
+                for col in range(1, 8):
+                    ws2.cell(row=r, column=col).border = thin_border
+
+            for col, w in [(1, 10), (2, 10), (3, 12), (4, 12), (5, 8), (6, 50), (7, 12)]:
+                ws2.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+            # ══════════════════════════════════════════════════
+            # Sayfa 3: Ürün Analizi
+            # ══════════════════════════════════════════════════
+            ws3 = wb.create_sheet("Ürün Analizi")
+
+            headers3 = ["Ürün", "Tip", "İhtiyaç", "Bara Adeti", "Askı",
+                         "Çevrim Üretim", "Gerekli Çevrim", "Toplam Bara", "Verimlilik"]
+            for ci, h in enumerate(headers3, 1):
+                c = ws3.cell(row=1, column=ci, value=h)
+                c.font = header_font
+                c.fill = header_fill
+                c.alignment = center
+                c.border = thin_border
+
+            for ri, a in enumerate(aski_analiz, 2):
+                ws3.cell(row=ri, column=1, value=a['adi'])
+                ws3.cell(row=ri, column=2, value=a['tip'])
+                ws3.cell(row=ri, column=3, value=a['ihtiyac'])
+                ws3.cell(row=ri, column=4, value=a['bara_adeti'])
+                ws3.cell(row=ri, column=5, value=a['bara_aski'])
+                ws3.cell(row=ri, column=6, value=a['cevrim_uretim'])
+                ws3.cell(row=ri, column=7, value=a['gerekli_cevrim'])
+                ws3.cell(row=ri, column=8, value=a['toplam_slot'])
+                ws3.cell(row=ri, column=9, value=round(a['verimlilik'], 3))
+                for col in range(1, 10):
+                    ws3.cell(row=ri, column=col).border = thin_border
+
+            for col, w in [(1, 22), (2, 10), (3, 12), (4, 12), (5, 8), (6, 14), (7, 14), (8, 12), (9, 12)]:
+                ws3.column_dimensions[openpyxl.utils.get_column_letter(col)].width = w
+
+            wb.save(file_path)
+            toplam_bara = ozet.get('toplam_bara', 0)
+            QMessageBox.information(
+                self, "Başarılı",
+                f"Plan Excel'e aktarıldı:\n{file_path}\n\n"
+                f"Sayfa 1: Bara Detay ({toplam_bara} bara, referans referans)\n"
+                f"Sayfa 2: Çevrim Özet ({ozet['toplam_cevrim']} çevrim)\n"
+                f"Sayfa 3: Ürün Analizi ({len(aski_analiz)} ürün)"
+            )
+
+        except ImportError:
+            QMessageBox.warning(self, "Hata", "openpyxl kütüphanesi bulunamadı.\npip install openpyxl")
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"Excel aktarım hatası:\n{e}")
+
+    # ──────────────────────────────────────────────────────────
+    #  İŞ EMRİ OLUŞTUR - Çevrim planından DB'ye iş emirleri yaz
+    # ──────────────────────────────────────────────────────────
+    def _on_is_emri_olustur(self):
+        """Çevrim planından siparis.is_emirleri + uretim.planlama kayıtları oluştur"""
+        if not hasattr(self, 'cevrim_plan_widget') or not self.cevrim_plan_widget._plan:
+            QMessageBox.warning(self, "Uyarı", "Önce Hesapla ile çevrim planı oluşturun.")
+            return
+
+        plan = self.cevrim_plan_widget._plan
+        cevrimler = plan['cevrimler']
+        baralar = plan.get('baralar', [])
+        zaman = plan.get('zaman', [])
+        aski_analiz = plan['aski_analiz']
+        ozet = plan['ozet']
+
+        toplam_bara = ozet.get('toplam_bara', len(baralar))
+
+        # Her ürün×çevrim için 1 iş emri (aynı ürünün çevrimdeki baraları gruplanır)
+        urun_cevrim_gruplari = {}
+        for b in baralar:
+            key = (b['cevrim'], b['adi'], b['uidx'])
+            if key not in urun_cevrim_gruplari:
+                urun_cevrim_gruplari[key] = []
+            urun_cevrim_gruplari[key].append(b)
+
+        toplam_ie = len(urun_cevrim_gruplari)
+
+        ret = QMessageBox.question(
+            self, "İş Emri Onayı",
+            f"Toplam {toplam_ie} iş emri ({toplam_bara} bara) oluşturulacak.\n"
+            f"{ozet['toplam_cevrim']} çevrim, {ozet['vardiya_gerekli']} vardiya\n\n"
+            f"Devam edilsin mi?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if ret != QMessageBox.Yes:
+            return
+
+        try:
+            from core.database import get_db_connection
+            from datetime import datetime
+
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT ISNULL(MAX(id), 0) FROM siparis.is_emirleri")
+            max_id = cursor.fetchone()[0]
+
+            tarih_str = datetime.now().strftime('%Y%m')
+            ie_no_base = max_id
+            olusturulan = 0
+            hatalar = []
+
+            for (ci, adi, uidx), grup_baralar in sorted(urun_cevrim_gruplari.items()):
+                a = next((x for x in aski_analiz if x['idx'] == uidx), None)
+                if not a:
+                    continue
+
+                v_no = grup_baralar[0]['vardiya']
+                ilk_giris = grup_baralar[0]['giris']
+                son_cikis = grup_baralar[-1]['cikis']
+                aski = a['bara_aski']
+                cevrim_uretim = a.get('cevrim_uretim', 0)
+                sira = ci + 1
+
+                ie_no_base += 1
+                is_emri_no = f"KP-{tarih_str}-{ie_no_base:04d}"
+
+                try:
+                    cursor.execute("""
+                        INSERT INTO siparis.is_emirleri
+                        (uuid, is_emri_no, tarih, stok_adi, kaplama_tipi,
+                         planlanan_miktar, toplam_miktar, birim, toplam_bara,
+                         aski_adet, tahmini_sure_dk,
+                         termin_tarihi, durum, uretim_notu,
+                         olusturma_tarihi, guncelleme_tarihi, silindi_mi)
+                        OUTPUT INSERTED.id
+                        VALUES (NEWID(), ?, GETDATE(), ?, ?,
+                                ?, ?, 'ADET', ?,
+                                ?, ?,
+                                GETDATE(), 'PLANLANDI', ?,
+                                GETDATE(), GETDATE(), 0)
+                    """, (
+                        is_emri_no, adi, a['tip'],
+                        cevrim_uretim, cevrim_uretim, aski,
+                        aski, self.spn_kap_cevrim.value(),
+                        f"V{v_no} Ç{ci+1} | {ilk_giris}-{son_cikis} | {aski} bara | Setup:{ozet.get('setup_dk', 10)}dk"
+                    ))
+                    is_emri_id = cursor.fetchone()[0]
+
+                    cursor.execute("""
+                        INSERT INTO uretim.planlama
+                        (uuid, tarih, vardiya_id, is_emri_id, sira_no,
+                         planlanan_bara, durum, olusturma_tarihi)
+                        VALUES (NEWID(), GETDATE(), ?, ?, ?,
+                                ?, 'PLANLANDI', GETDATE())
+                    """, (v_no, is_emri_id, sira, aski))
+
+                    olusturulan += 1
+                except Exception as ie_err:
+                    hatalar.append(f"{is_emri_no}: {ie_err}")
+
+            conn.commit()
+            conn.close()
+
+            msg = f"{olusturulan} iş emri oluşturuldu."
+            if hatalar:
+                msg += f"\n\n{len(hatalar)} hata:\n" + "\n".join(hatalar[:5])
+            QMessageBox.information(self, "İş Emri", msg)
+
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"İş emri oluşturma hatası:\n{e}")
 
 
 # ══════════════════════════════════════════════════════════════

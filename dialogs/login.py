@@ -64,10 +64,12 @@ class NexorLoginDialog(QDialog):
 
         self._setup_ui()
 
-        # Event filter - QLineEdit'lerden tuş vuruşlarını yakala
+        # Event filter - dialog seviyesinde ve QLineEdit'lerden tuş vuruşlarını yakala
         if RFID_LOGIN_ENABLED:
             self.username.installEventFilter(self)
             self.password.installEventFilter(self)
+            # Dialog seviyesinde de yakala (focus nerede olursa olsun)
+            self.installEventFilter(self)
 
         # Animasyon ekle
         QTimer.singleShot(100, self._animate_entrance)
@@ -332,6 +334,7 @@ class NexorLoginDialog(QDialog):
 
     def _on_card_detected(self, card_id: str):
         """Kart algılandığında kimlik doğrulama yap."""
+        print(f"[RFID-LOGIN] Kart algılandı: {card_id}")
         self.username.clear()
         self.password.clear()
         self.lbl_error.hide()
@@ -354,7 +357,7 @@ class NexorLoginDialog(QDialog):
 
             user = cursor.fetchone()
 
-            # Sorgu 2 (Fallback): ik.personeller üzerinden kart_id araması
+            # Sorgu 2 (Fallback): ik.personeller üzerinden kart_no/kart_id araması
             if not user:
                 cursor.execute("""
                     SELECT k.id, k.kullanici_adi, k.ad, k.soyad, k.aktif_mi, k.hesap_kilitli_mi,
@@ -362,8 +365,9 @@ class NexorLoginDialog(QDialog):
                     FROM sistem.kullanicilar k
                     LEFT JOIN sistem.roller r ON k.rol_id = r.id
                     INNER JOIN ik.personeller p ON k.personel_id = p.id
-                    WHERE p.kart_id = ? AND ISNULL(k.silindi_mi, 0) = 0 AND ISNULL(p.aktif_mi, 1) = 1
-                """, [card_id])
+                    WHERE (p.kart_no = ? OR p.kart_id = ?)
+                      AND ISNULL(k.silindi_mi, 0) = 0 AND ISNULL(p.aktif_mi, 1) = 1
+                """, [card_id, card_id])
                 user = cursor.fetchone()
 
             if not user:

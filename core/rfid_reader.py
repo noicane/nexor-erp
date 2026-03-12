@@ -93,10 +93,13 @@ class RFIDCardReader(QObject):
         if key in (0x01000004, 0x01000005):  # Qt.Key_Return, Qt.Key_Enter
             if self._buffer and RFID_MIN_CARD_LENGTH <= len(self._buffer) <= RFID_MAX_CARD_LENGTH:
                 card_id = self._buffer
+                print(f"[RFID] Kart algılandı: {card_id} ({len(card_id)} karakter)")
                 self._reset_buffer()
                 self.card_detected.emit(card_id)
                 return True  # Sadece burada tüket – kart algılandı
             else:
+                if self._buffer:
+                    print(f"[RFID] Buffer geçersiz: '{self._buffer}' ({len(self._buffer)} karakter)")
                 self._reset_buffer()
                 return False
 
