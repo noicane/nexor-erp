@@ -8,9 +8,10 @@ ERP Tanımları + PLC Canlı Veri
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QFrame, QTableWidget, QTableWidgetItem,
     QHeaderView, QPushButton, QComboBox, QGridLayout, QWidget, QScrollArea,
-    QProgressBar, QTabWidget, QMessageBox, QSplitter, QCheckBox, QDialog
+    QProgressBar, QTabWidget, QMessageBox, QSplitter, QCheckBox, QDialog,
+    QDateEdit
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor, QBrush, QFont
 from datetime import datetime, timedelta
 from components.base_page import BasePage
@@ -470,7 +471,135 @@ class UretimHatPage(BasePage):
         tab8_layout.addWidget(self.tbl_darbogaz)
         
         self.tabs.addTab(tab8, "🚨 Dar Boğaz Analizi")
-        
+
+        # Tab 9: Akım Takip
+        tab9 = QWidget()
+        tab9_layout = QVBoxLayout(tab9)
+        tab9_layout.setContentsMargins(0, 8, 0, 0)
+
+        # Filtre
+        akim_filt = QHBoxLayout()
+        akim_filt.addWidget(QLabel("Hat:", styleSheet=f"color:{self.text};"))
+        self.cmb_akim_hat = QComboBox()
+        self.cmb_akim_hat.setStyleSheet(f"QComboBox{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:4px;padding:6px 10px;min-width:140px;}}")
+        self.cmb_akim_hat.addItem("Tüm Hatlar", None)
+        self.cmb_akim_hat.addItem("KTL (101-143)", "KTL")
+        self.cmb_akim_hat.addItem("ZNNI (201-247)", "ZNNI")
+        self.cmb_akim_hat.addItem("ON (1-23)", "ON")
+        self.cmb_akim_hat.currentIndexChanged.connect(self._update_akim_table)
+        akim_filt.addWidget(self.cmb_akim_hat)
+
+        self.chk_sadece_aktif_akim = QCheckBox("Son 24 Saat")
+        self.chk_sadece_aktif_akim.setStyleSheet(f"color:{self.text};")
+        self.chk_sadece_aktif_akim.setChecked(False)
+        self.chk_sadece_aktif_akim.stateChanged.connect(self._update_akim_table)
+        akim_filt.addWidget(self.chk_sadece_aktif_akim)
+
+        self.chk_sadece_uyari_akim = QCheckBox("Sadece Uyarılar")
+        self.chk_sadece_uyari_akim.setStyleSheet(f"color:{self.text};")
+        self.chk_sadece_uyari_akim.stateChanged.connect(self._update_akim_table)
+        akim_filt.addWidget(self.chk_sadece_uyari_akim)
+
+        akim_filt.addStretch()
+
+        # Akım özet kartları
+        self.lbl_akim_ozet = QLabel("")
+        self.lbl_akim_ozet.setStyleSheet(f"color:{self.text};font-size:13px;padding:8px 12px;background:{self.bg_card};border-radius:8px;")
+        akim_filt.addWidget(self.lbl_akim_ozet)
+
+        tab9_layout.addLayout(akim_filt)
+
+        # Akım tablosu
+        self.tbl_akim = QTableWidget()
+        self.tbl_akim.setColumnCount(10)
+        self.tbl_akim.setHorizontalHeaderLabels([
+            "Poz No", "Hat", "Pozisyon Adı", "Banyo",
+            "Anlık Akım", "Hedef", "Min", "Max", "Sapma %", "Durum"
+        ])
+        akim_col_widths = [60, 60, 180, 100, 100, 80, 80, 80, 80, 160]
+        for i, w in enumerate(akim_col_widths):
+            self.tbl_akim.setColumnWidth(i, w)
+        self.tbl_akim.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.tbl_akim.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tbl_akim.verticalHeader().setVisible(False)
+        self._tbl_style(self.tbl_akim)
+        tab9_layout.addWidget(self.tbl_akim)
+
+        self.tabs.addTab(tab9, "⚡ Akım Takip")
+
+        # Tab 10: Vardiya Üretim Raporu
+        tab10 = QWidget()
+        tab10_layout = QVBoxLayout(tab10)
+        tab10_layout.setContentsMargins(0, 8, 0, 0)
+
+        # Filtreler
+        vr_filt = QHBoxLayout()
+        vr_filt.addWidget(QLabel("Tarih:", styleSheet=f"color:{self.text};"))
+        self.de_vr_tarih = QDateEdit()
+        self.de_vr_tarih.setDate(QDate.currentDate())
+        self.de_vr_tarih.setCalendarPopup(True)
+        self.de_vr_tarih.setDisplayFormat("dd.MM.yyyy")
+        self.de_vr_tarih.setStyleSheet(f"QDateEdit{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:4px;padding:6px 10px;min-width:120px;}}")
+        vr_filt.addWidget(self.de_vr_tarih)
+
+        vr_filt.addWidget(QLabel("Vardiya:", styleSheet=f"color:{self.text};margin-left:15px;"))
+        self.cmb_vr_vardiya = QComboBox()
+        self.cmb_vr_vardiya.setStyleSheet(f"QComboBox{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:4px;padding:6px 10px;min-width:160px;}}")
+        self._load_vardiya_combo()
+        vr_filt.addWidget(self.cmb_vr_vardiya)
+
+        vr_filt.addWidget(QLabel("Hat:", styleSheet=f"color:{self.text};margin-left:15px;"))
+        self.cmb_vr_hat = QComboBox()
+        self.cmb_vr_hat.setStyleSheet(f"QComboBox{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:4px;padding:6px 10px;min-width:120px;}}")
+        self.cmb_vr_hat.addItem("Tümü", None)
+        self.cmb_vr_hat.addItem("KTL", "KTL")
+        self.cmb_vr_hat.addItem("CINKO (ZNNI)", "CINKO")
+        vr_filt.addWidget(self.cmb_vr_hat)
+
+        btn_vr = QPushButton("Rapor Al")
+        btn_vr.setStyleSheet(f"QPushButton{{background:{self.primary};color:white;border:none;border-radius:6px;padding:8px 20px;font-weight:bold;}}QPushButton:hover{{background:#06b6d4;}}")
+        btn_vr.setCursor(Qt.PointingHandCursor)
+        btn_vr.clicked.connect(self._load_vardiya_raporu)
+        vr_filt.addWidget(btn_vr)
+        vr_filt.addStretch()
+        tab10_layout.addLayout(vr_filt)
+
+        # Özet kartları
+        vr_cards = QHBoxLayout()
+        vr_cards.setSpacing(12)
+        self.card_vr_bara = self._card("TOPLAM BARA", "0", self.primary)
+        self.card_vr_ktl = self._card("KTL BARA", "0", self.success)
+        self.card_vr_cinko = self._card("CINKO BARA", "0", self.warning)
+        self.card_vr_sapma = self._card("ORT. SÜRE SAPMA", "-", self.error)
+        vr_cards.addWidget(self.card_vr_bara)
+        vr_cards.addWidget(self.card_vr_ktl)
+        vr_cards.addWidget(self.card_vr_cinko)
+        vr_cards.addWidget(self.card_vr_sapma)
+        tab10_layout.addLayout(vr_cards)
+
+        # Rapor tablosu
+        self.tbl_vr = QTableWidget()
+        self.tbl_vr.setColumnCount(12)
+        self.tbl_vr.setHorizontalHeaderLabels([
+            "Sıra", "Hat", "Reçete", "Giriş", "Çıkış",
+            "Gerçek Süre", "Beklenen Süre", "Süre Sapma",
+            "Ort. Akım", "Ort. Sıcaklık", "Adım", "Kazan"
+        ])
+        vr_widths = [50, 60, 60, 80, 80, 90, 90, 90, 80, 80, 50, 50]
+        for i, w in enumerate(vr_widths):
+            self.tbl_vr.setColumnWidth(i, w)
+        self.tbl_vr.horizontalHeader().setSectionResizeMode(7, QHeaderView.Stretch)
+        self.tbl_vr.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tbl_vr.verticalHeader().setVisible(False)
+        self._tbl_style(self.tbl_vr)
+        self.tbl_vr.doubleClicked.connect(self._show_bara_detay)
+        tab10_layout.addWidget(self.tbl_vr)
+
+        self.tabs.addTab(tab10, "📋 Vardiya Raporu")
+
+        # Tab değiştiğinde akım tabını güncelle
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
         layout.addWidget(self.tabs, 1)
     
     def _card(self, title, val, color):
@@ -687,6 +816,9 @@ class UretimHatPage(BasePage):
             self._update_istatistik_table()
             self._update_tanimsiz_table()
             self._update_cards()
+            # Akım tabı sadece aktif tab ise güncelle (ağır sorgu)
+            if hasattr(self, 'tabs') and self.tabs.currentIndex() == 8:
+                self._update_akim_table()
             
             # ERP vardiya tablosunu PLC verileriyle senkronize et
             self._sync_vardiya_to_erp()
@@ -857,10 +989,19 @@ class UretimHatPage(BasePage):
                 limit = "-"
             self.tbl_main.setItem(i, 10, QTableWidgetItem(limit))
             
-            # Akım
+            # Akım (limit kontrolü ile)
             if plc and plc['ort_akim']:
                 akim = plc['ort_akim']
                 item = QTableWidgetItem(f"{akim:.1f} A")
+                if tanim:
+                    akim_min = tanim.get('akim_min')
+                    akim_max = tanim.get('akim_max')
+                    akim_hedef = tanim.get('akim_hedef')
+                    if (akim_min and akim < akim_min) or (akim_max and akim > akim_max):
+                        item.setForeground(QBrush(QColor(self.error)))
+                        item.setFont(QFont("", -1, QFont.Bold))
+                    elif akim_hedef and abs(akim - akim_hedef) <= akim_hedef * 0.1:
+                        item.setForeground(QBrush(QColor(self.success)))
             else:
                 item = QTableWidgetItem("-")
             self.tbl_main.setItem(i, 11, item)
@@ -1052,11 +1193,18 @@ class UretimHatPage(BasePage):
             toplam_miktar += plc['toplam_miktar'] or 0
             toplam_bara += plc['son_bara'] or 0
             
-            # Uyarı kontrolü
+            # Uyarı kontrolü - Sıcaklık
             if tanim and plc['ort_sicaklik']:
                 sic = plc['ort_sicaklik']
                 if (tanim.get('sicaklik_min') and sic < tanim['sicaklik_min']) or \
                    (tanim.get('sicaklik_max') and sic > tanim['sicaklik_max']):
+                    uyari_sayisi += 1
+
+            # Uyarı kontrolü - Akım
+            if tanim and plc['ort_akim']:
+                akim = plc['ort_akim']
+                if (tanim.get('akim_min') and akim < tanim['akim_min']) or \
+                   (tanim.get('akim_max') and akim > tanim['akim_max']):
                     uyari_sayisi += 1
         
         # Tanımsız pozisyonları da uyarıya ekle
@@ -1068,6 +1216,603 @@ class UretimHatPage(BasePage):
         self.card_bara.findChild(QLabel, "val").setText(f"{toplam_bara:,}")
         self.card_uyari.findChild(QLabel, "val").setText(str(uyari_sayisi))
     
+    def _update_akim_table(self):
+        """Akım takip tablosunu güncelle - plc_tarihce'den son akım verilerini çeker"""
+        if not hasattr(self, 'tbl_akim'):
+            return
+
+        hat_filtre = self.cmb_akim_hat.currentData()
+        sadece_aktif = self.chk_sadece_aktif_akim.isChecked()
+        sadece_uyari = self.chk_sadece_uyari_akim.isChecked()
+
+        # plc_tarihce'den her kazan için son akım değerini çek
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                WITH son_akim AS (
+                    SELECT
+                        kazan_no,
+                        akim,
+                        akim_yogunlugu,
+                        tarih_doldurma,
+                        ROW_NUMBER() OVER (PARTITION BY kazan_no ORDER BY tarih_doldurma DESC) as rn
+                    FROM uretim.plc_tarihce
+                    WHERE akim IS NOT NULL AND akim > 0
+                )
+                SELECT kazan_no, akim, akim_yogunlugu, tarih_doldurma
+                FROM son_akim WHERE rn = 1
+                ORDER BY kazan_no
+            """)
+            tarihce_rows = cursor.fetchall()
+            conn.close()
+        except Exception as e:
+            print(f"Akım tarihçe hatası: {e}")
+            tarihce_rows = []
+
+        # Dict'e çevir
+        akim_data = {}
+        for row in tarihce_rows:
+            akim_data[row[0]] = {
+                'akim': float(row[1]),
+                'akim_yogunlugu': float(row[2]) if row[2] else None,
+                'son_tarih': row[3]
+            }
+
+        rows = []
+        toplam_akim = 0
+        akim_sayisi = 0
+        uyari_sayisi = 0
+        now = datetime.now()
+
+        for poz_no in sorted(akim_data.keys()):
+            ad = akim_data[poz_no]
+            tanim = self.pozisyon_tanimlari.get(poz_no)
+
+            # Hat filtresi
+            if hat_filtre and tanim:
+                if tanim.get('hat_kodu') != hat_filtre:
+                    continue
+            elif hat_filtre and not tanim:
+                # Hat kodu olmayan pozisyonları hat numarasından belirle
+                if hat_filtre == 'KTL' and not (101 <= poz_no <= 143):
+                    continue
+                elif hat_filtre == 'ZNNI' and not (201 <= poz_no <= 247):
+                    continue
+                elif hat_filtre == 'ON' and not (1 <= poz_no <= 23):
+                    continue
+
+            # Aktif filtresi - son 24 saat içinde akım verisi olanlar
+            if sadece_aktif:
+                delta = now - ad['son_tarih']
+                if delta.total_seconds() > 86400:  # 24 saat
+                    continue
+
+            akim = ad['akim']
+
+            # Limit bilgileri
+            akim_min = tanim.get('akim_min') if tanim else None
+            akim_max = tanim.get('akim_max') if tanim else None
+            akim_hedef = tanim.get('akim_hedef') if tanim else None
+
+            # Durum hesapla
+            durum = "Normal"
+            is_uyari = False
+            if akim_min and akim < akim_min:
+                durum = "DÜŞÜK"
+                is_uyari = True
+            elif akim_max and akim > akim_max:
+                durum = "YÜKSEK"
+                is_uyari = True
+            elif akim_hedef and abs(akim - akim_hedef) <= akim_hedef * 0.1:
+                durum = "Hedefte"
+
+            # Sapma hesapla
+            sapma = None
+            if akim_hedef and akim_hedef > 0:
+                sapma = ((akim - akim_hedef) / akim_hedef) * 100
+
+            if is_uyari:
+                uyari_sayisi += 1
+
+            if sadece_uyari and not is_uyari:
+                continue
+
+            # Geçen süre
+            gecen = now - ad['son_tarih']
+            if gecen.total_seconds() < 60:
+                gecen_str = f"{int(gecen.total_seconds())} sn önce"
+            elif gecen.total_seconds() < 3600:
+                gecen_str = f"{int(gecen.total_seconds() / 60)} dk önce"
+            elif gecen.total_seconds() < 86400:
+                gecen_str = f"{int(gecen.total_seconds() / 3600)} sa önce"
+            else:
+                gecen_str = ad['son_tarih'].strftime("%d.%m %H:%M")
+
+            toplam_akim += akim
+            akim_sayisi += 1
+
+            rows.append({
+                'poz_no': poz_no,
+                'hat_kodu': tanim['hat_kodu'] if tanim else "-",
+                'pozisyon_adi': tanim['pozisyon_adi'] if tanim else f"Tanımsız ({poz_no})",
+                'banyo_tipi': tanim.get('banyo_tipi', '-') if tanim else '-',
+                'akim': akim,
+                'akim_yogunlugu': ad.get('akim_yogunlugu'),
+                'hedef': akim_hedef,
+                'akim_min': akim_min,
+                'akim_max': akim_max,
+                'sapma': sapma,
+                'durum': durum,
+                'is_uyari': is_uyari,
+                'gecen_str': gecen_str
+            })
+
+        # Tablo doldur
+        self.tbl_akim.setRowCount(len(rows))
+        for i, r in enumerate(rows):
+            self.tbl_akim.setItem(i, 0, QTableWidgetItem(str(r['poz_no'])))
+            self.tbl_akim.setItem(i, 1, QTableWidgetItem(r['hat_kodu']))
+            self.tbl_akim.setItem(i, 2, QTableWidgetItem(r['pozisyon_adi']))
+            self.tbl_akim.setItem(i, 3, QTableWidgetItem(r['banyo_tipi'] or '-'))
+
+            # Anlık Akım - büyük ve renkli
+            akim_item = QTableWidgetItem(f"{r['akim']:.0f} A")
+            akim_item.setFont(QFont("", 11, QFont.Bold))
+            if r['is_uyari']:
+                akim_item.setForeground(QBrush(QColor(self.error)))
+            elif r['durum'] == "Hedefte":
+                akim_item.setForeground(QBrush(QColor(self.success)))
+            else:
+                akim_item.setForeground(QBrush(QColor(self.text)))
+            akim_item.setTextAlignment(Qt.AlignCenter)
+            self.tbl_akim.setItem(i, 4, akim_item)
+
+            # Hedef
+            hedef_txt = f"{r['hedef']:.0f} A" if r['hedef'] else "-"
+            self.tbl_akim.setItem(i, 5, QTableWidgetItem(hedef_txt))
+
+            # Min
+            min_txt = f"{r['akim_min']:.0f}" if r['akim_min'] else "-"
+            self.tbl_akim.setItem(i, 6, QTableWidgetItem(min_txt))
+
+            # Max
+            max_txt = f"{r['akim_max']:.0f}" if r['akim_max'] else "-"
+            self.tbl_akim.setItem(i, 7, QTableWidgetItem(max_txt))
+
+            # Sapma %
+            if r['sapma'] is not None:
+                sapma_item = QTableWidgetItem(f"{r['sapma']:+.1f}%")
+                if abs(r['sapma']) > 20:
+                    sapma_item.setForeground(QBrush(QColor(self.error)))
+                elif abs(r['sapma']) > 10:
+                    sapma_item.setForeground(QBrush(QColor(self.warning)))
+                sapma_item.setTextAlignment(Qt.AlignCenter)
+            else:
+                sapma_item = QTableWidgetItem("-")
+            self.tbl_akim.setItem(i, 8, sapma_item)
+
+            # Durum + süre
+            durum_txt = f"{r['durum']} ({r['gecen_str']})"
+            durum_item = QTableWidgetItem(durum_txt)
+            durum_item.setFont(QFont("", -1, QFont.Bold))
+            if r['durum'] == "DÜŞÜK":
+                durum_item.setForeground(QBrush(QColor("#F59E0B")))
+            elif r['durum'] == "YÜKSEK":
+                durum_item.setForeground(QBrush(QColor(self.error)))
+            elif r['durum'] == "Hedefte":
+                durum_item.setForeground(QBrush(QColor(self.success)))
+            durum_item.setTextAlignment(Qt.AlignCenter)
+            self.tbl_akim.setItem(i, 9, durum_item)
+
+        # Özet bilgisi
+        ort_akim = toplam_akim / akim_sayisi if akim_sayisi > 0 else 0
+        self.lbl_akim_ozet.setText(
+            f"Toplam: {akim_sayisi} banyo  |  Ort: {ort_akim:.0f} A  |  Uyarı: {uyari_sayisi}"
+        )
+
+    def _on_tab_changed(self, index):
+        """Tab değiştiğinde ilgili tabı güncelle"""
+        if index == 8:  # Akım Takip tabı
+            self._update_akim_table()
+
+    def _load_vardiya_combo(self):
+        """Vardiya tanımlarını DB'den yükle (beyaz yaka hariç)"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, kod, ad, baslangic_saati, bitis_saati
+                FROM tanim.vardiyalar
+                WHERE aktif_mi = 1 AND kod NOT LIKE '%BY%'
+                ORDER BY baslangic_saati
+            """)
+            for row in cursor.fetchall():
+                # baslangic/bitis saatlerini dakikaya çevir (datetime.time objesi)
+                bas = row[3]
+                bit = row[4]
+                bas_dk = bas.hour * 60 + bas.minute
+                bit_dk = bit.hour * 60 + bit.minute
+                label = f"{row[2]} ({bas.strftime('%H:%M')} - {bit.strftime('%H:%M')})"
+                self.cmb_vr_vardiya.addItem(label, {'id': row[0], 'kod': row[1], 'bas_dk': bas_dk, 'bit_dk': bit_dk})
+            # 3 Vardiya Toplam seçeneği (00:00 - 00:00 tam gün)
+            self.cmb_vr_vardiya.addItem("3 Vardiya Toplam (00:00 - 00:00)", {'id': 0, 'kod': 'TOPLAM', 'bas_dk': 0, 'bit_dk': 0})
+            conn.close()
+        except Exception as e:
+            print(f"Vardiya yükleme hatası: {e}")
+            # Fallback
+            self.cmb_vr_vardiya.addItem("V1 - Sabah (07:30-15:30)", {'id': 1, 'kod': 'V1', 'bas_dk': 450, 'bit_dk': 930})
+            self.cmb_vr_vardiya.addItem("V2 - Akşam (15:30-23:30)", {'id': 2, 'kod': 'V2', 'bas_dk': 930, 'bit_dk': 1410})
+            self.cmb_vr_vardiya.addItem("V3 - Gece (23:30-07:30)", {'id': 3, 'kod': 'V3', 'bas_dk': 1410, 'bit_dk': 450})
+            self.cmb_vr_vardiya.addItem("3 Vardiya Toplam (00:00 - 00:00)", {'id': 0, 'kod': 'TOPLAM', 'bas_dk': 0, 'bit_dk': 0})
+
+    def _load_vardiya_raporu(self):
+        """Vardiya bazlı üretim raporu yükle
+        Bara sayımı: Bara Dashboard mantığı ile giriş kazanları (K101/K118=KTL, K201=CINKO)
+        Her giriş kaydı = 1 bara. Reçete adımlarından sıralı takiple gerçek süre hesaplanır.
+        """
+        vardiya = self.cmb_vr_vardiya.currentData()
+        if not vardiya:
+            return
+
+        hat_filtre = self.cmb_vr_hat.currentData()
+        secilen_tarih = self.de_vr_tarih.date().toPython()
+
+        bas_dk = vardiya['bas_dk']
+        bit_dk = vardiya['bit_dk']
+
+        if vardiya['kod'] == 'TOPLAM':
+            vardiya_bas = "CAST(? AS DATETIME)"
+            vardiya_bit = "DATEADD(DAY, 1, CAST(? AS DATETIME))"
+            params = [secilen_tarih, secilen_tarih]
+        elif bas_dk < bit_dk:
+            vardiya_bas = f"DATEADD(MINUTE, {bas_dk}, CAST(? AS DATETIME))"
+            vardiya_bit = f"DATEADD(MINUTE, {bit_dk}, CAST(? AS DATETIME))"
+            params = [secilen_tarih, secilen_tarih]
+        else:
+            vardiya_bas = f"DATEADD(MINUTE, {bas_dk}, CAST(? AS DATETIME))"
+            vardiya_bit = f"DATEADD(MINUTE, {bit_dk}, DATEADD(DAY, 1, CAST(? AS DATETIME)))"
+            params = [secilen_tarih, secilen_tarih]
+
+        if hat_filtre == 'KTL':
+            giris_where = "AND g.kazan_no IN (101, 118)"
+        elif hat_filtre == 'CINKO':
+            giris_where = "AND g.kazan_no = 201"
+        else:
+            giris_where = ""
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # 1) Giriş kayıtlarını al
+            cursor.execute(f"""
+                SELECT g.id, g.kazan_no, g.recete_no, g.recete_adim, g.tarih_doldurma,
+                    CASE WHEN g.kazan_no IN (101, 118) THEN 'KTL'
+                         WHEN g.kazan_no = 201 THEN 'CINKO' END as hat
+                FROM uretim.plc_tarihce g
+                WHERE g.kazan_no IN (101, 118, 201)
+                  AND g.recete_no > 0
+                  AND g.tarih_doldurma >= {vardiya_bas}
+                  AND g.tarih_doldurma < {vardiya_bit}
+                  {giris_where}
+                ORDER BY g.tarih_doldurma
+            """, params)
+            girisler = cursor.fetchall()
+
+            # 2) PLC'den reçete adım tanımlarını al (cache)
+            from core.database import get_plc_connection
+            plc_conn = get_plc_connection()
+            pc = plc_conn.cursor()
+            pc.execute("SELECT Panel_Recete_No, AdimNo, Kazan_No, Zamanlar FROM dbo.ReceteAdimlar WHERE Kazan_No != 129 ORDER BY Panel_Recete_No, AdimNo")
+            recete_cache = {}
+            for r in pc.fetchall():
+                recete_cache.setdefault(r[0], []).append((r[1], r[2], r[3]))
+            plc_conn.close()
+
+            # 3) Her bara için sıralı adım takibi ile gerçek süre hesapla
+            rows_data = []
+            ktl_sira = 0
+            cinko_sira = 0
+
+            for giris_row in girisler:
+                giris_id, giris_kazan, recete_no, giris_adim, giris_zamani, hat_kodu = giris_row
+
+                if hat_kodu == 'KTL':
+                    ktl_sira += 1
+                    sira = ktl_sira
+                else:
+                    cinko_sira += 1
+                    sira = cinko_sira
+
+                adimlar = recete_cache.get(recete_no, [])
+                # Giriş adımından itibaren adımları filtrele
+                adimlar = [(a, k, s) for a, k, s in adimlar if a >= (giris_adim or 1)]
+
+                # Beklenen süre: reçete adımlarının toplam süresi (giriş adımından itibaren)
+                beklenen_sn_toplam = sum(s for _, _, s in adimlar)
+                beklenen_dk = round(beklenen_sn_toplam / 60) if beklenen_sn_toplam > 0 else None
+
+                if not adimlar:
+                    rows_data.append((sira, hat_kodu, recete_no, giris_zamani, None, None, beklenen_dk, 0, 0, None, None, giris_adim or 1))
+                    continue
+
+                # Sıralı adım takibi
+                son_zaman = giris_zamani
+                cikis_zamani = giris_zamani
+                toplam_akim = 0
+                akim_sayisi = 0
+                toplam_sic = 0
+                sic_sayisi = 0
+                kazan_set = set()
+
+                for adim_no, kazan_no, beklenen_sn in adimlar:
+                    cursor.execute("""
+                        SELECT TOP 1 tarih_doldurma, tarih_bosaltma, akim, sicaklik
+                        FROM uretim.plc_tarihce
+                        WHERE recete_no = ? AND recete_adim = ? AND kazan_no = ?
+                          AND tarih_doldurma >= ? AND tarih_doldurma < DATEADD(HOUR, 4, ?)
+                        ORDER BY tarih_doldurma
+                    """, [recete_no, adim_no, kazan_no, son_zaman, giris_zamani])
+                    r = cursor.fetchone()
+                    if r:
+                        son_zaman = r[0]
+                        if r[1] and r[1] > cikis_zamani:
+                            cikis_zamani = r[1]
+                        elif r[0] > cikis_zamani:
+                            cikis_zamani = r[0]
+                        kazan_set.add(kazan_no)
+                        if r[2] and r[2] > 0:
+                            toplam_akim += r[2]
+                            akim_sayisi += 1
+                        if r[3] and r[3] > 0:
+                            toplam_sic += r[3]
+                            sic_sayisi += 1
+
+                gercek_dk = int((cikis_zamani - giris_zamani).total_seconds() / 60) if cikis_zamani > giris_zamani else None
+                ort_akim = toplam_akim / akim_sayisi if akim_sayisi > 0 else None
+                ort_sic = toplam_sic / sic_sayisi if sic_sayisi > 0 else None
+
+                rows_data.append((sira, hat_kodu, recete_no, giris_zamani, cikis_zamani,
+                                  gercek_dk, beklenen_dk, len(kazan_set), max((a for a, _, _ in adimlar), default=0),
+                                  ort_akim, ort_sic, giris_adim or 1))
+
+            conn.close()
+
+            # Tabloya yaz
+            self.tbl_vr.setRowCount(len(rows_data))
+            self._vr_row_data = []
+            toplam_sapma = 0
+            sapma_sayisi = 0
+            ktl_count = 0
+            cinko_count = 0
+
+            for i, rd in enumerate(rows_data):
+                sira, hat_kodu, recete_no, giris, cikis, gercek_dk, beklenen_dk, kazan_say, adim_say, ort_akim, ort_sic, g_adim = rd
+                self._vr_row_data.append({
+                    'hat': hat_kodu, 'recete_no': recete_no, 'giris': giris, 'cikis': cikis,
+                    'gercek_dk': gercek_dk, 'beklenen_dk': beklenen_dk, 'giris_adim': g_adim
+                })
+
+                if hat_kodu == 'KTL':
+                    ktl_count += 1
+                elif hat_kodu == 'CINKO':
+                    cinko_count += 1
+
+                self.tbl_vr.setItem(i, 0, QTableWidgetItem(str(sira)))
+                self.tbl_vr.setItem(i, 1, QTableWidgetItem(hat_kodu or "-"))
+                self.tbl_vr.setItem(i, 2, QTableWidgetItem(f"R{recete_no}"))
+                self.tbl_vr.setItem(i, 3, QTableWidgetItem(giris.strftime("%H:%M") if giris else "-"))
+                self.tbl_vr.setItem(i, 4, QTableWidgetItem(cikis.strftime("%H:%M") if cikis else "-"))
+
+                gercek_item = QTableWidgetItem(f"{gercek_dk} dk" if gercek_dk is not None else "-")
+                gercek_item.setTextAlignment(Qt.AlignCenter)
+                self.tbl_vr.setItem(i, 5, gercek_item)
+
+                beklenen_item = QTableWidgetItem(f"{beklenen_dk} dk" if beklenen_dk else "-")
+                beklenen_item.setTextAlignment(Qt.AlignCenter)
+                self.tbl_vr.setItem(i, 6, beklenen_item)
+
+                if gercek_dk is not None and beklenen_dk and beklenen_dk > 0:
+                    sapma_pct = ((gercek_dk - beklenen_dk) / beklenen_dk) * 100
+                    sapma_item = QTableWidgetItem(f"{sapma_pct:+.0f}%")
+                    sapma_item.setFont(QFont("", -1, QFont.Bold))
+                    if abs(sapma_pct) > 50:
+                        sapma_item.setForeground(QBrush(QColor(self.error)))
+                    elif abs(sapma_pct) > 20:
+                        sapma_item.setForeground(QBrush(QColor(self.warning)))
+                    elif abs(sapma_pct) <= 10:
+                        sapma_item.setForeground(QBrush(QColor(self.success)))
+                    sapma_item.setTextAlignment(Qt.AlignCenter)
+                    toplam_sapma += sapma_pct
+                    sapma_sayisi += 1
+                else:
+                    sapma_item = QTableWidgetItem("-")
+                self.tbl_vr.setItem(i, 7, sapma_item)
+
+                if ort_akim:
+                    akim_item = QTableWidgetItem(f"{ort_akim:.0f} A")
+                    akim_item.setFont(QFont("", -1, QFont.Bold))
+                    akim_item.setForeground(QBrush(QColor(self.primary)))
+                else:
+                    akim_item = QTableWidgetItem("-")
+                akim_item.setTextAlignment(Qt.AlignCenter)
+                self.tbl_vr.setItem(i, 8, akim_item)
+
+                sic_item = QTableWidgetItem(f"{ort_sic:.1f}°C" if ort_sic else "-")
+                sic_item.setTextAlignment(Qt.AlignCenter)
+                self.tbl_vr.setItem(i, 9, sic_item)
+
+                self.tbl_vr.setItem(i, 10, QTableWidgetItem(str(adim_say or "-")))
+                self.tbl_vr.setItem(i, 11, QTableWidgetItem(str(kazan_say or "-")))
+
+            self.card_vr_bara.findChild(QLabel, "val").setText(str(len(rows_data)))
+            self.card_vr_ktl.findChild(QLabel, "val").setText(str(ktl_count))
+            self.card_vr_cinko.findChild(QLabel, "val").setText(str(cinko_count))
+            ort_sapma = toplam_sapma / sapma_sayisi if sapma_sayisi > 0 else 0
+            self.card_vr_sapma.findChild(QLabel, "val").setText(f"{ort_sapma:+.0f}%")
+
+        except Exception as e:
+            print(f"Vardiya raporu hatası: {e}")
+            import traceback
+            traceback.print_exc()
+            QMessageBox.warning(self, "Hata", f"Rapor yüklenirken hata:\n{str(e)}")
+
+    def _show_bara_detay(self, index):
+        """Seçilen baranın adım detaylarını göster - reçete adımlarından sıralı takip"""
+        row = index.row()
+        if not hasattr(self, '_vr_row_data') or row >= len(self._vr_row_data):
+            return
+
+        data = self._vr_row_data[row]
+        hat = data['hat']
+        recete_no = data['recete_no']
+        giris = data['giris']
+        cikis = data['cikis']
+        giris_adim = data.get('giris_adim', 1)
+
+        if not giris:
+            return
+
+        try:
+            from core.database import get_plc_connection
+
+            # 1) PLC'den reçete adım tanımlarını al (giriş adımından itibaren)
+            plc_conn = get_plc_connection()
+            pc = plc_conn.cursor()
+            pc.execute("""
+                SELECT AdimNo, Kazan_No, Zamanlar
+                FROM dbo.ReceteAdimlar
+                WHERE Panel_Recete_No = ? AND AdimNo >= ? AND Kazan_No != 129
+                ORDER BY AdimNo
+            """, [recete_no, giris_adim])
+            recete_adimlari = [(r[0], r[1], r[2]) for r in pc.fetchall()]
+            plc_conn.close()
+
+            if not recete_adimlari:
+                QMessageBox.information(self, "Bilgi", f"R{recete_no} için reçete adımı bulunamadı")
+                return
+
+            # 2) ERP tarihçesinden her adım için sıralı kayıt bul
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            adimlar = []
+            son_zaman = giris  # Her adım bir öncekinin zamanından sonra olmalı
+
+            for adim_no, kazan_no, beklenen_sn in recete_adimlari:
+                cursor.execute("""
+                    SELECT TOP 1
+                        t.kazan_no, t.recete_adim, t.tarih_doldurma, t.tarih_bosaltma,
+                        DATEDIFF(SECOND, t.tarih_doldurma, ISNULL(t.tarih_bosaltma, GETDATE())) as sure_sn,
+                        t.akim, t.sicaklik
+                    FROM uretim.plc_tarihce t
+                    WHERE t.recete_no = ? AND t.recete_adim = ? AND t.kazan_no = ?
+                      AND t.tarih_doldurma >= ?
+                      AND t.tarih_doldurma < DATEADD(HOUR, 4, ?)
+                    ORDER BY t.tarih_doldurma
+                """, [recete_no, adim_no, kazan_no, son_zaman, giris])
+
+                r = cursor.fetchone()
+                if r:
+                    adimlar.append((r[0], r[1], r[2], r[3], r[4], beklenen_sn, r[5], r[6], f"K{kazan_no}"))
+                    # Sonraki adımı bu adımın doldurma zamanından sonra ara
+                    son_zaman = r[2]
+                else:
+                    # Kayıt bulunamadı - atlanan adım
+                    adimlar.append((kazan_no, adim_no, None, None, None, beklenen_sn, None, None, f"K{kazan_no}"))
+
+            conn.close()
+
+            # Dialog oluştur
+            dlg = QDialog(self)
+            dlg.setWindowTitle(f"Bara Detay - {hat} R{recete_no} ({giris.strftime('%H:%M')})")
+            dlg.setMinimumSize(900, 500)
+            dlg.setStyleSheet(f"QDialog{{background:{self.bg_main};}}")
+            lay = QVBoxLayout(dlg)
+
+            # Özet bilgi
+            ozet = QLabel(f"Hat: {hat}  |  Reçete: R{recete_no}  |  Giriş: {giris.strftime('%H:%M:%S')}  |  "
+                          f"Çıkış: {cikis.strftime('%H:%M:%S') if cikis else 'Devam'}  |  "
+                          f"Gerçek: {data['gercek_dk']} dk  |  Beklenen: {data['beklenen_dk']} dk")
+            ozet.setStyleSheet(f"color:{self.text};font-size:13px;padding:8px;background:{self.bg_card};border-radius:6px;")
+            lay.addWidget(ozet)
+
+            # Adım tablosu
+            tbl = QTableWidget()
+            tbl.setColumnCount(9)
+            tbl.setHorizontalHeaderLabels([
+                "Adım", "Kazan", "Banyo", "Doldurma", "Boşaltma",
+                "Gerçek (sn)", "Beklenen (sn)", "Fark (sn)", "Akım"
+            ])
+            tbl.setRowCount(len(adimlar))
+            tbl.setSelectionBehavior(QTableWidget.SelectRows)
+            tbl.verticalHeader().setVisible(False)
+            self._tbl_style(tbl)
+            tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+
+            toplam_fazla = 0
+            for i, a in enumerate(adimlar):
+                kazan, adim, dol, bos, sure_sn, beklenen_sn, akim, sic, banyo = a
+
+                tbl.setItem(i, 0, QTableWidgetItem(str(adim or "-")))
+                tbl.setItem(i, 1, QTableWidgetItem(f"K{kazan}"))
+                tbl.setItem(i, 2, QTableWidgetItem(banyo or f"Kazan {kazan}"))
+                tbl.setItem(i, 3, QTableWidgetItem(dol.strftime("%H:%M:%S") if dol else "-"))
+                tbl.setItem(i, 4, QTableWidgetItem(bos.strftime("%H:%M:%S") if bos else "-"))
+
+                sure_item = QTableWidgetItem(str(sure_sn) if sure_sn is not None else "-")
+                sure_item.setTextAlignment(Qt.AlignCenter)
+                tbl.setItem(i, 5, sure_item)
+
+                beklenen_item = QTableWidgetItem(str(beklenen_sn) if beklenen_sn else "-")
+                beklenen_item.setTextAlignment(Qt.AlignCenter)
+                tbl.setItem(i, 6, beklenen_item)
+
+                # Fark hesapla
+                if sure_sn is not None and beklenen_sn and beklenen_sn > 0:
+                    fark = sure_sn - beklenen_sn
+                    fark_item = QTableWidgetItem(f"{fark:+d}")
+                    fark_item.setTextAlignment(Qt.AlignCenter)
+                    fark_item.setFont(QFont("", -1, QFont.Bold))
+                    if fark > 60:
+                        fark_item.setForeground(QBrush(QColor(self.error)))
+                        toplam_fazla += fark
+                    elif fark > 20:
+                        fark_item.setForeground(QBrush(QColor(self.warning)))
+                        toplam_fazla += fark
+                    elif fark <= 5:
+                        fark_item.setForeground(QBrush(QColor(self.success)))
+                elif sure_sn is not None and (not beklenen_sn or beklenen_sn == 0) and sure_sn > 30:
+                    fark_item = QTableWidgetItem(f"+{sure_sn} (bekleme)")
+                    fark_item.setTextAlignment(Qt.AlignCenter)
+                    fark_item.setFont(QFont("", -1, QFont.Bold))
+                    fark_item.setForeground(QBrush(QColor(self.warning)))
+                    toplam_fazla += sure_sn
+                else:
+                    fark_item = QTableWidgetItem("-")
+                tbl.setItem(i, 7, fark_item)
+
+                akim_item = QTableWidgetItem(f"{akim:.0f} A" if akim and akim > 0 else "-")
+                akim_item.setTextAlignment(Qt.AlignCenter)
+                tbl.setItem(i, 8, akim_item)
+
+            lay.addWidget(tbl)
+
+            # Alt özet
+            if toplam_fazla > 0:
+                alt = QLabel(f"Toplam fazla bekleme: {toplam_fazla} sn ({toplam_fazla//60} dk {toplam_fazla%60} sn)")
+                alt.setStyleSheet(f"color:{self.error};font-size:13px;font-weight:bold;padding:8px;")
+                lay.addWidget(alt)
+
+            dlg.exec()
+
+        except Exception as e:
+            print(f"Bara detay hatası: {e}")
+            import traceback
+            traceback.print_exc()
+            QMessageBox.warning(self, "Hata", f"Detay yüklenirken hata:\n{str(e)}")
+
     def _filter_table(self):
         """Tablo filtreleme"""
         self._update_main_table()

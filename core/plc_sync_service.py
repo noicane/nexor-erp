@@ -231,27 +231,37 @@ def fetch_plc_data(plc_conn: pyodbc.Connection, last_id: int) -> List[Dict[str, 
         cursor = plc_conn.cursor()
         
         # Son ID'den sonraki kayıtları çek
+        # Ort_Redresor_Akim: gerçek okunan akım (PLC'den, -1 ise okunamadı)
+        # data_grb.Redresor_Akim: reçete hedef akımı (id_grb FK ile bağlı)
+        # Akim = okunan varsa okunan, yoksa hedef akım
         cursor.execute("""
             SELECT TOP (?)
-                id,
-                KznNo,
-                BaraNo,
-                ReceteNo,
-                CASE WHEN Sicaklik BETWEEN -50 AND 3000 THEN Sicaklik ELSE NULL END as Sicaklik,
-                CASE WHEN Ort_Redresor_Akim BETWEEN 0 AND 99999 THEN Ort_Redresor_Akim ELSE NULL END as Akim,
-                CASE WHEN Ort_Redresor_Voltaj BETWEEN 0 AND 99999 THEN Ort_Redresor_Voltaj ELSE NULL END as Voltaj,
-                Miktar,
-                BirimMiktar,
-                Recete_Zamani,
-                TarihDoldurma,
-                TarihBosaltma,
-                ReceteAdim,
-                RedresorAkimYog,
-                OTO_Manual_Doldurma,
-                OTO_Manual_Bosaltma
-            FROM dbo.data
-            WHERE id > ?
-            ORDER BY id
+                d.id,
+                d.KznNo,
+                d.BaraNo,
+                d.ReceteNo,
+                CASE WHEN d.Sicaklik BETWEEN -50 AND 3000 THEN d.Sicaklik ELSE NULL END as Sicaklik,
+                CASE WHEN d.Ort_Redresor_Akim > 0 AND d.Ort_Redresor_Akim <= 99999
+                     THEN d.Ort_Redresor_Akim
+                     WHEN g.Redresor_Akim > 0
+                     THEN g.Redresor_Akim
+                     ELSE NULL END as Akim,
+                CASE WHEN d.Ort_Redresor_Voltaj BETWEEN 0 AND 99999 THEN d.Ort_Redresor_Voltaj
+                     WHEN g.Redresor_Voltaj > 0 THEN g.Redresor_Voltaj
+                     ELSE NULL END as Voltaj,
+                d.Miktar,
+                d.BirimMiktar,
+                d.Recete_Zamani,
+                d.TarihDoldurma,
+                d.TarihBosaltma,
+                d.ReceteAdim,
+                d.RedresorAkimYog,
+                d.OTO_Manual_Doldurma,
+                d.OTO_Manual_Bosaltma
+            FROM dbo.data d
+            LEFT JOIN dbo.data_grb g ON d.id_grb = g.id
+            WHERE d.id > ?
+            ORDER BY d.id
         """, (BATCH_SIZE, last_id))
         
         columns = [desc[0] for desc in cursor.description]
