@@ -24,6 +24,7 @@ from .tanim_giris_kalite_kriterleri import GirisKaliteKriterleriPage
 from .tanim_pozisyonlar import TanimPozisyonlarPage
 from .tanim_soforler import TanimSoforlerPage
 from .tanim_araclar import TanimAraclarPage
+from .tanim_numara import TanimNumaraPage
 from .dokumantasyon_yonetimi import DokumantasyonYonetimiPage
 from .bildirim_sistemi import BildirimSistemiPage
 
@@ -45,6 +46,7 @@ PageRegistry.register("tanim_giris_kalite_kriterleri", GirisKaliteKriterleriPage
 PageRegistry.register("tanim_pozisyonlar", TanimPozisyonlarPage, MODULE_NAME)
 PageRegistry.register("tanim_soforler", TanimSoforlerPage, MODULE_NAME)
 PageRegistry.register("tanim_araclar", TanimAraclarPage, MODULE_NAME)
+PageRegistry.register("tanim_numara", TanimNumaraPage, MODULE_NAME)
 PageRegistry.register("dokumantasyon_yonetimi", DokumantasyonYonetimiPage, MODULE_NAME)
 PageRegistry.register("bildirim_sistemi", BildirimSistemiPage, MODULE_NAME)
 
@@ -66,6 +68,7 @@ __all__ = [
     "TanimPozisyonlarPage",
     "TanimSoforlerPage",
     "TanimAraclarPage",
+    "TanimNumaraPage",
     "DokumantasyonYonetimiPage",
     "BildirimSistemiPage"
 ]

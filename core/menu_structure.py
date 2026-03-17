@@ -169,6 +169,7 @@ MENU_STRUCTURE = [
         {"id": "tanim_pozisyonlar", "label": "Pozisyon Tanımları"},
         {"id": "tanim_soforler", "label": "Şoför Tanımları"},
         {"id": "tanim_araclar", "label": "Araç Tanımları"},
+        {"id": "tanim_numara", "label": "Numara Tanımları"},
         {"id": "tanim_etiket_tasarim", "label": "Etiket Tasarım"},
         {"id": "tanim_giris_kalite_kriterleri", "label": "Giriş Kalite Kriterleri"},
     ]},

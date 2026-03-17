@@ -237,7 +237,7 @@ class SevkListePage(BasePage):
                 FROM stok.stok_bakiye sb
                 LEFT JOIN siparis.is_emirleri ie ON REPLACE(REPLACE(sb.lot_no, '-SEV', ''), '-SEVK', '') = ie.lot_no
                 JOIN tanim.depolar d ON sb.depo_id = d.id
-                WHERE d.kod IN ('SEV-01', 'SEVK', 'SEV')
+                WHERE d.kod IN ('SEV-01', 'SEVK', 'SEV', 'MAMUL')
                   AND sb.kalite_durumu IN ('ONAYLANDI', 'OK', 'SEVKE_HAZIR')
                   AND sb.miktar > 0
                 ORDER BY sb.son_hareket_tarihi DESC

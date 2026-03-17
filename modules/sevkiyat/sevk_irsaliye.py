@@ -632,7 +632,47 @@ class SevkIrsaliyePage(BasePage):
         self.iptal_btn.clicked.connect(self._iptal_et)
         self.iptal_btn.setEnabled(False)
         btn_layout.addWidget(self.iptal_btn)
-        
+
+        self.stok_iade_btn = QPushButton("📦 Stok İade")
+        self.stok_iade_btn.setToolTip("İptal edilmiş irsaliyenin stoklarını sevk deposuna geri yükle")
+        self.stok_iade_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('warning', '#f59e0b')};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+            }}
+            QPushButton:disabled {{
+                background: {self.theme.get('bg_hover')};
+                color: {self.theme.get('text_muted')};
+            }}
+        """)
+        self.stok_iade_btn.clicked.connect(self._stok_iade_yap)
+        self.stok_iade_btn.setEnabled(False)
+        btn_layout.addWidget(self.stok_iade_btn)
+
+        self.zirve_btn = QPushButton("📤 Zirve'ye Aktar")
+        self.zirve_btn.setToolTip("İrsaliyeyi Zirve Ticari'ye aktar (e-İrsaliye)")
+        self.zirve_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: #2563eb;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #1d4ed8; }}
+            QPushButton:disabled {{
+                background: {self.theme.get('bg_hover')};
+                color: {self.theme.get('text_muted')};
+            }}
+        """)
+        self.zirve_btn.clicked.connect(self._zirve_aktar)
+        self.zirve_btn.setEnabled(False)
+        btn_layout.addWidget(self.zirve_btn)
+
         self.yazdir_btn = QPushButton("🖨️ Yazdır")
         self.yazdir_btn.setStyleSheet(f"""
             QPushButton {{
@@ -970,6 +1010,8 @@ class SevkIrsaliyePage(BasePage):
         self.sevk_btn.setEnabled(False)
         self.teslim_btn.setEnabled(False)
         self.iptal_btn.setEnabled(False)
+        self.stok_iade_btn.setEnabled(False)
+        self.zirve_btn.setEnabled(False)
         self.secili_irsaliye = None
     
     def _update_buttons(self):
@@ -985,6 +1027,10 @@ class SevkIrsaliyePage(BasePage):
         self.sevk_btn.setEnabled(durum == 'HAZIRLANDI')
         self.teslim_btn.setEnabled(durum == 'SEVK_EDILDI')
         self.iptal_btn.setEnabled(durum not in ('IPTAL', 'TESLIM_EDILDI'))
+        # İptal edilmiş irsaliye → stok iade butonu aktif
+        self.stok_iade_btn.setEnabled(durum == 'IPTAL')
+        # Zirve aktarım: iptal olmayan irsaliyeler için
+        self.zirve_btn.setEnabled(durum != 'IPTAL')
     
     def _load_satirlar(self, irsaliye_id):
         """İrsaliye satırlarını yükle"""
@@ -993,12 +1039,14 @@ class SevkIrsaliyePage(BasePage):
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT 
+                SELECT
                     cis.lot_no,
                     COALESCE(ie.stok_kodu, u.urun_kodu, '') as stok_kodu,
                     COALESCE(ie.stok_adi, u.urun_adi, '') as stok_adi,
                     cis.miktar,
-                    COALESCE(b.kod, 'AD') as birim
+                    COALESCE(b.kod, 'AD') as birim,
+                    cis.urun_id,
+                    cis.is_emri_id
                 FROM siparis.cikis_irsaliye_satirlar cis
                 LEFT JOIN siparis.is_emirleri ie ON cis.is_emri_id = ie.id
                 LEFT JOIN stok.urunler u ON cis.urun_id = u.id
@@ -1021,7 +1069,9 @@ class SevkIrsaliyePage(BasePage):
                     'stok_kodu': row[1] or '',
                     'stok_adi': row[2] or '',
                     'miktar': row[3] or 0,
-                    'birim': row[4] or 'AD'
+                    'birim': row[4] or 'AD',
+                    'urun_id': row[5],
+                    'is_emri_id': row[6]
                 }
                 self.satirlar_data.append(satir)
                 toplam_miktar += satir['miktar']
@@ -1133,7 +1183,110 @@ class SevkIrsaliyePage(BasePage):
         if reply == QMessageBox.Yes:
             self._durum_guncelle('IPTAL')
             self._stok_geri_yukle()
-    
+
+    def _stok_iade_yap(self):
+        """Daha önce iptal edilmiş ama stoğu geri gelmemiş irsaliye için stok iadesi"""
+        if not self.secili_irsaliye:
+            return
+
+        durum = self.secili_irsaliye.get('durum', '')
+        if durum != 'IPTAL':
+            QMessageBox.warning(self, "Uyarı", "Sadece İPTAL durumundaki irsaliyeler için stok iade yapılabilir!")
+            return
+
+        # İade öncesi kontrol: satırların stok durumunu göster
+        kontrol_text = ""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            for satir in self.satirlar_data:
+                lot_no = satir.get('lot_no', '')
+                if lot_no:
+                    cursor.execute("""
+                        SELECT miktar, kalite_durumu, d.kod as depo_kod
+                        FROM stok.stok_bakiye sb
+                        LEFT JOIN tanim.depolar d ON sb.depo_id = d.id
+                        WHERE sb.lot_no = ?
+                    """, (lot_no,))
+                    row = cursor.fetchone()
+                    if row:
+                        kontrol_text += f"  {lot_no}: miktar={row[0]:,.0f}, durum={row[1]}, depo={row[2]}\n"
+                    else:
+                        kontrol_text += f"  {lot_no}: kayıt yok (yeni oluşturulacak)\n"
+            conn.close()
+        except:
+            pass
+
+        reply = QMessageBox.question(
+            self, "Stok İade Onayı",
+            f"İrsaliye: {self.secili_irsaliye['irsaliye_no']}\n\n"
+            f"Mevcut stok durumu:\n{kontrol_text}\n"
+            f"Bu irsaliyenin ürünleri SEVK deposuna geri yüklenecek\n"
+            f"ve kalite durumu ONAYLANDI yapılacak.\n\n"
+            f"Devam edilsin mi?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            self._stok_geri_yukle()
+            QMessageBox.information(
+                self, "Başarılı",
+                f"Stok iadesi tamamlandı!\n\n"
+                f"İrsaliye: {self.secili_irsaliye['irsaliye_no']}\n"
+                f"{len(self.satirlar_data)} kalem ürün SEVK deposuna iade edildi.\n\n"
+                f"Sevkiyat listesinden kontrol edebilirsiniz."
+            )
+
+    def _zirve_aktar(self):
+        """İrsaliyeyi Zirve Ticari'ye aktar"""
+        if not self.secili_irsaliye:
+            return
+
+        irsaliye_id = self.secili_irsaliye['id']
+        irsaliye_no = self.secili_irsaliye.get('irsaliye_no', '')
+
+        # Önce aktarım durumunu kontrol et
+        try:
+            from core.zirve_entegrasyon import zirve_aktarim_kontrol, irsaliye_aktar
+        except ImportError as e:
+            QMessageBox.critical(self, "Hata", f"Zirve entegrasyon modülü yüklenemedi:\n{e}")
+            return
+
+        kontrol = zirve_aktarim_kontrol(irsaliye_id)
+        if kontrol.get('aktarildi'):
+            QMessageBox.warning(
+                self, "Zaten Aktarılmış",
+                f"Bu irsaliye zaten Zirve'ye aktarılmış!\n\n"
+                f"Zirve SIRANO: {kontrol.get('zirve_sirano')}\n"
+                f"Aktarım Tarihi: {kontrol.get('tarih')}"
+            )
+            return
+
+        # Onay al
+        reply = QMessageBox.question(
+            self, "Zirve'ye Aktarım Onayı",
+            f"İrsaliye: {irsaliye_no}\n"
+            f"Müşteri: {self.secili_irsaliye.get('musteri', '')}\n"
+            f"Satır: {len(self.satirlar_data)} kalem\n\n"
+            f"Bu irsaliye Zirve Ticari'ye (ATLAS_KATAFOREZ_2026T) aktarılacak.\n\n"
+            f"Devam edilsin mi?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        # Aktarımı yap
+        sonuc = irsaliye_aktar(irsaliye_id)
+
+        if sonuc.basarili:
+            QMessageBox.information(self, "Zirve Aktarım Başarılı", sonuc.mesaj)
+        else:
+            QMessageBox.critical(
+                self, "Zirve Aktarım Hatası",
+                f"İrsaliye Zirve'ye aktarılamadı!\n\n{sonuc.hata}"
+            )
+
     def _durum_guncelle(self, yeni_durum):
         """Durum güncelle"""
         try:
@@ -1163,39 +1316,80 @@ class SevkIrsaliyePage(BasePage):
             QMessageBox.critical(self, "Hata", f"Durum güncellenemedi: {e}")
     
     def _stok_geri_yukle(self):
-        """İptal edilen irsaliyenin stoklarını geri yükle"""
+        """İptal edilen irsaliyenin stoklarını SEVK deposuna geri yükle
+
+        stok_cikis miktar=0 olunca kalite_durumu='SEVK_EDILDI' yapar.
+        stok_giris ise mevcut kayıtta sadece miktar günceller, kalite_durumu'na dokunmaz.
+        Bu yüzden stok_giris + kalite_durumu UPDATE birlikte yapılmalı.
+        """
         if not self.secili_irsaliye:
             return
-        
+
         try:
             from core.hareket_motoru import HareketMotoru
-            
+
             conn = get_db_connection()
+            cursor = conn.cursor()
             motor = HareketMotoru(conn)
-            
+
+            # SEVK deposu ID'sini bul
+            cursor.execute("""
+                SELECT TOP 1 id FROM tanim.depolar
+                WHERE kod IN ('SEV-01', 'SEVK', 'SEV', 'MAMUL') AND aktif_mi = 1
+                ORDER BY id
+            """)
+            sevk_depo_row = cursor.fetchone()
+            sevk_depo_id = sevk_depo_row[0] if sevk_depo_row else None
+
             for satir in self.satirlar_data:
                 lot_no = satir.get('lot_no')
                 miktar = satir.get('miktar', 0)
-                
+                urun_id = satir.get('urun_id') or 1
+                is_emri_id = satir.get('is_emri_id')
+
                 if lot_no and miktar > 0:
+                    # Stok girişi yap (miktar iade)
                     sonuc = motor.stok_giris(
-                        lot_no=lot_no,
+                        urun_id=urun_id,
                         miktar=miktar,
-                        kaynak="IRSALIYE_IPTAL",
-                        kaynak_id=self.secili_irsaliye['id'],
+                        lot_no=lot_no,
+                        depo_id=sevk_depo_id,
+                        kalite_durumu='ONAYLANDI',
                         aciklama=f"İrsaliye iptal - stok iadesi ({self.secili_irsaliye['irsaliye_no']})"
                     )
-                    
+
+                    # stok_giris mevcut kayıtta kalite_durumu güncellemez,
+                    # stok_cikis SEVK_EDILDI yapmış olabilir → elle düzelt
+                    cursor.execute("""
+                        UPDATE stok.stok_bakiye
+                        SET kalite_durumu = 'ONAYLANDI',
+                            son_hareket_tarihi = GETDATE()
+                        WHERE lot_no = ? AND miktar > 0
+                    """, (lot_no,))
+
                     if sonuc.basarili:
-                        print(f"✓ Stok iadesi: {lot_no}, {miktar} adet")
+                        print(f"✓ Stok iadesi: {lot_no}, {miktar} adet → SEVK deposu (kalite=ONAYLANDI)")
                     else:
                         print(f"✗ Stok iadesi hatası: {sonuc.mesaj}")
-            
+
+                # İş emri durumunu SEVK_EDILDI → ONAYLANDI geri al
+                if is_emri_id:
+                    cursor.execute("""
+                        UPDATE siparis.is_emirleri
+                        SET durum = 'ONAYLANDI',
+                            guncelleme_tarihi = GETDATE()
+                        WHERE id = ? AND durum = 'SEVK_EDILDI'
+                    """, (is_emri_id,))
+
             conn.commit()
             conn.close()
-            
+
+            print(f"✓ İrsaliye iptal stok iadesi tamamlandı: {self.secili_irsaliye['irsaliye_no']}")
+
         except Exception as e:
-            print(f"Stok geri yükleme hatası: {e}")
+            import traceback
+            traceback.print_exc()
+            QMessageBox.warning(self, "Uyarı", f"Stok iadesi sırasında hata: {e}")
     
     def _yazdir(self):
         """İrsaliye yazdır"""

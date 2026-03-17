@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit,
     QAbstractItemView, QMessageBox, QComboBox, QGridLayout,
-    QSplitter, QWidget, QTextEdit
+    QSplitter, QWidget, QTextEdit, QCheckBox
 )
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont
@@ -30,9 +30,11 @@ class SevkYeniPage(BasePage):
         super().__init__(theme)
         self.okutulan_paketler = []  # Okutulan lot listesi
         self.sevkiyat_id = None
+        self._hazir_data = []
         self._setup_ui()
         self._load_arac_bilgileri()
-        
+        QTimer.singleShot(200, self._load_hazir_urunler)
+
         # Saat
         self.timer = QTimer()
         self.timer.timeout.connect(self._update_time)
@@ -142,18 +144,20 @@ class SevkYeniPage(BasePage):
         self.tasiyici_input.setStyleSheet(self._input_style())
         arac_grid.addWidget(self.tasiyici_input, 0, 1)
         
-        # Plaka
+        # Plaka (tanımlardan)
         arac_grid.addWidget(QLabel("Plaka:"), 1, 0)
-        self.plaka_input = QLineEdit()
-        self.plaka_input.setPlaceholderText("34 ABC 123")
+        self.plaka_input = QComboBox()
+        self.plaka_input.setEditable(True)
         self.plaka_input.setStyleSheet(self._input_style())
+        self.plaka_input.setPlaceholderText("Plaka seçin veya yazın")
         arac_grid.addWidget(self.plaka_input, 1, 1)
-        
-        # Şoför
+
+        # Şoför (tanımlardan)
         arac_grid.addWidget(QLabel("Şoför:"), 2, 0)
-        self.sofor_input = QLineEdit()
-        self.sofor_input.setPlaceholderText("Şoför adı")
+        self.sofor_input = QComboBox()
+        self.sofor_input.setEditable(True)
         self.sofor_input.setStyleSheet(self._input_style())
+        self.sofor_input.setPlaceholderText("Şoför seçin veya yazın")
         arac_grid.addWidget(self.sofor_input, 2, 1)
         
         arac_layout.addLayout(arac_grid)
@@ -170,8 +174,120 @@ class SevkYeniPage(BasePage):
         arac_layout.addWidget(self.not_input)
         
         sol_layout.addWidget(arac_frame)
-        sol_layout.addStretch()
-        
+
+        # Sevke Hazır Ürünler Listesi
+        hazir_frame = QFrame()
+        hazir_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {self.theme.get('bg_card', '#242938')};
+                border: 1px solid {self.theme.get('border', '#3d4454')};
+                border-radius: 12px;
+            }}
+        """)
+        hazir_layout = QVBoxLayout(hazir_frame)
+        hazir_layout.setContentsMargins(12, 12, 12, 12)
+        hazir_layout.setSpacing(8)
+
+        hazir_header = QHBoxLayout()
+        hazir_title = QLabel("SEVKE HAZIR ÜRÜNLER")
+        hazir_title.setStyleSheet(f"color: {self.theme.get('success', '#22c55e')}; font-weight: bold; font-size: 13px;")
+        hazir_header.addWidget(hazir_title)
+        hazir_header.addStretch()
+
+        self.hazir_count_label = QLabel("0 lot")
+        self.hazir_count_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        hazir_header.addWidget(self.hazir_count_label)
+
+        hazir_yenile_btn = QPushButton("Yenile")
+        hazir_yenile_btn.setFixedHeight(26)
+        hazir_yenile_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input', '#2d3548')};
+                color: {self.theme.get('text', '#fff')};
+                border: 1px solid {self.theme.get('border', '#3d4454')};
+                border-radius: 4px;
+                padding: 2px 10px;
+                font-size: 11px;
+            }}
+            QPushButton:hover {{ background: {self.theme.get('bg_hover', '#3d4454')}; }}
+        """)
+        hazir_yenile_btn.clicked.connect(self._load_hazir_urunler)
+        hazir_header.addWidget(hazir_yenile_btn)
+        hazir_layout.addLayout(hazir_header)
+
+        # Arama
+        self.hazir_search = QLineEdit()
+        self.hazir_search.setPlaceholderText("Filtrele... (lot, müşteri, ürün)")
+        self.hazir_search.setFixedHeight(28)
+        self.hazir_search.setStyleSheet(f"""
+            QLineEdit {{
+                background: {self.theme.get('bg_input', '#2d3548')};
+                border: 1px solid {self.theme.get('border', '#3d4454')};
+                border-radius: 4px;
+                padding: 4px 8px;
+                color: {self.theme.get('text', '#fff')};
+                font-size: 11px;
+            }}
+        """)
+        self.hazir_search.textChanged.connect(self._filter_hazir_urunler)
+        hazir_layout.addWidget(self.hazir_search)
+
+        # Tablo
+        self.hazir_table = QTableWidget()
+        self.hazir_table.setColumnCount(6)
+        self.hazir_table.setHorizontalHeaderLabels(["", "Lot No", "Müşteri", "Ürün", "Miktar", "Gün"])
+        self.hazir_table.setColumnWidth(0, 30)   # Checkbox
+        self.hazir_table.setColumnWidth(1, 120)
+        self.hazir_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.hazir_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.hazir_table.setColumnWidth(4, 70)
+        self.hazir_table.setColumnWidth(5, 40)
+        self.hazir_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.hazir_table.setSelectionMode(QAbstractItemView.MultiSelection)
+        self.hazir_table.verticalHeader().setVisible(False)
+        self.hazir_table.setStyleSheet(f"""
+            QTableWidget {{
+                background-color: {self.theme.get('bg_main', '#1a1f2e')};
+                border: 1px solid {self.theme.get('border', '#3d4454')};
+                border-radius: 4px;
+                gridline-color: {self.theme.get('border', '#3d4454')};
+                color: {self.theme.get('text', '#fff')};
+                font-size: 11px;
+            }}
+            QTableWidget::item {{ padding: 3px; }}
+            QTableWidget::item:selected {{ background-color: {self.theme.get('primary', '#6366f1')}; }}
+            QHeaderView::section {{
+                background-color: {self.theme.get('bg_input', '#2d3548')};
+                color: {self.theme.get('text', '#fff')};
+                padding: 4px;
+                border: none;
+                border-bottom: 1px solid {self.theme.get('border', '#3d4454')};
+                font-size: 11px;
+                font-weight: bold;
+            }}
+        """)
+        hazir_layout.addWidget(self.hazir_table, 1)
+
+        # Ekle butonu
+        ekle_btn = QPushButton("Secilenleri Ekle")
+        ekle_btn.setCursor(Qt.PointingHandCursor)
+        ekle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('success', '#22c55e')};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px;
+                font-weight: bold;
+                font-size: 12px;
+            }}
+            QPushButton:hover {{ background: {self.theme.get('success_hover', '#16a34a')}; }}
+        """)
+        ekle_btn.clicked.connect(self._hazir_secilenleri_ekle)
+        hazir_layout.addWidget(ekle_btn)
+
+        sol_layout.addWidget(hazir_frame, 1)
+
         splitter.addWidget(sol_widget)
         
         # SAĞ PANEL - Okutulan paketler
@@ -337,27 +453,212 @@ class SevkYeniPage(BasePage):
         self.saat_label.setText(now.strftime("%H:%M:%S"))
     
     def _load_arac_bilgileri(self):
-        """Daha önce kullanılan taşıyıcı firmalarını yükle"""
+        """Taşıyıcı, araç ve şoför bilgilerini tanımlardan yükle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
+            # Taşıyıcı firmalar (önceki irsaliyelerden)
             cursor.execute("""
-                SELECT DISTINCT tasiyici_firma 
-                FROM siparis.cikis_irsaliyeleri 
+                SELECT DISTINCT tasiyici_firma
+                FROM siparis.cikis_irsaliyeleri
                 WHERE tasiyici_firma IS NOT NULL AND tasiyici_firma != ''
                 ORDER BY tasiyici_firma
             """)
-            
             self.tasiyici_input.clear()
             self.tasiyici_input.addItem("")
             for row in cursor.fetchall():
                 self.tasiyici_input.addItem(row[0])
-            
+
+            # Araçlar (lojistik.araclar tanımından)
+            self.plaka_input.clear()
+            self.plaka_input.addItem("")
+            try:
+                cursor.execute("""
+                    SELECT plaka, arac_tipi, marka
+                    FROM lojistik.araclar
+                    WHERE aktif_mi = 1
+                    ORDER BY plaka
+                """)
+                for row in cursor.fetchall():
+                    plaka = row[0]
+                    detay = f"{row[1] or ''} {row[2] or ''}".strip()
+                    display = f"{plaka} ({detay})" if detay else plaka
+                    self.plaka_input.addItem(display, plaka)
+            except:
+                pass  # Tablo yoksa sessizce geç
+
+            # Şoförler (lojistik.soforler tanımından)
+            self.sofor_input.clear()
+            self.sofor_input.addItem("")
+            try:
+                cursor.execute("""
+                    SELECT ad_soyad, telefon
+                    FROM lojistik.soforler
+                    WHERE aktif_mi = 1
+                    ORDER BY ad_soyad
+                """)
+                for row in cursor.fetchall():
+                    ad = row[0]
+                    tel = row[1] or ''
+                    display = f"{ad} ({tel})" if tel else ad
+                    self.sofor_input.addItem(display, ad)
+            except:
+                pass  # Tablo yoksa sessizce geç
+
             conn.close()
         except:
             pass
-    
+
+    # =========================================================================
+    # SEVKE HAZIR ÜRÜNLER LİSTESİ
+    # =========================================================================
+
+    def _load_hazir_urunler(self):
+        """SEV deposundaki onaylı ürünleri yükle"""
+        self._hazir_data = []
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    sb.id,
+                    sb.lot_no,
+                    COALESCE(ie.cari_unvani, 'Tanımsız') as musteri,
+                    COALESCE(ie.stok_kodu, sb.stok_kodu, '') as stok_kodu,
+                    COALESCE(ie.stok_adi, sb.stok_adi, '') as stok_adi,
+                    sb.miktar,
+                    ie.cari_id,
+                    ie.id as is_emri_id,
+                    DATEDIFF(day, sb.son_hareket_tarihi, GETDATE()) as gun
+                FROM stok.stok_bakiye sb
+                LEFT JOIN siparis.is_emirleri ie
+                    ON REPLACE(REPLACE(sb.lot_no, '-SEV', ''), '-SEVK', '') = ie.lot_no
+                JOIN tanim.depolar d ON sb.depo_id = d.id
+                WHERE d.kod IN ('SEV-01', 'SEVK', 'SEV', 'MAMUL')
+                  AND sb.kalite_durumu IN ('ONAYLANDI', 'OK', 'SEVKE_HAZIR')
+                  AND sb.miktar > 0
+                ORDER BY sb.son_hareket_tarihi DESC
+            """)
+            for row in cursor.fetchall():
+                self._hazir_data.append({
+                    'stok_bakiye_id': row[0],
+                    'lot_no': row[1] or '',
+                    'musteri': row[2] or 'Tanımsız',
+                    'stok_kodu': row[3] or '',
+                    'stok_adi': row[4] or '',
+                    'miktar': row[5] or 0,
+                    'cari_id': row[6],
+                    'is_emri_id': row[7],
+                    'gun': row[8] or 0,
+                })
+            conn.close()
+        except Exception as e:
+            print(f"Hazır ürünler yükleme hatası: {e}")
+
+        self._display_hazir_urunler(self._hazir_data)
+
+    def _display_hazir_urunler(self, data):
+        """Sevke hazır ürünleri tabloda göster"""
+        # Zaten okutulanları çıkar
+        okutulan_lotlar = {p['lot_no'] for p in self.okutulan_paketler}
+
+        filtered = [d for d in data if d['lot_no'] not in okutulan_lotlar]
+
+        self.hazir_table.setRowCount(len(filtered))
+        for i, d in enumerate(filtered):
+            # Checkbox
+            cb = QCheckBox()
+            cb.setProperty('lot_data', d)
+            cb_widget = QWidget()
+            cb_layout = QHBoxLayout(cb_widget)
+            cb_layout.addWidget(cb)
+            cb_layout.setAlignment(Qt.AlignCenter)
+            cb_layout.setContentsMargins(0, 0, 0, 0)
+            self.hazir_table.setCellWidget(i, 0, cb_widget)
+
+            lot_item = QTableWidgetItem(d['lot_no'])
+            lot_item.setForeground(QColor(self.theme.get('info', '#3b82f6')))
+            self.hazir_table.setItem(i, 1, lot_item)
+
+            self.hazir_table.setItem(i, 2, QTableWidgetItem(d['musteri'][:20]))
+
+            urun = d['stok_kodu'] or d['stok_adi']
+            self.hazir_table.setItem(i, 3, QTableWidgetItem(urun[:25]))
+
+            miktar_item = QTableWidgetItem(f"{d['miktar']:,.0f}")
+            miktar_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.hazir_table.setItem(i, 4, miktar_item)
+
+            gun_item = QTableWidgetItem(str(d['gun']))
+            gun_item.setTextAlignment(Qt.AlignCenter)
+            if d['gun'] >= 14:
+                gun_item.setForeground(QColor('#ef4444'))
+            elif d['gun'] >= 7:
+                gun_item.setForeground(QColor('#f59e0b'))
+            self.hazir_table.setItem(i, 5, gun_item)
+
+            self.hazir_table.setRowHeight(i, 32)
+
+        self.hazir_count_label.setText(f"{len(filtered)} lot")
+
+    def _filter_hazir_urunler(self):
+        """Sevke hazır ürünleri filtrele"""
+        search = self.hazir_search.text().strip().lower()
+        if not search:
+            self._display_hazir_urunler(self._hazir_data if hasattr(self, '_hazir_data') else [])
+            return
+
+        filtered = []
+        for d in (self._hazir_data if hasattr(self, '_hazir_data') else []):
+            searchable = f"{d['lot_no']} {d['musteri']} {d['stok_kodu']} {d['stok_adi']}".lower()
+            if search in searchable:
+                filtered.append(d)
+        self._display_hazir_urunler(filtered)
+
+    def _hazir_secilenleri_ekle(self):
+        """Seçili hazır ürünleri okutulan paketlere ekle"""
+        eklenen = 0
+        for i in range(self.hazir_table.rowCount()):
+            cb_widget = self.hazir_table.cellWidget(i, 0)
+            if not cb_widget:
+                continue
+            cb = cb_widget.findChild(QCheckBox)
+            if not cb or not cb.isChecked():
+                continue
+
+            lot_data = cb.property('lot_data')
+            if not lot_data:
+                continue
+
+            # Daha önce okutulanlar arasında var mı?
+            already = any(p['lot_no'] == lot_data['lot_no'] for p in self.okutulan_paketler)
+            if already:
+                continue
+
+            paket = {
+                'stok_bakiye_id': lot_data['stok_bakiye_id'],
+                'lot_no': lot_data['lot_no'],
+                'musteri': lot_data['musteri'],
+                'stok_kodu': lot_data['stok_kodu'],
+                'stok_adi': lot_data['stok_adi'],
+                'miktar': lot_data['miktar'],
+                'cari_id': lot_data['cari_id'],
+                'is_emri_id': lot_data['is_emri_id'],
+                'okutma_saati': datetime.now()
+            }
+            self.okutulan_paketler.append(paket)
+            eklenen += 1
+
+        if eklenen > 0:
+            self._refresh_table()
+            # Hazır listesini güncelle (eklenenler çıkarılacak)
+            self._display_hazir_urunler(self._hazir_data if hasattr(self, '_hazir_data') else [])
+            self.son_okutma_label.setText(f"{eklenen} lot listeden eklendi")
+            self.son_okutma_label.setStyleSheet(f"color: {self.theme.get('success')}; font-size: 12px;")
+        else:
+            QMessageBox.information(self, "Bilgi", "Eklenecek lot seçilmedi veya seçilenler zaten ekli.")
+
     def _barkod_okut(self):
         """Barkod okutulduğunda - SEV deposundaki stoktan kontrol et"""
         barkod = self.barkod_input.text().strip()
@@ -396,7 +697,7 @@ class SevkYeniPage(BasePage):
                 LEFT JOIN siparis.is_emirleri ie ON REPLACE(REPLACE(sb.lot_no, '-SEV', ''), '-SEVK', '') = ie.lot_no
                 JOIN tanim.depolar d ON sb.depo_id = d.id
                 WHERE sb.lot_no = ?
-                  AND d.kod IN ('SEV-01', 'SEVK', 'SEV')
+                  AND d.kod IN ('SEV-01', 'SEVK', 'SEV', 'MAMUL')
                   AND sb.kalite_durumu IN ('ONAYLANDI', 'OK', 'SEVKE_HAZIR')
                   AND sb.miktar > 0
             """, (lot_no,))
@@ -430,7 +731,8 @@ class SevkYeniPage(BasePage):
             
             self.okutulan_paketler.append(paket)
             self._refresh_table()
-            
+            self._display_hazir_urunler(self._hazir_data if hasattr(self, '_hazir_data') else [])
+
             # Son okutma bilgisi
             self.son_okutma_label.setText(
                 f"✓ {lot_no} - {paket['musteri'][:20]} - {paket['miktar']:,.0f} ad"
@@ -570,9 +872,9 @@ class SevkYeniPage(BasePage):
             musteri_adi: Müşteri adı
             otomatik: True ise onay sorulmaz (toplu işlem için)
         """
-        # Bu cariye ait paketleri bul
-        cari_paketleri = [p for p in self.okutulan_paketler 
-                         if p.get('cari_id') == cari_id or p.get('musteri') == musteri_adi]
+        # Bu cariye ait paketleri bul (cari_id VE musteri eşleşmeli)
+        cari_paketleri = [p for p in self.okutulan_paketler
+                         if p.get('cari_id') == cari_id and p.get('musteri') == musteri_adi]
         
         if not cari_paketleri:
             raise Exception(f"Bu müşteriye ait paket bulunamadı!")
@@ -595,8 +897,15 @@ class SevkYeniPage(BasePage):
                 raise Exception("Kullanıcı iptal etti")
         
         # İrsaliye oluştur
-        plaka = self.plaka_input.text().strip()
-        sofor = self.sofor_input.text().strip()
+        # Plaka: tanımdan seçildiyse data'yı al, elle yazıldıysa text'i al
+        plaka = self.plaka_input.currentData() or self.plaka_input.currentText().strip()
+        # Parantez içi detay varsa temizle (örn: "34 ABC 123 (Kamyon Ford)" → "34 ABC 123")
+        if plaka and '(' in plaka:
+            plaka = plaka.split('(')[0].strip()
+        # Şoför: tanımdan seçildiyse data'yı al, elle yazıldıysa text'i al
+        sofor = self.sofor_input.currentData() or self.sofor_input.currentText().strip()
+        if sofor and '(' in sofor:
+            sofor = sofor.split('(')[0].strip()
         tasiyici = self.tasiyici_input.currentText().strip()
         notlar = self.not_input.toPlainText().strip()
         
@@ -622,14 +931,19 @@ class SevkYeniPage(BasePage):
                 else:
                     raise Exception("Müşteri bulunamadı!")
             
-            # İrsaliye numarası oluştur
-            cursor.execute("""
-                SELECT MAX(CAST(SUBSTRING(irsaliye_no, 5, 10) AS INT))
-                FROM siparis.cikis_irsaliyeleri
-                WHERE irsaliye_no LIKE 'IRS-%'
-            """)
-            max_no = cursor.fetchone()[0] or 0
-            irsaliye_no = f"IRS-{max_no + 1:06d}"
+            # İrsaliye numarası oluştur (tanımlardan)
+            try:
+                from modules.tanimlar.tanim_numara import sonraki_numara_al
+                irsaliye_no = sonraki_numara_al('IRSALIYE')
+            except Exception:
+                # Tanım yoksa eski yöntemle devam et
+                cursor.execute("""
+                    SELECT MAX(CAST(SUBSTRING(irsaliye_no, 5, 10) AS INT))
+                    FROM siparis.cikis_irsaliyeleri
+                    WHERE irsaliye_no LIKE 'IRS-%'
+                """)
+                max_no = cursor.fetchone()[0] or 0
+                irsaliye_no = f"IRS-{max_no + 1:06d}"
             
             # İrsaliye oluştur
             cursor.execute("""
@@ -701,9 +1015,9 @@ class SevkYeniPage(BasePage):
             conn.commit()
             conn.close()
             
-            # Bu carinin paketlerini listeden çıkar
-            self.okutulan_paketler = [p for p in self.okutulan_paketler 
-                                       if p.get('cari_id') != cari_id and p.get('musteri') != musteri_adi]
+            # Bu carinin paketlerini listeden çıkar (cari_id VE musteri eşleşeni çıkar)
+            self.okutulan_paketler = [p for p in self.okutulan_paketler
+                                       if not (p.get('cari_id') == cari_id and p.get('musteri') == musteri_adi)]
             self._refresh_table()
             
             # Başarılı mesajı (sadece manuel işlemde)
@@ -747,11 +1061,12 @@ class SevkYeniPage(BasePage):
                 return
         
         self.okutulan_paketler = []
-        self.plaka_input.clear()
-        self.sofor_input.clear()
+        self.plaka_input.setCurrentIndex(0)
+        self.sofor_input.setCurrentIndex(0)
         self.tasiyici_input.setCurrentIndex(0)
         self.not_input.clear()
         self._refresh_table()
+        self._load_hazir_urunler()
         self.son_okutma_label.setText("Son okutma: -")
         self.son_okutma_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
         self.barkod_input.setFocus()
@@ -819,7 +1134,8 @@ class SevkYeniPage(BasePage):
             
             # Ekranı temizle
             self.okutulan_paketler = []
-            self._update_paket_listesi()
+            self._refresh_table()
+            self._load_hazir_urunler()
         elif basarisiz:
             QMessageBox.critical(
                 self, "Hata",
