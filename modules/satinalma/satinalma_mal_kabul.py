@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from datetime import datetime
 
 
@@ -179,7 +180,7 @@ class MalKabulSatirDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_urun.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_urun_changed(self, index):
@@ -285,6 +286,7 @@ class MalKabulSatirDialog(QDialog):
                 ))
             
             conn.commit()
+            LogManager.log_insert('satinalma', 'satinalma.mal_kabul_satirlari', None, 'Mal kabul kaydi olustu')
             conn.close()
             self.accept()
         except Exception as e:
@@ -461,7 +463,7 @@ class MalKabulDialog(QDialog):
                 self.cmb_teslim_alan.addItem(f"{row[1]} - {row[2]}", row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):
@@ -531,7 +533,7 @@ class MalKabulDialog(QDialog):
                 else:
                     kalite_item.setForeground(QColor(self.theme.get('warning')))
                 self.table_satirlar.setItem(i, 8, kalite_item)
-        except: pass
+        except Exception: pass
     
     def _add_satir(self):
         if not self.kabul_id:
@@ -559,6 +561,7 @@ class MalKabulDialog(QDialog):
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM satinalma.mal_kabul_satirlari WHERE id = ?", (satir_id,))
                 conn.commit()
+                LogManager.log_delete('satinalma', 'satinalma.mal_kabul_satirlari', None, 'Kayit silindi')
                 conn.close()
                 self._load_satirlar()
             except Exception as e:
@@ -613,6 +616,7 @@ class MalKabulDialog(QDialog):
                 self.txt_kabul_no.setText(kabul_no)
             
             conn.commit()
+            LogManager.log_insert('satinalma', 'satinalma.mal_kabuller', None, 'Irsaliye kaydi olustu')
             conn.close()
             QMessageBox.information(self, "Başarılı", "Mal kabul kaydedildi.")
         except Exception as e:
@@ -625,6 +629,7 @@ class MalKabulDialog(QDialog):
             cursor.execute("UPDATE satinalma.mal_kabuller SET durum = 'KALITE_KONTROLDE' WHERE id = ?", (self.kabul_id,))
             cursor.execute("UPDATE satinalma.mal_kabul_satirlari SET kalite_durumu = 'KONTROL_EDILECEK' WHERE kabul_id = ?", (self.kabul_id,))
             conn.commit()
+            LogManager.log_update('satinalma', 'satinalma.mal_kabul_satirlari', None, 'Durum guncellendi')
             conn.close()
             QMessageBox.information(self, "Başarılı", "Mal kabul kalite kontrole gönderildi!")
             self.accept()

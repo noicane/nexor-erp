@@ -196,7 +196,7 @@ class YeniPPAPDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_musteri.addItem(row[0], row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _on_musteri_changed(self):
         """Müşteri değiştiğinde ürünleri güncelle"""
@@ -224,7 +224,7 @@ class YeniPPAPDialog(QDialog):
                 if row[0]:
                     self.cmb_urun.addItem(row[1], row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_personel(self):
         self.cmb_sorumlu.clear()
@@ -236,7 +236,7 @@ class YeniPPAPDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_sorumlu.addItem(row[1], row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _kaydet(self):
         cari_unvani = self.cmb_musteri.currentData()

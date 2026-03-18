@@ -61,7 +61,7 @@ class CihazTestThread(QThread):
             try:
                 users = conn.get_users()
                 user_count = len(users)
-            except:
+            except Exception:
                 user_count = "Okunamadı"
             conn.enable_device()
             conn.disconnect()

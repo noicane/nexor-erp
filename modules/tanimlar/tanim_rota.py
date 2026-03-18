@@ -106,7 +106,7 @@ class RotaAdimDialog(QDialog):
             for r in cursor.fetchall():
                 self.proses_combo.addItem(f"{r[1]} - {r[2]}", r[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_depolar(self, combo):
@@ -117,7 +117,7 @@ class RotaAdimDialog(QDialog):
             for r in cursor.fetchall():
                 combo.addItem(f"{r[1]} - {r[2]}", r[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):

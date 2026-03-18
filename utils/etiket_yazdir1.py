@@ -177,7 +177,7 @@ def _etiket_ciz(
     if resim_path and os.path.exists(resim_path):
         try:
             c.drawImage(resim_path, resim_x, resim_y, width=resim_w, height=resim_h, preserveAspectRatio=True, anchor='c')
-        except:
+        except Exception:
             # Resim yüklenemezse boş kutu
             c.setStrokeColorRGB(0.8, 0.8, 0.8)
             c.rect(resim_x, resim_y, resim_w, resim_h)
@@ -239,7 +239,7 @@ def _etiket_ciz(
     try:
         barcode = code128.Code128(lot_no, barWidth=0.4 * mm_unit, barHeight=8 * mm_unit)
         barcode.drawOn(c, barcode_x, barcode_y)
-    except:
+    except Exception:
         # Barkod oluşturulamazsa metin yaz
         c.setFont("Helvetica", 8)
         c.drawString(barcode_x, barcode_y + 4 * mm_unit, f"*{lot_no}*")
@@ -308,7 +308,7 @@ def _etiket_icerik_ciz_tam(c: canvas.Canvas, etiket: dict, page_w: float, page_h
         try:
             c.drawImage(resim_path, resim_x, resim_y, width=resim_w, height=resim_h, 
                        preserveAspectRatio=True, anchor='c')
-        except:
+        except Exception:
             c.setStrokeColorRGB(0.8, 0.8, 0.8)
             c.rect(resim_x, resim_y, resim_w, resim_h)
     else:
@@ -366,7 +366,7 @@ def _etiket_icerik_ciz_tam(c: canvas.Canvas, etiket: dict, page_w: float, page_h
         if lot_no:
             barcode = code128.Code128(lot_no, barWidth=0.4 * mm_unit, barHeight=8 * mm_unit)
             barcode.drawOn(c, barcode_x, barcode_y)
-    except:
+    except Exception:
         c.setFont("Helvetica", 8)
         c.drawString(barcode_x, barcode_y + 4 * mm_unit, f"*{etiket.get('lot_no', '')}*")
     
@@ -478,7 +478,7 @@ def _etiket_icerik_ciz(c: canvas.Canvas, etiket: dict):
         try:
             c.drawImage(resim_path, resim_x, resim_y, width=resim_w, height=resim_h, 
                        preserveAspectRatio=True, anchor='c')
-        except:
+        except Exception:
             c.setStrokeColorRGB(0.8, 0.8, 0.8)
             c.rect(resim_x, resim_y, resim_w, resim_h)
     else:
@@ -531,7 +531,7 @@ def _etiket_icerik_ciz(c: canvas.Canvas, etiket: dict):
     try:
         barcode = code128.Code128(lot_no, barWidth=0.35 * mm_unit, barHeight=7 * mm_unit)
         barcode.drawOn(c, margin, 2 * mm_unit)
-    except:
+    except Exception:
         pass
     
     # Tarih
@@ -822,7 +822,7 @@ def _veri_alani_deger_al(element: dict, etiket: dict) -> str:
             try:
                 deger = format_pattern.replace('{value}', str(deger))
                 deger = format_pattern.replace('{deger}', str(deger))
-            except:
+            except Exception:
                 pass
         
         return str(deger)
@@ -1036,7 +1036,7 @@ def _varsayilan_etiket_ciz(c: canvas.Canvas, etiket: dict, base_x: float, base_y
         try:
             c.drawImage(resim_path, resim_x, resim_y, width=resim_w, height=resim_h, 
                        preserveAspectRatio=True, anchor='c')
-        except:
+        except Exception:
             c.setStrokeColorRGB(0.8, 0.8, 0.8)
             c.rect(resim_x, resim_y, resim_w, resim_h)
     else:
@@ -1122,7 +1122,7 @@ def _text_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, y
     
     try:
         c.setFont(font_adi, font_boyut)
-    except:
+    except Exception:
         c.setFont('Helvetica', font_boyut)
     
     c.setFillColorRGB(0, 0, 0)
@@ -1177,7 +1177,7 @@ def _image_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, 
         try:
             c.drawImage(resim_path, x, y - yukseklik, width=genislik, height=yukseklik,
                        preserveAspectRatio=True, anchor='c')
-        except:
+        except Exception:
             # Resim yüklenemezse boş kutu
             c.setStrokeColorRGB(0.8, 0.8, 0.8)
             c.rect(x, y - yukseklik, genislik, yukseklik)

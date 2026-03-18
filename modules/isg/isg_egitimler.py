@@ -154,7 +154,7 @@ class EgitimDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_egitim.addItem(f"{row[1]} - {row[2]}", (row[0], row[3]))
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):
@@ -217,7 +217,7 @@ class EgitimDialog(QDialog):
                 if row[3]: katilan += 1
             
             self.lbl_katilimci.setText(f"{len(rows)} katılımcı | {katilan} katıldı")
-        except: pass
+        except Exception: pass
     
     def _add_katilimci(self):
         if not self.egitim_id:

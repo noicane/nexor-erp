@@ -222,7 +222,7 @@ class DepoDialog(QDialog):
                 idx = self.tip_combo.findData(self.data['depo_tipi_id'])
                 if idx >= 0:
                     self.tip_combo.setCurrentIndex(idx)
-        except:
+        except Exception:
             pass
     
     def _save(self):
@@ -367,7 +367,7 @@ class BolumDialog(QDialog):
                 idx = self.depo_combo.findData(depo_id)
                 if idx >= 0:
                     self.depo_combo.setCurrentIndex(idx)
-        except:
+        except Exception:
             pass
     
     def _save(self):
@@ -511,7 +511,7 @@ class RafDialog(QDialog):
                 idx = self.depo_combo.findData(depo_id)
                 if idx >= 0:
                     self.depo_combo.setCurrentIndex(idx)
-        except:
+        except Exception:
             pass
     
     def _load_bolumler(self):
@@ -531,7 +531,7 @@ class RafDialog(QDialog):
                 idx = self.bolum_combo.findData(self.data['bolum_id'])
                 if idx >= 0:
                     self.bolum_combo.setCurrentIndex(idx)
-        except:
+        except Exception:
             pass
     
     def _save(self):
@@ -663,7 +663,7 @@ class TopluRafDialog(QDialog):
                 idx = self.depo_combo.findData(self.preset_depo_id)
                 if idx >= 0:
                     self.depo_combo.setCurrentIndex(idx)
-        except:
+        except Exception:
             pass
     
     def _parse_koridorlar(self):
@@ -689,7 +689,7 @@ class TopluRafDialog(QDialog):
                 first = self.format_input.text().format(koridor=koridorlar[0], sira=self.sira_bas.value(), kat=self.kat_bas.value())
                 last = self.format_input.text().format(koridor=koridorlar[-1], sira=self.sira_son.value(), kat=self.kat_son.value())
                 preview += f"\nİlk: {first}  →  Son: {last}"
-            except:
+            except Exception:
                 preview += "\n⚠️ Format hatası!"
         self.preview_label.setText(preview)
     
@@ -1062,7 +1062,7 @@ class TanimDepoPage(BasePage):
                 self.bolum_depo_filter.addItem(row[1], row[0])
                 self.raf_depo_filter.addItem(row[1], row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     # ==================== CRUD ====================

@@ -205,7 +205,7 @@ class CevreSuEnerjiPage(BasePage):
             for i, row in enumerate(rows):
                 for j, val in enumerate(row): self.table_su.setItem(i, j, QTableWidgetItem(str(val) if val else ""))
                 try: toplam += float(row[5] or 0)
-                except: pass
+                except Exception: pass
                 widget = self.create_action_buttons([
                     ("✏️", "Duzenle", lambda checked, rid=row[0]: self._duzenle_su(rid), "edit"),
                 ])

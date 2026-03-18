@@ -183,7 +183,7 @@ def _get_config_path():
         test_file.write_text("test")
         test_file.unlink()
         return app_dir, app_config
-    except:
+    except Exception:
         # Uygulama dizinine yazılamıyorsa C:/NEXOR kullan
         return system_config_dir, system_config
 
@@ -266,7 +266,7 @@ def encode_password(password: str) -> str:
         return ""
     try:
         return base64.b64encode(password.encode('utf-8')).decode('utf-8')
-    except:
+    except Exception:
         return ""
 
 
@@ -276,7 +276,7 @@ def decode_password(encoded: str) -> str:
         return ""
     try:
         return base64.b64decode(encoded.encode('utf-8')).decode('utf-8')
-    except:
+    except Exception:
         return ""
 
 

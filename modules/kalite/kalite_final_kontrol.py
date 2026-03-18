@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Final Kalite Kontrol Sayfası (v3)
+REDLINE NEXOR ERP - Final Kalite Kontrol Sayfası (v4)
 =====================================================
 Yeni akış:
 - Personel kart/barkod/sicil ile giriş yapar
@@ -8,22 +8,27 @@ Yeni akış:
 - FKK deposundaki bekleyen ürünleri görür
 - Ürün seçip kontrole başlar
 - Sağlam → SEVK, Hatalı → RED depoya
-- Etiket yazdırma (Godex EZPL)
+- Etiket yazdırma (Şablon bazlı PDF)
+- Onaylı ürünler sekmesi + tekrar etiket basma
 """
 import os
-from datetime import datetime
+import subprocess
+import tempfile
+from datetime import datetime, timedelta
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit,
     QAbstractItemView, QMessageBox, QDialog, QComboBox,
     QSpinBox, QWidget, QGridLayout, QStackedWidget,
-    QSplitter, QListWidget, QListWidgetItem
+    QSplitter, QListWidget, QListWidgetItem, QTabWidget,
+    QGroupBox, QDateEdit
 )
-from PySide6.QtCore import Qt, QTimer, QTime, QEvent
+from PySide6.QtCore import Qt, QTimer, QTime, QEvent, QDate
 from PySide6.QtGui import QColor, QFont, QPixmap
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from core.rfid_reader import RFIDCardReader
 from config import NAS_PATHS
 
@@ -31,29 +36,49 @@ ETIKET_YAZICI = "Godex G500"
 
 
 class EtiketOnizlemeDialog(QDialog):
+    """Gelişmiş etiket önizleme - Şablon seçimi + yazıcı + PDF"""
+
     def __init__(self, theme: dict, etiket_data: dict, parent=None):
         super().__init__(parent)
         self.theme = theme
         self.etiket_data = etiket_data
-        self.setWindowTitle("Etiket Önizleme")
-        self.setMinimumSize(450, 350)
+        self.setWindowTitle("Etiket Önizleme ve Yazdır")
+        self.setMinimumSize(550, 550)
         self._setup_ui()
+        self._load_sablonlar()
+        self._load_yazicilar()
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main')}; }} QLabel {{ color: {self.theme.get('text')}; }}")
+        self.setStyleSheet(f"""
+            QDialog {{ background: {self.theme.get('bg_main')}; }}
+            QLabel {{ color: {self.theme.get('text')}; }}
+            QGroupBox {{
+                color: {self.theme.get('primary', '#DC2626')};
+                font-weight: bold;
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 8px;
+            }}
+            QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 8px; }}
+        """)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
 
+        title = QLabel("Etiket Önizleme")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
+        layout.addWidget(title)
+
+        # Etiket önizleme frame
         etiket_frame = QFrame()
         etiket_frame.setFixedSize(400, 200)
         etiket_frame.setStyleSheet(f"QFrame {{ background: white; border: 2px solid {self.theme.get('border')}; border-radius: 8px; }}")
-
         etiket_layout = QVBoxLayout(etiket_frame)
         etiket_layout.setContentsMargins(15, 10, 15, 10)
         etiket_layout.setSpacing(4)
 
-        musteri_lbl = QLabel(self.etiket_data.get('musteri', '')[:35])
+        musteri_lbl = QLabel(str(self.etiket_data.get('musteri', ''))[:35])
         musteri_lbl.setStyleSheet("color: #000; font-size: 16px; font-weight: bold;")
         musteri_lbl.setAlignment(Qt.AlignCenter)
         etiket_layout.addWidget(musteri_lbl)
@@ -64,55 +89,146 @@ class EtiketOnizlemeDialog(QDialog):
         line.setFixedHeight(1)
         etiket_layout.addWidget(line)
 
-        urun_lbl = QLabel(f"Ürün: {self.etiket_data.get('urun', '')[:30]}")
-        urun_lbl.setStyleSheet("color: #000; font-size: 12px;")
-        etiket_layout.addWidget(urun_lbl)
+        urun_text = self.etiket_data.get('stok_adi', '') or self.etiket_data.get('urun', '')
+        etiket_layout.addWidget(QLabel(f"Ürün: {str(urun_text)[:30]}"))
+        etiket_layout.addWidget(QLabel(f"Lot: {self.etiket_data.get('lot_no', '')}"))
 
-        lot_lbl = QLabel(f"Lot: {self.etiket_data.get('lot_no', '')}")
-        lot_lbl.setStyleSheet("color: #000; font-size: 12px; font-weight: bold;")
-        etiket_layout.addWidget(lot_lbl)
+        info_row = QHBoxLayout()
+        info_row.addWidget(QLabel(f"Sağlam: {self.etiket_data.get('saglam_adet', self.etiket_data.get('miktar', 0)):,}"))
+        sonuc = self.etiket_data.get('sonuc', '')
+        sonuc_renk = {'ONAY': '#22c55e', 'RED': '#ef4444', 'KISMI': '#f59e0b'}.get(sonuc, '#000')
+        sonuc_lbl = QLabel(f"Sonuç: {sonuc}")
+        sonuc_lbl.setStyleSheet(f"color: {sonuc_renk}; font-weight: bold;")
+        info_row.addWidget(sonuc_lbl)
+        etiket_layout.addLayout(info_row)
 
-        info_layout = QHBoxLayout()
-        adet_lbl = QLabel(f"Adet: {self.etiket_data.get('adet', 0)}")
-        adet_lbl.setStyleSheet("color: #000; font-size: 12px;")
-        info_layout.addWidget(adet_lbl)
-        tarih_lbl = QLabel(f"Tarih: {self.etiket_data.get('tarih', '')}")
-        tarih_lbl.setStyleSheet("color: #000; font-size: 12px;")
-        info_layout.addWidget(tarih_lbl)
-        etiket_layout.addLayout(info_layout)
-
-        kontrol_lbl = QLabel(f"Kontrol: {self.etiket_data.get('kontrolcu', '')[:20]}")
-        kontrol_lbl.setStyleSheet("color: #000; font-size: 11px;")
-        etiket_layout.addWidget(kontrol_lbl)
+        etiket_layout.addWidget(QLabel(f"Kontrol: {str(self.etiket_data.get('kontrolcu', ''))[:20]}"))
 
         barkod_lbl = QLabel("|||||||||||||||||||||||||||||||||||")
         barkod_lbl.setStyleSheet("color: #000; font-size: 20px; font-family: monospace;")
         barkod_lbl.setAlignment(Qt.AlignCenter)
         etiket_layout.addWidget(barkod_lbl)
 
-        barkod_text = QLabel(self.etiket_data.get('lot_no', ''))
-        barkod_text.setStyleSheet("color: #000; font-size: 10px;")
-        barkod_text.setAlignment(Qt.AlignCenter)
-        etiket_layout.addWidget(barkod_text)
+        for w in etiket_frame.findChildren(QLabel):
+            if "|||" not in w.text():
+                w.setStyleSheet(w.styleSheet() + "color: #000; font-size: 12px;")
 
         layout.addWidget(etiket_frame, alignment=Qt.AlignCenter)
 
-        info = QLabel("100 x 50 mm")
-        info.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
-        info.setAlignment(Qt.AlignCenter)
-        layout.addWidget(info)
+        # Şablon seçimi
+        sablon_group = QGroupBox("Etiket Şablonu")
+        sablon_layout = QHBoxLayout(sablon_group)
+        sablon_layout.addWidget(QLabel("Şablon:"))
+        self.sablon_combo = QComboBox()
+        self.sablon_combo.setMinimumWidth(250)
+        self.sablon_combo.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        sablon_layout.addWidget(self.sablon_combo)
+        sablon_layout.addStretch()
+        layout.addWidget(sablon_group)
 
+        # Yazıcı seçimi
+        yazici_group = QGroupBox("Yazıcı Ayarları")
+        yazici_layout = QHBoxLayout(yazici_group)
+        yazici_layout.addWidget(QLabel("Yazıcı:"))
+        self.yazici_combo = QComboBox()
+        self.yazici_combo.setMinimumWidth(200)
+        self.yazici_combo.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        yazici_layout.addWidget(self.yazici_combo)
+        yazici_layout.addWidget(QLabel("Mod:"))
+        self.mod_combo = QComboBox()
+        self.mod_combo.addItem("PDF Yazdır", "PDF")
+        self.mod_combo.addItem("Godex Direkt (EZPL)", "EZPL")
+        self.mod_combo.setStyleSheet(self.yazici_combo.styleSheet())
+        yazici_layout.addWidget(self.mod_combo)
+        yazici_layout.addStretch()
+        layout.addWidget(yazici_group)
+
+        # Butonlar
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
+
+        onizle_btn = QPushButton("PDF Önizle")
+        onizle_btn.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 20px;")
+        onizle_btn.clicked.connect(self._pdf_onizle)
+        btn_layout.addWidget(onizle_btn)
+
         iptal_btn = QPushButton("İptal")
         iptal_btn.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 20px;")
         iptal_btn.clicked.connect(self.reject)
         btn_layout.addWidget(iptal_btn)
+
         yazdir_btn = QPushButton("Yazdır")
         yazdir_btn.setStyleSheet(f"background: {self.theme.get('success')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
         yazdir_btn.clicked.connect(self.accept)
         btn_layout.addWidget(yazdir_btn)
         layout.addLayout(btn_layout)
+
+    def _load_sablonlar(self):
+        self.sablon_combo.clear()
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, sablon_kodu, sablon_adi, varsayilan_mi
+                FROM tanim.etiket_sablonlari
+                WHERE aktif_mi = 1 AND sablon_tipi IN ('PALET', 'MAMUL', 'SEVK', 'KALITE')
+                ORDER BY varsayilan_mi DESC, sablon_adi
+            """)
+            for row in cursor.fetchall():
+                varsayilan = " *" if row[3] else ""
+                self.sablon_combo.addItem(f"{row[2]}{varsayilan}", row[0])
+            conn.close()
+            if self.sablon_combo.count() == 0:
+                self.sablon_combo.addItem("Varsayılan Şablon", None)
+        except Exception as e:
+            print(f"Şablon yükleme hatası: {e}")
+            self.sablon_combo.addItem("Varsayılan Şablon", None)
+
+    def _load_yazicilar(self):
+        self.yazici_combo.clear()
+        try:
+            from utils.etiket_yazdir import get_available_printers, get_godex_printers
+            all_printers = get_available_printers()
+            godex_printers = get_godex_printers()
+            if godex_printers:
+                for p in godex_printers:
+                    self.yazici_combo.addItem(f"{p}", p)
+            for p in all_printers:
+                if p not in godex_printers:
+                    self.yazici_combo.addItem(p, p)
+            if self.yazici_combo.count() == 0:
+                self.yazici_combo.addItem("PDF Dosyası Olarak Kaydet", "PDF_ONLY")
+        except ImportError:
+            self.yazici_combo.addItem("PDF Dosyası Olarak Kaydet", "PDF_ONLY")
+        except Exception as e:
+            print(f"Yazıcı listesi yüklenemedi: {e}")
+            self.yazici_combo.addItem("PDF Dosyası Olarak Kaydet", "PDF_ONLY")
+
+    def _pdf_onizle(self):
+        try:
+            sablon_id = self.sablon_combo.currentData()
+            etiketler = [self.etiket_data]
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='fk_etiket_')
+            temp_path = temp_file.name
+            temp_file.close()
+            if sablon_id:
+                from utils.etiket_yazdir import sablon_ile_etiket_pdf_olustur
+                sablon_ile_etiket_pdf_olustur(temp_path, etiketler, sablon_id)
+            else:
+                from utils.etiket_yazdir import a4_etiket_pdf_olustur
+                a4_etiket_pdf_olustur(temp_path, etiketler)
+            subprocess.Popen(['start', '', temp_path], shell=True)
+        except Exception as e:
+            QMessageBox.warning(self, "Uyarı", f"PDF önizleme hatası: {e}")
+
+    def get_sablon_id(self):
+        return self.sablon_combo.currentData()
+
+    def get_yazici(self):
+        return self.yazici_combo.currentData()
+
+    def get_mod(self):
+        return self.mod_combo.currentData()
 
 
 class FinalKontrolDialog(QDialog):
@@ -524,7 +640,43 @@ class KaliteFinalKontrolPage(BasePage):
 
         main_layout.addLayout(header)
 
-        # --- İstatistik Kartları ---
+        # --- Tab Widget ---
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 8px;
+                background: transparent;
+            }}
+            QTabBar::tab {{
+                background: {self.theme.get('bg_card')};
+                color: {self.theme.get('text_muted')};
+                border: 1px solid {self.theme.get('border')};
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                padding: 10px 24px;
+                font-size: 13px;
+                font-weight: 600;
+                margin-right: 2px;
+            }}
+            QTabBar::tab:selected {{
+                background: {self.theme.get('bg_main')};
+                color: {self.theme.get('primary')};
+                border-bottom: 2px solid {self.theme.get('primary')};
+            }}
+            QTabBar::tab:hover {{
+                color: {self.theme.get('text')};
+            }}
+        """)
+
+        # ===== TAB 1: Bekleyen Ürünler =====
+        bekleyen_tab = QWidget()
+        bek_layout = QVBoxLayout(bekleyen_tab)
+        bek_layout.setContentsMargins(0, 8, 0, 0)
+        bek_layout.setSpacing(10)
+
+        # İstatistik Kartları
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(10)
         self.stat_bekleyen = self._create_stat_card_ui("Bekleyen", "0", "#3b82f6")
@@ -535,9 +687,9 @@ class KaliteFinalKontrolPage(BasePage):
         stats_layout.addWidget(self.stat_bugun)
         stats_layout.addWidget(self.stat_saglam)
         stats_layout.addWidget(self.stat_ret)
-        main_layout.addLayout(stats_layout)
+        bek_layout.addLayout(stats_layout)
 
-        # --- Filtreler ---
+        # Filtreler
         filter_layout = QHBoxLayout()
         filter_layout.setSpacing(8)
 
@@ -563,9 +715,9 @@ class KaliteFinalKontrolPage(BasePage):
         self.musteri_filter.currentIndexChanged.connect(self._filter_products)
         filter_layout.addWidget(self.musteri_filter)
 
-        main_layout.addLayout(filter_layout)
+        bek_layout.addLayout(filter_layout)
 
-        # --- Splitter: Tablo + Detay ---
+        # Splitter: Tablo + Detay
         splitter = QSplitter(Qt.Horizontal)
         splitter.setStyleSheet(f"QSplitter::handle {{ background: {self.theme.get('border')}; width: 2px; }}")
 
@@ -580,8 +732,8 @@ class KaliteFinalKontrolPage(BasePage):
         self.product_table.setHorizontalHeaderLabels([
             "ID", "İş Emri", "Lot No", "Müşteri", "Ürün", "Miktar", "Bekleme", "urun_id"
         ])
-        self.product_table.setColumnHidden(0, True)   # is_emri_id
-        self.product_table.setColumnHidden(7, True)    # urun_id
+        self.product_table.setColumnHidden(0, True)
+        self.product_table.setColumnHidden(7, True)
         self.product_table.setColumnWidth(1, 110)
         self.product_table.setColumnWidth(2, 120)
         self.product_table.setColumnWidth(3, 140)
@@ -610,7 +762,6 @@ class KaliteFinalKontrolPage(BasePage):
         detail_layout.setContentsMargins(16, 16, 16, 16)
         detail_layout.setSpacing(10)
 
-        # Ürün Resmi
         self.image_label = QLabel("Ürün seçin")
         self.image_label.setFixedSize(300, 220)
         self.image_label.setAlignment(Qt.AlignCenter)
@@ -623,7 +774,6 @@ class KaliteFinalKontrolPage(BasePage):
         """)
         detail_layout.addWidget(self.image_label, alignment=Qt.AlignCenter)
 
-        # Detay bilgileri
         self.detail_grid = QGridLayout()
         self.detail_grid.setSpacing(6)
 
@@ -652,8 +802,7 @@ class KaliteFinalKontrolPage(BasePage):
 
         detail_layout.addLayout(self.detail_grid)
 
-        # Ambalajlama Talimatları
-        ambalaj_header = QLabel("📦 Ambalajlama Talimatları")
+        ambalaj_header = QLabel("Ambalajlama Talimatları")
         ambalaj_header.setStyleSheet(f"color: {self.theme.get('primary')}; font-size: 12px; font-weight: bold; border: none; margin-top: 6px;")
         detail_layout.addWidget(ambalaj_header)
 
@@ -681,7 +830,6 @@ class KaliteFinalKontrolPage(BasePage):
 
         detail_layout.addStretch()
 
-        # Kontrole Başla butonu
         self.basla_btn = QPushButton("KONTROLE BAŞLA")
         self.basla_btn.setEnabled(False)
         self.basla_btn.setCursor(Qt.PointingHandCursor)
@@ -708,11 +856,9 @@ class KaliteFinalKontrolPage(BasePage):
         detail_layout.addWidget(self.basla_btn)
 
         splitter.addWidget(self.detail_frame)
-
         splitter.setSizes([550, 350])
-        main_layout.addWidget(splitter, 1)
+        bek_layout.addWidget(splitter, 1)
 
-        # --- Son İşlemler Barı ---
         self.son_islem_label = QLabel("")
         self.son_islem_label.setStyleSheet(f"""
             color: {self.theme.get('text_muted')};
@@ -722,7 +868,17 @@ class KaliteFinalKontrolPage(BasePage):
             border-radius: 6px;
             padding: 6px 12px;
         """)
-        main_layout.addWidget(self.son_islem_label)
+        bek_layout.addWidget(self.son_islem_label)
+
+        self.tab_widget.addTab(bekleyen_tab, "Bekleyen Ürünler")
+
+        # ===== TAB 2: Onaylı Ürünler =====
+        onayli_tab = self._build_onayli_tab()
+        self.tab_widget.addTab(onayli_tab, "Onaylı Ürünler")
+
+        self.tab_widget.currentChanged.connect(self._on_tab_changed)
+
+        main_layout.addWidget(self.tab_widget, 1)
 
         self.stacked.addWidget(main_page)
 
@@ -1598,6 +1754,7 @@ class KaliteFinalKontrolPage(BasePage):
                             print(f"Üretim red kaydı hatası: {red_err}")
 
             conn.commit()
+            LogManager.log_insert('kalite', 'kalite.uretim_redler', None, 'Yeni kayit eklendi')
             conn.close()
 
             # Etiket bas
@@ -1628,51 +1785,350 @@ class KaliteFinalKontrolPage(BasePage):
 
     def _bas_etiket(self, gorev_data, result):
         try:
+            hatali = result['hatali_miktar']
+            saglam = result['saglam_miktar']
+            if hatali == 0:
+                sonuc = 'ONAY'
+            elif saglam == 0:
+                sonuc = 'RED'
+            else:
+                sonuc = 'KISMI'
+
             etiket_data = {
                 'musteri': gorev_data.get('cari_unvani', '') or '',
-                'urun': gorev_data.get('stok_adi', '') or '',
+                'stok_adi': gorev_data.get('stok_adi', '') or '',
+                'stok_kodu': gorev_data.get('stok_kodu', '') or '',
                 'lot_no': gorev_data.get('lot_no', '') or '',
-                'adet': result['saglam_miktar'],
-                'tarih': datetime.now().strftime('%d.%m.%Y'),
+                'miktar': saglam,
+                'tarih': datetime.now(),
                 'kontrolcu': result.get('kontrolcu_ad', ''),
-                'stok_kodu': gorev_data.get('stok_kodu', '') or ''
+                'is_emri_no': gorev_data.get('is_emri_no', ''),
+                'kontrol_tarihi': datetime.now(),
+                'saglam_adet': saglam,
+                'hatali_adet': hatali,
+                'sonuc': sonuc,
             }
             dlg = EtiketOnizlemeDialog(self.theme, etiket_data, self)
             if dlg.exec() != QDialog.Accepted:
                 return
-            ezpl = f"""
-^Q50,3
-^W100
-^H10
-^P1
-^S3
-^AD
-^C1
-^R0
-~Q+0
-^O0
-^D0
-^E18
-~R200
-^L
-Dy2-me-dd
-Th:m:s
-AE,48,36,1,1,0,0,{etiket_data['musteri'][:30]}
-AE,48,26,1,1,0,3,Urun: {etiket_data['urun'][:25]}
-AE,48,18,1,1,0,3,Lot: {etiket_data['lot_no']}
-AE,48,12,1,1,0,3,Adet: {etiket_data['adet']}
-AE,48,6,1,1,0,3,Tarih: {etiket_data['tarih']}
-AE,48,0,1,1,0,3,Kontrol: {etiket_data['kontrolcu'][:15]}
-BE,10,40,1,3,70,0,2,{etiket_data['lot_no']}
-E
-"""
-            lot_safe = (etiket_data['lot_no'] or 'etiket').replace('/', '-').replace('\\', '-')
-            etiket_dosya = os.path.join(os.path.expanduser("~"), "Desktop", f"etiket_{lot_safe}.prn")
-            with open(etiket_dosya, 'w', encoding='utf-8') as f:
-                f.write(ezpl)
-            print(f"Etiket: {etiket_dosya}")
+
+            sablon_id = dlg.get_sablon_id()
+            yazici = dlg.get_yazici()
+            mod = dlg.get_mod()
+
+            etiketler = [etiket_data]
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='fk_etiket_')
+            temp_path = temp_file.name
+            temp_file.close()
+
+            if sablon_id:
+                from utils.etiket_yazdir import sablon_ile_etiket_pdf_olustur
+                sablon_ile_etiket_pdf_olustur(temp_path, etiketler, sablon_id)
+            else:
+                from utils.etiket_yazdir import a4_etiket_pdf_olustur
+                a4_etiket_pdf_olustur(temp_path, etiketler)
+
+            if yazici == 'PDF_ONLY' or mod == 'PDF':
+                subprocess.Popen(['start', '', temp_path], shell=True)
+            else:
+                try:
+                    subprocess.run(
+                        ['powershell', '-Command',
+                         f'Start-Process -FilePath "{temp_path}" -Verb Print -ArgumentList "/p /h \\"{yazici}\\"" '],
+                        shell=True, timeout=30
+                    )
+                except Exception as pe:
+                    print(f"Yazıcı hatası: {pe}")
+                    subprocess.Popen(['start', '', temp_path], shell=True)
+
+            print(f"Etiket PDF: {temp_path}")
         except Exception as e:
             print(f"Etiket hatası: {e}")
+            import traceback
+            traceback.print_exc()
+
+    # =========================================================================
+    # ONAYLI ÜRÜNLER SEKMESİ
+    # =========================================================================
+
+    def _build_onayli_tab(self):
+        """Onaylı ürünler sekmesini oluştur"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(0, 8, 0, 0)
+        layout.setSpacing(10)
+
+        input_style = f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 6px 10px;"
+
+        # Filtre satırı
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(8)
+
+        filter_row.addWidget(QLabel("Başlangıç:"))
+        self.onayli_tarih_bas = QDateEdit()
+        self.onayli_tarih_bas.setDate(QDate.currentDate())
+        self.onayli_tarih_bas.setCalendarPopup(True)
+        self.onayli_tarih_bas.setDisplayFormat("dd.MM.yyyy")
+        self.onayli_tarih_bas.setStyleSheet(input_style)
+        self.onayli_tarih_bas.dateChanged.connect(self._load_onayli_urunler)
+        filter_row.addWidget(self.onayli_tarih_bas)
+
+        filter_row.addWidget(QLabel("Bitiş:"))
+        self.onayli_tarih_bit = QDateEdit()
+        self.onayli_tarih_bit.setDate(QDate.currentDate())
+        self.onayli_tarih_bit.setCalendarPopup(True)
+        self.onayli_tarih_bit.setDisplayFormat("dd.MM.yyyy")
+        self.onayli_tarih_bit.setStyleSheet(input_style)
+        self.onayli_tarih_bit.dateChanged.connect(self._load_onayli_urunler)
+        filter_row.addWidget(self.onayli_tarih_bit)
+
+        self.onayli_search = QLineEdit()
+        self.onayli_search.setPlaceholderText("Ara... (İş Emri, Lot, Ürün)")
+        self.onayli_search.setStyleSheet(input_style)
+        self.onayli_search.returnPressed.connect(self._load_onayli_urunler)
+        filter_row.addWidget(self.onayli_search, 1)
+
+        onayli_yenile_btn = QPushButton("Yenile")
+        onayli_yenile_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_card')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 6px 16px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
+        """)
+        onayli_yenile_btn.clicked.connect(self._load_onayli_urunler)
+        filter_row.addWidget(onayli_yenile_btn)
+
+        layout.addLayout(filter_row)
+
+        # Tablo
+        self.onayli_table = QTableWidget()
+        self.onayli_table.setColumnCount(10)
+        self.onayli_table.setHorizontalHeaderLabels([
+            "ID", "İş Emri", "Lot No", "Müşteri", "Ürün",
+            "Sağlam", "Hatalı", "Sonuç", "Tarih", "Kontrol Eden"
+        ])
+        self.onayli_table.setColumnHidden(0, True)
+        self.onayli_table.setColumnWidth(1, 110)
+        self.onayli_table.setColumnWidth(2, 130)
+        self.onayli_table.setColumnWidth(3, 150)
+        self.onayli_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
+        self.onayli_table.setColumnWidth(5, 80)
+        self.onayli_table.setColumnWidth(6, 80)
+        self.onayli_table.setColumnWidth(7, 80)
+        self.onayli_table.setColumnWidth(8, 130)
+        self.onayli_table.setColumnWidth(9, 140)
+        self.onayli_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.onayli_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.onayli_table.verticalHeader().setVisible(False)
+        self.onayli_table.setAlternatingRowColors(True)
+        self.onayli_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        layout.addWidget(self.onayli_table, 1)
+
+        # Alt butonlar
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+
+        self.onayli_info_label = QLabel("")
+        self.onayli_info_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        btn_row.addWidget(self.onayli_info_label)
+        btn_row.addStretch()
+
+        etiket_btn = QPushButton("Tekrar Etiket Bas")
+        etiket_btn.setCursor(Qt.PointingHandCursor)
+        etiket_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('primary')};
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 24px;
+                font-size: 13px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background: {self.theme.get('primary_hover', self.theme.get('primary'))};
+            }}
+        """)
+        etiket_btn.clicked.connect(self._tekrar_etiket_bas)
+        btn_row.addWidget(etiket_btn)
+
+        layout.addLayout(btn_row)
+
+        return tab
+
+    def _on_tab_changed(self, index):
+        """Tab değiştiğinde onaylı ürünleri yükle"""
+        if index == 1:
+            self._load_onayli_urunler()
+
+    def _load_onayli_urunler(self):
+        """Onaylı ürünler tablosunu doldur"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            tarih_bas = self.onayli_tarih_bas.date().toString("yyyy-MM-dd")
+            tarih_bit = self.onayli_tarih_bit.date().toString("yyyy-MM-dd")
+            search = self.onayli_search.text().strip()
+
+            query = """
+                SELECT fk.id, ie.is_emri_no, fk.lot_no,
+                       ie.cari_unvani, CONCAT(ie.stok_kodu, ' - ', ie.stok_adi),
+                       fk.saglam_adet, fk.hatali_adet, fk.sonuc,
+                       fk.kontrol_tarihi,
+                       CONCAT(p.ad, ' ', p.soyad) as kontrolcu
+                FROM kalite.final_kontrol fk
+                LEFT JOIN siparis.is_emirleri ie ON fk.is_emri_id = ie.id
+                LEFT JOIN ik.personeller p ON fk.kontrol_eden_id = p.id
+                WHERE CAST(fk.kontrol_tarihi AS DATE) >= ?
+                  AND CAST(fk.kontrol_tarihi AS DATE) <= ?
+            """
+            params = [tarih_bas, tarih_bit]
+
+            if search:
+                query += " AND (ie.is_emri_no LIKE ? OR fk.lot_no LIKE ? OR ie.stok_kodu LIKE ? OR ie.cari_unvani LIKE ?)"
+                params.extend([f"%{search}%"] * 4)
+
+            query += " ORDER BY fk.kontrol_tarihi DESC"
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            conn.close()
+
+            self.onayli_table.setRowCount(len(rows))
+            sonuc_renk = {'ONAY': '#22c55e', 'RED': '#ef4444', 'KISMI': '#f59e0b'}
+
+            for i, row in enumerate(rows):
+                self.onayli_table.setItem(i, 0, QTableWidgetItem(str(row[0] or '')))
+
+                ie_item = QTableWidgetItem(str(row[1] or ''))
+                ie_item.setForeground(QColor(self.theme.get('primary')))
+                ie_item.setFont(QFont("", -1, QFont.Bold))
+                self.onayli_table.setItem(i, 1, ie_item)
+
+                self.onayli_table.setItem(i, 2, QTableWidgetItem(str(row[2] or '')))
+                self.onayli_table.setItem(i, 3, QTableWidgetItem(str(row[3] or '')[:25]))
+                self.onayli_table.setItem(i, 4, QTableWidgetItem(str(row[4] or '')[:40]))
+
+                saglam_item = QTableWidgetItem(f"{row[5] or 0:,.0f}")
+                saglam_item.setTextAlignment(Qt.AlignCenter)
+                self.onayli_table.setItem(i, 5, saglam_item)
+
+                hatali_item = QTableWidgetItem(f"{row[6] or 0:,.0f}")
+                hatali_item.setTextAlignment(Qt.AlignCenter)
+                if row[6] and row[6] > 0:
+                    hatali_item.setForeground(QColor('#ef4444'))
+                self.onayli_table.setItem(i, 6, hatali_item)
+
+                sonuc = str(row[7] or '')
+                sonuc_item = QTableWidgetItem(sonuc)
+                sonuc_item.setForeground(QColor(sonuc_renk.get(sonuc, '#888')))
+                sonuc_item.setFont(QFont("", -1, QFont.Bold))
+                sonuc_item.setTextAlignment(Qt.AlignCenter)
+                self.onayli_table.setItem(i, 7, sonuc_item)
+
+                tarih_str = row[8].strftime('%d.%m.%Y %H:%M') if row[8] else ''
+                self.onayli_table.setItem(i, 8, QTableWidgetItem(tarih_str))
+                self.onayli_table.setItem(i, 9, QTableWidgetItem(str(row[9] or '')))
+
+                self.onayli_table.setRowHeight(i, 40)
+
+            self.onayli_info_label.setText(f"Toplam {len(rows)} kayıt")
+
+        except Exception as e:
+            print(f"Onaylı ürünler yükleme hatası: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _tekrar_etiket_bas(self):
+        """Seçili onaylı ürün için tekrar etiket bas"""
+        row = self.onayli_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Uyarı", "Lütfen bir kayıt seçin!")
+            return
+
+        # Tablodan verileri al
+        lot_no = self.onayli_table.item(row, 2).text() if self.onayli_table.item(row, 2) else ''
+        musteri = self.onayli_table.item(row, 3).text() if self.onayli_table.item(row, 3) else ''
+        urun = self.onayli_table.item(row, 4).text() if self.onayli_table.item(row, 4) else ''
+        saglam = self.onayli_table.item(row, 5).text() if self.onayli_table.item(row, 5) else '0'
+        hatali = self.onayli_table.item(row, 6).text() if self.onayli_table.item(row, 6) else '0'
+        sonuc = self.onayli_table.item(row, 7).text() if self.onayli_table.item(row, 7) else ''
+        kontrolcu = self.onayli_table.item(row, 9).text() if self.onayli_table.item(row, 9) else ''
+        is_emri_no = self.onayli_table.item(row, 1).text() if self.onayli_table.item(row, 1) else ''
+
+        # stok_kodu ve stok_adi ayır
+        parts = urun.split(' - ', 1)
+        stok_kodu = parts[0].strip() if parts else ''
+        stok_adi = parts[1].strip() if len(parts) > 1 else urun
+
+        # Miktar string -> float
+        try:
+            saglam_adet = float(saglam.replace(',', ''))
+        except ValueError:
+            saglam_adet = 0
+        try:
+            hatali_adet = float(hatali.replace(',', ''))
+        except ValueError:
+            hatali_adet = 0
+
+        etiket_data = {
+            'musteri': musteri,
+            'stok_adi': stok_adi,
+            'stok_kodu': stok_kodu,
+            'lot_no': lot_no,
+            'miktar': saglam_adet,
+            'tarih': datetime.now(),
+            'kontrolcu': kontrolcu,
+            'is_emri_no': is_emri_no,
+            'kontrol_tarihi': datetime.now(),
+            'saglam_adet': saglam_adet,
+            'hatali_adet': hatali_adet,
+            'sonuc': sonuc,
+        }
+
+        dlg = EtiketOnizlemeDialog(self.theme, etiket_data, self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        sablon_id = dlg.get_sablon_id()
+        yazici = dlg.get_yazici()
+        mod = dlg.get_mod()
+
+        try:
+            etiketler = [etiket_data]
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='fk_tekrar_')
+            temp_path = temp_file.name
+            temp_file.close()
+
+            if sablon_id:
+                from utils.etiket_yazdir import sablon_ile_etiket_pdf_olustur
+                sablon_ile_etiket_pdf_olustur(temp_path, etiketler, sablon_id)
+            else:
+                from utils.etiket_yazdir import a4_etiket_pdf_olustur
+                a4_etiket_pdf_olustur(temp_path, etiketler)
+
+            if yazici == 'PDF_ONLY' or mod == 'PDF':
+                subprocess.Popen(['start', '', temp_path], shell=True)
+            else:
+                try:
+                    subprocess.run(
+                        ['powershell', '-Command',
+                         f'Start-Process -FilePath "{temp_path}" -Verb Print -ArgumentList "/p /h \\"{yazici}\\"" '],
+                        shell=True, timeout=30
+                    )
+                except Exception as pe:
+                    print(f"Yazıcı hatası: {pe}")
+                    subprocess.Popen(['start', '', temp_path], shell=True)
+
+            print(f"Tekrar etiket PDF: {temp_path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Etiket oluşturma hatası: {e}")
 
     # =========================================================================
     # TIMER / OTOMATİK YENİLEME

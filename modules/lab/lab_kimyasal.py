@@ -20,6 +20,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 # Modern component'ları import et
 try:
@@ -273,7 +274,7 @@ class TakviyeDialog(QDialog):
             if self.data.get('banyo_id'):
                 idx = self.banyo_combo.findData(self.data['banyo_id'])
                 if idx >= 0: self.banyo_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _load_kimyasallar(self):
         """YENİ: stok.urunler tablosundan kimyasal ürünler"""
@@ -292,7 +293,7 @@ class TakviyeDialog(QDialog):
             if self.data.get('kimyasal_id'):
                 idx = self.kimyasal_combo.findData(self.data['kimyasal_id'])
                 if idx >= 0: self.kimyasal_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _load_birimler(self):
         try:
@@ -305,7 +306,7 @@ class TakviyeDialog(QDialog):
             if self.data.get('birim_id'):
                 idx = self.birim_combo.findData(self.data['birim_id'])
                 if idx >= 0: self.birim_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _load_personel(self):
         """YENİ: ik.personeller tablosu"""
@@ -325,7 +326,7 @@ class TakviyeDialog(QDialog):
             if self.data.get('yapan_id'):
                 idx = self.yapan_combo.findData(self.data['yapan_id'])
                 if idx >= 0: self.yapan_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _save(self):
         banyo_id = self.banyo_combo.currentData()
@@ -356,6 +357,7 @@ class TakviyeDialog(QDialog):
                     VALUES (?,?,?,?,?,?,?,?)""", params)
             
             conn.commit()
+            LogManager.log_insert('lab', 'uretim.banyo_takviyeler', None, 'Kimyasal takviye kaydedildi')
             conn.close()
             QMessageBox.information(self, "✓ Başarılı", "Takviye kaydedildi!")
             self.accept()
@@ -505,7 +507,7 @@ class LabKimyasalPage(BasePage):
             for row in cursor.fetchall():
                 self.banyo_combo.addItem(f"{row[2] or 'N/A'} / {row[1]}", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_data(self):
         t = self.t
@@ -601,6 +603,7 @@ class LabKimyasalPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM uretim.banyo_takviyeler WHERE id=?", (tid,))
                 conn.commit()
+                LogManager.log_delete('lab', 'uretim.banyo_takviyeler', None, 'Kayit silindi')
                 conn.close()
                 self._load_data()
             except Exception as e:

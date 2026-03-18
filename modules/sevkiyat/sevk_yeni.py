@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor, QFont
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 # Sevke hazır durumlar
 SEVK_HAZIR_DURUMLAR = ('KONTROL_EDILDI', 'ONAYLANDI', 'SEVKE_HAZIR')
@@ -485,7 +486,7 @@ class SevkYeniPage(BasePage):
                     detay = f"{row[1] or ''} {row[2] or ''}".strip()
                     display = f"{plaka} ({detay})" if detay else plaka
                     self.plaka_input.addItem(display, plaka)
-            except:
+            except Exception:
                 pass  # Tablo yoksa sessizce geç
 
             # Şoförler (lojistik.soforler tanımından)
@@ -503,11 +504,11 @@ class SevkYeniPage(BasePage):
                     tel = row[1] or ''
                     display = f"{ad} ({tel})" if tel else ad
                     self.sofor_input.addItem(display, ad)
-            except:
+            except Exception:
                 pass  # Tablo yoksa sessizce geç
 
             conn.close()
-        except:
+        except Exception:
             pass
 
     # =========================================================================
@@ -1013,6 +1014,7 @@ class SevkYeniPage(BasePage):
                     """, (paket['is_emri_id'],))
             
             conn.commit()
+            LogManager.log_update('sevkiyat', 'siparis.is_emirleri', None, 'Durum guncellendi')
             conn.close()
             
             # Bu carinin paketlerini listeden çıkar (cari_id VE musteri eşleşeni çıkar)

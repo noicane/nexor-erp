@@ -35,7 +35,7 @@ def format_number(val) -> str:
     """Sayıyı TR formatına çevir"""
     try:
         return f"{float(val):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
+    except Exception:
         return "0,00"
 
 

@@ -143,7 +143,7 @@ class DenetimDialog(QDialog):
                 self.cmb_denetci.addItem(f"{row[1]} - {row[2]}", row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):
@@ -198,7 +198,7 @@ class DenetimDialog(QDialog):
                 self.table_bulgu.setItem(i, 1, tip_item)
                 self.table_bulgu.setItem(i, 2, QTableWidgetItem(row[2] or ""))
                 self.table_bulgu.setItem(i, 3, QTableWidgetItem(row[3] or ""))
-        except: pass
+        except Exception: pass
     
     def _add_bulgu(self, tip):
         if not self.denetim_id:

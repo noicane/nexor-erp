@@ -197,7 +197,7 @@ class EmisyonOlcumDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_kaynak.addItem(f"{row[1]} - {row[2]} ({row[3]})", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_data(self):
         try:
@@ -241,7 +241,7 @@ class EmisyonOlcumDialog(QDialog):
                 asim_item = QTableWidgetItem(asim)
                 asim_item.setForeground(QColor(s['error'] if row[5] else s['success']))
                 self.table_param.setItem(i, 5, asim_item)
-        except: pass
+        except Exception: pass
     
     def _add_parametre(self):
         if not self.olcum_id:

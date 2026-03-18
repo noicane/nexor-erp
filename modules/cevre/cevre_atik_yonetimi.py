@@ -221,7 +221,7 @@ class AtikHareketDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_kaynak.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _on_tip_changed(self):
         is_cikis = self.cmb_tip.currentData() == "CIKIS"
@@ -428,10 +428,10 @@ class CevreAtikYonetimiPage(BasePage):
             
             if row[2] == "GIRIS":
                 try: toplam_giris += float(str(row[6]).split()[0])
-                except: pass
+                except Exception: pass
             elif row[2] == "CIKIS":
                 try: toplam_cikis += float(str(row[6]).split()[0])
-                except: pass
+                except Exception: pass
             
             widget = self.create_action_buttons([
                 ("✏️", "Duzenle", lambda checked, rid=row[0]: self._duzenle(rid), "edit"),

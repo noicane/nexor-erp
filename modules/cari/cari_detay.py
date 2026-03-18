@@ -14,6 +14,7 @@ from datetime import datetime
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 class CariDetayPage(BasePage):
@@ -387,7 +388,7 @@ class CariDetayPage(BasePage):
             for i, row in enumerate(rows):
                 for j, val in enumerate(row):
                     self.addr_table.setItem(i, j, QTableWidgetItem(str(val) if val else "-"))
-        except:
+        except Exception:
             self.addr_table.setRowCount(0)
     
     def _load_contacts(self, cursor):
@@ -414,7 +415,7 @@ class CariDetayPage(BasePage):
                         if val == '✓':
                             item.setForeground(QBrush(QColor("#10b981")))
                     self.yetkili_table.setItem(i, j, item)
-        except:
+        except Exception:
             self.yetkili_table.setRowCount(0)
     
     def _load_specs(self, cursor):
@@ -440,7 +441,7 @@ class CariDetayPage(BasePage):
                     if j > 0:  # Sayısal alanlar
                         item.setTextAlignment(Qt.AlignCenter)
                     self.spec_table.setItem(i, j, item)
-        except:
+        except Exception:
             self.spec_table.setRowCount(0)
     
     def _refresh(self):

@@ -128,7 +128,7 @@ class KaplamaTipiDialog(QDialog):
                 idx = self.depo_combo.findData(self.data['uretim_depo_id'])
                 if idx >= 0:
                     self.depo_combo.setCurrentIndex(idx)
-        except:
+        except Exception:
             pass
     
     def _save(self):

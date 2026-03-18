@@ -22,6 +22,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 import uuid
 
 
@@ -278,7 +279,7 @@ class AdresDialog(QDialog):
             cursor.execute("SELECT id, ad FROM tanim.sehirler WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall():
                 self.cmb_sehir.addItem(row[1], row[0])
-        except:
+        except Exception:
             pass
         finally:
             if conn:
@@ -304,7 +305,7 @@ class AdresDialog(QDialog):
                     if self.cmb_ilce.itemData(i) == self.adres_data['ilce_id']:
                         self.cmb_ilce.setCurrentIndex(i)
                         break
-        except:
+        except Exception:
             pass
         finally:
             if conn:
@@ -568,6 +569,7 @@ class CariAdreslerPage(BasePage):
                 """, (str(uuid.uuid4()), self.selected_cari_id, data['adres_tipi'], data['adres_adi'], data['sehir_id'], data['ilce_id'], data['adres'], data['posta_kodu'], data['telefon'], data['email'], data['varsayilan_mi']))
 
                 conn.commit()
+                LogManager.log_insert('cari', 'musteri.cari_adresler', None, 'Adres eklendi')
                 self._load_adresler()
                 QMessageBox.information(self, "✓ Başarılı", "Adres eklendi!")
             except Exception as e:
@@ -621,6 +623,7 @@ class CariAdreslerPage(BasePage):
                 """, (data['adres_tipi'], data['adres_adi'], data['sehir_id'], data['ilce_id'], data['adres'], data['posta_kodu'], data['telefon'], data['email'], data['varsayilan_mi'], adres_id))
 
                 conn.commit()
+                LogManager.log_update('cari', 'musteri.cari_adresler', None, 'Kayit guncellendi')
                 self._load_adresler()
                 QMessageBox.information(self, "Başarılı", "Adres güncellendi!")
             except Exception as e:
@@ -642,6 +645,7 @@ class CariAdreslerPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("UPDATE musteri.cari_adresler SET silindi_mi = 1, silinme_tarihi = GETDATE() WHERE id = ?", (adres_id,))
                 conn.commit()
+                LogManager.log_delete('cari', 'musteri.cari_adresler', None, 'Kayit silindi (soft delete)')
                 self._load_adresler()
                 QMessageBox.information(self, "Başarılı", "Adres silindi!")
             except Exception as e:
@@ -703,6 +707,7 @@ class CariAdreslerPage(BasePage):
                 """, (data['adres_tipi'], data['adres_adi'], data['sehir_id'], data['ilce_id'], data['adres'], data['posta_kodu'], data['telefon'], data['email'], data['varsayilan_mi'], adres_id))
 
                 conn.commit()
+                LogManager.log_update('cari', 'musteri.cari_adresler', None, 'Kayit guncellendi')
                 self._load_adresler()
                 QMessageBox.information(self, "✓ Başarılı", "Adres güncellendi!")
             except Exception as e:
@@ -730,6 +735,7 @@ class CariAdreslerPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("UPDATE musteri.cari_adresler SET silindi_mi = 1, silinme_tarihi = GETDATE() WHERE id = ?", (adres_id,))
                 conn.commit()
+                LogManager.log_delete('cari', 'musteri.cari_adresler', None, 'Kayit silindi (soft delete)')
                 self._load_adresler()
                 QMessageBox.information(self, "✓ Başarılı", "Adres silindi!")
             except Exception as e:

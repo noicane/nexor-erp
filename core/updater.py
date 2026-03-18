@@ -105,7 +105,7 @@ class DownloadThread(QThread):
             for item in path.rglob('*'):
                 if item.is_file():
                     total += item.stat().st_size
-        except:
+        except Exception:
             pass
         return total
     

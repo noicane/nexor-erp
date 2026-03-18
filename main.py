@@ -43,7 +43,7 @@ from PySide6.QtWidgets import (
     QStackedWidget, QMessageBox, QTextEdit, QDialog, QPushButton,
     QGraphicsOpacityEffect
 )
-from PySide6.QtGui import QFont, QIcon
+from PySide6.QtGui import QFont, QIcon, QShortcut, QKeySequence
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
 
 logging.basicConfig(
@@ -257,7 +257,7 @@ def show_setup_wizard(app: QApplication, force: bool = False) -> bool:
             try:
                 from core.external_config import config_manager
                 config_manager.reload()
-            except:
+            except Exception:
                 pass
             return True
         else:
@@ -525,6 +525,20 @@ class MainWindow(QMainWindow):
             logger.error("Sayfalar oluşturulamadı: %s", e)
             show_error_dialog("Sayfa Oluşturma Hatası", e)
             raise
+
+        # Klavye kisayollari
+        try:
+            # Ctrl+K: Global Arama
+            QShortcut(QKeySequence("Ctrl+K"), self).activated.connect(self._open_global_search)
+            # F5: Aktif sayfayi yenile
+            QShortcut(QKeySequence("F5"), self).activated.connect(self._refresh_current_page)
+            # Ctrl+D: Dashboard
+            QShortcut(QKeySequence("Ctrl+D"), self).activated.connect(
+                lambda: self._on_menu_clicked("dashboard"))
+            # Escape: Dialog kapat / arama temizle
+            QShortcut(QKeySequence("Escape"), self).activated.connect(self._on_escape)
+        except Exception as e:
+            logger.warning("Klavye kisayollari eklenemedi: %s", e)
 
         # PLC Sync servisini arka planda başlat
         if PLC_SYNC_AVAILABLE:
@@ -906,6 +920,41 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     logger.warning("Sayfa proxy oluşturma hatası (%s): %s", page_id, e)
     
+    def _open_global_search(self):
+        """Global arama dialog'unu ac (Ctrl+K)"""
+        try:
+            from components.global_search_dialog import GlobalSearchDialog
+            dlg = GlobalSearchDialog(self.theme, parent=self)
+            dlg.page_selected.connect(self._on_menu_clicked)
+            dlg.exec()
+        except Exception as e:
+            logger.warning("Global arama acilamadi: %s", e)
+
+    def _refresh_current_page(self):
+        """F5 - Aktif sayfayi yenile"""
+        try:
+            current = self.stack.currentWidget()
+            if current is None:
+                return
+            real = current.real_page if hasattr(current, 'real_page') else current
+            if real and hasattr(real, '_load_data'):
+                real._load_data()
+            elif real and hasattr(real, '_load_all_data'):
+                real._load_all_data()
+        except Exception as e:
+            logger.warning("Sayfa yenileme hatasi: %s", e)
+
+    def _on_escape(self):
+        """Escape tusuna basildiginda"""
+        # Aktif widget'ta arama kutusu varsa temizle
+        try:
+            from PySide6.QtWidgets import QLineEdit
+            focus = QApplication.focusWidget()
+            if isinstance(focus, QLineEdit):
+                focus.clear()
+        except Exception:
+            pass
+
     def _on_menu_clicked(self, menu_id: str):
         """Menü tıklandığında"""
         try:
@@ -1094,6 +1143,13 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Pencere kapanırken"""
+        # Logout logla
+        try:
+            from core.log_manager import LogManager
+            LogManager.log_logout()
+        except Exception:
+            pass
+
         # PDKS servisini durdur
         if PDKS_SERVICE_AVAILABLE:
             try:

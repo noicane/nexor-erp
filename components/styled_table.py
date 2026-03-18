@@ -1325,7 +1325,7 @@ class StyledTable(QTableWidget):
             try:
                 pdfmetrics.registerFont(TTFont('DejaVu', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'))
                 font_name = 'DejaVu'
-            except:
+            except Exception:
                 font_name = 'Helvetica'
             
             doc = SimpleDocTemplate(filepath, pagesize=landscape(A4))

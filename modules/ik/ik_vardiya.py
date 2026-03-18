@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from config import REPORT_OUTPUT_DIR
 from core.firma_bilgileri import get_firma_bilgileri
 from utils.etiket_yazdir import _register_dejavu_fonts
@@ -899,9 +900,11 @@ class IKVardiyaPage(BasePage):
                     """, (per_id, gun))
 
             conn.commit()
+            degisiklik_sayisi = len(self.changes)
+            LogManager.log_update('ik', 'ik.vardiya_planlama', None,
+                                  f'Vardiya planlama guncellendi: {degisiklik_sayisi} atama')
             conn.close()
 
-            degisiklik_sayisi = len(self.changes)
             self.changes = {}
 
             QMessageBox.information(

@@ -463,7 +463,7 @@ class KontrolPlanDialog(QDialog):
                 if row[0]:
                     self.cmb_urun.addItem(row[1], row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):

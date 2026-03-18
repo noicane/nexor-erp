@@ -432,7 +432,7 @@ class NexorLoginDialog(QDialog):
                 islem='LOGIN_CARD_FAILED',
                 aciklama=f'Tanınmayan kart ile giriş denemesi: {card_id}'
             )
-        except:
+        except Exception:
             pass
 
     # ------------------------------------------------------------------
@@ -575,7 +575,7 @@ class NexorLoginDialog(QDialog):
                 islem='LOGIN_FAILED',
                 aciklama=f'Başarısız giriş denemesi: {username}'
             )
-        except:
+        except Exception:
             pass
 
     @classmethod

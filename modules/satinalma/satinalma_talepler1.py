@@ -117,7 +117,7 @@ class TalepSatirDialog(QDialog):
                 self.cmb_urun.addItem(f"{row[1]} - {row[2]}", row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_urun_changed(self, index):

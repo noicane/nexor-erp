@@ -152,7 +152,7 @@ class LabSonucPage(BasePage):
             for row in cursor.fetchall():
                 self.hat_combo.addItem(row[1], row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_data(self):
         try:

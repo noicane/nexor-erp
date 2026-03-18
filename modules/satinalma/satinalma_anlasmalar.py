@@ -113,7 +113,7 @@ class FiyatDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_urun.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_urun_changed(self, index):
@@ -340,7 +340,7 @@ class AndasmaDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_tedarikci.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_tedarikci_changed(self, index):
@@ -399,7 +399,7 @@ class AndasmaDialog(QDialog):
                 self.table_fiyatlar.setItem(i, 5, QTableWidgetItem(row[5] or ""))
             
             self.lbl_fiyat_sayisi.setText(f"{len(rows)} ürün")
-        except: pass
+        except Exception: pass
     
     def _add_fiyat(self):
         if not self.andasma_id:

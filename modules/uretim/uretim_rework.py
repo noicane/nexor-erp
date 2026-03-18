@@ -18,6 +18,7 @@ from datetime import datetime
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from core.hareket_motoru import HareketMotoru
 from dialogs.login import ModernLoginDialog
 
@@ -949,11 +950,13 @@ class ReworkPage(BasePage):
             ))
             
             conn.commit()
+            LogManager.log_insert('uretim', 'uretim.rework_is_emirleri', None,
+                                  f'Rework is emri olusturuldu: {is_emri_no}, Lot: {lot_no}, {miktar} adet')
             conn.close()
-            
+
             QMessageBox.information(
-                self, 
-                "✓ Başarılı", 
+                self,
+                "✓ Başarılı",
                 f"İş emri oluşturuldu!\n\nİş Emri No: {is_emri_no}\nLot: {lot_no}"
             )
             
@@ -1146,8 +1149,10 @@ Yeni Lot: {yeni_lot_no}
 Hedef: KAB-01 (Kabul Alanı)"""
             
             conn.commit()
+            LogManager.log_update('uretim', 'uretim.rework_is_emirleri', ie_id,
+                                  f'Rework giris yapildi: {giris_miktar} adet, Eski Lot: {eski_lot_no}, Yeni Lot: {yeni_lot_no}')
             conn.close()
-            
+
             QMessageBox.information(self, "✓ Başarılı", mesaj)
             
             # Formu temizle

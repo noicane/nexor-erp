@@ -22,6 +22,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from config import DEFAULT_PAGE_SIZE
 
 
@@ -173,6 +174,8 @@ class IsEmriListePage(BasePage):
         pdf_btn.clicked.connect(self._export_pdf)
         layout.addWidget(pdf_btn)
 
+        layout.addWidget(self.create_export_button(title="Is Emirleri"))
+
         layout.addStretch()
         return frame
     
@@ -251,7 +254,7 @@ class IsEmriListePage(BasePage):
                 for i in range(13):
                     try:
                         item.append(row[i])
-                    except:
+                    except Exception:
                         item.append(None)
                 items.append(item)
             conn.close()
@@ -304,7 +307,7 @@ class IsEmriListePage(BasePage):
             no_item = QTableWidgetItem(str(item[1] or ''))
             try:
                 id_val = int(item[0]) if item[0] else 0
-            except:
+            except Exception:
                 id_val = 0
             no_item.setData(Qt.UserRole, id_val)
             self.table.setItem(row, 0, no_item)
@@ -366,7 +369,7 @@ class IsEmriListePage(BasePage):
         is_emri_id = item.data(Qt.UserRole)
         try:
             is_emri_id = int(is_emri_id) if is_emri_id else None
-        except:
+        except Exception:
             is_emri_id = None
         if not is_emri_id:
             return
@@ -392,7 +395,7 @@ class IsEmriListePage(BasePage):
         is_emri_id = item.data(Qt.UserRole)
         try:
             is_emri_id = int(is_emri_id) if is_emri_id else None
-        except:
+        except Exception:
             is_emri_id = None
         if is_emri_id:
             from modules.is_emirleri.ie_yeni import IsEmriYeniPage

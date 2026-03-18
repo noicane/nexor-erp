@@ -69,7 +69,7 @@ def _format_para(val, simge='₺'):
     try:
         v = float(val)
         return f"{simge}{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
+    except Exception:
         return str(val)
 
 
@@ -229,7 +229,7 @@ def teklif_pdf_olustur(teklif_id: int):
             FROM satislar.teklif_satirlari WHERE teklif_id = ? ORDER BY satir_no
         """, (teklif_id,))
         has_gorsel_col = True
-    except:
+    except Exception:
         cursor.execute("""
             SELECT satir_no, stok_kodu, stok_adi, kaplama_tipi_adi, kalinlik_mikron,
                    malzeme_tipi, yuzey_alani, birim, miktar, birim_fiyat,
@@ -262,7 +262,7 @@ def teklif_pdf_olustur(teklif_id: int):
         if dosya_row:
             sartname_dosya = str(dosya_row[0] or '')
             gorsel_dosya = str(dosya_row[1] or '')
-    except:
+    except Exception:
         pass
 
     conn.close()
@@ -307,7 +307,7 @@ def teklif_pdf_olustur(teklif_id: int):
                 text_x = MARGIN + 28*mm
             else:
                 text_x = MARGIN + 6*mm
-    except:
+    except Exception:
         text_x = MARGIN + 6*mm
 
     c.setFillColor(WHITE)
@@ -401,7 +401,7 @@ def teklif_pdf_olustur(teklif_id: int):
 
         try:
             kalinlik_val = float(satir['kalinlik']) if satir['kalinlik'] else None
-        except:
+        except Exception:
             kalinlik_val = None
         kalinlik_str = f"{kalinlik_val:.1f}µm" if kalinlik_val else '-'
 
@@ -469,7 +469,7 @@ def teklif_pdf_olustur(teklif_id: int):
                 c.setFillColor(DARK_BG)
                 c.setFont("NexorFont-Bold", 7)
                 c.drawString(img_x + 2*mm, y - draw_h - 1*mm + 6*mm, f"Satır {satir['no']}: {satir['kaplama']}")
-            except:
+            except Exception:
                 c.setFillColor(GRAY_500)
                 c.setFont("NexorFont", 7)
                 c.drawString(img_x, y - 5*mm, f"Satır {satir['no']}: {os.path.basename(satir['gorsel'])}")
@@ -512,7 +512,7 @@ def teklif_pdf_olustur(teklif_id: int):
                         width=draw_w, height=draw_h,
                         preserveAspectRatio=True, mask='auto')
             y -= draw_h + 8*mm
-        except:
+        except Exception:
             c.setFillColor(GRAY_500)
             c.setFont("NexorFont", 8)
             c.drawString(MARGIN + 4*mm, y - 5*mm, f"Görsel: {os.path.basename(gorsel_dosya)}")
@@ -541,7 +541,7 @@ def teklif_pdf_olustur(teklif_id: int):
                             width=draw_w, height=draw_h,
                             preserveAspectRatio=True, mask='auto')
                 y -= draw_h + 8*mm
-            except:
+            except Exception:
                 c.setFillColor(GRAY_500)
                 c.setFont("NexorFont", 8)
                 c.drawString(MARGIN + 4*mm, y - 5*mm, f"Şartname: {os.path.basename(sartname_dosya)}")

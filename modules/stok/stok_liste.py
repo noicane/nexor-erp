@@ -37,6 +37,7 @@ from PySide6.QtGui import QPixmap, QColor, QFont, QIcon
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from config import DEFAULT_PAGE_SIZE
 
 # Matplotlib için
@@ -1781,7 +1782,7 @@ class StokDetayDialog(QDialog):
                 else:
                     size_str = f"{size / 1024:.1f} KB"
                 self.dosya_table.setItem(row, 2, QTableWidgetItem(size_str))
-            except:
+            except Exception:
                 self.dosya_table.setItem(row, 2, QTableWidgetItem("-"))
             
             # Değiştirilme tarihi
@@ -1789,7 +1790,7 @@ class StokDetayDialog(QDialog):
                 mtime = os.path.getmtime(dosya_yolu)
                 mtime_str = datetime.fromtimestamp(mtime).strftime('%d.%m.%Y')
                 self.dosya_table.setItem(row, 3, QTableWidgetItem(mtime_str))
-            except:
+            except Exception:
                 self.dosya_table.setItem(row, 3, QTableWidgetItem("-"))
             
             # Aç butonu
@@ -2131,7 +2132,7 @@ class StokDetayDialog(QDialog):
                 row = cursor.fetchone()
                 if row:
                     sablon_id = row[0]
-            except:
+            except Exception:
                 return
             finally:
                 if conn:
@@ -2282,6 +2283,7 @@ class StokDetayDialog(QDialog):
                     """, (bom_id,))
 
                 conn.commit()
+                LogManager.log_delete('stok', 'stok.urun_agaci', None, 'Kayit silindi (soft delete)')
 
                 self._load_bom()
                 QMessageBox.information(self, "Başarılı", "Bileşen silindi!")
@@ -2339,7 +2341,7 @@ class StokDetayDialog(QDialog):
                 try:
                     size = os.path.getsize(test_path) / 1024
                     self.dosya_table.setItem(row, 2, QTableWidgetItem(f"{size:.1f} KB"))
-                except:
+                except Exception:
                     self.dosya_table.setItem(row, 2, QTableWidgetItem("-"))
                 self.dosya_table.setItem(row, 3, QTableWidgetItem("Ürün fotoğrafı"))
                 self.dosya_table.item(row, 1).setData(Qt.UserRole, test_path)
@@ -2364,6 +2366,7 @@ class StokDetayDialog(QDialog):
                 cursor.execute("UPDATE stok.urunler SET aktif_mi = ?, guncelleme_tarihi = GETDATE() WHERE id = ?",
                               (new_value, self.urun_id))
                 conn.commit()
+                LogManager.log_update('stok', 'stok.urunler', None, 'Aktiflik durumu degistirildi')
 
                 self.urun_data['aktif_mi'] = new_value
                 self._update_aktif_ui(new_value)
@@ -2439,6 +2442,7 @@ class StokDetayDialog(QDialog):
                 sql = f"UPDATE stok.urunler SET {', '.join(updates)}, guncelleme_tarihi = GETDATE() WHERE id = ?"
                 cursor.execute(sql, params)
                 conn.commit()
+                LogManager.log_update('stok', 'stok.urunler', None, 'Kayit guncellendi')
 
             QMessageBox.information(self, "Başarılı", "Ürün kartı güncellendi!")
 
@@ -2495,6 +2499,7 @@ class StokDetayDialog(QDialog):
                 """, (str(uuid.uuid4()), self.urun_id, data['bilesen_urun_id'], data['miktar'], data['birim_id'], data['bilesen_tipi'], data['fire_orani']))
 
                 conn.commit()
+                LogManager.log_insert('stok', 'stok.urun_agaci', None, 'Yeni kayit eklendi')
 
                 self._load_bom()
                 QMessageBox.information(self, "Başarılı", "Bileşen eklendi!")
@@ -2622,7 +2627,7 @@ class StokListePage(BasePage):
         btn_refresh.setStyleSheet(self._button_style())
         btn_refresh.clicked.connect(self._load_data)
         f_layout.addWidget(btn_refresh)
-        
+
         layout.addWidget(filter_frame)
         
         # Tablo
@@ -2651,7 +2656,9 @@ class StokListePage(BasePage):
         self.total_label = QLabel("")
         self.total_label.setStyleSheet(f"color: {self.theme['text_muted']};")
         p_layout.addWidget(self.total_label)
-        
+
+        p_layout.addWidget(self.create_export_button(title="Urun Listesi"))
+
         p_layout.addStretch()
         
         self.prev_btn = QPushButton("◀ Önceki")

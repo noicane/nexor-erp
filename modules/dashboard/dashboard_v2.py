@@ -289,7 +289,27 @@ class DashboardPageV2(QWidget):
             color="#8B5CF6"
         )
         cards_layout.addWidget(self.card_verimlilik)
-        
+
+        # Acik Is Emri
+        self.card_acik_ie = NexorStatsCard(
+            self.theme,
+            title="Acik Is Emri",
+            value="0",
+            icon="📋",
+            color="#F59E0B"
+        )
+        cards_layout.addWidget(self.card_acik_ie)
+
+        # Red Orani
+        self.card_red_orani = NexorStatsCard(
+            self.theme,
+            title="Red Orani",
+            value="-%",
+            icon="🔴",
+            color="#EF4444"
+        )
+        cards_layout.addWidget(self.card_red_orani)
+
         layout.addLayout(cards_layout)
         
         return section
@@ -328,10 +348,11 @@ class DashboardPageV2(QWidget):
         """Tum verileri yukle"""
         self._load_vardiya_data()
         self._load_plc_data()
+        self._load_kpi_data()
         self._update_hat_durumu()
         self._load_son_islemler()
-        
-        self.lbl_update.setText(f"Son güncelleme: {datetime.now().strftime('%H:%M:%S')}")
+
+        self.lbl_update.setText(f"Son guncelleme: {datetime.now().strftime('%H:%M:%S')}")
     
     def _load_vardiya_data(self):
         """ERP'den vardiya verilerini yukle"""
@@ -406,29 +427,98 @@ class DashboardPageV2(QWidget):
             print(f"PLC veri hatasi: {e}")
             self.plc_conn = None
     
+    def _load_kpi_data(self):
+        """ERP'den ek KPI verilerini yukle (acik is emri, red orani)"""
+        try:
+            conn = get_db_connection()
+            if not conn:
+                return
+            cursor = conn.cursor()
+
+            # Acik is emri sayisi
+            try:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM uretim.is_emirleri
+                    WHERE durum IN ('BEKLIYOR', 'PLANLI', 'URETIMDE')
+                """)
+                row = cursor.fetchone()
+                acik_ie = row[0] if row else 0
+                self.card_acik_ie.set_value(str(acik_ie))
+            except Exception:
+                pass
+
+            # Gunluk red orani
+            try:
+                cursor.execute("""
+                    SELECT
+                        SUM(ISNULL(hatali_miktar, 0)) as toplam_red,
+                        SUM(ISNULL(kontrol_miktar, 0)) as toplam_kontrol
+                    FROM kalite.final_kontrol
+                    WHERE CAST(kontrol_tarihi AS DATE) = CAST(GETDATE() AS DATE)
+                """)
+                row = cursor.fetchone()
+                if row and row[1] and row[1] > 0:
+                    red_oran = (row[0] / row[1]) * 100
+                    self.card_red_orani.set_value(f"%{red_oran:.1f}")
+                else:
+                    self.card_red_orani.set_value("-%")
+            except Exception:
+                pass
+
+            # Verimlilik hesapla (cikan / giren)
+            toplam_giren = self.ktl_giren + self.cinko_giren
+            toplam_cikan = self.ktl_cikan + self.cinko_cikan
+            if toplam_giren > 0:
+                verimlilik = (toplam_cikan / toplam_giren) * 100
+                self.card_verimlilik.set_value(f"%{verimlilik:.0f}")
+            else:
+                self.card_verimlilik.set_value("-%")
+
+            conn.close()
+
+        except Exception as e:
+            print(f"KPI veri hatasi: {e}")
+
     def _update_hat_durumu(self):
-        """Hat durumu tablosunu guncelle"""
+        """Hat durumu tablosunu PLC cache'den guncelle"""
         try:
             self.hat_table.clear_rows()
-            
-            # Ornek hat verileri (gercek verilerle degistirilecek)
-            hatlar = [
-                ("E-KTL Hattı", "Çalışıyor", 85),
-                ("Çinko-Nikel Hattı", "Çalışıyor", 78),
-                ("Toz Boya Hattı", "Beklemede", 0),
-            ]
-            
-            for hat, durum, verimlilik in hatlar:
-                # Durum badge'i
-                if durum == "Çalışıyor":
+
+            conn = get_db_connection()
+            if not conn:
+                return
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT hat_kodu,
+                       COUNT(CASE WHEN durum = 'DOLU' THEN 1 END) as dolu,
+                       COUNT(*) as toplam
+                FROM uretim.plc_cache
+                GROUP BY hat_kodu
+                ORDER BY hat_kodu
+            """)
+            rows = cursor.fetchall()
+            conn.close()
+
+            hat_labels = {'KTL': 'E-KTL Hatti', 'ZNNI': 'Cinko-Nikel Hatti', 'ON': 'On Islem Hatti'}
+
+            for row in rows:
+                hat_kodu = row[0] or '-'
+                dolu = row[1] or 0
+                toplam = row[2] or 0
+                hat_adi = hat_labels.get(hat_kodu, hat_kodu)
+
+                if dolu > 0:
+                    durum = "Calisiyor"
                     badge = NexorBadge(durum, self.theme, "success")
-                elif durum == "Beklemede":
-                    badge = NexorBadge(durum, self.theme, "warning")
+                    verimlilik = int((dolu / toplam) * 100) if toplam > 0 else 0
                 else:
-                    badge = NexorBadge(durum, self.theme, "error")
-                
-                self.hat_table.add_row([hat, badge, f"%{verimlilik}"])
-                
+                    durum = "Beklemede"
+                    badge = NexorBadge(durum, self.theme, "warning")
+                    verimlilik = 0
+
+                self.hat_table.add_row([hat_adi, badge, f"%{verimlilik}"])
+
         except Exception as e:
             print(f"Hat durumu hatasi: {e}")
     

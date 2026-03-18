@@ -574,7 +574,7 @@ class EtiketGraphicsView(QGraphicsView):
                     if 'text_item' in elem:
                         try:
                             self.scene.removeItem(elem['text_item'])
-                        except:
+                        except Exception:
                             pass
                     self.elements.remove(elem)
                     break
@@ -1319,7 +1319,7 @@ class EtiketTasarimPage(BasePage):
         try:
             tasarim = json.loads(tasarim_json)
             elements = tasarim.get('elements', [])
-        except:
+        except Exception:
             elements = []
         
         # Her elementi çiz
@@ -1372,7 +1372,7 @@ class EtiketTasarimPage(BasePage):
         
         try:
             c.setFont(font, size)
-        except:
+        except Exception:
             c.setFont('Helvetica', size)
         
         c.setFillColorRGB(0, 0, 0)
@@ -1413,7 +1413,7 @@ class EtiketTasarimPage(BasePage):
             try:
                 c.drawImage(resim_path, x, y - h, width=w, height=h, preserveAspectRatio=True)
                 return
-            except:
+            except Exception:
                 pass
         
         # Placeholder çiz
@@ -1490,7 +1490,7 @@ class EtiketTasarimPage(BasePage):
             lot_no = etiket.get('lot_no', 'TEST')
             barcode = code128.Code128(lot_no, barWidth=0.35 * mm_unit, barHeight=8 * mm_unit)
             barcode.drawOn(c, margin, 3 * mm_unit)
-        except:
+        except Exception:
             pass
         
         # Tarih

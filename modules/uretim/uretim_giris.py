@@ -20,6 +20,7 @@ from PySide6.QtGui import QColor, QFont
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 def get_modern_style(theme: dict) -> dict:
@@ -1160,8 +1161,10 @@ class UretimGirisPage(BasePage):
                     # Hata olsa da devam et
             
             conn.commit()
+            LogManager.log_insert('uretim', 'uretim.uretim_kayitlari', is_emri_id,
+                                  f'Uretim girisi: Is Emri #{data.get("is_emri_no", "")}, {uretilen_adet} adet, Lot: {lot_no or "-"}')
             conn.close()
-            
+
             # Formu temizle
             if vardiya_combo:
                 vardiya_combo.setCurrentIndex(0)  # "-- Vardiya Seçin --"

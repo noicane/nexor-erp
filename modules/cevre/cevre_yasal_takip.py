@@ -69,7 +69,7 @@ class CevreYasalTakipDialog(QDialog):
             cursor.execute("SELECT id, sicil_no, ad + ' ' + soyad FROM ik.personeller WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall(): self.cmb_sorumlu.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _on_periyot_changed(self):
         gunler = {"YILLIK": 365, "6_AYLIK": 180, "AYLIK": 30, "TEK_SEFER": 0}

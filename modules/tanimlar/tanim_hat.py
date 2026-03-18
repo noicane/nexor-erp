@@ -314,7 +314,7 @@ class UretimHatDialog(QDialog):
             if self.data.get('hat_bolum_id'):
                 idx = self.bolum_combo.findData(self.data['hat_bolum_id'])
                 if idx >= 0: self.bolum_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _load_kaplama_turleri(self):
         try:
@@ -327,7 +327,7 @@ class UretimHatDialog(QDialog):
             if self.data.get('kaplama_turu_id'):
                 idx = self.kaplama_combo.findData(self.data['kaplama_turu_id'])
                 if idx >= 0: self.kaplama_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _pick_color(self):
         color = QColorDialog.getColor(QColor(self.selected_color), self)
@@ -601,7 +601,7 @@ class HatPozisyonDialog(QDialog):
             if self.data.get('hat_id'):
                 idx = self.hat_combo.findData(self.data['hat_id'])
                 if idx >= 0: self.hat_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _load_pozisyon_tipleri(self):
         try:
@@ -614,7 +614,7 @@ class HatPozisyonDialog(QDialog):
             if self.data.get('pozisyon_tipi_id'):
                 idx = self.poz_tipi_combo.findData(self.data['pozisyon_tipi_id'])
                 if idx >= 0: self.poz_tipi_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _load_banyo_tipleri(self):
         try:
@@ -627,7 +627,7 @@ class HatPozisyonDialog(QDialog):
             if self.data.get('banyo_tipi_id'):
                 idx = self.banyo_tipi_combo.findData(self.data['banyo_tipi_id'])
                 if idx >= 0: self.banyo_tipi_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _save(self):
         hat_id = self.hat_combo.currentData()
@@ -977,7 +977,7 @@ class TanimHatPage(BasePage):
             for row in cursor.fetchall():
                 self.hat_bolum_filter.addItem(row[1], row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_hat_filter(self):
         try:
@@ -989,7 +989,7 @@ class TanimHatPage(BasePage):
             for row in cursor.fetchall():
                 self.poz_hat_filter.addItem(row[1], row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _add_bolum(self):
         dlg = HatBolumDialog(self.theme, parent=self)

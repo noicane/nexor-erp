@@ -25,6 +25,7 @@ from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QPixmap, QColor
 
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from config import REPORT_OUTPUT_DIR
 
 
@@ -65,7 +66,7 @@ class TeklifDetayDialog(QDialog):
         if teklif_id is not None:
             try:
                 self.teklif_id = int(teklif_id)
-            except:
+            except Exception:
                 self.teklif_id = None
 
         self.sablon_id = sablon_id
@@ -679,7 +680,7 @@ class TeklifDetayDialog(QDialog):
                     self.telefon_input.setText(str(row[1] or ''))
                 if row[2] and not self.email_input.text():
                     self.email_input.setText(str(row[2] or ''))
-        except:
+        except Exception:
             pass
 
     # ── SATIR İŞLEMLERİ ──
@@ -760,7 +761,7 @@ class TeklifDetayDialog(QDialog):
                 ciro_item = self.kalem_table.item(row, 11)
                 if ciro_item:
                     ciro_item.setText(f"{ciro:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
-            except:
+            except Exception:
                 pass
             self.kalem_table.blockSignals(False)
             self._update_toplam_ciro()
@@ -772,7 +773,7 @@ class TeklifDetayDialog(QDialog):
             try:
                 ciro_text = self.kalem_table.item(row, 11).text().replace('.', '').replace(',', '.') if self.kalem_table.item(row, 11) else '0'
                 toplam += float(ciro_text)
-            except:
+            except Exception:
                 pass
         self.toplam_ciro_label.setText(f"{toplam:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."))
 
@@ -824,7 +825,7 @@ class TeklifDetayDialog(QDialog):
             if btn:
                 try:
                     btn.clicked.disconnect()
-                except:
+                except Exception:
                     pass
                 btn.clicked.connect(lambda checked, row=r: self._select_satir_gorsel(row))
 
@@ -884,7 +885,7 @@ class TeklifDetayDialog(QDialog):
                 else:
                     self.teklif_data['kaplama_sartnamesi_dosya'] = ''
                     self.teklif_data['parca_gorseli_dosya'] = ''
-            except:
+            except Exception:
                 self.teklif_data['kaplama_sartnamesi_dosya'] = ''
                 self.teklif_data['parca_gorseli_dosya'] = ''
 
@@ -899,7 +900,7 @@ class TeklifDetayDialog(QDialog):
                     self.teklif_data['dahili_not'] = str(dahili_row[0] or '')
                 else:
                     self.teklif_data['dahili_not'] = ''
-            except:
+            except Exception:
                 self.teklif_data['dahili_not'] = ''
 
             # Satırları yükle
@@ -912,7 +913,7 @@ class TeklifDetayDialog(QDialog):
                     FROM satislar.teklif_satirlari WHERE teklif_id = ? ORDER BY satir_no
                 """, (self.teklif_id,))
                 extra_cols = 2
-            except:
+            except Exception:
                 try:
                     cursor.execute("""
                         SELECT id, satir_no, stok_kodu, stok_adi, kaplama_tipi_adi,
@@ -922,7 +923,7 @@ class TeklifDetayDialog(QDialog):
                         FROM satislar.teklif_satirlari WHERE teklif_id = ? ORDER BY satir_no
                     """, (self.teklif_id,))
                     extra_cols = 1
-                except:
+                except Exception:
                     cursor.execute("""
                         SELECT id, satir_no, stok_kodu, stok_adi, kaplama_tipi_adi,
                                kalinlik_mikron, malzeme_tipi, yuzey_alani, yuzey_birimi,
@@ -1261,7 +1262,7 @@ class TeklifDetayDialog(QDialog):
                         satir['birim_fiyat'], satir['iskonto_oran'], satir['tutar'],
                         satir['aciklama'], gorsel_db_path, satir.get('yillik_adet') or None
                     ))
-                except:
+                except Exception:
                     # gorsel_dosya/yillik_adet sütunları henüz yoksa
                     cursor.execute("""
                         INSERT INTO satislar.teklif_satirlari (
@@ -1302,7 +1303,7 @@ class TeklifDetayDialog(QDialog):
                         kaplama_sartnamesi_dosya = ?, parca_gorseli_dosya = ?
                     WHERE id = ?
                 """, (sartname_db or None, gorsel_db or None, self.teklif_id))
-            except:
+            except Exception:
                 pass  # Sütunlar henüz eklenmemişse
 
             # Dahili notu kaydet
@@ -1312,10 +1313,11 @@ class TeklifDetayDialog(QDialog):
                     UPDATE satislar.teklifler SET dahili_not = ?
                     WHERE id = ?
                 """, (dahili_not or None, self.teklif_id))
-            except:
+            except Exception:
                 pass  # Sütun henüz eklenmemişse
 
             conn.commit()
+            LogManager.log_update('teklif', 'satislar.teklifler', None, 'Kayit guncellendi')
             conn.close()
 
             durum_metin = "kaydedildi" if durum == 'TASLAK' else "kaydedildi ve gönderildi"
@@ -1351,24 +1353,24 @@ class TeklifDetayDialog(QDialog):
 
             try:
                 miktar = float(miktar_text) if miktar_text else 0
-            except:
+            except Exception:
                 miktar = 0
             try:
                 birim_fiyat = float(fiyat_text) if fiyat_text else 0
-            except:
+            except Exception:
                 birim_fiyat = 0
             try:
                 kalinlik = float(kalinlik_text) if kalinlik_text else None
-            except:
+            except Exception:
                 kalinlik = None
             try:
                 yuzey_alani = float(yuzey_text) if yuzey_text else None
-            except:
+            except Exception:
                 yuzey_alani = None
 
             try:
                 yillik_adet = int(float(yadet_text)) if yadet_text else 0
-            except:
+            except Exception:
                 yillik_adet = 0
 
             tutar = miktar * birim_fiyat

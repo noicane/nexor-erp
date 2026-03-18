@@ -308,7 +308,7 @@ class TanimPozisyonlarPage(BasePage):
             for row in cursor.fetchall():
                 self.cmb_departman.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):
@@ -401,7 +401,7 @@ class TanimPozisyonlarPage(BasePage):
             cursor.execute("SELECT COUNT(*) FROM ik.personeller WHERE pozisyon_id = ? AND aktif_mi = 1", (pozisyon_id,))
             personel_sayisi = cursor.fetchone()[0]
             conn.close()
-        except:
+        except Exception:
             pass
         
         if personel_sayisi > 0:
@@ -452,7 +452,7 @@ class TanimPozisyonlarPage(BasePage):
             cursor.execute("SELECT COUNT(*) FROM ik.personeller WHERE pozisyon_id = ?", (pozisyon_id,))
             personel_sayisi = cursor.fetchone()[0]
             conn.close()
-        except:
+        except Exception:
             pass
         
         if personel_sayisi > 0:

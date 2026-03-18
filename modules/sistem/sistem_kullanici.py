@@ -257,14 +257,14 @@ class KullaniciDialog(QDialog):
                 try:
                     if hasattr(row, 'satinalma_onay_yetkisi'):
                         self.chk_satinalma_onay.setChecked(bool(row.satinalma_onay_yetkisi) if row.satinalma_onay_yetkisi is not None else False)
-                except:
+                except Exception:
                     pass
 
                 # Kart ID
                 try:
                     if hasattr(row, 'kart_id'):
                         self.txt_kart_id.setText(row.kart_id or '')
-                except:
+                except Exception:
                     pass
                 
                 # Rol seçimi

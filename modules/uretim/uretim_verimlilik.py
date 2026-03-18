@@ -1293,6 +1293,6 @@ class VerimlilikAnalizPage(QWidget):
         if self.plc_conn:
             try:
                 self.plc_conn.close()
-            except:
+            except Exception:
                 pass
         super().closeEvent(event)

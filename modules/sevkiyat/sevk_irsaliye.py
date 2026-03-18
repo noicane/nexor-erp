@@ -1214,7 +1214,7 @@ class SevkIrsaliyePage(BasePage):
                     else:
                         kontrol_text += f"  {lot_no}: kayıt yok (yeni oluşturulacak)\n"
             conn.close()
-        except:
+        except Exception:
             pass
 
         reply = QMessageBox.question(
@@ -1409,7 +1409,7 @@ class SevkIrsaliyePage(BasePage):
                 self.secili_irsaliye['adres'] = row[0] or '-'
                 self.secili_irsaliye['vergi_no'] = f"{row[2] or ''} - {row[1] or ''}"
             conn.close()
-        except:
+        except Exception:
             pass
         
         dialog = IrsaliyeOnizlemeDialog(

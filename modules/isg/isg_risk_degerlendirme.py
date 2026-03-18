@@ -222,7 +222,7 @@ class RiskSatirDialog(QDialog):
                 self.cmb_sorumlu.addItem(f"{row[1]} - {row[2]}", row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_tehlike_changed(self, index):
@@ -494,7 +494,7 @@ class RiskDegerlendirmeDialog(QDialog):
                 self.cmb_hazirlayan.addItem(f"{row[1]} - {row[2]}", row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):
@@ -569,7 +569,7 @@ class RiskDegerlendirmeDialog(QDialog):
                     yuksek_risk += 1
             
             self.lbl_stat.setText(f"Toplam: {len(rows)} risk | Yüksek/Çok Yüksek: {yuksek_risk}")
-        except: pass
+        except Exception: pass
     
     def _add_satir(self):
         if not self.risk_id:

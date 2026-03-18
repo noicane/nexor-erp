@@ -58,7 +58,7 @@ def _format_miktar(val):
         if v == int(v):
             return f"{int(v):,}".replace(",", ".")
         return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
+    except Exception:
         return str(val)
 
 
@@ -214,7 +214,7 @@ def depo_cikis_pdf_olustur(emir_id: int):
                 text_x = MARGIN + 28*mm
             else:
                 text_x = MARGIN + 6*mm
-    except:
+    except Exception:
         text_x = MARGIN + 6*mm
 
     # Firma ve belge bilgisi

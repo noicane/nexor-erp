@@ -19,6 +19,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from config import DEFAULT_PAGE_SIZE
 
 # Etiket yazdırma
@@ -1074,7 +1075,7 @@ class IrsaliyeDetayDialog(QDialog):
                 rows = cursor.fetchall()
                 if rows:
                     self.combo_data['soforler'] = [(None, '-- Şoför Seçin --')] + [(r[0], f"{r[1]} ({r[2][-4:]})") for r in rows]
-            except:
+            except Exception:
                 pass  # Tablo yoksa geç
             
             # Araçlar - lojistik.araclar tablosundan
@@ -1088,7 +1089,7 @@ class IrsaliyeDetayDialog(QDialog):
                 rows = cursor.fetchall()
                 if rows:
                     self.combo_data['araclar'] = [(None, '-- Araç Seçin --')] + [(r[0], f"{r[1]} ({r[2] or ''})") for r in rows]
-            except:
+            except Exception:
                 pass  # Tablo yoksa geç
             
             conn.close()
@@ -1564,7 +1565,7 @@ class IrsaliyeDetayDialog(QDialog):
         
         try:
             miktar = float(miktar_text.replace(',', ''))
-        except:
+        except Exception:
             miktar = 0
         
         if miktar <= 0:
@@ -1628,7 +1629,7 @@ class IrsaliyeDetayDialog(QDialog):
                 if miktar <= 0:
                     QMessageBox.warning(self, "Uyarı", f"Satır {row+1}: Miktar 0'dan büyük olmalı!")
                     return
-            except:
+            except Exception:
                 QMessageBox.warning(self, "Uyarı", f"Satır {row+1}: Geçersiz miktar!")
                 return
         
@@ -1675,7 +1676,7 @@ class IrsaliyeDetayDialog(QDialog):
                     try:
                         cursor.execute("SELECT NEXT VALUE FOR siparis.seq_giris_irsaliye_id")
                         next_id = cursor.fetchone()[0]
-                    except:
+                    except Exception:
                         # Sequence yoksa eski yöntemi kullan
                         cursor.execute("SELECT ISNULL(MAX(id), 0) FROM siparis.giris_irsaliyeleri WITH (TABLOCKX)")
                         next_id = cursor.fetchone()[0] + 1
@@ -1740,7 +1741,7 @@ class IrsaliyeDetayDialog(QDialog):
                     if termin_text:
                         try:
                             termin = datetime.strptime(termin_text, '%d.%m.%Y').strftime('%Y-%m-%d')
-                        except:
+                        except Exception:
                             pass
                     
                     if satir_id_text:
@@ -1766,7 +1767,9 @@ class IrsaliyeDetayDialog(QDialog):
                 
                 # COMMIT
                 conn.commit()
+                LogManager.log_insert('depo', 'siparis.giris_irsaliye_satirlar', None, 'Irsaliye kaydi olustu')
                 print(f"[SAVE DEBUG] ✅ conn.commit() başarılı! irsaliye_id={self.irsaliye_id}")
+                LogManager.log_insert('depo', 'siparis.giris_irsaliye_satirlar', None, 'Irsaliye kaydi olustu')
                 
                 # Satırları yeniden yükle (ID'leri almak için)
                 self._load_data()
@@ -1789,7 +1792,7 @@ class IrsaliyeDetayDialog(QDialog):
                     try:
                         conn.rollback()
                         print("[SAVE DEBUG] ROLLBACK yapıldı")
-                    except:
+                    except Exception:
                         pass
                 
                 if conn:
@@ -1866,6 +1869,7 @@ class IrsaliyeDetayDialog(QDialog):
             """, (self.irsaliye_id,))
             
             conn.commit()
+            LogManager.log_update('depo', 'siparis.giris_irsaliyeleri', None, 'Durum guncellendi')
             conn.close()
             
             QMessageBox.information(
@@ -1984,7 +1988,9 @@ class DepoKabulPage(BasePage):
         """)
         search_btn.clicked.connect(self._on_search)
         f_layout.addWidget(search_btn)
-        
+
+        f_layout.addWidget(self.create_export_button(title="Depo Kabul"))
+
         layout.addWidget(filter_frame)
         
         # Tablo

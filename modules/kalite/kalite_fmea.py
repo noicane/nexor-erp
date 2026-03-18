@@ -270,7 +270,7 @@ class FMEASatirDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_sorumlu.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _calculate_rpn(self):
@@ -608,7 +608,7 @@ class FMEADialog(QDialog):
                 self.cmb_hazirlayan.addItem(row[1], row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_musteri_changed(self):
@@ -635,7 +635,7 @@ class FMEADialog(QDialog):
                 if row[0]:
                     self.cmb_urun.addItem(row[1], row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):

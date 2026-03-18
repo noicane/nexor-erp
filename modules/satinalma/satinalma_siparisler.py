@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 class SiparisSatirDialog(QDialog):
@@ -130,7 +131,7 @@ class SiparisSatirDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_urun.addItem(f"{row[1]} - {row[2]}", (row[0], None))
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_urun_changed(self, index):
@@ -219,6 +220,7 @@ class SiparisSatirDialog(QDialog):
                       fiyat, tutar, kdv_orani, kdv, toplam, self.txt_aciklama.toPlainText().strip() or None))
             
             conn.commit()
+            LogManager.log_insert('satinalma', 'satinalma.siparis_satirlari', None, 'Siparis kaydi olustu')
             conn.close()
             self.accept()
         except Exception as e:
@@ -358,7 +360,7 @@ class SiparisDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_tedarikci.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_tedarikci_changed(self, index):
@@ -376,7 +378,7 @@ class SiparisDialog(QDialog):
                 for row in cursor.fetchall():
                     self.cmb_andasma.addItem(row[1], row[0])
                 conn.close()
-            except:
+            except Exception:
                 pass
     
     def _load_data(self):
@@ -421,7 +423,7 @@ class SiparisDialog(QDialog):
                 self.table_satirlar.setItem(i, 7, QTableWidgetItem(f"₺ {row[7]:,.2f}" if row[7] else ""))
                 if row[7]: genel_toplam += float(row[7])
             self.lbl_genel_toplam.setText(f"Genel Toplam: ₺ {genel_toplam:,.2f}")
-        except: pass
+        except Exception: pass
     
     def _add_satir(self):
         if not self.siparis_id:
@@ -452,6 +454,7 @@ class SiparisDialog(QDialog):
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM satinalma.siparis_satirlari WHERE id = ?", (satir_id,))
                 conn.commit()
+                LogManager.log_delete('satinalma', 'satinalma.siparis_satirlari', None, 'Kayit silindi')
                 conn.close()
                 self._load_satirlar()
             except Exception as e:
@@ -493,6 +496,7 @@ class SiparisDialog(QDialog):
             """, (self.siparis_id, self.siparis_id, self.siparis_id, self.siparis_id))
             
             conn.commit()
+            LogManager.log_update('satinalma', 'satinalma.siparisler', None, 'Kayit guncellendi')
             conn.close()
             QMessageBox.information(self, "Başarılı", "Sipariş kaydedildi.")
         except Exception as e:

@@ -82,7 +82,7 @@ class DeviceReaderThread(QThread):
                 device_name = conn.get_device_name()
                 mac = conn.get_mac()
                 logger.info(f"[Cihaz {cihaz_id}] {device_name} ({mac})")
-            except:
+            except Exception:
                 pass
             
             # Cihazı devre dışı bırak (okuma sırasında)

@@ -132,7 +132,7 @@ class EkipDialog(QDialog):
                 self.cmb_lider.addItem(f"{row[1]} - {row[2]}", row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _load_data(self):
@@ -180,7 +180,7 @@ class EkipDialog(QDialog):
                 for j, val in enumerate(row):
                     self.table_uye.setItem(i, j, QTableWidgetItem(str(val) if val else ""))
             self.lbl_uye.setText(f"{len(rows)} üye")
-        except: pass
+        except Exception: pass
     
     def _add_uye(self):
         if not self.ekip_id:

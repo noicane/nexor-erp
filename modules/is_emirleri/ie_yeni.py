@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate
 
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 def get_modern_style(theme: dict) -> dict:
@@ -61,7 +62,7 @@ class IsEmriYeniPage(QDialog):
         if is_emri_id is not None:
             try:
                 self.is_emri_id = int(is_emri_id)
-            except:
+            except Exception:
                 self.is_emri_id = None
         
         self.yeni_kayit = self.is_emri_id is None
@@ -425,7 +426,7 @@ class IsEmriYeniPage(QDialog):
                 try:
                     cari = str(row[0])
                     self.cari_combo.addItem(cari, cari)
-                except:
+                except Exception:
                     pass
             
             conn.close()
@@ -468,7 +469,7 @@ class IsEmriYeniPage(QDialog):
                 for i in range(7):
                     try:
                         item.append(row[i])
-                    except:
+                    except Exception:
                         item.append(None)
                 all_rows.append(item)
             
@@ -491,12 +492,12 @@ class IsEmriYeniPage(QDialog):
                     # Güvenli tip dönüşümü
                     try:
                         aski_val = int(row[4]) if row[4] is not None else 0
-                    except:
+                    except Exception:
                         aski_val = 0
                     
                     try:
                         bara_val = int(row[5]) if row[5] is not None else 0
-                    except:
+                    except Exception:
                         bara_val = 0
                     
                     self.urun_data_cache[stok_kodu] = {
@@ -565,7 +566,7 @@ class IsEmriYeniPage(QDialog):
                 for i in range(5):
                     try:
                         item.append(row[i])
-                    except:
+                    except Exception:
                         item.append(None)
                 rows.append(item)
             
@@ -580,7 +581,7 @@ class IsEmriYeniPage(QDialog):
                     devir = 0
                     try:
                         devir = int(row[2]) if row[2] else 0
-                    except:
+                    except Exception:
                         devir = 0
                     
                     self.hat_label.setText(f"{row[0]} - {row[1]}")
@@ -616,7 +617,7 @@ class IsEmriYeniPage(QDialog):
                 for i in range(6):
                     try:
                         item.append(row[i])
-                    except:
+                    except Exception:
                         item.append(None)
                 all_rows.append(item)
             
@@ -640,7 +641,7 @@ class IsEmriYeniPage(QDialog):
                 # Miktar güvenli dönüşüm
                 try:
                     miktar_val = float(row[1]) if row[1] else 0
-                except:
+                except Exception:
                     miktar_val = 0
                 self.lot_table.setItem(idx, 2, QTableWidgetItem(f"{miktar_val:,.0f}"))
                 
@@ -791,7 +792,7 @@ class IsEmriYeniPage(QDialog):
                 for i in range(15):
                     try:
                         row.append(result[i])
-                    except:
+                    except Exception:
                         row.append(None)
                 
                 self.is_emri_data = {
@@ -871,7 +872,7 @@ class IsEmriYeniPage(QDialog):
             oncelik_data = self.oncelik_combo.currentData()
             try:
                 oncelik = int(oncelik_data) if oncelik_data is not None else 5
-            except:
+            except Exception:
                 oncelik = 5
             uretim_notu = self.not_input.toPlainText().strip()
             
@@ -903,7 +904,7 @@ class IsEmriYeniPage(QDialog):
                 if urun_result:
                     try:
                         urun_id = int(urun_result[0])
-                    except:
+                    except Exception:
                         urun_id = 1
                 
                 # Kaplama türü ID bul
@@ -913,7 +914,7 @@ class IsEmriYeniPage(QDialog):
                 if kaplama_result:
                     try:
                         kaplama_id = int(kaplama_result[0])
-                    except:
+                    except Exception:
                         kaplama_id = 1
                 
                 # Birim ID bul
@@ -923,7 +924,7 @@ class IsEmriYeniPage(QDialog):
                 if birim_result:
                     try:
                         birim_id = int(birim_result[0])
-                    except:
+                    except Exception:
                         birim_id = 1
                 
                 cursor.execute("SELECT ISNULL(MAX(id), 0) FROM siparis.is_emirleri")
@@ -932,7 +933,7 @@ class IsEmriYeniPage(QDialog):
                 if max_result:
                     try:
                         max_id = int(max_result[0])
-                    except:
+                    except Exception:
                         max_id = 0
                 is_emri_no = f"IE-{datetime.now().strftime('%Y%m')}-{max_id + 1:04d}"
                 
@@ -958,12 +959,13 @@ class IsEmriYeniPage(QDialog):
                 if id_result:
                     try:
                         self.is_emri_id = int(id_result[0])
-                    except:
+                    except Exception:
                         self.is_emri_id = 0
                 
                 self._save_lots(cursor)
                 
                 conn.commit()
+                LogManager.log_insert('uretim', 'siparis.is_emirleri', None, 'Siparis kaydi olustu')
                 conn.close()
                 
                 QMessageBox.information(self, "Başarılı", f"İş emri: {is_emri_no}")
@@ -981,7 +983,7 @@ class IsEmriYeniPage(QDialog):
                 if urun_result:
                     try:
                         urun_id = int(urun_result[0])
-                    except:
+                    except Exception:
                         urun_id = 1
                 
                 # Kaplama türü ID bul
@@ -991,7 +993,7 @@ class IsEmriYeniPage(QDialog):
                 if kaplama_result:
                     try:
                         kaplama_id = int(kaplama_result[0])
-                    except:
+                    except Exception:
                         kaplama_id = 1
                 
                 sql = f"""
@@ -1011,6 +1013,7 @@ class IsEmriYeniPage(QDialog):
                 self._save_lots(cursor)
                 
                 conn.commit()
+                LogManager.log_delete('uretim', 'siparis.is_emri_lotlar', None, 'Kayit silindi')
                 conn.close()
                 
                 QMessageBox.information(self, "Başarılı", "Güncellendi!")
@@ -1030,7 +1033,7 @@ class IsEmriYeniPage(QDialog):
                     lot_no = lot_item.text()
                     try:
                         miktar = float(miktar_item.text().replace(',', ''))
-                    except:
+                    except Exception:
                         miktar = 0
                     
                     sql = f"""

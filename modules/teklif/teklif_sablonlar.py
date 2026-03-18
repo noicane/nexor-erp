@@ -488,11 +488,11 @@ class TeklifSablonlarPage(BasePage):
 
                 try:
                     kalinlik = float(kalinlik_text) if kalinlik_text else None
-                except:
+                except Exception:
                     kalinlik = None
                 try:
                     fiyat = float(fiyat_text) if fiyat_text else 0
-                except:
+                except Exception:
                     fiyat = 0
 
                 cursor.execute("""

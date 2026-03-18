@@ -294,12 +294,12 @@ class IsEmriTerminPage(BasePage):
             cur.execute("SELECT id, ad FROM tanim.hat_bolumleri WHERE aktif_mi=1 ORDER BY sira,ad")
             for r in cur.fetchall():
                 self.cmb_hat.addItem(r[1], r[0])
-        except: pass
+        except Exception: pass
 
     def _load_data(self):
         if not self.conn:
             try: self.conn = get_db_connection()
-            except: return
+            except Exception: return
         try:
             cur = self.conn.cursor()
             self._load_must(cur)
@@ -460,7 +460,7 @@ class IsEmriTerminPage(BasePage):
             self.card_kalan.findChild(QLabel, "val").setText(str(cur.fetchone()[0] or 0))
             cur.execute("SELECT COUNT(*) FROM siparis.is_emirleri WHERE silindi_mi=0 AND durum IN('Üretimde','URETIMDE')")
             self.card_devam.findChild(QLabel, "val").setText(str(cur.fetchone()[0] or 0))
-        except: pass
+        except Exception: pass
 
     def _load_tak(self, cur):
         try:
@@ -487,7 +487,7 @@ class IsEmriTerminPage(BasePage):
                         it = QTableWidgetItem("")
                     self.tbl_tak.setItem(row, col, it)
             self.tbl_tak.verticalHeader().setDefaultSectionSize(50)
-        except: pass
+        except Exception: pass
 
     def _filter(self):
         if self.conn:
@@ -530,7 +530,7 @@ class IsEmriTerminPage(BasePage):
             if r:
                 kl = (r[5] or 0) - (r[6] or 0)
                 QMessageBox.information(self, f"İş Emri - {r[0]}", f"İş Emri: {r[0]}\nMüşteri: {r[1]}\nStok: {r[2]} - {r[3]}\nKaplama: {r[4]}\n\nToplam: {r[5]:,.0f}\nÜretilen: {r[6]:,.0f}\nKalan: {kl:,.0f}\n\nTermin: {r[7].strftime('%d.%m.%Y') if r[7] else '-'}\nDurum: {r[8]}\n\nNot: {r[9] or '-'}")
-        except: pass
+        except Exception: pass
 
     def _add_not(self, ie_id):
         dlg = QDialog(self)

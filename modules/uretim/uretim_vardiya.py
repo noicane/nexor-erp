@@ -851,7 +851,7 @@ class UretimVardiyaPage(BasePage):
             conn.close()
             
             return row[0] if row else "-"
-        except:
+        except Exception:
             return "-"
     
     def _input_style(self):

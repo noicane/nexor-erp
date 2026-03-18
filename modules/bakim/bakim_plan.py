@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 def get_modern_style(theme: dict) -> dict:
@@ -278,7 +279,7 @@ class BakimPlanDialog(QDialog):
             elif hedef == "robot" and self.data.get('robot_id'):
                 idx = self.hedef_secim_combo.findData(self.data['robot_id'])
                 if idx >= 0: self.hedef_secim_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -323,6 +324,7 @@ class BakimPlanDialog(QDialog):
                     ekipman_id, pozisyon_id, robot_id, bakim_tipi, periyot_gun, periyot_calisma_saati, periyot_sayac,
                     sonraki_bakim_tarihi, tahmini_sure_dk, uyari_gun_oncesi, kritik_mi, talimat, aktif_mi) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", params)
             conn.commit()
+            LogManager.log_insert('bakim', 'bakim.periyodik_bakim_planlari', None, 'Bakim plani eklendi')
             QMessageBox.information(self, "✓ Başarılı", "Bakım planı kaydedildi!")
             self.accept()
         except Exception as e:
@@ -515,6 +517,7 @@ class BakimPlanPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("UPDATE bakim.periyodik_bakim_planlari SET aktif_mi=0 WHERE id=?", (pid,))
                 conn.commit()
+                LogManager.log_update('bakim', 'bakim.periyodik_bakim_planlari', None, 'Aktiflik durumu degistirildi')
                 self._load_data()
             except Exception as e:
                 QMessageBox.critical(self, "❌ Hata", str(e))

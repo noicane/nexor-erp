@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 class EgitimKayitDialog(QDialog):
@@ -167,8 +168,9 @@ class EgitimKayitDialog(QDialog):
             ))
             
             conn.commit()
+            LogManager.log_insert('ik', 'ik.egitim_kayitlari', None, 'Egitim kaydi eklendi')
             conn.close()
-            
+
             QMessageBox.information(self, "Başarılı", "Eğitim kaydı eklendi.")
             self.accept()
         except Exception as e:

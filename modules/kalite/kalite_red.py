@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from core.hareket_motoru import HareketMotoru
 from dialogs.login import ModernLoginDialog
 
@@ -596,6 +597,7 @@ class UygunsuzlukDialog(QDialog):
             ))
             
             conn.commit()
+            LogManager.log_insert('kalite', 'kalite.uygunsuzluklar', None, 'Uygunsuzluk kaydi olustu')
             conn.close()
             
             QMessageBox.information(self, "Başarılı", f"Uygunsuzluk kaydı oluşturuldu!\n\nKayıt No: {kayit_no}")
@@ -884,6 +886,7 @@ class UygunsuzlukDetayDialog(QDialog):
                     WHERE id = ?
                 """, (self.kayit_id,))
                 conn.commit()
+                LogManager.log_update('kalite', 'kalite.uygunsuzluklar', None, 'Durum guncellendi')
                 conn.close()
                 
                 QMessageBox.information(self, "Başarılı", "Kayıt kapatıldı.")
@@ -1445,7 +1448,7 @@ class KaliteRedPage(BasePage):
             """, (kod,))
             row = cursor.fetchone()
             return row[0] if row else None
-        except:
+        except Exception:
             return None
     
     def _isle_kabul(self, red_kayit: dict, karar_not: str, motor, cursor, 

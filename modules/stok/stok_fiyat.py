@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 import uuid
 
 
@@ -102,7 +103,7 @@ class FiyatDialog(QDialog):
                     if self.cmb_cari.itemData(i) == self.fiyat_data['cari_id']:
                         self.cmb_cari.setCurrentIndex(i)
                         break
-        except: pass
+        except Exception: pass
     
     def _save(self):
         if self.spin_fiyat.value() <= 0:
@@ -257,6 +258,7 @@ class StokFiyatPage(BasePage):
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, GETDATE(), GETDATE(), 0)
                 """, (str(uuid.uuid4()), self.selected_urun_id, data['cari_id'], data['fiyat_tipi'], data['fiyat'], data['para_birimi'], data['gecerlilik_baslangic'], data['gecerlilik_bitis']))
                 conn.commit()
+                LogManager.log_insert('stok', 'stok.urun_fiyatlari', None, 'Fiyat kaydi eklendi')
                 conn.close()
                 self._load_fiyatlar()
                 QMessageBox.information(self, "Başarılı", "Fiyat eklendi!")
@@ -285,6 +287,7 @@ class StokFiyatPage(BasePage):
                 cursor.execute("UPDATE stok.urun_fiyatlari SET fiyat_tipi=?, fiyat=?, para_birimi=?, cari_id=?, gecerlilik_baslangic=?, gecerlilik_bitis=?, guncelleme_tarihi=GETDATE() WHERE id=?",
                     (data['fiyat_tipi'], data['fiyat'], data['para_birimi'], data['cari_id'], data['gecerlilik_baslangic'], data['gecerlilik_bitis'], fiyat_id))
                 conn.commit()
+                LogManager.log_update('stok', 'stok.urun_fiyatlari', None, 'Kayit guncellendi')
                 conn.close()
                 self._load_fiyatlar()
         except Exception as e:
@@ -300,6 +303,7 @@ class StokFiyatPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("UPDATE stok.urun_fiyatlari SET silindi_mi=1 WHERE id=?", (fiyat_id,))
                 conn.commit()
+                LogManager.log_delete('stok', 'stok.urun_fiyatlari', None, 'Kayit silindi (soft delete)')
                 conn.close()
                 self._load_fiyatlar()
             except Exception as e:

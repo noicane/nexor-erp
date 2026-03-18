@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QPixmap, QCursor
 
-from core.menu_structure import MENU_STRUCTURE
+from core.menu_structure import MENU_STRUCTURE, get_page_title, get_page_icon
 from core.yetki_manager import YetkiManager
 
 
@@ -298,10 +298,11 @@ class Sidebar(QFrame):
         self.menu_items = {}
         self.child_containers = {}
         self.active_item_id = None
-        
+        self._recent_pages = []  # Son kullanilan sayfalar (max 5)
+
         # Yetki manager
         self.yetki_manager = YetkiManager()
-        
+
         self._setup_ui()
     
     def _setup_ui(self):
@@ -359,7 +360,28 @@ class Sidebar(QFrame):
         
         logo_layout.addStretch()
         layout.addWidget(logo_frame)
-        
+
+        # === SON KULLANILANLAR ===
+        if self.expanded_mode:
+            self.recent_frame = QFrame()
+            self.recent_frame.setStyleSheet("background: transparent;")
+            self.recent_frame.setVisible(False)
+            self.recent_layout = QVBoxLayout(self.recent_frame)
+            self.recent_layout.setContentsMargins(12, 8, 12, 4)
+            self.recent_layout.setSpacing(0)
+
+            recent_title = QLabel("SON KULLANILANLAR")
+            recent_title.setStyleSheet(f"""
+                color: {t.get('text_muted', '#64748B')};
+                font-size: 9px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                padding: 4px 4px 6px 4px;
+                background: transparent;
+            """)
+            self.recent_layout.addWidget(recent_title)
+            layout.addWidget(self.recent_frame)
+
         # === MENU SCROLL ===
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -495,6 +517,7 @@ class Sidebar(QFrame):
         else:
             # Sayfa sec
             self.set_active(item_id)
+            self.add_recent_page(item_id)
             self.menu_clicked.emit(item_id)
 
     def _animate_expand(self, container: QWidget):
@@ -549,6 +572,63 @@ class Sidebar(QFrame):
                             self.menu_items[parent_id]._apply_style()
                         break
     
+    def add_recent_page(self, page_id: str):
+        """Son kullanilan sayfalara ekle"""
+        if not self.expanded_mode or not hasattr(self, 'recent_frame'):
+            return
+        if page_id == 'dashboard':
+            return
+
+        # Listede varsa kaldir (en basa almak icin)
+        if page_id in self._recent_pages:
+            self._recent_pages.remove(page_id)
+        self._recent_pages.insert(0, page_id)
+        self._recent_pages = self._recent_pages[:5]
+        self._update_recent_ui()
+
+    def _update_recent_ui(self):
+        """Son kullanilanlar alanini guncelle"""
+        if not hasattr(self, 'recent_layout'):
+            return
+
+        # Eski butonlari temizle (baslik haric)
+        while self.recent_layout.count() > 1:
+            item = self.recent_layout.takeAt(1)
+            if item.widget():
+                item.widget().deleteLater()
+
+        t = self.theme
+        for page_id in self._recent_pages:
+            title = get_page_title(page_id)
+            icon = get_page_icon(page_id)
+
+            btn = QPushButton(f"  {icon}  {title}")
+            btn.setCursor(QCursor(Qt.PointingHandCursor))
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: transparent;
+                    color: {t.get('text_secondary', '#94A3B8')};
+                    border: none;
+                    text-align: left;
+                    padding: 5px 8px;
+                    border-radius: 4px;
+                    font-size: 11px;
+                }}
+                QPushButton:hover {{
+                    background: {t.get('bg_hover', '#1E293B')};
+                    color: {t.get('text', '#E2E8F0')};
+                }}
+            """)
+            btn.clicked.connect(lambda checked, pid=page_id: self._on_recent_clicked(pid))
+            self.recent_layout.addWidget(btn)
+
+        self.recent_frame.setVisible(len(self._recent_pages) > 0)
+
+    def _on_recent_clicked(self, page_id: str):
+        """Son kullanilanlardan tiklandiginda"""
+        self.set_active(page_id)
+        self.menu_clicked.emit(page_id)
+
     def set_logo(self, logo_path: str):
         """Logo ayarla"""
         self.logo_path = logo_path
@@ -559,7 +639,7 @@ class Sidebar(QFrame):
                     scaled = pixmap.scaled(32, 32, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     self.logo_icon.setPixmap(scaled)
                     self.logo_icon.setText("")
-            except:
+            except Exception:
                 pass
     
     def set_dark_mode(self, is_dark: bool):

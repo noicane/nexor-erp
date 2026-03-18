@@ -23,6 +23,7 @@ from PySide6.QtGui import QColor, QAction
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from config import DEFAULT_PAGE_SIZE
 
 
@@ -265,7 +266,7 @@ class TeklifListePage(BasePage):
                 for i in range(12):
                     try:
                         item.append(row[i])
-                    except:
+                    except Exception:
                         item.append(None)
                 items.append(item)
 
@@ -341,7 +342,7 @@ class TeklifListePage(BasePage):
             no_item = QTableWidgetItem(str(item[1] or ''))
             try:
                 id_val = int(item[0]) if item[0] else 0
-            except:
+            except Exception:
                 id_val = 0
             no_item.setData(Qt.UserRole, id_val)
             self.table.setItem(row, 0, no_item)
@@ -500,7 +501,7 @@ class TeklifListePage(BasePage):
         teklif_id = item.data(Qt.UserRole)
         try:
             teklif_id = int(teklif_id) if teklif_id else None
-        except:
+        except Exception:
             teklif_id = None
         if teklif_id:
             from modules.teklif.teklif_detay import TeklifDetayDialog
@@ -519,7 +520,7 @@ class TeklifListePage(BasePage):
         teklif_id = item.data(Qt.UserRole)
         try:
             teklif_id = int(teklif_id) if teklif_id else None
-        except:
+        except Exception:
             teklif_id = None
         if not teklif_id:
             return
@@ -539,7 +540,7 @@ class TeklifListePage(BasePage):
         teklif_id = item.data(Qt.UserRole)
         try:
             teklif_id = int(teklif_id) if teklif_id else None
-        except:
+        except Exception:
             teklif_id = None
         if not teklif_id:
             return
@@ -625,6 +626,7 @@ class TeklifListePage(BasePage):
             """, (ara_toplam, iskonto_tutar, kdv_tutar, genel_toplam, yeni_id))
 
             conn.commit()
+            LogManager.log_update('teklif', 'satislar.teklifler', None, 'Kayit guncellendi')
             conn.close()
 
             QMessageBox.information(self, "Başarılı", f"Yeni revizyon oluşturuldu: {teklif_no} Rev.{yeni_rev:02d}")
@@ -650,7 +652,7 @@ class TeklifListePage(BasePage):
         teklif_id = item.data(Qt.UserRole)
         try:
             teklif_id = int(teklif_id) if teklif_id else None
-        except:
+        except Exception:
             teklif_id = None
         if not teklif_id:
             return
@@ -736,6 +738,7 @@ class TeklifListePage(BasePage):
             """, (teklif_id,))
 
             conn.commit()
+            LogManager.log_delete('teklif', 'satislar.teklifler', None, 'Kayit silindi (soft delete)')
             conn.close()
 
             QMessageBox.information(

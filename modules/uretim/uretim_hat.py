@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor, QBrush, QFont
 from datetime import datetime, timedelta
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 def get_modern_style(theme: dict) -> dict:

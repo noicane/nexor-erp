@@ -19,6 +19,7 @@ from PySide6.QtGui import QColor, QFont, QPixmap
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 def get_modern_style(theme: dict) -> dict:
@@ -81,7 +82,7 @@ class IlkUrunOnayDialog(QDialog):
                     'min': row[3], 'max': row[4], 'birim': row[5]
                 })
             conn.close()
-        except:
+        except Exception:
             # Varsayılan testler
             self.test_turleri = [
                 {'id': 1, 'kod': 'KAL', 'ad': 'Kalınlık Ölçümü', 'min': 8, 'max': 25, 'birim': 'µm'},
@@ -454,6 +455,7 @@ class IlkUrunOnayDialog(QDialog):
                 """, (self.is_emri_data.get('id'),))
             
             conn.commit()
+            LogManager.log_update('kalite', 'siparis.is_emirleri', None, 'Durum guncellendi')
             conn.close()
             
             # PDF RAPORU OLUŞTUR

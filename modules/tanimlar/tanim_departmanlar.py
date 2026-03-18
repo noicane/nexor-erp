@@ -446,7 +446,7 @@ class TanimDepartmanlarPage(BasePage):
             cursor.execute("SELECT COUNT(*) FROM ik.personeller WHERE departman_id = ? AND aktif_mi = 1", (departman_id,))
             personel_sayisi = cursor.fetchone()[0]
             conn.close()
-        except:
+        except Exception:
             pass
         
         if personel_sayisi > 0:
@@ -501,7 +501,7 @@ class TanimDepartmanlarPage(BasePage):
             cursor.execute("SELECT COUNT(*) FROM ik.pozisyonlar WHERE departman_id = ?", (departman_id,))
             pozisyon_sayisi = cursor.fetchone()[0]
             conn.close()
-        except:
+        except Exception:
             pass
         
         bagli_kayit_msg = ""

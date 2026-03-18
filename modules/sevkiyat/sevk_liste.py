@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 # Sevke hazır durumlar
 SEVK_HAZIR_DURUMLAR = ('KONTROL_EDILDI', 'ONAYLANDI', 'SEVKE_HAZIR')
@@ -85,7 +86,10 @@ class SevkListePage(BasePage):
         filter_layout.addWidget(self.search_input)
         
         filter_layout.addStretch()
-        
+
+        # Disa Aktar
+        filter_layout.addWidget(self.create_export_button(title="Sevkiyat Listesi"))
+
         # Özet bilgiler
         self.ozet_label = QLabel()
         self.ozet_label.setStyleSheet(f"color: {self.theme.get('primary', '#6366f1')}; font-weight: bold;")

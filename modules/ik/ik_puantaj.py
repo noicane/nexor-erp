@@ -349,7 +349,7 @@ class IKPuantajPage(BasePage):
                         diff = (t2 - t1).total_seconds() / 60
                         if diff > 0:
                             normal_dk = diff
-                    except:
+                    except Exception:
                         pass
                 vardiya_map[r[0]] = normal_dk
 
@@ -403,7 +403,7 @@ class IKPuantajPage(BasePage):
                         vp_normal_dk = vardiya_map.get(vardiya_id, 480)
                         normal_saat = min(toplam_dk, vp_normal_dk) / 60.0
                         mesai_saat = max(0, toplam_dk - vp_normal_dk) / 60.0
-                except:
+                except Exception:
                     pass
 
                 # MERGE: varsa güncelle, yoksa ekle (izinli/raporlu kayıtları ezmez)

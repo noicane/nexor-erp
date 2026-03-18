@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 # ============================================================================
@@ -407,7 +408,7 @@ class EkipmanDialog(QDialog):
                     idx = self.kategori_combo.findData(r[0])
                     if idx >= 0:
                         self.kategori_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -429,7 +430,7 @@ class EkipmanDialog(QDialog):
             if self.data.get('ekipman_tipi_id'):
                 idx = self.tipi_combo.findData(self.data['ekipman_tipi_id'])
                 if idx >= 0: self.tipi_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -447,7 +448,7 @@ class EkipmanDialog(QDialog):
             if self.data.get('hat_id'):
                 idx = self.hat_combo.findData(self.data['hat_id'])
                 if idx >= 0: self.hat_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -469,7 +470,7 @@ class EkipmanDialog(QDialog):
             if self.data.get('pozisyon_id'):
                 idx = self.pozisyon_combo.findData(self.data['pozisyon_id'])
                 if idx >= 0: self.pozisyon_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -518,6 +519,7 @@ class EkipmanDialog(QDialog):
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", params)
 
             conn.commit()
+            LogManager.log_insert('bakim', 'bakim.ekipmanlar', None, 'Ekipman kaydi eklendi')
             QMessageBox.information(self, "✓ Başarılı", "Ekipman kaydedildi!")
             self.accept()
         except Exception as e:
@@ -723,7 +725,7 @@ class BakimEkipmanPage(BasePage):
             cursor.execute("SELECT id, kod FROM tanim.uretim_hatlari WHERE aktif_mi=1 AND silindi_mi=0 ORDER BY sira_no")
             for row in cursor.fetchall():
                 self.hat_combo.addItem(row[1], row[0])
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -843,6 +845,7 @@ class BakimEkipmanPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("UPDATE bakim.ekipmanlar SET silindi_mi=1, silinme_tarihi=GETDATE() WHERE id=?", (eid,))
                 conn.commit()
+                LogManager.log_delete('bakim', 'bakim.ekipmanlar', None, 'Kayit silindi (soft delete)')
                 self._load_data()
             except Exception as e:
                 QMessageBox.critical(self, "❌ Hata", str(e))

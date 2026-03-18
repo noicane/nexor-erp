@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 def get_modern_style(theme: dict) -> dict:
     t = theme or {}
@@ -78,7 +79,7 @@ class EmanetStokDialog(QDialog):
             cursor.execute("SELECT id, urun_kodu, urun_adi FROM stok.urunler WHERE aktif_mi = 1 ORDER BY urun_kodu")
             for row in cursor.fetchall(): self.cmb_stok.addItem(f"{row[1]} - {row[2][:30]}", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_data(self):
         try:
@@ -104,6 +105,7 @@ class EmanetStokDialog(QDialog):
             else:
                 cursor.execute("INSERT INTO stok.emanet_stoklar (cari_id, urun_id, miktar, giris_tarihi, planlanan_iade_tarihi, aciklama, durum) VALUES (?, ?, ?, ?, ?, ?, 'AKTIF')", (self.cmb_cari.currentData(), self.cmb_stok.currentData(), self.spin_miktar.value(), self.date_giris.date().toPython(), self.date_iade.date().toPython(), self.txt_aciklama.text().strip() or None))
             conn.commit(); conn.close(); self.accept()
+            LogManager.log_insert('depo', 'stok.emanet_stoklar', None, 'Emanet stok kaydi olustu')
         except Exception as e: QMessageBox.critical(self, "❌ Hata", str(e))
 
 class DepoEmanetPage(BasePage):
@@ -199,4 +201,5 @@ class DepoEmanetPage(BasePage):
             conn = get_db_connection(); cursor = conn.cursor()
             cursor.execute("UPDATE stok.emanet_stoklar SET durum = 'IADE', iade_tarihi = GETDATE() WHERE id = ?", (emanet_id,))
             conn.commit(); conn.close(); self._load_data()
+            LogManager.log_update('depo', 'stok.emanet_stoklar', None, 'Durum guncellendi')
         except Exception as e: QMessageBox.critical(self, "❌ Hata", str(e))

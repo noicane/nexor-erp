@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from datetime import datetime
 
 
@@ -772,7 +773,7 @@ class AnalizDialog(QDialog):
                 if idx >= 0:
                     self.banyo_combo.setCurrentIndex(idx)
                     self._on_banyo_changed()
-        except:
+        except Exception:
             pass
         finally:
             if conn:
@@ -790,7 +791,7 @@ class AnalizDialog(QDialog):
             if self.data.get('analist_id'):
                 idx = self.analist_combo.findData(self.data['analist_id'])
                 if idx >= 0: self.analist_combo.setCurrentIndex(idx)
-        except:
+        except Exception:
             pass
         finally:
             if conn:
@@ -919,6 +920,7 @@ class AnalizDialog(QDialog):
                 analiz_id = cursor.fetchone()[0]
 
             conn.commit()
+            LogManager.log_insert('lab', 'uretim.banyo_analiz_sonuclari', None, 'Analiz sonucu kaydedildi')
 
             # LAB EVENT KAYDI
             try:
@@ -1068,7 +1070,9 @@ class LabAnalizPage(BasePage):
         self.banyo_combo.currentIndexChanged.connect(self._load_data)
         toolbar.addWidget(self.banyo_combo)
         toolbar.addStretch()
-        
+
+        toolbar.addWidget(self.create_export_button(title="Banyo Analiz Sonuclari"))
+
         add_btn = QPushButton("➕ Yeni Analiz")
         add_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;")
         add_btn.clicked.connect(self._add_new)
@@ -1113,7 +1117,7 @@ class LabAnalizPage(BasePage):
                 JOIN tanim.uretim_hatlari h ON b.hat_id=h.id WHERE b.aktif_mi=1 ORDER BY h.sira_no, b.kod""")
             for row in cursor.fetchall():
                 self.banyo_combo.addItem(f"{row[2]} / {row[1]}", row[0])
-        except:
+        except Exception:
             pass
         finally:
             if conn:
@@ -1227,6 +1231,7 @@ class LabAnalizPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM uretim.banyo_analiz_sonuclari WHERE id=?", (aid,))
                 conn.commit()
+                LogManager.log_delete('lab', 'uretim.banyo_analiz_sonuclari', None, 'Kayit silindi')
                 self._load_data()
             except Exception as e:
                 QMessageBox.critical(self, "Hata", str(e))

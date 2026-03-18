@@ -141,7 +141,7 @@ class ConnectionPool:
             cursor.fetchone()
             cursor.close()
             return True
-        except:
+        except Exception:
             return False
     
     def get_connection(self) -> pyodbc.Connection:
@@ -172,7 +172,7 @@ class ConnectionPool:
                     self._created_count -= 1
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
                 # Devam et, aşağıda yeni oluşturulacak
                 
@@ -186,7 +186,7 @@ class ConnectionPool:
                 self._stats['new_connections'] += 1
                 try:
                     return self._create_connection()
-                except:
+                except Exception:
                     self._created_count -= 1
                     raise
         
@@ -202,7 +202,7 @@ class ConnectionPool:
                 self._stats['recovered_connections'] += 1
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
                 return self._create_connection()
                 
@@ -226,18 +226,18 @@ class ConnectionPool:
             # Bekleyen transaction varsa rollback yap
             try:
                 conn.rollback()
-            except:
+            except Exception:
                 pass
             
             # Connection hala geçerli mi?
             if self._is_connection_valid(conn):
                 try:
                     self._pool.put_nowait(conn)
-                except:
+                except Exception:
                     # Pool dolu, connection'ı kapat
                     try:
                         conn.close()
-                    except:
+                    except Exception:
                         pass
                     with self._lock:
                         self._created_count -= 1
@@ -245,7 +245,7 @@ class ConnectionPool:
                 # Bozuk connection, kapat
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
                 with self._lock:
                     self._created_count -= 1
@@ -254,7 +254,7 @@ class ConnectionPool:
             # Herhangi bir hata durumunda güvenli kapat
             try:
                 conn.close()
-            except:
+            except Exception:
                 pass
             with self._lock:
                 self._created_count -= 1
@@ -275,7 +275,7 @@ class ConnectionPool:
             try:
                 conn = self._pool.get_nowait()
                 conn.close()
-            except:
+            except Exception:
                 pass
         with self._lock:
             self._created_count = 0

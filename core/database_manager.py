@@ -133,7 +133,7 @@ class ConnectionPool:
             cursor.fetchone()
             cursor.close()
             return True
-        except:
+        except Exception:
             return False
     
     def get_connection(self) -> pyodbc.Connection:
@@ -152,7 +152,7 @@ class ConnectionPool:
                     self._created_count -= 1
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
         except Empty:
             pass
@@ -164,7 +164,7 @@ class ConnectionPool:
                 self._stats['new_connections'] += 1
                 try:
                     return self._create_connection()
-                except:
+                except Exception:
                     self._created_count -= 1
                     raise
         
@@ -177,7 +177,7 @@ class ConnectionPool:
             else:
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
                 return self._create_connection()
         except Empty:
@@ -191,30 +191,30 @@ class ConnectionPool:
         try:
             try:
                 conn.rollback()
-            except:
+            except Exception:
                 pass
             
             if self._is_connection_valid(conn):
                 try:
                     self._pool.put_nowait(conn)
-                except:
+                except Exception:
                     try:
                         conn.close()
-                    except:
+                    except Exception:
                         pass
                     with self._lock:
                         self._created_count -= 1
             else:
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
                 with self._lock:
                     self._created_count -= 1
-        except:
+        except Exception:
             try:
                 conn.close()
-            except:
+            except Exception:
                 pass
             with self._lock:
                 self._created_count -= 1
@@ -235,7 +235,7 @@ class ConnectionPool:
             try:
                 conn = self._pool.get_nowait()
                 conn.close()
-            except:
+            except Exception:
                 pass
         with self._lock:
             self._created_count = 0
@@ -841,7 +841,7 @@ class DatabaseConnectionManager:
             try:
                 self._bootstrap_conn.close()
                 logger.info("  ✓ Bootstrap connection kapatıldı")
-            except:
+            except Exception:
                 pass
 
 

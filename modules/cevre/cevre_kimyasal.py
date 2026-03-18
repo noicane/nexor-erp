@@ -76,7 +76,7 @@ class KimyasalDialog(QDialog):
             cursor.execute("SELECT id, kod, ad FROM stok.urunler WHERE aktif_mi = 1 ORDER BY kod")
             for row in cursor.fetchall(): self.cmb_urun.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_data(self):
         try:

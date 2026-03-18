@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor, QFont
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 def get_modern_style(theme: dict) -> dict:
@@ -200,6 +201,7 @@ class KriterKontrolDialog(QDialog):
                 # TODO: Gelecekte hareket_motoru.transfer() ile RED deposuna taşı
 
             conn.commit()
+            LogManager.log_update('kalite', 'stok.stok_bakiye', None, 'Durum guncellendi')
 
             durum_text = {
                 'ONAYLANDI': 'onaylandı ✅',
@@ -300,6 +302,7 @@ class PaletDetayDialog(QDialog):
                 return
 
             conn.commit()
+            LogManager.log_update('kalite', 'stok.stok_bakiye', None, 'Durum guncellendi')
 
             durum_text = {'ONAYLANDI': 'onaylandı', 'RED': 'reddedildi'}
             QMessageBox.information(self, "Başarılı", f"Palet {durum_text.get(durum, 'güncellendi')}!")
@@ -509,6 +512,7 @@ class AnaLotDetayDialog(QDialog):
                 updated += cursor.rowcount
 
             conn.commit()
+            LogManager.log_update('kalite', 'stok.stok_bakiye', None, 'Durum guncellendi')
 
             durum_text2 = {'ONAYLANDI': 'onaylandı ✅', 'RED': 'reddedildi ❌'}
             QMessageBox.information(

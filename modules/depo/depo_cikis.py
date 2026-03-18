@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 MANUEL_CIKIS_SIFRE = "1234"
 
@@ -161,7 +162,7 @@ class DepoCikisPage(BasePage):
             cursor.execute("SELECT id, kod, ad FROM tanim.depolar WHERE aktif_mi = 1 AND kod LIKE 'URT-%' ORDER BY kod")
             for row in cursor.fetchall(): self.depo_filter.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_data(self):
         s = self.s
@@ -269,11 +270,12 @@ class DepoCikisPage(BasePage):
             cursor.execute("UPDATE stok.depo_cikis_emirleri SET durum = 'TAMAMLANDI', transfer_miktar = ?, tamamlanma_tarihi = GETDATE(), guncelleme_tarihi = GETDATE() WHERE id = ?", (miktar, emir_id))
             cursor.execute("UPDATE siparis.is_emirleri SET durum = 'URETIMDE', guncelleme_tarihi = GETDATE() WHERE id = (SELECT is_emri_id FROM stok.depo_cikis_emirleri WHERE id = ?) AND durum = 'PLANLANDI'", (emir_id,))
             conn.commit(); conn.close()
+            LogManager.log_update('depo', 'siparis.is_emirleri', None, 'Durum guncellendi')
             try:
                 conn2 = get_db_connection(); cursor2 = conn2.cursor()
                 cursor2.execute("SELECT kod, ad FROM tanim.depolar WHERE id = ?", (hedef_depo_id,))
                 depo_row = cursor2.fetchone(); depo_adi = f"{depo_row[0]} - {depo_row[1]}" if depo_row else f"ID: {hedef_depo_id}"; conn2.close()
-            except: depo_adi = f"ID: {hedef_depo_id}"
+            except Exception: depo_adi = f"ID: {hedef_depo_id}"
             cikis_tipi = 'MANUEL' if manuel else 'BARKOD'
             QMessageBox.information(self, "✓ Çıkış Tamamlandı", f"Lot: {lot_no}\nMiktar: {miktar:,.0f}\nHedef Depo: {depo_adi}\n\nÇıkış Tipi: {cikis_tipi}")
             self._load_data()

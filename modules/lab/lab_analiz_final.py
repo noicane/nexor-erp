@@ -324,7 +324,7 @@ class AnalizDialog(QDialog):
                 if idx >= 0: 
                     self.banyo_combo.setCurrentIndex(idx)
                     self._load_banyo_limitleri()
-        except: 
+        except Exception:
             pass
     
     def _load_analistler(self):
@@ -338,7 +338,7 @@ class AnalizDialog(QDialog):
             if self.data.get('analist_id'):
                 idx = self.analist_combo.findData(self.data['analist_id'])
                 if idx >= 0: self.analist_combo.setCurrentIndex(idx)
-        except: 
+        except Exception:
             pass
     
     def _load_banyo_limitleri(self):
@@ -650,7 +650,7 @@ class LabAnalizPage(BasePage):
             for row in cursor.fetchall():
                 self.banyo_combo.addItem(f"{row[2]} / {row[1]}", row[0])
             conn.close()
-        except: 
+        except Exception:
             pass
     
     def _load_data(self):

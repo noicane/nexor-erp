@@ -7,10 +7,12 @@ Modern ve tutarli stil tanimlari
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QLineEdit, QComboBox, QTableWidget,
-    QHeaderView, QScrollArea, QGroupBox
+    QHeaderView, QScrollArea, QGroupBox, QFileDialog,
+    QMessageBox, QMenu
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
+from datetime import datetime
 
 
 class BasePage(QWidget):
@@ -974,3 +976,284 @@ class BasePage(QWidget):
             layout.addWidget(btn)
 
         return widget
+
+    # ══════════════════════════════════════════════
+    # EXPORT ALTYAPISI
+    # ══════════════════════════════════════════════
+
+    def export_table_to_excel(self, table: QTableWidget, title: str = "Veri",
+                               skip_last_col: bool = True):
+        """
+        Herhangi bir QTableWidget'i Excel'e aktar.
+        NEXOR kurumsal temasina uygun, otomatik kolon genisligi.
+
+        Args:
+            table: Aktarilacak QTableWidget
+            title: Sayfa ve dosya adi
+            skip_last_col: Son sutunu atla (genelde islem butonu kolonu)
+        """
+        if table is None:
+            QMessageBox.warning(self, "Hata", "Aktarilacak tablo bulunamadi.")
+            return
+
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+            from openpyxl.utils import get_column_letter
+        except ImportError:
+            QMessageBox.warning(self, "Hata",
+                                "openpyxl kutuphanesi yuklu degil.\npip install openpyxl")
+            return
+
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '_', '-')).strip()
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "Excel Kaydet",
+            f"{safe_title}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            "Excel Dosyasi (*.xlsx)"
+        )
+        if not filepath:
+            return
+
+        try:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = safe_title[:31]
+
+            col_count = table.columnCount()
+            if skip_last_col:
+                col_count -= 1
+
+            # -- Stiller --
+            primary = self.theme.get('primary', '#DC2626').lstrip('#')
+            header_font = Font(name='Segoe UI', bold=True, color="FFFFFF", size=11)
+            header_fill = PatternFill(start_color=primary, end_color=primary, fill_type="solid")
+            header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+            data_font = Font(name='Segoe UI', size=10)
+            data_align = Alignment(vertical="center", wrap_text=True)
+            number_align = Alignment(horizontal="right", vertical="center")
+
+            thin_border = Border(
+                left=Side(style='thin', color='D1D5DB'),
+                right=Side(style='thin', color='D1D5DB'),
+                top=Side(style='thin', color='D1D5DB'),
+                bottom=Side(style='thin', color='D1D5DB')
+            )
+
+            alt_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
+
+            # -- Baslik satiri --
+            title_font = Font(name='Segoe UI', bold=True, size=14, color=primary)
+            ws.cell(row=1, column=1, value=title).font = title_font
+            ws.cell(row=2, column=1,
+                    value=f"Olusturma: {datetime.now().strftime('%d.%m.%Y %H:%M')}").font = Font(
+                name='Segoe UI', size=9, color='6B7280')
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max(col_count, 1))
+            ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=max(col_count, 1))
+
+            header_row = 4
+            col_max_widths = {}
+
+            # -- Tablo baslik satirlari --
+            excel_col = 1
+            for col in range(col_count):
+                header = table.horizontalHeaderItem(col)
+                val = header.text() if header else f"Sutun {col + 1}"
+                cell = ws.cell(row=header_row, column=excel_col, value=val)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_align
+                cell.border = thin_border
+                col_max_widths[excel_col] = len(val) + 4
+                excel_col += 1
+
+            # -- Veri satirlari --
+            for row in range(table.rowCount()):
+                excel_row = header_row + 1 + row
+                excel_col = 1
+                for col in range(col_count):
+                    item = table.item(row, col)
+                    val = item.text() if item else ""
+
+                    cell = ws.cell(row=excel_row, column=excel_col, value=val)
+                    cell.font = data_font
+                    cell.border = thin_border
+
+                    # Sayisal deger kontrolu
+                    clean = val.replace('.', '').replace(',', '.').replace('%', '').strip()
+                    try:
+                        num = float(clean)
+                        cell.value = num
+                        cell.alignment = number_align
+                        if '%' in val:
+                            cell.number_format = '0.00%'
+                            cell.value = num / 100 if num > 1 else num
+                    except (ValueError, TypeError):
+                        cell.alignment = data_align
+
+                    # Zebra renklendirme
+                    if row % 2 == 1:
+                        cell.fill = alt_fill
+
+                    # Kolon genisligi hesapla
+                    w = len(val) + 2
+                    if w > col_max_widths.get(excel_col, 0):
+                        col_max_widths[excel_col] = w
+
+                    excel_col += 1
+
+            # -- Kolon genislikleri --
+            for col_idx, width in col_max_widths.items():
+                ws.column_dimensions[get_column_letter(col_idx)].width = min(max(width, 10), 50)
+
+            # -- Filtre ekle --
+            if table.rowCount() > 0:
+                last_letter = get_column_letter(max(col_count, 1))
+                ws.auto_filter.ref = f"A{header_row}:{last_letter}{header_row + table.rowCount()}"
+
+            # -- Satir yuksekligi --
+            ws.row_dimensions[header_row].height = 28
+
+            # -- Sayfa yapisi --
+            ws.sheet_properties.pageSetUpPr = openpyxl.worksheet.properties.PageSetupProperties(
+                fitToPage=True)
+            ws.page_setup.fitToWidth = 1
+            ws.page_setup.fitToHeight = 0
+            ws.page_setup.orientation = 'landscape'
+
+            wb.save(filepath)
+
+            QMessageBox.information(self, "Basarili",
+                                    f"Excel dosyasi olusturuldu:\n{filepath}")
+
+            # Export logla
+            try:
+                from core.log_manager import LogManager
+                LogManager.log_export(title, f"{title} Excel olarak disari aktarildi ({table.rowCount()} satir)")
+            except Exception:
+                pass
+
+            # Dosyayi ac
+            import os
+            try:
+                os.startfile(filepath)
+            except Exception:
+                pass
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Excel olusturma hatasi:\n{str(e)}")
+
+    def create_export_button(self, table=None, title: str = "Veri",
+                               table_attr: str = "table") -> QPushButton:
+        """
+        Excel/CSV/PDF export menu butonu olustur.
+        Toolbar'a eklenmeye hazir.
+
+        Args:
+            table: QTableWidget referansi (None ise table_attr kullanilir)
+            title: Export dosya adi
+            table_attr: self uzerindeki tablo attribute adi (lazy binding)
+
+        Kullanim:
+            btn = self.create_export_button(title="Personel Listesi")
+            toolbar_layout.addWidget(btn)
+        """
+        t = self.theme
+        btn = QPushButton("Disa Aktar")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {t.get('bg_card', '#1E293B')};
+                color: {t.get('text', '#E2E8F0')};
+                border: 1px solid {t.get('border', '#334155')};
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background: {t.get('bg_hover', '#334155')};
+                border-color: {t.get('primary', '#DC2626')};
+            }}
+            QPushButton::menu-indicator {{
+                subcontrol-position: right center;
+                subcontrol-origin: padding;
+                right: 8px;
+            }}
+        """)
+
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background: {t.get('bg_card', '#1E293B')};
+                color: {t.get('text', '#E2E8F0')};
+                border: 1px solid {t.get('border', '#334155')};
+                border-radius: 6px;
+                padding: 4px;
+            }}
+            QMenu::item {{
+                padding: 8px 24px;
+                border-radius: 4px;
+            }}
+            QMenu::item:selected {{
+                background: {t.get('bg_hover', '#334155')};
+            }}
+        """)
+
+        def _get_table():
+            if table is not None:
+                return table
+            return getattr(self, table_attr, None)
+
+        menu.addAction("Excel (.xlsx)", lambda: self.export_table_to_excel(_get_table(), title))
+        menu.addAction("CSV (.csv)", lambda: self._export_table_to_csv(_get_table(), title))
+
+        btn.setMenu(menu)
+        return btn
+
+    def _export_table_to_csv(self, table: QTableWidget, title: str = "Veri"):
+        """QTableWidget'i CSV'ye aktar"""
+        if table is None:
+            QMessageBox.warning(self, "Hata", "Aktarilacak tablo bulunamadi.")
+            return
+
+        import csv
+
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '_', '-')).strip()
+        filepath, _ = QFileDialog.getSaveFileName(
+            self, "CSV Kaydet",
+            f"{safe_title}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            "CSV Dosyasi (*.csv)"
+        )
+        if not filepath:
+            return
+
+        try:
+            col_count = table.columnCount() - 1  # Son sutun (islem) atla
+
+            with open(filepath, 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv.writer(f, delimiter=';')
+
+                headers = []
+                for col in range(col_count):
+                    header = table.horizontalHeaderItem(col)
+                    headers.append(header.text() if header else "")
+                writer.writerow(headers)
+
+                for row in range(table.rowCount()):
+                    row_data = []
+                    for col in range(col_count):
+                        item = table.item(row, col)
+                        row_data.append(item.text() if item else "")
+                    writer.writerow(row_data)
+
+            QMessageBox.information(self, "Basarili", f"CSV kaydedildi:\n{filepath}")
+
+            import os
+            try:
+                os.startfile(filepath)
+            except Exception:
+                pass
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"CSV olusturma hatasi:\n{str(e)}")

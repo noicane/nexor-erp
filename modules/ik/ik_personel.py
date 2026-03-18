@@ -3,6 +3,8 @@
 REDLINE NEXOR ERP - İK Personel Listesi
 Tüm personel yönetimi, detay görüntüleme ve düzenleme
 """
+import os
+import shutil
 from datetime import datetime, date
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
@@ -11,11 +13,19 @@ from PySide6.QtWidgets import (
     QDateEdit, QTextEdit, QFormLayout, QTabWidget, QWidget,
     QScrollArea, QGridLayout, QSpinBox, QFileDialog
 )
-from PySide6.QtCore import Qt, QTimer, QDate
-from PySide6.QtGui import QColor, QPixmap, QPainter, QBrush, QFont
+from PySide6.QtCore import Qt, QTimer, QDate, QRectF, QPointF
+from PySide6.QtGui import (
+    QColor, QPixmap, QPainter, QBrush, QFont, QPen,
+    QPainterPath, QImage, QLinearGradient
+)
+from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
+
+NAS_PERSONEL_PATH = r"\\AtlasNAS\Personel"
+ATLAS_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "Atlas.png")
 
 
 class PersonelDetayDialog(QDialog):
@@ -27,11 +37,13 @@ class PersonelDetayDialog(QDialog):
         self.theme = theme
         self.personel_data = {}
         self.is_new = personel_id is None
-        
+        self.foto_pixmap = None
+
         self.setWindowTitle("Yeni Personel" if self.is_new else "Personel Detayı")
-        self.setMinimumSize(900, 650)
+        self.setMinimumSize(900, 700)
         if not self.is_new:
             self._load_data()
+            self._find_photo()
         self._setup_ui()
     
     def _load_data(self):
@@ -39,7 +51,20 @@ class PersonelDetayDialog(QDialog):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
+            # kan_grubu kolonu yoksa ekle
+            try:
+                cursor.execute("""
+                    IF NOT EXISTS (
+                        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_SCHEMA='ik' AND TABLE_NAME='personeller' AND COLUMN_NAME='kan_grubu'
+                    )
+                    ALTER TABLE ik.personeller ADD kan_grubu NVARCHAR(10) NULL
+                """)
+                conn.commit()
+            except Exception:
+                pass
+
             cursor.execute("""
                 SELECT p.*, d.ad as departman_adi, poz.ad as pozisyon_adi
                 FROM ik.personeller p
@@ -47,12 +72,12 @@ class PersonelDetayDialog(QDialog):
                 LEFT JOIN ik.pozisyonlar poz ON p.pozisyon_id = poz.id
                 WHERE p.id = ?
             """, (self.personel_id,))
-            
+
             row = cursor.fetchone()
             if row:
                 columns = [desc[0] for desc in cursor.description]
                 self.personel_data = dict(zip(columns, row))
-            
+
             conn.close()
         except Exception as e:
             print(f"Personel yükleme hatası: {e}")
@@ -93,58 +118,74 @@ class PersonelDetayDialog(QDialog):
         
         # Header
         header = QFrame()
-        header.setFixedHeight(80)
+        header.setFixedHeight(100)
         header.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-bottom: 1px solid {self.theme.get('border')};")
         h_layout = QHBoxLayout(header)
         h_layout.setContentsMargins(20, 10, 20, 10)
-        
-        # Avatar
-        avatar = QLabel()
-        avatar.setFixedSize(60, 60)
-        avatar.setStyleSheet(f"""
-            background: {self.theme.get('primary', '#6366f1')};
-            border-radius: 30px;
-            font-size: 20px;
-            font-weight: bold;
-        """)
-        avatar.setAlignment(Qt.AlignCenter)
-        
+
+        # Foto
+        self.lbl_foto = QLabel()
+        self.lbl_foto.setFixedSize(80, 80)
+        self.lbl_foto.setAlignment(Qt.AlignCenter)
+        self.lbl_foto.setCursor(Qt.PointingHandCursor)
+        self.lbl_foto.mousePressEvent = lambda e: self._select_photo()
+
         if self.is_new:
-            initials = "+"
             ad, soyad = "Yeni", "Personel"
         else:
             ad = self.personel_data.get('ad', '')
             soyad = self.personel_data.get('soyad', '')
-            initials = f"{ad[:1]}{soyad[:1]}".upper() if ad and soyad else "?"
-        
-        avatar.setText(initials)
-        h_layout.addWidget(avatar)
-        
+
+        self._update_foto_label()
+        h_layout.addWidget(self.lbl_foto)
+
+        # Foto butonları
+        foto_btn_layout = QVBoxLayout()
+        foto_btn_layout.setSpacing(4)
+        btn_foto_sec = QPushButton("Resim Sec")
+        btn_foto_sec.setFixedWidth(80)
+        btn_foto_sec.setCursor(Qt.PointingHandCursor)
+        btn_foto_sec.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 4px;
+                padding: 4px;
+                font-size: 10px;
+            }}
+            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+        """)
+        btn_foto_sec.clicked.connect(self._select_photo)
+        foto_btn_layout.addWidget(btn_foto_sec)
+        foto_btn_layout.addStretch()
+        h_layout.addLayout(foto_btn_layout)
+
         # İsim ve bilgiler
         info_layout = QVBoxLayout()
         info_layout.setSpacing(4)
-        
+
         name_label = QLabel(f"{ad} {soyad}")
         name_label.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 18px; font-weight: bold;")
         info_layout.addWidget(name_label)
-        
+
         if not self.is_new:
             dept = self.personel_data.get('departman_adi', '-')
             pos = self.personel_data.get('pozisyon_adi', '-')
-            sub_label = QLabel(f"{dept} • {pos}")
+            sub_label = QLabel(f"{dept} - {pos}")
             sub_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
             info_layout.addWidget(sub_label)
         else:
-            sub_label = QLabel("Yeni kayıt oluşturuluyor...")
+            sub_label = QLabel("Yeni kayit olusturuluyor...")
             sub_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
             info_layout.addWidget(sub_label)
-        
+
         h_layout.addLayout(info_layout, 1)
-        
-        # Durum badge (sadece var olan kayıtlar için)
+
+        # Durum badge
         if not self.is_new:
             aktif = self.personel_data.get('aktif_mi', True)
-            durum_label = QLabel("✓ Aktif" if aktif else "✗ Pasif")
+            durum_label = QLabel("Aktif" if aktif else "Pasif")
             durum_label.setStyleSheet(f"""
                 color: {'#22c55e' if aktif else '#ef4444'};
                 background: {'rgba(34,197,94,0.2)' if aktif else 'rgba(239,68,68,0.2)'};
@@ -153,7 +194,7 @@ class PersonelDetayDialog(QDialog):
                 font-weight: bold;
             """)
             h_layout.addWidget(durum_label)
-        
+
         # Kapat butonu
         close_btn = QPushButton("Kapat")
         close_btn.setFixedSize(60, 36)
@@ -170,7 +211,7 @@ class PersonelDetayDialog(QDialog):
         """)
         close_btn.clicked.connect(self.close)
         h_layout.addWidget(close_btn)
-        
+
         layout.addWidget(header)
         
         # Tab Widget
@@ -181,18 +222,37 @@ class PersonelDetayDialog(QDialog):
         
         # Diğer sekmeler sadece var olan kayıtlar için
         if not self.is_new:
-            tabs.addTab(self._create_izin_tab(), "🏖️ İzin Bilgileri")
-            tabs.addTab(self._create_zimmet_tab(), "📦 Zimmetler")
-            tabs.addTab(self._create_yetkinlik_tab(), "📊 Yetkinlikler")
+            tabs.addTab(self._create_izin_tab(), "İzin Bilgileri")
+            tabs.addTab(self._create_zimmet_tab(), "Zimmetler")
+            tabs.addTab(self._create_yetkinlik_tab(), "Yetkinlikler")
+            tabs.addTab(self._create_ozluk_tab(), "Ozluk Dosyalari")
         
         layout.addWidget(tabs, 1)
         
         # Alt butonlar
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(20, 10, 20, 10)
+
+        # Kart Bas butonu (sadece mevcut kayitlar icin)
+        if not self.is_new:
+            card_btn = QPushButton("Kart Bas")
+            card_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: #dc2626;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 24px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{ background: #b91c1c; }}
+            """)
+            card_btn.clicked.connect(self._bas_kart)
+            btn_layout.addWidget(card_btn)
+
         btn_layout.addStretch()
-        
-        save_btn = QPushButton("💾 Kaydet")
+
+        save_btn = QPushButton("Kaydet")
         save_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {self.theme.get('primary', '#6366f1')};
@@ -206,7 +266,7 @@ class PersonelDetayDialog(QDialog):
         """)
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
-        
+
         layout.addLayout(btn_layout)
     
     def _create_genel_tab(self) -> QWidget:
@@ -253,9 +313,21 @@ class PersonelDetayDialog(QDialog):
         layout.addRow("Cinsiyet:", self.cmb_cinsiyet)
         
         self.txt_kart = QLineEdit(str(self.personel_data.get('kart_no', '') or ''))
-        self.txt_kart.setPlaceholderText("PDKS Kart Numarası")
-        layout.addRow("Kart No:", self.txt_kart)
-        
+        self.txt_kart.setPlaceholderText("PDKS Kart Numarası (ZK Cihaz)")
+        layout.addRow("Kart No (PDKS):", self.txt_kart)
+
+        self.txt_kart_id = QLineEdit(str(self.personel_data.get('kart_id', '') or ''))
+        self.txt_kart_id.setPlaceholderText("USB Okuyucu Kart ID")
+        layout.addRow("Kart ID (USB):", self.txt_kart_id)
+
+        self.cmb_kan = QComboBox()
+        self.cmb_kan.addItems(["", "A Rh+", "A Rh-", "B Rh+", "B Rh-", "AB Rh+", "AB Rh-", "0 Rh+", "0 Rh-"])
+        kan = self.personel_data.get('kan_grubu', '') or ''
+        idx = self.cmb_kan.findText(kan, Qt.MatchFixedString)
+        if idx >= 0:
+            self.cmb_kan.setCurrentIndex(idx)
+        layout.addRow("Kan Grubu:", self.cmb_kan)
+
         return widget
     
     def _create_iletisim_tab(self) -> QWidget:
@@ -666,10 +738,22 @@ class PersonelDetayDialog(QDialog):
                 self.zimmet_table.setItem(row_idx, 4, QTableWidgetItem(row[4] or ''))
                 
                 # İade butonu
-                widget = self.create_action_buttons([
-                    ("İade", "İade", lambda checked, zid=row[5]: self._iade_zimmet(zid), "delete"),
-                ])
-                self.zimmet_table.setCellWidget(row_idx, 5, widget)
+                btn = QPushButton("İade")
+                btn.setFixedSize(70, 30)
+                btn.setStyleSheet(f"""
+                    QPushButton {{
+                        background: #EF4444; color: white; border: none;
+                        border-radius: 4px; font-weight: bold; font-size: 12px;
+                    }}
+                    QPushButton:hover {{ background: #DC2626; }}
+                """)
+                btn.clicked.connect(lambda checked, zid=row[5]: self._iade_zimmet(zid))
+                btn_widget = QWidget()
+                btn_layout = QHBoxLayout(btn_widget)
+                btn_layout.addWidget(btn)
+                btn_layout.setAlignment(Qt.AlignCenter)
+                btn_layout.setContentsMargins(4, 4, 4, 4)
+                self.zimmet_table.setCellWidget(row_idx, 5, btn_widget)
                 self.zimmet_table.setRowHeight(row_idx, 42)
             
             conn.close()
@@ -720,8 +804,9 @@ class PersonelDetayDialog(QDialog):
                     WHERE id = ?
                 """, (zimmet_id,))
                 conn.commit()
+                LogManager.log_update('ik', 'ik.zimmetler', zimmet_id, 'Zimmet iade edildi (personel detay)')
                 conn.close()
-                
+
                 self._load_zimmetler()
                 QMessageBox.information(self, "Başarılı", "Zimmet iade edildi.")
             except Exception as e:
@@ -760,12 +845,14 @@ class PersonelDetayDialog(QDialog):
                 calisma_durumu = self.cmb_durum.currentText()
                 aktif_mi = 0 if calisma_durumu == "İşten Ayrıldı" else 1
 
+                kan_grubu = self.cmb_kan.currentText() or None
+
                 cursor.execute("""
                     INSERT INTO ik.personeller (
-                        sicil_no, ad, soyad, tc_kimlik_no, dogum_tarihi, cinsiyet, kart_no,
+                        sicil_no, ad, soyad, tc_kimlik_no, dogum_tarihi, cinsiyet, kart_no, kart_id,
                         telefon, email, adres, departman_id, pozisyon_id, ise_giris_tarihi,
-                        calisma_durumu, aktif_mi, olusturma_tarihi, guncelleme_tarihi
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE())
+                        calisma_durumu, aktif_mi, kan_grubu, olusturma_tarihi, guncelleme_tarihi
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE())
                 """, (
                     self.txt_sicil.text().strip() or None,
                     ad,
@@ -774,6 +861,7 @@ class PersonelDetayDialog(QDialog):
                     self.dt_dogum.date().toPython(),
                     self.cmb_cinsiyet.currentText(),
                     self.txt_kart.text().strip() or None,
+                    self.txt_kart_id.text().strip() or None,
                     self.txt_telefon.text().strip() or None,
                     self.txt_email.text().strip() or None,
                     self.txt_adres.toPlainText().strip() or None,
@@ -781,13 +869,16 @@ class PersonelDetayDialog(QDialog):
                     poz_id,
                     self.dt_giris.date().toPython(),
                     calisma_durumu,
-                    aktif_mi
+                    aktif_mi,
+                    kan_grubu
                 ))
                 
                 conn.commit()
+                LogManager.log_insert('ik', 'ik.personeller', None,
+                                      f'Yeni personel eklendi: {ad} {soyad}')
                 conn.close()
-                
-                QMessageBox.information(self, "Başarılı", 
+
+                QMessageBox.information(self, "Başarılı",
                     f"{ad} {soyad} başarıyla sisteme eklendi.\n\n"
                     "Personelin izin hakları, zimmetleri ve yetkinlikleri "
                     "personel detayından yönetilebilir.")
@@ -798,6 +889,8 @@ class PersonelDetayDialog(QDialog):
                 calisma_durumu = self.cmb_durum.currentText()
                 aktif_mi = 0 if calisma_durumu == "İşten Ayrıldı" else 1
 
+                kan_grubu = self.cmb_kan.currentText() or None
+
                 cursor.execute("""
                     UPDATE ik.personeller SET
                         sicil_no = ?,
@@ -807,6 +900,7 @@ class PersonelDetayDialog(QDialog):
                         dogum_tarihi = ?,
                         cinsiyet = ?,
                         kart_no = ?,
+                        kart_id = ?,
                         telefon = ?,
                         email = ?,
                         adres = ?,
@@ -815,6 +909,7 @@ class PersonelDetayDialog(QDialog):
                         ise_giris_tarihi = ?,
                         calisma_durumu = ?,
                         aktif_mi = ?,
+                        kan_grubu = ?,
                         guncelleme_tarihi = GETDATE()
                     WHERE id = ?
                 """, (
@@ -825,6 +920,7 @@ class PersonelDetayDialog(QDialog):
                     self.dt_dogum.date().toPython(),
                     self.cmb_cinsiyet.currentText(),
                     self.txt_kart.text().strip() or None,
+                    self.txt_kart_id.text().strip() or None,
                     self.txt_telefon.text().strip() or None,
                     self.txt_email.text().strip() or None,
                     self.txt_adres.toPlainText().strip() or None,
@@ -833,17 +929,736 @@ class PersonelDetayDialog(QDialog):
                     self.dt_giris.date().toPython(),
                     calisma_durumu,
                     aktif_mi,
+                    kan_grubu,
                     self.personel_id
                 ))
                 
                 conn.commit()
+                LogManager.log_update('ik', 'ik.personeller', self.personel_id,
+                                      f'Personel guncellendi: {ad} {soyad}')
                 conn.close()
-                
+
                 QMessageBox.information(self, "Başarılı", "Personel bilgileri güncellendi.")
                 self.accept()
             
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Kayıt hatası: {e}")
+
+
+    # ── Ozluk Dosyalari ──
+
+    def _create_ozluk_tab(self) -> QWidget:
+        """Ozluk dosyalari sekmesi - NAS uzerindeki dosyalari listeler"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+
+        # Toolbar
+        toolbar = QHBoxLayout()
+        toolbar.addWidget(QLabel("Personel Ozluk Dosyalari"))
+        toolbar.addStretch()
+
+        self.lbl_ozluk_path = QLabel()
+        self.lbl_ozluk_path.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        toolbar.addWidget(self.lbl_ozluk_path)
+
+        btn_refresh = QPushButton("Yenile")
+        btn_refresh.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 6px 14px;
+            }}
+            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+        """)
+        btn_refresh.clicked.connect(self._load_ozluk_dosyalari)
+        toolbar.addWidget(btn_refresh)
+
+        btn_upload = QPushButton("Dosya Yukle")
+        btn_upload.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('success', '#22c55e')};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 6px 14px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #16a34a; }}
+        """)
+        btn_upload.clicked.connect(self._upload_ozluk)
+        toolbar.addWidget(btn_upload)
+
+        btn_open_folder = QPushButton("Klasoru Ac")
+        btn_open_folder.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 6px 14px;
+            }}
+            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+        """)
+        btn_open_folder.clicked.connect(self._open_ozluk_folder)
+        toolbar.addWidget(btn_open_folder)
+
+        layout.addLayout(toolbar)
+
+        # Dosya tablosu
+        self.ozluk_table = QTableWidget()
+        self.ozluk_table.setColumnCount(4)
+        self.ozluk_table.setHorizontalHeaderLabels(["Dosya Adi", "Tur", "Boyut", "Degistirilme"])
+        self.ozluk_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.ozluk_table.setColumnWidth(1, 80)
+        self.ozluk_table.setColumnWidth(2, 90)
+        self.ozluk_table.setColumnWidth(3, 140)
+        self.ozluk_table.verticalHeader().setVisible(False)
+        self.ozluk_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.ozluk_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.ozluk_table.doubleClicked.connect(self._open_ozluk_file)
+        self.ozluk_table.setStyleSheet(self._table_style())
+        layout.addWidget(self.ozluk_table, 1)
+
+        # Bilgi notu
+        note = QLabel("Dosyayi acmak icin cift tiklayin. Dosyalar NAS uzerinde saklanir.")
+        note.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 10px;")
+        layout.addWidget(note)
+
+        # Dosyalari yukle
+        self._load_ozluk_dosyalari()
+
+        return widget
+
+    def _get_ozluk_folder(self):
+        """Personelin NAS ozluk klasor yolunu dondur"""
+        ad = self.personel_data.get('ad', '').strip()
+        soyad = self.personel_data.get('soyad', '').strip()
+        if not ad or not soyad:
+            return None
+
+        # Olasi klasor isimleri dene
+        candidates = [
+            f"{ad}_{soyad}",
+            f"{ad} {soyad}",
+            f"{ad.upper()}_{soyad.upper()}",
+            f"{ad.upper()} {soyad.upper()}",
+        ]
+        for name in candidates:
+            path = os.path.join(NAS_PERSONEL_PATH, name)
+            if os.path.isdir(path):
+                return path
+
+        # Yoksa varsayilan isimle dondur (olusturulabilir)
+        return os.path.join(NAS_PERSONEL_PATH, f"{ad}_{soyad}")
+
+    def _load_ozluk_dosyalari(self):
+        """NAS klasorundan dosyalari listele"""
+        self.ozluk_table.setRowCount(0)
+        folder = self._get_ozluk_folder()
+
+        if not folder:
+            self.lbl_ozluk_path.setText("Klasor bulunamadi")
+            return
+
+        self.lbl_ozluk_path.setText(folder)
+
+        if not os.path.isdir(folder):
+            self.lbl_ozluk_path.setText(f"{folder} (henuz olusturulmadi)")
+            return
+
+        try:
+            files = []
+            for fname in os.listdir(folder):
+                fpath = os.path.join(folder, fname)
+                if os.path.isfile(fpath):
+                    stat = os.stat(fpath)
+                    files.append((fname, fpath, stat.st_size, stat.st_mtime))
+
+            # Tarihe gore sirala (yeniler uste)
+            files.sort(key=lambda x: x[3], reverse=True)
+
+            self.ozluk_table.setRowCount(len(files))
+            for i, (fname, fpath, size, mtime) in enumerate(files):
+                # Dosya adi
+                item = QTableWidgetItem(fname)
+                item.setData(Qt.UserRole, fpath)
+                self.ozluk_table.setItem(i, 0, item)
+
+                # Tur
+                ext = os.path.splitext(fname)[1].upper().replace(".", "")
+                tur_item = QTableWidgetItem(ext or "?")
+                tur_colors = {
+                    'PDF': '#ef4444', 'DOC': '#3b82f6', 'DOCX': '#3b82f6',
+                    'XLS': '#22c55e', 'XLSX': '#22c55e', 'JPG': '#f59e0b',
+                    'JPEG': '#f59e0b', 'PNG': '#f59e0b', 'BMP': '#f59e0b',
+                }
+                color = tur_colors.get(ext, self.theme.get('text_muted'))
+                tur_item.setForeground(QColor(color))
+                self.ozluk_table.setItem(i, 1, tur_item)
+
+                # Boyut
+                if size < 1024:
+                    boyut = f"{size} B"
+                elif size < 1024 * 1024:
+                    boyut = f"{size / 1024:.1f} KB"
+                else:
+                    boyut = f"{size / (1024 * 1024):.1f} MB"
+                self.ozluk_table.setItem(i, 2, QTableWidgetItem(boyut))
+
+                # Tarih
+                from datetime import datetime as dt
+                tarih = dt.fromtimestamp(mtime).strftime("%d.%m.%Y %H:%M")
+                self.ozluk_table.setItem(i, 3, QTableWidgetItem(tarih))
+
+                self.ozluk_table.setRowHeight(i, 36)
+
+        except Exception as e:
+            print(f"Ozluk dosya listeleme hatasi: {e}")
+
+    def _open_ozluk_file(self, index):
+        """Secili dosyayi ac"""
+        row = index.row()
+        fpath = self.ozluk_table.item(row, 0).data(Qt.UserRole)
+        if fpath and os.path.exists(fpath):
+            try:
+                os.startfile(fpath)
+            except Exception as e:
+                QMessageBox.critical(self, "Hata", f"Dosya acilamadi:\n{e}")
+
+    def _upload_ozluk(self):
+        """Ozluk klasorune dosya yukle"""
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Ozluk Dosyasi Sec", "",
+            "Tum Dosyalar (*.*);;PDF (*.pdf);;Word (*.doc *.docx);;Resim (*.jpg *.png)"
+        )
+        if not files:
+            return
+
+        folder = self._get_ozluk_folder()
+        if not folder:
+            return
+
+        try:
+            os.makedirs(folder, exist_ok=True)
+            for src in files:
+                fname = os.path.basename(src)
+                dest = os.path.join(folder, fname)
+                # Ayni isim varsa numara ekle
+                if os.path.exists(dest):
+                    base, ext = os.path.splitext(fname)
+                    counter = 1
+                    while os.path.exists(dest):
+                        dest = os.path.join(folder, f"{base}_{counter}{ext}")
+                        counter += 1
+                shutil.copy2(src, dest)
+
+            self._load_ozluk_dosyalari()
+            QMessageBox.information(self, "Basarili", f"{len(files)} dosya yuklendi.")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Dosya yukleme hatasi:\n{e}")
+
+    def _open_ozluk_folder(self):
+        """Ozluk klasorunu Windows Explorer'da ac"""
+        folder = self._get_ozluk_folder()
+        if folder:
+            try:
+                os.makedirs(folder, exist_ok=True)
+                os.startfile(folder)
+            except Exception as e:
+                QMessageBox.critical(self, "Hata", f"Klasor acilamadi:\n{e}")
+
+    # ── Foto yardimci metodlari ──
+
+    def _find_photo(self):
+        """NAS uzerinden personel fotosunu bul"""
+        if self.is_new:
+            return
+        ad = self.personel_data.get('ad', '').strip()
+        soyad = self.personel_data.get('soyad', '').strip()
+        if not ad or not soyad:
+            return
+
+        # Olasi klasor isimleri
+        candidates = [
+            f"{ad}_{soyad}",
+            f"{ad} {soyad}",
+            f"{ad.upper()}_{soyad.upper()}",
+            f"{ad.upper()} {soyad.upper()}",
+        ]
+
+        for folder_name in candidates:
+            folder = os.path.join(NAS_PERSONEL_PATH, folder_name)
+            if os.path.isdir(folder):
+                for fname in os.listdir(folder):
+                    if fname.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp')):
+                        foto_path = os.path.join(folder, fname)
+                        px = QPixmap(foto_path)
+                        if not px.isNull():
+                            self.foto_pixmap = px
+                            return
+
+    def _update_foto_label(self):
+        """Foto label'ini guncelle"""
+        if self.foto_pixmap and not self.foto_pixmap.isNull():
+            # Yuvarlak foto olustur
+            size = 80
+            rounded = QPixmap(size, size)
+            rounded.fill(Qt.transparent)
+            painter = QPainter(rounded)
+            painter.setRenderHint(QPainter.Antialiasing)
+            path = QPainterPath()
+            path.addEllipse(0, 0, size, size)
+            painter.setClipPath(path)
+            scaled = self.foto_pixmap.scaled(size, size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            x = (size - scaled.width()) // 2
+            y = (size - scaled.height()) // 2
+            painter.drawPixmap(x, y, scaled)
+            painter.end()
+            self.lbl_foto.setPixmap(rounded)
+        else:
+            ad = self.personel_data.get('ad', '') if not self.is_new else ''
+            soyad = self.personel_data.get('soyad', '') if not self.is_new else ''
+            initials = f"{ad[:1]}{soyad[:1]}".upper() if ad and soyad else "+"
+            self.lbl_foto.setText(initials)
+            self.lbl_foto.setStyleSheet(f"""
+                background: {self.theme.get('primary', '#6366f1')};
+                border-radius: 40px;
+                font-size: 24px;
+                font-weight: bold;
+                color: white;
+            """)
+
+    def _select_photo(self):
+        """Dosya secici ile foto sec ve NAS'a kopyala"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Personel Fotosu Sec", "",
+            "Resim Dosyalari (*.jpg *.jpeg *.png *.bmp)"
+        )
+        if not file_path:
+            return
+
+        px = QPixmap(file_path)
+        if px.isNull():
+            QMessageBox.warning(self, "Uyari", "Secilen dosya gecerli bir resim degil!")
+            return
+
+        self.foto_pixmap = px
+        self._update_foto_label()
+
+        # NAS'a kopyala
+        if not self.is_new:
+            ad = self.personel_data.get('ad', '').strip()
+            soyad = self.personel_data.get('soyad', '').strip()
+            if ad and soyad:
+                folder = os.path.join(NAS_PERSONEL_PATH, f"{ad}_{soyad}")
+                try:
+                    os.makedirs(folder, exist_ok=True)
+                    ext = os.path.splitext(file_path)[1]
+                    dest = os.path.join(folder, f"foto{ext}")
+                    shutil.copy2(file_path, dest)
+                except Exception as e:
+                    print(f"NAS'a foto kopyalama hatasi: {e}")
+
+    def _bas_kart(self):
+        """Personel giris karti olustur ve yazdir (on + arka yuz)"""
+        if self.is_new:
+            return
+
+        ad = self.personel_data.get('ad', '').upper()
+        soyad = self.personel_data.get('soyad', '').upper()
+        dept = self.personel_data.get('departman_adi', '') or ''
+        poz = self.personel_data.get('pozisyon_adi', '') or ''
+        sicil = self.personel_data.get('sicil_no', '') or '000000'
+        kan = self.personel_data.get('kan_grubu', '') or self.cmb_kan.currentText() or ''
+        tel = self.personel_data.get('telefon', '') or ''
+
+        on_yuz = self._render_on_yuz(ad, soyad, dept, poz, sicil, kan, tel)
+        arka_yuz = self._render_arka_yuz()
+        self._show_card_preview(on_yuz, arka_yuz)
+
+    def _render_on_yuz(self, ad, soyad, dept, poz, sicil, kan, tel):
+        """Kartin on yuzunu ciz - Dikey (portrait) tasarim"""
+        # CR80 portrait: 54 x 85.6mm, 300 DPI => 638 x 1012
+        W, H = 638, 1012
+        R = 30
+
+        img = QImage(W, H, QImage.Format_ARGB32)
+        img.fill(Qt.transparent)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.TextAntialiasing)
+
+        # Dis cerceve
+        outer = QPainterPath()
+        outer.addRoundedRect(QRectF(0, 0, W, H), R, R)
+        p.setClipPath(outer)
+
+        # ── 1) Siyah zemin (tum kart) ──
+        p.fillRect(0, 0, W, H, QColor("#1a1a1a"))
+
+        # ── 2) Beyaz ust alan (~%52) ──
+        white_h = int(H * 0.52)
+        white_path = QPainterPath()
+        white_path.moveTo(0, R)
+        white_path.arcTo(QRectF(0, 0, R * 2, R * 2), 180, -90)
+        white_path.lineTo(W - R, 0)
+        white_path.arcTo(QRectF(W - R * 2, 0, R * 2, R * 2), 90, -90)
+        white_path.lineTo(W, white_h)
+        white_path.lineTo(0, white_h)
+        white_path.closeSubpath()
+        p.fillPath(white_path, QColor("#ffffff"))
+
+        # ── 3) Kirmizi kalin diyagonal serit ──
+        # Sol tarafta daha asagi, sag tarafta daha yukari - kalin bant
+        stripe_top_left = white_h + 40
+        stripe_top_right = white_h - 40
+        stripe_thick = 45
+        red_path = QPainterPath()
+        red_path.moveTo(0, stripe_top_left)
+        red_path.lineTo(W, stripe_top_right)
+        red_path.lineTo(W, stripe_top_right + stripe_thick)
+        red_path.lineTo(0, stripe_top_left + stripe_thick)
+        red_path.closeSubpath()
+        p.fillPath(red_path, QColor("#dc2626"))
+
+        # ── 4) Atlas logo figuru (buyuk, belirgin - logo icinde ATLAS yazisi var) ──
+        logo_px = QPixmap(ATLAS_LOGO_PATH)
+        if not logo_px.isNull():
+            logo_h = int(H * 0.48)
+            logo_scaled = logo_px.scaled(logo_h, logo_h, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            lx = (W - logo_scaled.width()) // 2
+            ly = int(H * 0.03)
+            p.setOpacity(0.90)
+            p.drawPixmap(lx, ly, logo_scaled)
+            p.setOpacity(1.0)
+
+        # ── 6) NFC CARD badge (sag ust kose) ──
+        nfc_w, nfc_h = 100, 48
+        nfc_x = W - nfc_w - 15
+        nfc_y = 15
+        nfc_bg = QPainterPath()
+        nfc_bg.addRoundedRect(QRectF(nfc_x, nfc_y, nfc_w, nfc_h), 10, 10)
+        p.fillPath(nfc_bg, QColor("#1a1a1a"))
+        p.setPen(QColor("#ffffff"))
+        p.setFont(QFont("Arial", 13, QFont.Bold))
+        # NFC ikonu (wifi benzeri)
+        p.drawText(QRectF(nfc_x, nfc_y + 2, 30, nfc_h), Qt.AlignCenter, ")))")
+        p.setFont(QFont("Arial", 12, QFont.Bold))
+        p.drawText(QRectF(nfc_x + 22, nfc_y, nfc_w - 22, 28), Qt.AlignCenter, "NFC")
+        p.setFont(QFont("Arial", 8))
+        p.drawText(QRectF(nfc_x + 22, nfc_y + 22, nfc_w - 22, 20), Qt.AlignCenter, "CARD")
+
+        # ── 7) Foto dairesi (sol taraf, beyaz-siyah gecisinde, kalin siyah border) ──
+        foto_r = 80
+        foto_cx = 115
+        foto_cy = white_h + 12
+
+        # Siyah kalin border
+        p.setPen(QPen(QColor("#1a1a1a"), 5))
+        p.setBrush(QColor("#d0d0d0"))
+        p.drawEllipse(QPointF(foto_cx, foto_cy), foto_r, foto_r)
+
+        if self.foto_pixmap and not self.foto_pixmap.isNull():
+            clip_r = foto_r - 4
+            fc = QPainterPath()
+            fc.addEllipse(QPointF(foto_cx, foto_cy), clip_r, clip_r)
+            p.save()
+            p.setClipPath(fc)
+            sz = int(clip_r * 2)
+            sc = self.foto_pixmap.scaled(sz, sz, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            p.drawPixmap(int(foto_cx - sc.width() / 2), int(foto_cy - sc.height() / 2), sc)
+            p.restore()
+            p.setClipPath(outer)
+        else:
+            p.setPen(QColor("#888888"))
+            p.setFont(QFont("Arial", 16))
+            p.drawText(QRectF(foto_cx - foto_r, foto_cy - 10, foto_r * 2, 20), Qt.AlignCenter, "FOTO")
+
+        # ── 8) AD SOYAD (beyaz, bold, siyah alan uzerinde) ──
+        p.setPen(QColor("#ffffff"))
+        nf = QFont("Arial", 22, QFont.Bold)
+        p.setFont(nf)
+        name_y = int(H * 0.64)
+        p.drawText(QRectF(30, name_y, W - 60, 36), Qt.AlignLeft | Qt.AlignVCenter, f"{ad} {soyad}")
+
+        # ── 9) Pozisyon / Departman badge (kirmizi rounded) ──
+        dept_text = poz.upper() if poz else dept.upper()
+        if dept_text:
+            df = QFont("Arial", 11, QFont.Bold)
+            p.setFont(df)
+            fm = p.fontMetrics()
+            tw = fm.horizontalAdvance(dept_text)
+            bx = 30
+            by = name_y + 38
+            bw = tw + 24
+            bh = 26
+
+            bp = QPainterPath()
+            bp.addRoundedRect(QRectF(bx, by, bw, bh), 13, 13)
+            p.fillPath(bp, QColor("#dc2626"))
+            p.setPen(QColor("#ffffff"))
+            p.setFont(df)
+            p.drawText(QRectF(bx, by, bw, bh), Qt.AlignCenter, dept_text)
+
+        # ── 10) Bilgi satirlari (ID, KAN GRUBU, TEL) - yaygin aralikli ──
+        p.setPen(QColor("#ffffff"))
+        info_start = int(H * 0.73)
+        line_h = 40
+
+        p.setFont(QFont("Arial", 14))
+        p.drawText(35, info_start, f"ID: {sicil}")
+
+        line_idx = 1
+        if kan:
+            p.drawText(35, info_start + line_h * line_idx, kan.replace(" ", ""))
+            line_idx += 1
+
+        if tel:
+            tel_clean = tel.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+            p.drawText(35, info_start + line_h * line_idx, tel_clean)
+
+        # ── 11) Alt yazi ──
+        p.setPen(QColor("#555555"))
+        p.setFont(QFont("Arial", 8))
+        p.drawText(QRectF(0, H - 30, W, 22), Qt.AlignCenter, "ATLAS KATAFOREZ - PERSONEL GIRIS KARTI")
+
+        p.end()
+        return img
+
+    def _render_arka_yuz(self):
+        """Kartin arka yuzunu ciz - Dikey (portrait)"""
+        W, H = 638, 1012
+        R = 30
+
+        img = QImage(W, H, QImage.Format_ARGB32)
+        img.fill(Qt.transparent)
+        p = QPainter(img)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.TextAntialiasing)
+
+        # Dis cerceve
+        outer = QPainterPath()
+        outer.addRoundedRect(QRectF(0, 0, W, H), R, R)
+        p.setClipPath(outer)
+
+        # 1) Beyaz zemin
+        p.fillRect(0, 0, W, H, QColor("#ffffff"))
+
+        # 2) Kirmizi ust banner (~%22)
+        banner_h = int(H * 0.22)
+        banner = QPainterPath()
+        banner.moveTo(0, R)
+        banner.arcTo(QRectF(0, 0, R * 2, R * 2), 180, -90)
+        banner.lineTo(W - R, 0)
+        banner.arcTo(QRectF(W - R * 2, 0, R * 2, R * 2), 90, -90)
+        banner.lineTo(W, banner_h)
+        banner.lineTo(0, banner_h)
+        banner.closeSubpath()
+        p.fillPath(banner, QColor("#dc2626"))
+
+        # 3) Atlas logo (kucuk, sol ust, banner icinde)
+        logo_px = QPixmap(ATLAS_LOGO_PATH)
+        if not logo_px.isNull():
+            lh = int(banner_h * 1.0)
+            ls = logo_px.scaled(lh, lh, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            p.setOpacity(0.85)
+            p.drawPixmap(10, 0, ls)
+            p.setOpacity(1.0)
+
+        # 4) "PERSONEL KIMLIK KARTI" baslik
+        p.setPen(QColor("#ffffff"))
+        tf = QFont("Arial", 22, QFont.Bold)
+        p.setFont(tf)
+        p.drawText(QRectF(0, 0, W, banner_h), Qt.AlignCenter, "PERSONEL\nKIMLIK KARTI")
+
+        # 5) Kart Kurallari
+        rules_y = banner_h + 30
+        p.setPen(QColor("#1a1a1a"))
+        p.setFont(QFont("Arial", 15, QFont.Bold))
+        p.drawText(30, rules_y, "Kart Kurallari")
+
+        rules = [
+            "1. Kart kisiye ozeldir, devredilemez.",
+            "2. Turnike ve tesis girislerinde",
+            "   gorunur tasinmalidir.",
+            "3. Kayip durumda idari birime",
+            "   derhal bildirilmelidir.",
+            "4. Hasarli veya okunmayan kartlar",
+            "   yenilenmelidir.",
+            "5. Bu kart sirket varligidir;",
+            "   is ayriliginda iade edilir.",
+        ]
+        p.setFont(QFont("Arial", 11))
+        for i, rule in enumerate(rules):
+            p.drawText(40, rules_y + 28 + i * 22, rule)
+
+        # 6) Acil durum kutusu
+        box_y = rules_y + 28 + len(rules) * 22 + 20
+        box_w = W - 60
+        box_h = 130
+        box_bg = QPainterPath()
+        box_bg.addRoundedRect(QRectF(30, box_y, box_w, box_h), 10, 10)
+        p.setPen(QPen(QColor("#cccccc"), 2))
+        p.setBrush(QColor("#f8f8f8"))
+        p.drawPath(box_bg)
+
+        p.setPen(QColor("#1a1a1a"))
+        p.setFont(QFont("Arial", 12, QFont.Bold))
+        p.drawText(45, box_y + 25, "Acil durumda bulunursa:")
+        p.setFont(QFont("Arial", 10))
+        p.drawText(45, box_y + 48, "Atlas Kataforez Guvenlik / IK")
+        p.drawText(45, box_y + 66, "Tel: +90 (___) ___ __ __")
+
+        # Imza alani
+        p.setPen(QPen(QColor("#333333"), 1))
+        p.drawLine(45, box_y + 105, 250, box_y + 105)
+        p.setFont(QFont("Arial", 9))
+        p.setPen(QColor("#1a1a1a"))
+        p.drawText(100, box_y + 100, "Yetkili Imza")
+
+        basim = datetime.now().strftime("%d / %m / %Y")
+        p.drawText(300, box_y + 100, f"Basim: {basim}")
+
+        # 7) Alt siyah bant
+        footer_h = 35
+        footer_y = H - footer_h
+        footer_path = QPainterPath()
+        footer_path.moveTo(0, footer_y)
+        footer_path.lineTo(W, footer_y)
+        footer_path.lineTo(W, H - R)
+        footer_path.arcTo(QRectF(W - R * 2, H - R * 2, R * 2, R * 2), 0, -90)
+        footer_path.lineTo(R, H)
+        footer_path.arcTo(QRectF(0, H - R * 2, R * 2, R * 2), 270, -90)
+        footer_path.closeSubpath()
+        p.fillPath(footer_path, QColor("#1a1a1a"))
+
+        p.setPen(QColor("#888888"))
+        p.setFont(QFont("Arial", 9))
+        p.drawText(QRectF(0, footer_y, W, footer_h), Qt.AlignCenter, "ATLAS KATAFOREZ - PERSONEL GIRIS KARTI")
+
+        p.end()
+        return img
+
+    def _show_card_preview(self, on_yuz: QImage, arka_yuz: QImage = None):
+        """Kart onizleme ve yazdirma dialog'u (on + arka yuz)"""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Personel Karti Onizleme")
+        dlg.setMinimumSize(750, 650)
+        dlg.setStyleSheet(f"background: {self.theme.get('bg_main')};")
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 15, 20, 15)
+        layout.setSpacing(8)
+
+        # Kartlar yan yana
+        cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(20)
+
+        # On yuz
+        on_frame = QVBoxLayout()
+        lbl_on_title = QLabel("On Yuz")
+        lbl_on_title.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 13px; font-weight: bold;")
+        lbl_on_title.setAlignment(Qt.AlignCenter)
+        on_frame.addWidget(lbl_on_title)
+
+        lbl_on = QLabel()
+        lbl_on.setAlignment(Qt.AlignCenter)
+        px_on = QPixmap.fromImage(on_yuz)
+        lbl_on.setPixmap(px_on.scaled(300, 475, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        on_frame.addWidget(lbl_on)
+        cards_layout.addLayout(on_frame)
+
+        # Arka yuz
+        if arka_yuz:
+            arka_frame = QVBoxLayout()
+            lbl_arka_title = QLabel("Arka Yuz")
+            lbl_arka_title.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 13px; font-weight: bold;")
+            lbl_arka_title.setAlignment(Qt.AlignCenter)
+            arka_frame.addWidget(lbl_arka_title)
+
+            lbl_arka = QLabel()
+            lbl_arka.setAlignment(Qt.AlignCenter)
+            px_arka = QPixmap.fromImage(arka_yuz)
+            lbl_arka.setPixmap(px_arka.scaled(300, 475, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            arka_frame.addWidget(lbl_arka)
+            cards_layout.addLayout(arka_frame)
+
+        layout.addLayout(cards_layout, 1)
+
+        # Butonlar
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+
+        btn_style = f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 10px 20px;
+            }}
+            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+        """
+
+        btn_save = QPushButton("Resim Olarak Kaydet")
+        btn_save.setStyleSheet(btn_style)
+
+        def save_image():
+            path, _ = QFileDialog.getSaveFileName(dlg, "Karti Kaydet", "", "PNG (*.png);;JPEG (*.jpg)")
+            if path:
+                on_yuz.save(path)
+                if arka_yuz:
+                    base, ext = os.path.splitext(path)
+                    arka_yuz.save(f"{base}_arka{ext}")
+                QMessageBox.information(dlg, "Basarili", f"Kart kaydedildi:\n{path}")
+
+        btn_save.clicked.connect(save_image)
+        btn_row.addWidget(btn_save)
+
+        btn_print = QPushButton("Yazdir")
+        btn_print.setStyleSheet(f"""
+            QPushButton {{
+                background: #dc2626;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 24px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #b91c1c; }}
+        """)
+
+        def print_card():
+            printer = QPrinter(QPrinter.HighResolution)
+            dialog = QPrintDialog(printer, dlg)
+            if dialog.exec() == QPrintDialog.Accepted:
+                painter = QPainter(printer)
+                rect = painter.viewport()
+                # On yuz
+                size = on_yuz.size()
+                size.scale(rect.size(), Qt.KeepAspectRatio)
+                painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
+                painter.setWindow(on_yuz.rect())
+                painter.drawImage(0, 0, on_yuz)
+                # Arka yuz (yeni sayfa)
+                if arka_yuz:
+                    printer.newPage()
+                    painter.setViewport(rect.x(), rect.y(), size.width(), size.height())
+                    painter.setWindow(arka_yuz.rect())
+                    painter.drawImage(0, 0, arka_yuz)
+                painter.end()
+                QMessageBox.information(dlg, "Basarili", "Kart yazdirildi!")
+
+        btn_print.clicked.connect(print_card)
+        btn_row.addWidget(btn_print)
+
+        layout.addLayout(btn_row)
+        dlg.exec()
 
 
 class IKPersonelPage(BasePage):
@@ -923,12 +1738,15 @@ class IKPersonelPage(BasePage):
         filter_layout.addWidget(self.status_combo)
         
         filter_layout.addStretch()
-        
+
+        # Disa Aktar
+        filter_layout.addWidget(self.create_export_button(title="Personel Listesi"))
+
         # İstatistik
         self.stat_label = QLabel()
         self.stat_label.setStyleSheet(f"color: {self.theme.get('text_muted')};")
         filter_layout.addWidget(self.stat_label)
-        
+
         layout.addWidget(filter_frame)
         
         # Tablo

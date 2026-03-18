@@ -191,7 +191,7 @@ class TabPart(QWidget):
     def close_renderer(self):
         if HAS_PYVISTA:
             try: self.plotter.close()
-            except: pass
+            except Exception: pass
 
 
 class TabHanger(QWidget):
@@ -311,7 +311,7 @@ class TabHanger(QWidget):
     def close_renderer(self):
         if HAS_PYVISTA:
             try: self.plotter.close()
-            except: pass
+            except Exception: pass
 
 
 class TabRack(QWidget):
@@ -443,7 +443,7 @@ class TabRack(QWidget):
     def close_renderer(self):
         if HAS_PYVISTA:
             try: self.plotter.close()
-            except: pass
+            except Exception: pass
 
 
 class TabBath(QWidget):
@@ -521,7 +521,7 @@ class TabBath(QWidget):
     def close_renderer(self):
         if HAS_PYVISTA:
             try: self.plotter.close()
-            except: pass
+            except Exception: pass
 
 
 class BaraHesaplamaPage(BasePage):
@@ -559,5 +559,5 @@ class BaraHesaplamaPage(BasePage):
             self.tab_hanger.close_renderer()
             self.tab_rack.close_renderer()
             self.tab_bath.close_renderer()
-        except: pass
+        except Exception: pass
         event.accept()

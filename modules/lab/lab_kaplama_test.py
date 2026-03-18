@@ -890,7 +890,7 @@ class KaplamaTestDialog(QDialog):
         finally:
             if conn:
                 try: conn.close()
-                except: pass
+                except Exception: pass
 
     def _load_banyo_params_as_kontrol(self, banyo_id, cursor):
         """TDS tanimi yoksa banyo parametrelerinden kontrol listesi olustur"""
@@ -1093,7 +1093,7 @@ class KaplamaTestDialog(QDialog):
             if self.data.get('banyo_id'):
                 idx = self.banyo_combo.findData(self.data['banyo_id'])
                 if idx >= 0: self.banyo_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -1108,7 +1108,7 @@ class KaplamaTestDialog(QDialog):
             if self.data.get('kaplama_turu_id'):
                 idx = self.kaplama_turu_combo.findData(self.data['kaplama_turu_id'])
                 if idx >= 0: self.kaplama_turu_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -1123,7 +1123,7 @@ class KaplamaTestDialog(QDialog):
             if self.data.get('analist_id'):
                 idx = self.analist_combo.findData(self.data['analist_id'])
                 if idx >= 0: self.analist_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -1156,7 +1156,7 @@ class KaplamaTestDialog(QDialog):
                     c2 = get_db_connection(); cu2 = c2.cursor()
                     cu2.execute("SELECT parametre_id, deger FROM laboratuvar.kaplama_test_kimyasallari WHERE test_id=?", (self.test_id,))
                     for r in cu2.fetchall(): mevcut[r[0]] = r[1]
-                except: pass
+                except Exception: pass
                 finally:
                     if c2:
                         try: c2.close()
@@ -1284,7 +1284,7 @@ class KaplamaTestDialog(QDialog):
                         conn.commit()
                         try:
                             if os.path.exists(foto_db) and foto_db != kaynak: os.remove(foto_db)
-                        except: pass
+                        except Exception: pass
             QMessageBox.information(self, "Başarılı", "Kaplama test kaydı başarıyla kaydedildi!")
             self.accept()
         except Exception as e:
@@ -1379,7 +1379,7 @@ class LabKaplamaTestPage(BasePage):
             conn = get_db_connection(); cur = conn.cursor()
             cur.execute("SELECT b.id, b.kod, h.kod FROM uretim.banyo_tanimlari b JOIN tanim.uretim_hatlari h ON b.hat_id=h.id WHERE b.aktif_mi=1 ORDER BY h.sira_no, b.kod")
             for r in cur.fetchall(): self.banyo_combo.addItem(f"{r[2]} / {r[1]}", r[0])
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -1391,7 +1391,7 @@ class LabKaplamaTestPage(BasePage):
             conn = get_db_connection(); cur = conn.cursor()
             cur.execute("SELECT id, kod, ad FROM laboratuvar.kaplama_turleri WHERE aktif_mi=1 ORDER BY sira_no")
             for r in cur.fetchall(): self.kaplama_combo.addItem(f"{r[1]} - {r[2]}", r[0])
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()

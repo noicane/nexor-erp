@@ -759,7 +759,7 @@ class DepoEditDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_tip.addItem(row.ad, row.id)
             cursor.close()
-        except:
+        except Exception:
             pass
     
     def load_data(self):
@@ -985,7 +985,7 @@ class RafEditDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_bolum.addItem(f"{row.kod} - {row.ad}", row.id)
             cursor.close()
-        except:
+        except Exception:
             pass
     
     def load_data(self):
@@ -1120,7 +1120,7 @@ class BulkRafDialog(QDialog):
                 first = self.txt_format.text().format(koridor=koridorlar[0], sira=self.spn_sira_bas.value(), kat=self.spn_kat_bas.value())
                 last = self.txt_format.text().format(koridor=koridorlar[-1], sira=self.spn_sira_son.value(), kat=self.spn_kat_son.value())
                 preview += f"\nİlk: {first}, Son: {last}"
-            except:
+            except Exception:
                 preview += "\nFormat hatası!"
         self.lbl_preview.setText(preview)
     

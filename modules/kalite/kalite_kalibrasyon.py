@@ -132,7 +132,7 @@ class CihazDialog(QDialog):
                     if self.cmb_sorumlu.itemData(i) == self.cihaz.get('sorumlu_id'):
                         self.cmb_sorumlu.setCurrentIndex(i)
                         break
-        except: pass
+        except Exception: pass
     
     def _kaydet(self):
         kod = self.txt_kod.text().strip()

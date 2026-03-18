@@ -23,6 +23,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from typing import Optional
 
+import os
 from core.database import get_db_connection
 
 
@@ -61,9 +62,9 @@ def _get_zirve_connection():
         except Exception:
             password = pwd_b64
     except Exception:
-        server = r'192.168.10.66\SQLEXPRESS'
-        user = 'MERP'
-        password = 'mamkpbrs00880072'
+        server = os.environ.get('NEXOR_DB_SERVER', r'192.168.10.66\SQLEXPRESS')
+        user = os.environ.get('NEXOR_DB_USER', '')
+        password = os.environ.get('NEXOR_DB_PASS', '')
 
     conn = pyodbc.connect(
         f'DRIVER={{ODBC Driver 18 for SQL Server}};'

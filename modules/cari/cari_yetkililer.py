@@ -20,6 +20,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 import uuid
 
 
@@ -291,6 +292,7 @@ class CariYetkililerPage(BasePage):
                 """, (str(uuid.uuid4()), self.selected_cari_id, data['ad_soyad'], data['unvan'], data['departman'], data['telefon'], data['cep_telefon'], data['dahili'], data['email'], data['varsayilan_mi']))
                 
                 conn.commit()
+                LogManager.log_insert('cari', 'musteri.cari_yetkililer', None, 'Yetkili eklendi')
                 conn.close()
                 self._load_yetkililer()
                 QMessageBox.information(self, "Başarılı", "Yetkili eklendi!")
@@ -332,6 +334,7 @@ class CariYetkililerPage(BasePage):
                 """, (data['ad_soyad'], data['unvan'], data['departman'], data['telefon'], data['cep_telefon'], data['dahili'], data['email'], data['varsayilan_mi'], yetkili_id))
 
                 conn.commit()
+                LogManager.log_update('cari', 'musteri.cari_yetkililer', None, 'Kayit guncellendi')
                 conn.close()
                 self._load_yetkililer()
                 QMessageBox.information(self, "Başarılı", "Yetkili güncellendi!")
@@ -347,6 +350,7 @@ class CariYetkililerPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("UPDATE musteri.cari_yetkililer SET silindi_mi = 1, silinme_tarihi = GETDATE() WHERE id = ?", (yetkili_id,))
                 conn.commit()
+                LogManager.log_delete('cari', 'musteri.cari_yetkililer', None, 'Kayit silindi (soft delete)')
                 conn.close()
                 self._load_yetkililer()
                 QMessageBox.information(self, "Başarılı", "Yetkili silindi!")
@@ -394,6 +398,7 @@ class CariYetkililerPage(BasePage):
                 """, (data['ad_soyad'], data['unvan'], data['departman'], data['telefon'], data['cep_telefon'], data['dahili'], data['email'], data['varsayilan_mi'], yetkili_id))
                 
                 conn.commit()
+                LogManager.log_update('cari', 'musteri.cari_yetkililer', None, 'Kayit guncellendi')
                 conn.close()
                 self._load_yetkililer()
                 QMessageBox.information(self, "Başarılı", "Yetkili güncellendi!")
@@ -415,6 +420,7 @@ class CariYetkililerPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("UPDATE musteri.cari_yetkililer SET silindi_mi = 1, silinme_tarihi = GETDATE() WHERE id = ?", (yetkili_id,))
                 conn.commit()
+                LogManager.log_delete('cari', 'musteri.cari_yetkililer', None, 'Kayit silindi (soft delete)')
                 conn.close()
                 self._load_yetkililer()
                 QMessageBox.information(self, "Başarılı", "Yetkili silindi!")

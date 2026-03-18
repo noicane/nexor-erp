@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 # 8D Adımları
@@ -252,6 +253,7 @@ class Yeni8DDialog(QDialog):
             """, (hedef_tarih, uygunsuzluk_id))
             
             conn.commit()
+            LogManager.log_update('kalite', 'kalite.uygunsuzluklar', None, 'Durum guncellendi')
             
             QMessageBox.information(self, "Başarılı", "8D Raporu başlatıldı!")
             self.accept()
@@ -265,7 +267,7 @@ class Yeni8DDialog(QDialog):
             if conn:
                 try:
                     conn.close()
-                except:
+                except Exception:
                     pass
 
 
@@ -495,7 +497,7 @@ class Detay8DDialog(QDialog):
             for row in cursor.fetchall():
                 cmb_sorumlu.addItem(row[1], row[0])
             conn.close()
-        except:
+        except Exception:
             pass
         form.addRow("Sorumlu:", cmb_sorumlu)
         
@@ -532,6 +534,7 @@ class Detay8DDialog(QDialog):
                     ) VALUES (NEWID(), ?, '8D', ?, ?, ?, ?, 'AÇIK', GETDATE())
                 """, (self.uygunsuzluk_id, d_adimi, aciklama, cmb_sorumlu.currentData(), date_hedef.date().toPython()))
                 conn.commit()
+                LogManager.log_insert('kalite', 'kalite.uygunsuzluk_aksiyonlar', None, 'Uygunsuzluk kaydi olustu')
                 conn.close()
                 dlg.accept()
             except Exception as e:
@@ -558,6 +561,7 @@ class Detay8DDialog(QDialog):
                 WHERE id = ?
             """, (aksiyon_id,))
             conn.commit()
+            LogManager.log_update('kalite', 'kalite.uygunsuzluk_aksiyonlar', None, 'Durum guncellendi')
             conn.close()
             
             self._load_data()

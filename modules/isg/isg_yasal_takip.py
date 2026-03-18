@@ -97,7 +97,7 @@ class YasalTakipDialog(QDialog):
             for row in cursor.fetchall():
                 self.cmb_sorumlu.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_periyot_changed(self):

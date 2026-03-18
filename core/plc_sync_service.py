@@ -62,12 +62,13 @@ try:
     from config import DB_CONFIG
     ERP_CONFIG = DB_CONFIG.copy()
 except ImportError:
+    # UYARI: Konsol modunda config.py bulunamazsa calistirilmamali
     ERP_CONFIG = {
         'driver': 'ODBC Driver 17 for SQL Server',
-        'server': r'192.168.1.66\SQLEXPRESS',
-        'database': 'AtmoLogicERP',
-        'user': 'MERP',
-        'password': 'mamkpbrs00880072',
+        'server': os.environ.get('NEXOR_DB_SERVER', r'192.168.10.66\SQLEXPRESS'),
+        'database': os.environ.get('NEXOR_DB_NAME', 'AtmoLogicERP'),
+        'user': os.environ.get('NEXOR_DB_USER', ''),
+        'password': os.environ.get('NEXOR_DB_PASS', ''),
         'timeout': 30
     }
 
@@ -77,10 +78,10 @@ try:
 except ImportError:
     PLC_CONFIG = {
         'driver': 'ODBC Driver 17 for SQL Server',
-        'server': r'KAPLAMA\SQLEXPRESS',
-        'database': 'KAPLAMA',
-        'user': 'sa',
-        'password': '100',
+        'server': os.environ.get('NEXOR_PLC_SERVER', r'KAPLAMA\SQLEXPRESS'),
+        'database': os.environ.get('NEXOR_PLC_DB', 'KAPLAMA'),
+        'user': os.environ.get('NEXOR_PLC_USER', ''),
+        'password': os.environ.get('NEXOR_PLC_PASS', ''),
         'timeout': 30
     }
 
@@ -447,12 +448,12 @@ def sync_once() -> bool:
         if plc_conn:
             try:
                 plc_conn.close()
-            except:
+            except Exception:
                 pass
         if erp_conn:
             try:
                 erp_conn.close()
-            except:
+            except Exception:
                 pass
 
 def run_continuous():

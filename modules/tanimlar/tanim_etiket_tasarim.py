@@ -281,6 +281,12 @@ class PropertiesPanel(QFrame):
             "irsaliye_no - İrsaliye No",
             "tarih - Tarih",
             "siparis_no - Sipariş No",
+            "is_emri_no - İş Emri No",
+            "kontrolcu - Kontrol Eden",
+            "kontrol_tarihi - Kontrol Tarihi",
+            "saglam_adet - Sağlam Adet",
+            "hatali_adet - Hatalı Adet",
+            "sonuc - Sonuç",
         ]
         combo.addItems(fields)
         cur = elem.get('field', 'lot_no')

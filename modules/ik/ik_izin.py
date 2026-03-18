@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 class IzinTalepDialog(QDialog):
@@ -210,8 +211,10 @@ class IzinTalepDialog(QDialog):
             """, (personel_id, izin_turu_id, baslangic, bitis, gun_sayisi, aciklama))
             
             conn.commit()
+            LogManager.log_insert('ik', 'ik.izin_talepleri', None,
+                                  f'Izin talebi olusturuldu: {gun_sayisi} gun')
             conn.close()
-            
+
             QMessageBox.information(self, "Başarılı", "İzin talebi oluşturuldu.")
             self.accept()
             
@@ -539,8 +542,9 @@ class IKIzinPage(BasePage):
                     WHERE id = ?
                 """, (talep_id,))
                 conn.commit()
+                LogManager.log_update('ik', 'ik.izin_talepleri', talep_id, 'Izin talebi onaylandi')
                 conn.close()
-                
+
                 self._load_data()
                 QMessageBox.information(self, "Başarılı", "İzin talebi onaylandı.")
             except Exception as e:
@@ -559,8 +563,9 @@ class IKIzinPage(BasePage):
                     WHERE id = ?
                 """, (talep_id,))
                 conn.commit()
+                LogManager.log_update('ik', 'ik.izin_talepleri', talep_id, 'Izin talebi reddedildi')
                 conn.close()
-                
+
                 self._load_data()
                 QMessageBox.information(self, "Bilgi", "İzin talebi reddedildi.")
             except Exception as e:

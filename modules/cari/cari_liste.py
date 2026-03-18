@@ -19,6 +19,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from config import DEFAULT_PAGE_SIZE
 
 
@@ -506,6 +507,7 @@ class CariDetayDialog(QDialog):
             ))
             
             conn.commit()
+            LogManager.log_update('cari', 'musteri.cariler', None, 'Kayit guncellendi')
             conn.close()
             QMessageBox.information(self, "✓ Başarılı", "Değişiklikler kaydedildi!")
         except Exception as e:
@@ -521,6 +523,7 @@ class CariDetayDialog(QDialog):
             cursor = conn.cursor()
             cursor.execute("UPDATE musteri.cariler SET aktif_mi = ?, guncelleme_tarihi = GETDATE() WHERE id = ?", (new_status, self.cari_id))
             conn.commit()
+            LogManager.log_update('cari', 'musteri.cariler', None, 'Aktiflik durumu degistirildi')
             conn.close()
             
             self.cari_data['aktif_mi'] = new_status
@@ -674,7 +677,9 @@ class CariListePage(BasePage):
         toolbar.addWidget(self.aktif_combo)
         
         toolbar.addStretch()
-        
+
+        toolbar.addWidget(self.create_export_button(title="Cari Kartlari"))
+
         refresh_btn = QPushButton("🔄")
         refresh_btn.setToolTip("Yenile")
         refresh_btn.setStyleSheet(f"""
@@ -689,7 +694,7 @@ class CariListePage(BasePage):
         """)
         refresh_btn.clicked.connect(self._load_data)
         toolbar.addWidget(refresh_btn)
-        
+
         layout.addLayout(toolbar)
         
         # Table

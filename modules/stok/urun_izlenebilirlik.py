@@ -156,12 +156,12 @@ class UrunIzlenebilirlikPage(BasePage):
     def _fmt(self, v):
         if v is None: return '-'
         try: return f"{v:,.0f}"
-        except: return str(v)
+        except Exception: return str(v)
 
     def _fmtd(self, v, d=1):
         if v is None: return '-'
         try: return f"{v:,.{d}f}"
-        except: return str(v)
+        except Exception: return str(v)
 
     def _clear(self, lo):
         while lo.count():
@@ -671,7 +671,7 @@ class UrunIzlenebilirlikPage(BasePage):
                         hts = cur.fetchall()
                         if hts:
                             ht = ', '.join([f"{h[0]}({h[1]})" for h in hts])
-                    except:
+                    except Exception:
                         pass
                     det = [('Kontrol', self._fmt(r[2])), ('Sağlam', self._fmt(r[3])), ('Hatalı', self._fmt(r[4])), ('Sonuç', r[1] or '-')]
                     if ht:

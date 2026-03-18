@@ -808,5 +808,5 @@ class VeriTabaniBaglantiPage(BasePage):
         try:
             # Sadece verileri yenile, popup gösterme
             self.yukle_veriler()
-        except:
+        except Exception:
             pass

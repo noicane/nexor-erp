@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 class ZimmetTeslimDialog(QDialog):
@@ -221,8 +222,9 @@ class ZimmetTeslimDialog(QDialog):
                   miktar, beden, seri_no, sonraki_yenileme, aciklama))
             
             conn.commit()
+            LogManager.log_insert('ik', 'ik.zimmetler', None, f'Zimmet teslim edildi: {zimmet_no}')
             conn.close()
-            
+
             QMessageBox.information(self, "Başarılı", f"Zimmet teslim edildi.\nZimmet No: {zimmet_no}")
             self.accept()
             
@@ -335,9 +337,12 @@ class IKZimmetPage(BasePage):
         filter_layout.addWidget(self.kategori_combo)
         
         filter_layout.addStretch()
-        
+
+        # Disa Aktar
+        filter_layout.addWidget(self.create_export_button(title="Zimmet Takip", table_attr="aktif_table"))
+
         layout.addWidget(filter_frame)
-        
+
         # Tab widget
         tabs = QTabWidget()
         tabs.setStyleSheet(self._tab_style())
@@ -756,8 +761,9 @@ class IKZimmetPage(BasePage):
                     WHERE id = ?
                 """, (zimmet_id,))
                 conn.commit()
+                LogManager.log_update('ik', 'ik.zimmetler', zimmet_id, 'Zimmet iade alindi')
                 conn.close()
-                
+
                 self._load_data()
                 QMessageBox.information(self, "Başarılı", "Zimmet iade alındı.")
             except Exception as e:
@@ -784,8 +790,9 @@ class IKZimmetPage(BasePage):
                 """, (zimmet_id,))
                 
                 conn.commit()
+                LogManager.log_update('ik', 'ik.zimmetler', zimmet_id, 'Zimmet yenileme icin iade edildi')
                 conn.close()
-                
+
                 # Yeni teslim dialog'u aç
                 dialog = ZimmetTeslimDialog(self.theme, personel_id=row[0], parent=self)
                 if dialog.exec():
@@ -797,5 +804,37 @@ class IKZimmetPage(BasePage):
             QMessageBox.critical(self, "Hata", f"Yenileme hatası: {e}")
     
     def _print_form(self):
-        """Zimmet formu yazdır"""
-        QMessageBox.information(self, "Bilgi", "Zimmet formu PDF oluşturma özelliği eklenecek...")
+        """Zimmet formu yazdır - secili personelin aktif zimmetleri"""
+        # Aktif sekmeden secili satirin personel ID'sini al
+        table = self.aktif_table
+        row = table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Uyari", "Lutfen tablodan bir zimmet satiri secin.")
+            return
+
+        zimmet_id = table.item(row, 0).data(Qt.UserRole)
+        if not zimmet_id:
+            return
+
+        try:
+            # Zimmet'ten personel_id bul
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT personel_id FROM ik.zimmetler WHERE id = ?", (zimmet_id,))
+            prow = cursor.fetchone()
+            conn.close()
+
+            if not prow:
+                QMessageBox.warning(self, "Uyari", "Zimmet kaydi bulunamadi.")
+                return
+
+            personel_id = prow[0]
+
+            from utils.zimmet_pdf import zimmet_formu_pdf
+            pdf_path = zimmet_formu_pdf(personel_id)
+            QMessageBox.information(self, "Basarili", f"Zimmet formu olusturuldu:\n{pdf_path}")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Hata", f"PDF olusturma hatasi:\n{e}")

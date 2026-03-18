@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 class BanyoDialog(QDialog):
@@ -247,7 +248,7 @@ class BanyoDialog(QDialog):
             if self.data.get('hat_id'):
                 idx = self.hat_combo.findData(self.data['hat_id'])
                 if idx >= 0: self.hat_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _load_pozisyonlar(self):
         self.pozisyon_combo.clear()
@@ -287,7 +288,7 @@ class BanyoDialog(QDialog):
             if self.data.get('banyo_tipi_id'):
                 idx = self.banyo_tipi_combo.findData(self.data['banyo_tipi_id'])
                 if idx >= 0: self.banyo_tipi_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
     
     def _tds_parametre_al(self):
         """TDS'den AI destekli parametre alma diyalogu ac"""
@@ -427,6 +428,7 @@ class BanyoDialog(QDialog):
                     self.banyo_id = int(new_id[0])
 
             conn.commit()
+            LogManager.log_insert('lab', 'uretim.banyo_tanimlari', None, 'Yeni kayit eklendi')
             conn.close()
 
             # TDS tab'a banyo_id ilet (yeni kayıt sonrası)
@@ -986,7 +988,7 @@ class LabBanyoPage(BasePage):
             for row in cursor.fetchall():
                 self.hat_combo.addItem(row[1], row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _load_data(self):
         try:
@@ -1054,6 +1056,7 @@ class LabBanyoPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM uretim.banyo_tanimlari WHERE id=?", (bid,))
                 conn.commit()
+                LogManager.log_delete('lab', 'uretim.banyo_tanimlari', None, 'Kayit silindi')
                 conn.close()
                 self._load_data()
             except Exception as e:

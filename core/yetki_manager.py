@@ -84,7 +84,7 @@ class YetkiManager:
 
                 for row in cursor.fetchall():
                     cls._cached_menu_permissions.add(row.menu_id)
-            except:
+            except Exception:
                 # Tablo yoksa sessizce geç
                 pass
 
@@ -144,7 +144,7 @@ class YetkiManager:
                 # Sistemde yetki kayıtları var ama bu kullanıcıda yok - erişim yok
                 else:
                     return False
-            except:
+            except Exception:
                 # Tablo yoksa veya hata varsa geriye uyumluluk için aç
                 return True
             finally:

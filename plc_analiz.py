@@ -187,7 +187,7 @@ def analiz():
         """)
         for row in cursor.fetchall():
             print(f"  {row[0]:30s} {row[1]}")
-    except:
+    except Exception:
         print("  ReceteAdimlar tablosu bulunamadi!")
 
     # -------------------------------------------------------

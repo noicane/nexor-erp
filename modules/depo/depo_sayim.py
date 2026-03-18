@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 def get_modern_style(theme: dict) -> dict:
     t = theme or {}
@@ -72,7 +73,7 @@ class SayimOlusturDialog(QDialog):
             cursor.execute("SELECT id, kod, ad FROM tanim.depolar WHERE aktif_mi = 1 ORDER BY kod")
             for row in cursor.fetchall(): self.cmb_depo.addItem(f"{row[1]} - {row[2]}", row[0])
             conn.close()
-        except: pass
+        except Exception: pass
     
     def _olustur(self):
         if not self.cmb_depo.currentData(): QMessageBox.warning(self, "⚠️ Uyarı", "Depo seçimi zorunludur!"); return
@@ -82,6 +83,7 @@ class SayimOlusturDialog(QDialog):
             sayim_no = cursor.fetchone()[0]
             cursor.execute("INSERT INTO stok.sayimlar (sayim_no, sayim_tipi, depo_id, sayim_tarihi, aciklama, durum) VALUES (?, ?, ?, ?, ?, 'TASLAK')", (sayim_no, self.cmb_tip.currentText(), self.cmb_depo.currentData(), self.date_sayim.date().toPython(), self.txt_aciklama.toPlainText().strip() or None))
             conn.commit(); conn.close(); self.accept()
+            LogManager.log_insert('depo', 'stok.sayimlar', None, 'Sayim kaydi olustu')
         except Exception as e: QMessageBox.critical(self, "❌ Hata", str(e))
 
 class DepoSayimPage(BasePage):

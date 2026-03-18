@@ -110,7 +110,7 @@ class KKDDagitimDialog(QDialog):
                 self.cmb_kkd.addItem(f"{row[1]} - {row[2]}", (row[0], row[3]))
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_kkd_changed(self, index):

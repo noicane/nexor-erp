@@ -17,6 +17,7 @@ from PySide6.QtGui import QPainter, QFont, QTextDocument
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 from datetime import datetime
 
 
@@ -117,7 +118,7 @@ class TalepSatirDialog(QDialog):
                 self.cmb_urun.addItem(f"{row[1]} - {row[2]}", row[0])
             
             conn.close()
-        except:
+        except Exception:
             pass
     
     def _on_urun_changed(self, index):
@@ -189,6 +190,7 @@ class TalepSatirDialog(QDialog):
                       fiyat if fiyat else None, tutar, self.txt_aciklama.toPlainText().strip() or None))
             
             conn.commit()
+            LogManager.log_insert('satinalma', 'satinalma.talep_satirlari', None, 'Talep kaydi olustu')
             conn.close()
             self.accept()
         except Exception as e:
@@ -565,6 +567,7 @@ class TalepDialog(QDialog):
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM satinalma.talep_satirlari WHERE id = ?", (satir_id,))
                 conn.commit()
+                LogManager.log_delete('satinalma', 'satinalma.talep_satirlari', None, 'Kayit silindi')
                 conn.close()
                 self._load_satirlar()
                 self._update_talep_tutar()
@@ -590,6 +593,7 @@ class TalepDialog(QDialog):
                 WHERE id = ?
             """, (self.talep_id, self.talep_id))
             conn.commit()
+            LogManager.log_update('satinalma', 'satinalma.talepler', None, 'Kayit guncellendi')
             conn.close()
         except Exception as e:
             print(f"Tutar güncelleme hatası: {e}")
@@ -656,6 +660,7 @@ class TalepDialog(QDialog):
                 self.btn_onaya.setVisible(True)  # Onaya gönder butonunu göster
             
             conn.commit()
+            LogManager.log_insert('satinalma', 'satinalma.talepler', None, 'Talep kaydi olustu')
             conn.close()
             
             QMessageBox.information(self, "Başarılı", "Talep kaydedildi!")
@@ -692,6 +697,7 @@ class TalepDialog(QDialog):
             if reply == QMessageBox.Yes:
                 cursor.execute("EXEC satinalma.sp_TalepOnayaGonder ?, ?", (self.talep_id, self.kullanici_id))
                 conn.commit()
+                LogManager.log_update('satinalma', 'satinalma.sp_TalepOnayaGonder', None, 'satinalma.sp_TalepOnayaGonder islemi yapildi')
                 conn.close()
                 
                 QMessageBox.information(
@@ -1009,7 +1015,9 @@ class SatinalmaTaleplerPage(BasePage):
         toolbar_layout.addWidget(btn_reddet)
 
         toolbar_layout.addStretch()
-        
+
+        toolbar_layout.addWidget(self.create_export_button(title="Satinalma Talepleri"))
+
         self.cmb_durum = QComboBox()
         self.cmb_durum.addItems(["Tümü", "TASLAK", "ONAY_BEKLIYOR", "AMIR_ONAYLADI", 
                                  "SATINALMA_ONAYLANDI", "REDDEDILDI"])
@@ -1175,6 +1183,7 @@ class SatinalmaTaleplerPage(BasePage):
             cursor.execute("EXEC satinalma.sp_TalepOnayla ?, ?, ?", 
                           (talep_id, self.kullanici_id, onay_notu or None))
             conn.commit()
+            LogManager.log_update('satinalma', 'satinalma.sp_TalepOnayla', None, 'satinalma.sp_TalepOnayla islemi yapildi')
             conn.close()
             
             self._load_data()
@@ -1214,6 +1223,7 @@ class SatinalmaTaleplerPage(BasePage):
             cursor.execute("EXEC satinalma.sp_TalepReddet ?, ?, ?", 
                           (talep_id, self.kullanici_id, red_nedeni))
             conn.commit()
+            LogManager.log_update('satinalma', 'satinalma.sp_TalepReddet', None, 'satinalma.sp_TalepReddet islemi yapildi')
             conn.close()
             
             self._load_data()

@@ -57,7 +57,7 @@ def _format_miktar(val):
         if v == int(v):
             return f"{int(v):,}".replace(",", ".")
         return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
+    except Exception:
         return str(val)
 
 
@@ -197,7 +197,7 @@ def is_emri_pdf_olustur(is_emri_id: int):
         lotlar = [str(r[0]) for r in cursor.fetchall() if r[0]]
         if lotlar:
             ie['lot_no'] = ', '.join(lotlar)
-    except:
+    except Exception:
         pass
 
     kalan = float(ie['planlanan_miktar']) - float(ie['uretilen_miktar']) - float(ie['fire_miktar'])
@@ -219,7 +219,7 @@ def is_emri_pdf_olustur(is_emri_id: int):
                 'fiili_dk': orow[3] or 0,
                 'durum': orow[4] or 'BEKLIYOR',
             })
-    except:
+    except Exception:
         pass
 
     conn.close()
@@ -262,7 +262,7 @@ def is_emri_pdf_olustur(is_emri_id: int):
                 text_x = MARGIN + 28*mm
             else:
                 text_x = MARGIN + 6*mm
-    except:
+    except Exception:
         text_x = MARGIN + 6*mm
 
     # Firma ve belge bilgisi

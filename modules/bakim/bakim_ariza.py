@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.log_manager import LogManager
 
 
 # ============================================================================
@@ -279,7 +280,7 @@ class ArizaDialog(QDialog):
             if self.data.get('ekipman_id'):
                 idx = self.ekipman_combo.findData(self.data['ekipman_id'])
                 if idx >= 0: self.ekipman_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -297,7 +298,7 @@ class ArizaDialog(QDialog):
             if self.data.get('bildiren_id'):
                 idx = self.bildiren_combo.findData(self.data['bildiren_id'])
                 if idx >= 0: self.bildiren_combo.setCurrentIndex(idx)
-        except: pass
+        except Exception: pass
         finally:
             if conn:
                 try: conn.close()
@@ -336,6 +337,7 @@ class ArizaDialog(QDialog):
                 """, params)
 
             conn.commit()
+            LogManager.log_insert('bakim', 'bakim.ariza_bildirimleri', None, 'Ariza bildirimi olusturuldu')
             QMessageBox.information(self, "Basarili", "Ariza bildirimi kaydedildi!")
             self.accept()
         except Exception as e:
@@ -457,7 +459,9 @@ class BakimArizaPage(BasePage):
         toolbar.addWidget(self.oncelik_combo)
         
         toolbar.addStretch()
-        
+
+        toolbar.addWidget(self.create_export_button(title="Ariza Bildirimleri"))
+
         refresh_btn = QPushButton("🔄")
         refresh_btn.setToolTip("Yenile")
         refresh_btn.setStyleSheet(f"""
@@ -697,6 +701,7 @@ class BakimArizaPage(BasePage):
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM bakim.ariza_bildirimleri WHERE id=?", (aid,))
                 conn.commit()
+                LogManager.log_delete('bakim', 'bakim.ariza_bildirimleri', None, 'Kayit silindi')
                 self._load_data()
             except Exception as e:
                 QMessageBox.critical(self, "Hata", str(e))
