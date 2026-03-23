@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor, QFont, QCursor
 from PySide6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 
 from components.base_page import BasePage
+from components.dialog_minimize_bar import add_minimize_button
 from core.database import get_db_connection
 
 
@@ -31,7 +32,8 @@ class IrsaliyeOnizlemeDialog(QDialog):
         self.setWindowTitle(f"İrsaliye - {irsaliye_data.get('irsaliye_no', '')}")
         self.setMinimumSize(800, 900)
         self._setup_ui()
-    
+        add_minimize_button(self)
+
     def _setup_ui(self):
         self.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}")
         
@@ -264,7 +266,8 @@ class IrsaliyeDuzenleDialog(QDialog):
         self.setWindowTitle(f"İrsaliye Düzenle - {irsaliye_data.get('irsaliye_no', '')}")
         self.setMinimumSize(500, 400)
         self._setup_ui()
-    
+        add_minimize_button(self)
+
     def _setup_ui(self):
         self.setStyleSheet(f"""
             QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}

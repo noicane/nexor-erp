@@ -15,6 +15,79 @@ from PySide6.QtGui import QFont
 from datetime import datetime
 
 
+def create_action_buttons(theme: dict, buttons: list) -> QWidget:
+    """
+    Tablo islem sutunu icin kurumsal stil butonlar olustur.
+    BasePage ve QDialog'lardan bagimsiz kullanilabilir.
+
+    Args:
+        theme: Tema dict
+        buttons: [(icon, tooltip, callback, type), ...]
+                 type: "edit", "delete", "view", "print", "photo",
+                       "primary", "success", "danger", "warning", "info"
+    """
+    color_map = {
+        "edit": "#2563EB", "delete": "#EF4444", "view": "#8B5CF6",
+        "print": "#6366F1", "photo": "#0EA5E9",
+        "primary": theme.get('primary', '#DC2626'), "success": "#10B981",
+        "danger": "#EF4444", "warning": "#F59E0B", "info": "#3B82F6",
+        "secondary": "#64748B",
+    }
+    hover_map = {
+        "edit": "#1D4ED8", "delete": "#DC2626", "view": "#7C3AED",
+        "print": "#4F46E5", "photo": "#0284C7",
+        "primary": theme.get('primary_hover', '#9B1818'), "success": "#059669",
+        "danger": "#DC2626", "warning": "#D97706", "info": "#2563EB",
+        "secondary": "#475569",
+    }
+    label_map = {
+        "edit": "Duzenle", "delete": "Sil", "view": "Detay",
+        "print": "Yazdir", "photo": "Foto", "primary": "Islem",
+        "success": "Onayla", "danger": "Sil", "warning": "Cikis",
+        "info": "Detay", "secondary": "...",
+    }
+
+    widget = QWidget()
+    css = "QWidget { background: transparent; }\n"
+    css += "QPushButton { border: none; border-radius: 4px; font-size: 11px; "
+    css += "font-weight: 600; font-family: 'Segoe UI'; padding: 2px 10px; "
+    css += "min-width: 40px; min-height: 0px; max-height: 24px; color: white; }\n"
+    css += "QPushButton:hover { opacity: 0.9; }\n"
+    widget.setStyleSheet(css)
+
+    layout = QHBoxLayout(widget)
+    layout.setContentsMargins(4, 3, 4, 3)
+    layout.setSpacing(6)
+    layout.setAlignment(Qt.AlignCenter)
+
+    for btn_config in buttons:
+        if len(btn_config) == 4:
+            icon, tooltip, callback, btn_type = btn_config
+        elif len(btn_config) == 3:
+            icon, tooltip, callback = btn_config
+            btn_type = "edit"
+        else:
+            continue
+
+        c = color_map.get(btn_type, "#2563EB")
+        h = hover_map.get(btn_type, "#1D4ED8")
+        display = label_map.get(btn_type, tooltip[:8])
+
+        btn = QPushButton(display)
+        btn.setToolTip(tooltip)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(
+            f"QPushButton {{ background: {c}; }} "
+            f"QPushButton:hover {{ background: {h}; }} "
+            f"QPushButton:pressed {{ background: {h}; }}"
+        )
+        if callback:
+            btn.clicked.connect(callback)
+        layout.addWidget(btn)
+
+    return widget
+
+
 class BasePage(QWidget):
     """Tum sayfalar icin temel sinif"""
 
@@ -850,132 +923,8 @@ class BasePage(QWidget):
         return header
 
     def create_action_buttons(self, buttons: list) -> QWidget:
-        """
-        Tablo islem sutunu icin PRAXIS kurumsal stil butonlar olustur.
-        Tema uyumlu (dark + light), hover + pressed state destegi.
-
-        Args:
-            buttons: [(icon, tooltip, callback, type), ...]
-                     type: "edit", "delete", "view", "print", "photo",
-                           "primary", "success", "danger", "warning", "info"
-
-        Ornek:
-            widget = self.create_action_buttons([
-                ("✏️", "Duzenle", lambda: self.edit(rid), "edit"),
-                ("🗑️", "Sil", lambda: self.delete(rid), "delete"),
-                ("👁️", "Goruntule", lambda: self.view(rid), "view"),
-            ])
-            self.table.setCellWidget(row, col, widget)
-        """
-        t = self.theme
-
-        # Parlak solid renkler
-        color_map = {
-            "edit":      "#2563EB",
-            "delete":    "#EF4444",
-            "view":      "#8B5CF6",
-            "print":     "#6366F1",
-            "photo":     "#0EA5E9",
-            "primary":   t.get('primary', '#DC2626'),
-            "success":   "#10B981",
-            "danger":    "#EF4444",
-            "warning":   "#F59E0B",
-            "info":      "#3B82F6",
-            "secondary": "#64748B",
-        }
-
-        # Hover icin daha koyu ton
-        hover_map = {
-            "edit":      "#1D4ED8",
-            "delete":    "#DC2626",
-            "view":      "#7C3AED",
-            "print":     "#4F46E5",
-            "photo":     "#0284C7",
-            "primary":   t.get('primary_hover', '#9B1818'),
-            "success":   "#059669",
-            "danger":    "#DC2626",
-            "warning":   "#D97706",
-            "info":      "#2563EB",
-            "secondary": "#475569",
-        }
-
-        # Tip -> metin etiketi (emoji render problemini onler)
-        label_map = {
-            "edit":      "Duzenle",
-            "delete":    "Sil",
-            "view":      "Detay",
-            "print":     "Yazdir",
-            "photo":     "Foto",
-            "primary":   "Islem",
-            "success":   "Onayla",
-            "danger":    "Sil",
-            "warning":   "Cikis",
-            "info":      "Detay",
-            "secondary": "...",
-        }
-
-        widget = QWidget()
-
-        # Tum buton stillerini container uzerinde tanimla
-        # BasePage global QPushButton stilini ezmek icin en yakin parent kazanir
-        style_parts = ["QWidget { background: transparent; }"]
-        btn_styles = []
-
-        for i, btn_config in enumerate(buttons):
-            if len(btn_config) == 4:
-                icon, tooltip, callback, btn_type = btn_config
-            elif len(btn_config) == 3:
-                icon, tooltip, callback = btn_config
-                btn_type = "edit"
-            else:
-                continue
-
-            c = color_map.get(btn_type, "#2563EB")
-            h = hover_map.get(btn_type, "#1D4ED8")
-            btn_styles.append((btn_type, c, h, tooltip, callback, i))
-
-        # Container stylesheet - BasePage'in QPushButton stilini tamamen ezecek
-        css = "QWidget { background: transparent; }\n"
-        css += "QPushButton {\n"
-        css += "    border: none;\n"
-        css += "    border-radius: 4px;\n"
-        css += "    font-size: 11px;\n"
-        css += "    font-weight: 600;\n"
-        css += "    font-family: 'Segoe UI';\n"
-        css += "    padding: 2px 10px;\n"
-        css += "    min-width: 40px;\n"
-        css += "    min-height: 0px;\n"
-        css += "    max-height: 24px;\n"
-        css += "    color: white;\n"
-        css += "}\n"
-        css += "QPushButton:hover { opacity: 0.9; }\n"
-        widget.setStyleSheet(css)
-
-        layout = QHBoxLayout(widget)
-        layout.setContentsMargins(4, 3, 4, 3)
-        layout.setSpacing(6)
-        layout.setAlignment(Qt.AlignCenter)
-
-        for btn_type, c, h, tooltip, callback, i in btn_styles:
-            display = label_map.get(btn_type, tooltip[:8])
-
-            btn = QPushButton(display)
-            btn.setToolTip(tooltip)
-            btn.setCursor(Qt.PointingHandCursor)
-
-            # Sadece renk farkli - diger stiller container'dan geliyor
-            btn.setStyleSheet(f"""
-                QPushButton {{ background: {c}; }}
-                QPushButton:hover {{ background: {h}; }}
-                QPushButton:pressed {{ background: {h}; }}
-            """)
-
-            if callback:
-                btn.clicked.connect(callback)
-
-            layout.addWidget(btn)
-
-        return widget
+        """Standalone create_action_buttons fonksiyonuna delege eder."""
+        return create_action_buttons(self.theme, buttons)
 
     # ══════════════════════════════════════════════
     # EXPORT ALTYAPISI

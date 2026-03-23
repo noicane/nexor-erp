@@ -35,7 +35,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QColor, QFont, QIcon
 
-from components.base_page import BasePage
+from components.base_page import BasePage, create_action_buttons
+from components.dialog_minimize_bar import add_minimize_button
 from core.database import get_db_connection
 from core.log_manager import LogManager
 from config import DEFAULT_PAGE_SIZE
@@ -283,7 +284,12 @@ class StokDetayDialog(QDialog):
         self.setWindowTitle(f"Stok Kartı - {self.urun_data.get('urun_kodu', '')}")
         self.setMinimumSize(1100, 750)
         self._setup_ui()
-    
+        add_minimize_button(self)
+
+    def create_action_buttons(self, buttons: list) -> QWidget:
+        """Standalone create_action_buttons fonksiyonuna delege eder."""
+        return create_action_buttons(self.theme, buttons)
+
     def _load_data(self):
         """Veritabanından ürün bilgilerini yükle"""
         conn = None
@@ -1794,7 +1800,7 @@ class StokDetayDialog(QDialog):
                 self.dosya_table.setItem(row, 3, QTableWidgetItem("-"))
             
             # Aç butonu
-            widget = self.create_action_buttons([
+            widget = create_action_buttons(self.theme, [
                 ("📄", "Dosyayi Ac", lambda checked, path=dosya_yolu: self._open_file_path(path), "view"),
             ])
             self.dosya_table.setCellWidget(row, 4, widget)

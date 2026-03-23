@@ -57,6 +57,7 @@ from version import VERSION, get_full_version
 from themes import build_theme
 from core.menu_structure import MENU_STRUCTURE, get_page_title
 from components import Sidebar, Header
+from components.dialog_minimize_bar import DialogMinimizeBar
 from dialogs import ModernLoginDialog
 from dialogs.splash_screen import NexorSplashScreen
 
@@ -516,7 +517,11 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.stack.setStyleSheet(f"background: {self.theme['bg_main']};")
         r_layout.addWidget(self.stack)
-        
+
+        # Minimize bar (dialog'lar icin)
+        self.minimize_bar = DialogMinimizeBar(self.theme, self)
+        r_layout.addWidget(self.minimize_bar)
+
         self.main_layout.addWidget(self.right_panel, 1)
         
         try:

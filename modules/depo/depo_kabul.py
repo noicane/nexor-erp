@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor
 
-from components.base_page import BasePage
+from components.base_page import BasePage, create_action_buttons
+from components.dialog_minimize_bar import add_minimize_button
 from core.database import get_db_connection
 from core.log_manager import LogManager
 from config import DEFAULT_PAGE_SIZE
@@ -122,24 +123,12 @@ class PaletBolmeDialog(QDialog):
         self.created_lots = []  # Oluşturulan lot numaraları
         
         self.setWindowTitle("🏷️ Palet Bölme ve Etiket Yazdır")
-        self.setMinimumSize(600, 580)
-        self.resize(650, 650)
-        
+        self.setMinimumSize(680, 750)
+        self.resize(720, 820)
+
         self._setup_ui()
-        
-        # Dialog açıldıktan sonra layout'u güncelle
-        QTimer.singleShot(50, self._refresh_layout)
-    
-    def _refresh_layout(self):
-        """Layout'u yenile - render sorununu düzelt"""
-        self.adjustSize()
-        self.update()
-        self.repaint()
-        
-        # Tüm child widget'ları güncelle
-        for child in self.findChildren(QWidget):
-            child.update()
-    
+        add_minimize_button(self)
+
     def _setup_ui(self):
         self.setStyleSheet(f"""
             QDialog {{ background-color: {self.theme['bg_main']}; }}
@@ -156,10 +145,18 @@ class PaletBolmeDialog(QDialog):
             }}
         """)
         
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; }")
+        scroll_widget = QWidget()
+        layout = QVBoxLayout(scroll_widget)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(16)
-        
+
         # ===== ÜRÜN BİLGİLERİ =====
         info_group = QGroupBox("📦 Ürün Bilgileri")
         info_layout = QGridLayout(info_group)
@@ -366,12 +363,9 @@ class PaletBolmeDialog(QDialog):
         btn_layout.addWidget(cancel_btn)
         
         layout.addLayout(btn_layout)
-    
-    def showEvent(self, event):
-        """Dialog gösterildiğinde layout'u düzelt"""
-        super().showEvent(event)
-        # Biraz gecikme ile layout güncelle
-        QTimer.singleShot(100, self._refresh_layout)
+
+        scroll.setWidget(scroll_widget)
+        main_layout.addWidget(scroll)
     
     def _load_yazicilar(self):
         """Mevcut yazıcıları yükle"""
@@ -1025,7 +1019,8 @@ class IrsaliyeDetayDialog(QDialog):
         if not yeni_kayit:
             self._load_data()
         self._setup_ui()
-    
+        add_minimize_button(self)
+
     def _load_combo_data(self):
         """Combo box verilerini yükle"""
         self.combo_data = {
@@ -1508,7 +1503,7 @@ class IrsaliyeDetayDialog(QDialog):
     
     def _add_row_buttons(self, row: int):
         """Satır için işlem butonlarını ekle"""
-        widget = self.create_action_buttons([
+        widget = create_action_buttons(self.theme, [
             ("🏷️", "Palet Böl ve Etiket Yazdır", lambda checked, r=row: self._etiket_yazdir(r), "success"),
             ("🗑️", "Satırı Sil", lambda checked, r=row: self._delete_satir(r), "delete"),
         ])

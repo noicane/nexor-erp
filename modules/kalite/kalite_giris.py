@@ -14,7 +14,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QFont
 
-from components.base_page import BasePage
+from components.base_page import BasePage, create_action_buttons
+from components.dialog_minimize_bar import add_minimize_button
 from core.database import get_db_connection
 from core.log_manager import LogManager
 
@@ -59,7 +60,8 @@ class KriterKontrolDialog(QDialog):
         self.setMinimumSize(700, 600)
         self._load_kriterler()
         self._setup_ui()
-    
+        add_minimize_button(self)
+
     def _load_kriterler(self):
         conn = None
         try:
@@ -233,6 +235,7 @@ class PaletDetayDialog(QDialog):
         self.setWindowTitle(f"Palet - {palet_data.get('lot_no', '')}")
         self.setMinimumSize(500, 400)
         self._setup_ui()
+        add_minimize_button(self)
     
     def _setup_ui(self):
         self.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }} QLabel {{ color: {self.theme.get('text', '#fff')}; }}")
@@ -327,7 +330,8 @@ class AnaLotDetayDialog(QDialog):
         self.setMinimumSize(900, 600)
         self._load_data()
         self._setup_ui()
-    
+        add_minimize_button(self)
+
     def _load_data(self):
         self.paletler = []  # ÖNCEKİ VERİLERİ TEMİZLE!
         conn = None
@@ -439,7 +443,7 @@ class AnaLotDetayDialog(QDialog):
             durum_item = QTableWidgetItem(p['kalite_durumu'] or 'BEKLIYOR')
             durum_item.setForeground(colors.get(p['kalite_durumu'], QColor('#888')))
             self.table.setItem(i, 3, durum_item)
-            
+
             cb = QCheckBox()
             cb.setEnabled(p['kalite_durumu'] == 'BEKLIYOR')
             cb.setProperty('lot_no', p['lot_no'])
@@ -450,8 +454,8 @@ class AnaLotDetayDialog(QDialog):
             l.setContentsMargins(0, 0, 0, 0)
             self.table.setCellWidget(i, 4, w)
             self.table.setRowHeight(i, 42)
-            
-            widget = self.create_action_buttons([
+
+            widget = create_action_buttons(self.theme, [
                 ("📋", "Detay", lambda _, palet=p: self._open_palet(palet), "view"),
             ])
             self.table.setCellWidget(i, 5, widget)

@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor, QFont
 
-from components.base_page import BasePage
+from components.base_page import BasePage, create_action_buttons
 from core.database import get_db_connection
 
 
@@ -738,7 +738,7 @@ class YetkinlikYonetimDialog(QDialog):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             kategori = self.cmb_kategori.currentData()
             
             if kategori:
@@ -771,7 +771,7 @@ class YetkinlikYonetimDialog(QDialog):
                 self.table.setItem(i, 3, QTableWidgetItem(kategori or ""))
                 
                 # Sil butonu
-                widget = self.create_action_buttons([
+                widget = create_action_buttons(self.theme, [
                     ("🗑️", "Sil", lambda _, y=yid, k=kod: self._sil(y, k), "delete"),
                 ])
                 self.table.setCellWidget(i, 4, widget)
