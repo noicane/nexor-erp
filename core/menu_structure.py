@@ -109,6 +109,7 @@ MENU_STRUCTURE = [
     ]},
     
     {"id": "bakim", "icon": "🔧", "label": "Bakım", "children": [
+        {"id": "bakim_durus_talep", "label": "Duruş Talepleri"},
         {"id": "bakim_ekipman", "label": "Ekipman Kartları"},
         {"id": "bakim_plan", "label": "Bakım Planları"},
         {"id": "bakim_ariza", "label": "Arıza Kayıtları"},
@@ -143,6 +144,13 @@ MENU_STRUCTURE = [
         {"id": "aksiyon_dashboard", "label": "Aksiyon Dashboard"},
         {"id": "aksiyon_liste", "label": "Aksiyon Listesi"},
         {"id": "aksiyon_bana_atanan", "label": "Bana Atananlar"},
+    ]},
+
+    {"id": "maliyet", "icon": "💰", "label": "Maliyet", "children": [
+        {"id": "tanim_is_merkezi", "label": "İş Merkezi Tanımları"},
+        {"id": "maliyet_personel", "label": "Personel Maliyet"},
+        {"id": "stok_maliyet", "label": "Ürün Maliyet Tanımları"},
+        {"id": "stok_fiyat", "label": "Fiyat Listesi"},
     ]},
 
     {"id": "raporlar", "icon": "📈", "label": "Raporlar", "children": [

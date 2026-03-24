@@ -40,6 +40,7 @@ MODULES: Dict[str, ModuleInfo] = {
     "yonetim": ModuleInfo("yonetim", "Yönetim", "📊", "Yönetim raporları"),
     "aksiyonlar": ModuleInfo("aksiyonlar", "Aksiyonlar", "📋", "Aksiyon takip ve yönetim"),
     "kaplama_planlama": ModuleInfo("kaplama_planlama", "Kaplama Planlama", "📅", "Kaplama hattı haftalık planlama"),
+    "maliyet": ModuleInfo("maliyet", "Maliyet", "💰", "Maliyet yönetimi ve analizi"),
 }
 
 
@@ -121,6 +122,7 @@ def _import_modules():
     from modules import yonetim
     from modules import aksiyonlar
     from modules import kaplama_planlama
+    from modules import maliyet
 
 
 def get_placeholder_page():

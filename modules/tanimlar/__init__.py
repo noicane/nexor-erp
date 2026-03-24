@@ -27,6 +27,7 @@ from .tanim_araclar import TanimAraclarPage
 from .tanim_numara import TanimNumaraPage
 from .dokumantasyon_yonetimi import DokumantasyonYonetimiPage
 from .bildirim_sistemi import BildirimSistemiPage
+from .tanim_is_merkezi import TanimIsMerkeziPage
 
 # Sayfa kayıtları
 PageRegistry.register("tanim_hat", TanimHatPage, MODULE_NAME)
@@ -49,6 +50,7 @@ PageRegistry.register("tanim_araclar", TanimAraclarPage, MODULE_NAME)
 PageRegistry.register("tanim_numara", TanimNumaraPage, MODULE_NAME)
 PageRegistry.register("dokumantasyon_yonetimi", DokumantasyonYonetimiPage, MODULE_NAME)
 PageRegistry.register("bildirim_sistemi", BildirimSistemiPage, MODULE_NAME)
+PageRegistry.register("tanim_is_merkezi", TanimIsMerkeziPage, MODULE_NAME)
 
 __all__ = [
     "TanimHatPage",
@@ -70,5 +72,6 @@ __all__ = [
     "TanimAraclarPage",
     "TanimNumaraPage",
     "DokumantasyonYonetimiPage",
-    "BildirimSistemiPage"
+    "BildirimSistemiPage",
+    "TanimIsMerkeziPage"
 ]
