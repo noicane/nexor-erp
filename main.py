@@ -1428,6 +1428,7 @@ def main():
                     except Exception as rfid_err:
                         logger.warning("RFID servisi başlatılamadı: %s", rfid_err)
 
+
                 except Exception as e:
                     logger.critical("Ana pencere oluşturulamadı: %s", e)
                     show_error_dialog("Ana Pencere Hatası", e)

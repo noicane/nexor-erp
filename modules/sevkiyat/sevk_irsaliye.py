@@ -257,15 +257,17 @@ class IrsaliyeOnizlemeDialog(QDialog):
 
 
 class IrsaliyeDuzenleDialog(QDialog):
-    """İrsaliye düzenleme dialog'u"""
-    
+    """İrsaliye düzenleme dialog'u - satır miktar düzeltme dahil"""
+
     def __init__(self, theme: dict, irsaliye_data: dict, parent=None):
         super().__init__(parent)
         self.theme = theme
         self.irsaliye = irsaliye_data.copy()
+        self.satir_degisiklikler = []  # [(satir_id, yeni_miktar), ...]
         self.setWindowTitle(f"İrsaliye Düzenle - {irsaliye_data.get('irsaliye_no', '')}")
-        self.setMinimumSize(500, 400)
+        self.setMinimumSize(700, 600)
         self._setup_ui()
+        self._load_satirlar()
         add_minimize_button(self)
 
     def _setup_ui(self):
@@ -273,21 +275,15 @@ class IrsaliyeDuzenleDialog(QDialog):
             QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}
             QLabel {{ color: {self.theme.get('text', '#fff')}; }}
         """)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
+        layout.setSpacing(12)
+
         title = QLabel(f"✏️ İrsaliye Düzenle: {self.irsaliye.get('irsaliye_no', '')}")
         title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.theme.get('primary')};")
         layout.addWidget(title)
-        
-        form_frame = QFrame()
-        form_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px; padding: 16px;")
-        form_layout = QGridLayout(form_frame)
-        form_layout.setSpacing(12)
-        
-        row = 0
+
         input_style = f"""
             QLineEdit, QComboBox, QTextEdit {{
                 background: {self.theme.get('bg_input', '#2d3548')};
@@ -297,26 +293,29 @@ class IrsaliyeDuzenleDialog(QDialog):
                 color: {self.theme.get('text', '#fff')};
             }}
         """
-        
-        form_layout.addWidget(QLabel("Araç Plaka:"), row, 0)
+
+        # Üst form - sevk bilgileri
+        form_frame = QFrame()
+        form_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px; padding: 12px;")
+        form = QGridLayout(form_frame)
+        form.setSpacing(8)
+
+        form.addWidget(QLabel("Araç Plaka:"), 0, 0)
         self.plaka_input = QLineEdit(self.irsaliye.get('plaka', ''))
         self.plaka_input.setStyleSheet(input_style)
-        form_layout.addWidget(self.plaka_input, row, 1)
-        row += 1
-        
-        form_layout.addWidget(QLabel("Şoför Adı:"), row, 0)
+        form.addWidget(self.plaka_input, 0, 1)
+
+        form.addWidget(QLabel("Şoför Adı:"), 0, 2)
         self.sofor_input = QLineEdit(self.irsaliye.get('sofor', ''))
         self.sofor_input.setStyleSheet(input_style)
-        form_layout.addWidget(self.sofor_input, row, 1)
-        row += 1
-        
-        form_layout.addWidget(QLabel("Taşıyıcı Firma:"), row, 0)
+        form.addWidget(self.sofor_input, 0, 3)
+
+        form.addWidget(QLabel("Taşıyıcı:"), 1, 0)
         self.tasiyici_input = QLineEdit(self.irsaliye.get('tasiyici', ''))
         self.tasiyici_input.setStyleSheet(input_style)
-        form_layout.addWidget(self.tasiyici_input, row, 1)
-        row += 1
-        
-        form_layout.addWidget(QLabel("Durum:"), row, 0)
+        form.addWidget(self.tasiyici_input, 1, 1)
+
+        form.addWidget(QLabel("Durum:"), 1, 2)
         self.durum_combo = QComboBox()
         self.durum_combo.addItem("📦 Hazırlandı", "HAZIRLANDI")
         self.durum_combo.addItem("🚚 Sevk Edildi", "SEVK_EDILDI")
@@ -326,22 +325,53 @@ class IrsaliyeDuzenleDialog(QDialog):
             if self.durum_combo.itemData(i) == self.irsaliye.get('durum'):
                 self.durum_combo.setCurrentIndex(i)
                 break
-        form_layout.addWidget(self.durum_combo, row, 1)
-        row += 1
-        
-        form_layout.addWidget(QLabel("Notlar:"), row, 0, Qt.AlignTop)
+        form.addWidget(self.durum_combo, 1, 3)
+
+        form.addWidget(QLabel("Notlar:"), 2, 0, Qt.AlignTop)
         self.notlar_input = QTextEdit()
         self.notlar_input.setPlainText(self.irsaliye.get('notlar', ''))
-        self.notlar_input.setMaximumHeight(100)
+        self.notlar_input.setMaximumHeight(60)
         self.notlar_input.setStyleSheet(input_style)
-        form_layout.addWidget(self.notlar_input, row, 1)
-        
+        form.addWidget(self.notlar_input, 2, 1, 1, 3)
+
         layout.addWidget(form_frame)
-        layout.addStretch()
-        
+
+        # Alt - satır düzenleme
+        sat_title = QLabel("📦 Satır Miktarları (Fazla/Eksik Düzeltme)")
+        sat_title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 13px;")
+        layout.addWidget(sat_title)
+
+        self.satirlar_table = QTableWidget()
+        self.satirlar_table.setColumnCount(5)
+        self.satirlar_table.setHorizontalHeaderLabels(["ID", "Stok Kodu / Ürün", "Lot No", "Mevcut Miktar", "Yeni Miktar"])
+        self.satirlar_table.setColumnHidden(0, True)
+        self.satirlar_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.satirlar_table.setColumnWidth(2, 130)
+        self.satirlar_table.setColumnWidth(3, 100)
+        self.satirlar_table.setColumnWidth(4, 100)
+        self.satirlar_table.verticalHeader().setVisible(False)
+        self.satirlar_table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {self.theme.get('bg_card')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 8px;
+                gridline-color: {self.theme.get('border')};
+                color: {self.theme.get('text')};
+            }}
+            QHeaderView::section {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                padding: 8px;
+                border: none;
+                font-weight: bold;
+            }}
+        """)
+        layout.addWidget(self.satirlar_table, 1)
+
+        # Butonlar
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        
+
         iptal_btn = QPushButton("İptal")
         iptal_btn.setStyleSheet(f"""
             QPushButton {{
@@ -354,7 +384,7 @@ class IrsaliyeDuzenleDialog(QDialog):
         """)
         iptal_btn.clicked.connect(self.reject)
         btn_layout.addWidget(iptal_btn)
-        
+
         kaydet_btn = QPushButton("💾 Kaydet")
         kaydet_btn.setStyleSheet(f"""
             QPushButton {{
@@ -368,19 +398,88 @@ class IrsaliyeDuzenleDialog(QDialog):
         """)
         kaydet_btn.clicked.connect(self._kaydet)
         btn_layout.addWidget(kaydet_btn)
-        
+
         layout.addLayout(btn_layout)
-    
+
+    def _load_satirlar(self):
+        """İrsaliye satırlarını tabloya yükle"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT cis.id,
+                    COALESCE(ie.stok_kodu, u.urun_kodu, '') + ' - ' + COALESCE(ie.stok_adi, u.urun_adi, '') as urun,
+                    cis.lot_no, cis.miktar
+                FROM siparis.cikis_irsaliye_satirlar cis
+                LEFT JOIN siparis.is_emirleri ie ON cis.is_emri_id = ie.id
+                LEFT JOIN stok.urunler u ON cis.urun_id = u.id
+                WHERE cis.irsaliye_id = ?
+                ORDER BY cis.satir_no
+            """, (self.irsaliye['id'],))
+            rows = cursor.fetchall()
+            conn.close()
+
+            self.satirlar_table.setRowCount(0)
+            spin_style = f"""
+                QDoubleSpinBox {{
+                    background: {self.theme.get('bg_input')};
+                    border: 1px solid {self.theme.get('border')};
+                    border-radius: 4px;
+                    padding: 4px;
+                    color: {self.theme.get('text')};
+                }}
+            """
+            for row in rows:
+                idx = self.satirlar_table.rowCount()
+                self.satirlar_table.insertRow(idx)
+                self.satirlar_table.setItem(idx, 0, QTableWidgetItem(str(row[0])))
+                self.satirlar_table.setItem(idx, 1, QTableWidgetItem(row[1] or ''))
+                self.satirlar_table.setItem(idx, 2, QTableWidgetItem(row[2] or ''))
+
+                mevcut = QTableWidgetItem(f"{row[3]:,.0f}")
+                mevcut.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.satirlar_table.setItem(idx, 3, mevcut)
+
+                spin = QSpinBox()
+                spin.setRange(0, 999999)
+                spin.setValue(int(row[3] or 0))
+                spin.setStyleSheet(spin_style)
+                self.satirlar_table.setCellWidget(idx, 4, spin)
+
+                self.satirlar_table.setRowHeight(idx, 36)
+
+        except Exception as e:
+            print(f"Satır yükleme hatası: {e}")
+
     def _kaydet(self):
         self.irsaliye['plaka'] = self.plaka_input.text().strip()
         self.irsaliye['sofor'] = self.sofor_input.text().strip()
         self.irsaliye['tasiyici'] = self.tasiyici_input.text().strip()
         self.irsaliye['durum'] = self.durum_combo.currentData()
         self.irsaliye['notlar'] = self.notlar_input.toPlainText().strip()
+
+        # Satır miktar değişikliklerini topla
+        self.satir_degisiklikler = []
+        for i in range(self.satirlar_table.rowCount()):
+            satir_id = int(self.satirlar_table.item(i, 0).text())
+            spin = self.satirlar_table.cellWidget(i, 4)
+            if spin:
+                mevcut_text = self.satirlar_table.item(i, 3).text().replace(',', '')
+                try:
+                    mevcut = int(float(mevcut_text))
+                except ValueError:
+                    mevcut = 0
+                yeni = spin.value()
+                if yeni != mevcut:
+                    self.satir_degisiklikler.append((satir_id, yeni))
+
         self.accept()
-    
+
     def get_data(self):
         return self.irsaliye
+
+    def get_satir_degisiklikler(self):
+        return self.satir_degisiklikler
 
 
 class SevkIrsaliyePage(BasePage):
@@ -676,6 +775,28 @@ class SevkIrsaliyePage(BasePage):
         self.zirve_btn.setEnabled(False)
         btn_layout.addWidget(self.zirve_btn)
 
+        self.fkr_btn = QPushButton("📋 Final Kalite Raporu")
+        self.fkr_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input', '#2d3548')};
+                color: {self.theme.get('text', '#fff')};
+                border: 1px solid {self.theme.get('border', '#3d4454')};
+                border-radius: 6px;
+                padding: 8px 16px;
+            }}
+            QPushButton:hover {{
+                background: {self.theme.get('bg_hover')};
+                border-color: {self.theme.get('primary')};
+            }}
+            QPushButton:disabled {{
+                background: {self.theme.get('bg_hover')};
+                color: {self.theme.get('text_muted')};
+            }}
+        """)
+        self.fkr_btn.clicked.connect(self._final_kalite_raporu)
+        self.fkr_btn.setEnabled(False)
+        btn_layout.addWidget(self.fkr_btn)
+
         self.yazdir_btn = QPushButton("🖨️ Yazdır")
         self.yazdir_btn.setStyleSheet(f"""
             QPushButton {{
@@ -927,6 +1048,7 @@ class SevkIrsaliyePage(BasePage):
         """)
         
         menu.addAction("🖨️ Yazdır")
+        menu.addAction("📋 Final Kalite Raporu")
         menu.addAction("✏️ Düzenle")
         menu.addSeparator()
         
@@ -947,6 +1069,8 @@ class SevkIrsaliyePage(BasePage):
             text = action.text()
             if text == "🖨️ Yazdır":
                 self._yazdir()
+            elif text == "📋 Final Kalite Raporu":
+                self._final_kalite_raporu()
             elif text == "✏️ Düzenle":
                 self._duzenle()
             elif text == "🚚 Sevk Et":
@@ -1015,6 +1139,7 @@ class SevkIrsaliyePage(BasePage):
         self.iptal_btn.setEnabled(False)
         self.stok_iade_btn.setEnabled(False)
         self.zirve_btn.setEnabled(False)
+        self.fkr_btn.setEnabled(False)
         self.secili_irsaliye = None
     
     def _update_buttons(self):
@@ -1034,6 +1159,8 @@ class SevkIrsaliyePage(BasePage):
         self.stok_iade_btn.setEnabled(durum == 'IPTAL')
         # Zirve aktarım: iptal olmayan irsaliyeler için
         self.zirve_btn.setEnabled(durum != 'IPTAL')
+        # Final kalite raporu: satır varsa aktif
+        self.fkr_btn.setEnabled(durum != 'IPTAL' and len(self.satirlar_data) > 0)
     
     def _load_satirlar(self, irsaliye_id):
         """İrsaliye satırlarını yükle"""
@@ -1105,14 +1232,15 @@ class SevkIrsaliyePage(BasePage):
         dialog = IrsaliyeDuzenleDialog(self.theme, self.secili_irsaliye, self)
         if dialog.exec() == QDialog.Accepted:
             yeni_veri = dialog.get_data()
-            self._kaydet_degisiklik(yeni_veri)
+            satir_degisiklikler = dialog.get_satir_degisiklikler()
+            self._kaydet_degisiklik(yeni_veri, satir_degisiklikler)
     
-    def _kaydet_degisiklik(self, veri):
+    def _kaydet_degisiklik(self, veri, satir_degisiklikler=None):
         """Değişiklikleri veritabanına kaydet"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 UPDATE siparis.cikis_irsaliyeleri
                 SET arac_plaka = ?,
@@ -1130,13 +1258,26 @@ class SevkIrsaliyePage(BasePage):
                 veri['notlar'],
                 veri['id']
             ))
-            
+
+            # Satır miktar değişiklikleri
+            if satir_degisiklikler:
+                for satir_id, yeni_miktar in satir_degisiklikler:
+                    cursor.execute("""
+                        UPDATE siparis.cikis_irsaliye_satirlar
+                        SET miktar = ?
+                        WHERE id = ?
+                    """, (yeni_miktar, satir_id))
+
             conn.commit()
             conn.close()
-            
-            QMessageBox.information(self, "Başarılı", "İrsaliye güncellendi!")
+
+            mesaj = "İrsaliye güncellendi!"
+            if satir_degisiklikler:
+                mesaj += f"\n{len(satir_degisiklikler)} satırda miktar düzeltildi."
+
+            QMessageBox.information(self, "Başarılı", mesaj)
             self._load_data()
-            
+
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Güncelleme başarısız: {e}")
     
@@ -1416,9 +1557,48 @@ class SevkIrsaliyePage(BasePage):
             pass
         
         dialog = IrsaliyeOnizlemeDialog(
-            self.theme, 
-            self.secili_irsaliye, 
-            self.satirlar_data, 
+            self.theme,
+            self.secili_irsaliye,
+            self.satirlar_data,
             self
         )
         dialog.exec()
+
+    def _final_kalite_raporu(self):
+        """Secili irsaliyedeki her lot icin Final Kalite Raporu PDF olustur."""
+        if not self.secili_irsaliye or not self.satirlar_data:
+            QMessageBox.warning(self, "Uyari", "Once bir irsaliye secin.")
+            return
+
+        irsaliye_id = self.secili_irsaliye.get('id')
+        if not irsaliye_id:
+            return
+
+        try:
+            from utils.final_kalite_raporu_pdf import batch_final_kalite_raporu
+            sonuclar = batch_final_kalite_raporu(irsaliye_id)
+
+            if not sonuclar:
+                QMessageBox.warning(self, "Uyari", "Rapor olusturulacak lot bulunamadi.")
+                return
+
+            basarili = [(lot, path) for lot, path in sonuclar if not str(path).startswith("HATA")]
+            hatali = [(lot, path) for lot, path in sonuclar if str(path).startswith("HATA")]
+
+            mesaj = f"{len(basarili)} adet Final Kalite Raporu olusturuldu.\n\n"
+            for lot, path in basarili:
+                mesaj += f"  {lot}\n"
+
+            if hatali:
+                mesaj += f"\n{len(hatali)} lot icin rapor olusturulamadi:\n"
+                for lot, err in hatali:
+                    mesaj += f"  {lot}: {err}\n"
+
+            QMessageBox.information(self, "Final Kalite Raporu", mesaj)
+
+            # Ilk basarili PDF'i ac
+            if basarili:
+                os.startfile(basarili[0][1])
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Rapor olusturulurken hata:\n{e}")

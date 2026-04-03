@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QMessageBox, QDialog, QComboBox,
     QSpinBox, QWidget, QGridLayout, QStackedWidget,
     QSplitter, QListWidget, QListWidgetItem, QTabWidget,
-    QGroupBox, QDateEdit
+    QGroupBox, QDateEdit, QScrollArea, QApplication, QSlider
 )
 from PySide6.QtCore import Qt, QTimer, QTime, QEvent, QDate
 from PySide6.QtGui import QColor, QFont, QPixmap
@@ -33,6 +33,25 @@ from core.rfid_reader import RFIDCardReader
 from config import NAS_PATHS
 
 ETIKET_YAZICI = "Godex G500"
+
+
+def _kalite_scale() -> float:
+    """Kalite ekranları için UI ölçek faktörü. config.json -> kalite_ui_scale (varsayılan 1.4)"""
+    try:
+        from core.external_config import config_manager
+        return float(config_manager.get('kalite_ui_scale', 1.4))
+    except Exception:
+        return 1.4
+
+
+def _sz(px: int) -> int:
+    """Piksel değerini scale faktörüne göre ölçekle"""
+    return int(px * _kalite_scale())
+
+
+def _fs(px: int) -> str:
+    """font-size CSS değeri üret (scale'li)"""
+    return f"{_sz(px)}px"
 
 
 class EtiketOnizlemeDialog(QDialog):
@@ -242,7 +261,15 @@ class FinalKontrolDialog(QDialog):
         self.hata_listesi = []
         self.hata_turleri = []
         self.setWindowTitle(f"Kontrol - {gorev_data.get('is_emri_no', '')}")
-        self.setMinimumSize(700, 620)
+        # Ekran boyutuna göre dialog boyutu ayarla
+        screen = QApplication.primaryScreen()
+        if screen:
+            sg = screen.availableGeometry()
+            w = min(_sz(700), int(sg.width() * 0.92))
+            h = min(_sz(620), int(sg.height() * 0.92))
+            self.resize(w, h)
+        else:
+            self.setMinimumSize(_sz(700), _sz(620))
         self._load_hata_turleri()
         self._setup_ui()
         self.timer = QTimer(self)
@@ -261,47 +288,87 @@ class FinalKontrolDialog(QDialog):
             self.hata_turleri = []
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main')}; }} QLabel {{ color: {self.theme.get('text')}; }}")
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
-        input_style = f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;"
+        self.setStyleSheet(f"""
+            QDialog {{ background: {self.theme.get('bg_main')}; }}
+            QLabel {{ color: {self.theme.get('text')}; font-size: {_fs(14)}; }}
+        """)
+
+        # ScrollArea ile sar - küçük ekranlarda kaydırılabilir
+        outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        scroll_content = QWidget()
+        layout = QVBoxLayout(scroll_content)
+        layout.setContentsMargins(_sz(20), _sz(16), _sz(20), _sz(10))
+        layout.setSpacing(_sz(10))
+
+        input_style = f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: {_sz(6)}px; padding: {_sz(10)}px; font-size: {_fs(14)};"
 
         header = QHBoxLayout()
         title = QLabel("Final Kalite Kontrol")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.theme.get('primary')};")
+        title.setStyleSheet(f"font-size: {_fs(20)}; font-weight: bold; color: {self.theme.get('primary')};")
         header.addWidget(title)
         header.addStretch()
         self.sure_label = QLabel("00:00")
-        self.sure_label.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 18px; font-weight: bold; background: {self.theme.get('bg_card')}; padding: 6px 12px; border-radius: 6px;")
+        self.sure_label.setStyleSheet(f"color: {self.theme.get('text')}; font-size: {_fs(22)}; font-weight: bold; background: {self.theme.get('bg_card')}; padding: {_sz(6)}px {_sz(12)}px; border-radius: {_sz(6)}px;")
         header.addWidget(self.sure_label)
         layout.addLayout(header)
 
         info_frame = QFrame()
-        info_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; padding: 10px; }}")
+        info_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: {_sz(8)}px; padding: {_sz(10)}px; }}")
         info_grid = QGridLayout(info_frame)
-        info_grid.addWidget(QLabel("İş Emri:"), 0, 0)
-        info_grid.addWidget(QLabel(f"<b>{self.gorev.get('is_emri_no', '')}</b>"), 0, 1)
-        info_grid.addWidget(QLabel("Kontrol Eden:"), 0, 2)
-        info_grid.addWidget(QLabel(f"<b>{self.personel.get('ad_soyad', '')}</b>"), 0, 3)
-        info_grid.addWidget(QLabel("Lot:"), 1, 0)
-        info_grid.addWidget(QLabel(self.gorev.get('lot_no', '')), 1, 1)
-        info_grid.addWidget(QLabel("Müşteri:"), 1, 2)
-        info_grid.addWidget(QLabel((self.gorev.get('cari_unvani', '') or '')[:25]), 1, 3)
+        info_grid.setSpacing(_sz(8))
+        lbl_style = f"font-size: {_fs(14)};"
+        val_style = f"font-size: {_fs(15)}; font-weight: bold;"
+        ie_lbl = QLabel("İş Emri:")
+        ie_lbl.setStyleSheet(lbl_style)
+        info_grid.addWidget(ie_lbl, 0, 0)
+        ie_val = QLabel(f"{self.gorev.get('is_emri_no', '')}")
+        ie_val.setStyleSheet(val_style)
+        info_grid.addWidget(ie_val, 0, 1)
+        ke_lbl = QLabel("Kontrol Eden:")
+        ke_lbl.setStyleSheet(lbl_style)
+        info_grid.addWidget(ke_lbl, 0, 2)
+        ke_val = QLabel(f"{self.personel.get('ad_soyad', '')}")
+        ke_val.setStyleSheet(val_style)
+        info_grid.addWidget(ke_val, 0, 3)
+        lot_lbl = QLabel("Lot:")
+        lot_lbl.setStyleSheet(lbl_style)
+        info_grid.addWidget(lot_lbl, 1, 0)
+        lot_val = QLabel(self.gorev.get('lot_no', ''))
+        lot_val.setStyleSheet(val_style)
+        info_grid.addWidget(lot_val, 1, 1)
+        mus_lbl = QLabel("Müşteri:")
+        mus_lbl.setStyleSheet(lbl_style)
+        info_grid.addWidget(mus_lbl, 1, 2)
+        mus_val = QLabel((self.gorev.get('cari_unvani', '') or '')[:30])
+        mus_val.setStyleSheet(val_style)
+        mus_val.setWordWrap(True)
+        info_grid.addWidget(mus_val, 1, 3)
         layout.addWidget(info_frame)
 
         kontrol_frame = QFrame()
-        kontrol_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; padding: 12px; }}")
+        kontrol_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: {_sz(8)}px; padding: {_sz(12)}px; }}")
         kontrol_layout = QGridLayout(kontrol_frame)
-        kontrol_layout.setSpacing(10)
+        kontrol_layout.setSpacing(_sz(10))
         kontrol_adet = self.gorev.get('kontrol_adet', 0) or self.gorev.get('miktar', 0)
 
-        kontrol_layout.addWidget(QLabel("Kontrol Edilecek:"), 0, 0)
+        ke2_lbl = QLabel("Kontrol Edilecek:")
+        ke2_lbl.setStyleSheet(f"font-size: {_fs(14)};")
+        kontrol_layout.addWidget(ke2_lbl, 0, 0)
         toplam_lbl = QLabel(f"<b>{kontrol_adet:,}</b> adet")
-        toplam_lbl.setStyleSheet(f"color: {self.theme.get('primary')};")
+        toplam_lbl.setStyleSheet(f"color: {self.theme.get('primary')}; font-size: {_fs(16)};")
         kontrol_layout.addWidget(toplam_lbl, 0, 1)
 
-        kontrol_layout.addWidget(QLabel("Kontrol Edilen:"), 1, 0)
+        ked_lbl = QLabel("Kontrol Edilen:")
+        ked_lbl.setStyleSheet(f"font-size: {_fs(14)};")
+        kontrol_layout.addWidget(ked_lbl, 1, 0)
         self.kontrol_spin = QSpinBox()
         self.kontrol_spin.setRange(0, int(kontrol_adet))
         self.kontrol_spin.setValue(int(kontrol_adet))
@@ -309,7 +376,9 @@ class FinalKontrolDialog(QDialog):
         self.kontrol_spin.valueChanged.connect(self._update_hesap)
         kontrol_layout.addWidget(self.kontrol_spin, 1, 1)
 
-        kontrol_layout.addWidget(QLabel("Sağlam Adet:"), 2, 0)
+        sa_lbl = QLabel("Sağlam Adet:")
+        sa_lbl.setStyleSheet(f"font-size: {_fs(14)};")
+        kontrol_layout.addWidget(sa_lbl, 2, 0)
         self.saglam_spin = QSpinBox()
         self.saglam_spin.setRange(0, int(kontrol_adet))
         self.saglam_spin.setValue(int(kontrol_adet))
@@ -317,20 +386,24 @@ class FinalKontrolDialog(QDialog):
         self.saglam_spin.valueChanged.connect(self._update_hesap)
         kontrol_layout.addWidget(self.saglam_spin, 2, 1)
 
-        kontrol_layout.addWidget(QLabel("Hatalı Adet:"), 3, 0)
+        ha_lbl = QLabel("Hatalı Adet:")
+        ha_lbl.setStyleSheet(f"font-size: {_fs(14)};")
+        kontrol_layout.addWidget(ha_lbl, 3, 0)
         self.hatali_lbl = QLabel("0")
-        self.hatali_lbl.setStyleSheet(f"color: {self.theme.get('error')}; font-size: 16px; font-weight: bold;")
+        self.hatali_lbl.setStyleSheet(f"color: {self.theme.get('error')}; font-size: {_fs(20)}; font-weight: bold;")
         kontrol_layout.addWidget(self.hatali_lbl, 3, 1)
         layout.addWidget(kontrol_frame)
 
         hata_frame = QFrame()
-        hata_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; padding: 10px; }}")
+        hata_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: {_sz(8)}px; padding: {_sz(10)}px; }}")
         hata_layout = QVBoxLayout(hata_frame)
         hata_header = QHBoxLayout()
-        hata_header.addWidget(QLabel("Red Sebepleri:"))
+        rs_lbl = QLabel("Red Sebepleri:")
+        rs_lbl.setStyleSheet(f"font-size: {_fs(14)};")
+        hata_header.addWidget(rs_lbl)
         hata_header.addStretch()
         self.hata_combo = QComboBox()
-        self.hata_combo.setMinimumWidth(200)
+        self.hata_combo.setMinimumWidth(_sz(200))
         self.hata_combo.setStyleSheet(f"QComboBox {{ {input_style} }}")
         for hata in self.hata_turleri:
             self.hata_combo.addItem(f"{hata['kod']} - {hata['ad']}", hata['id'])
@@ -338,27 +411,29 @@ class FinalKontrolDialog(QDialog):
         self.hata_adet_spin = QSpinBox()
         self.hata_adet_spin.setRange(1, 99999)
         self.hata_adet_spin.setValue(1)
-        self.hata_adet_spin.setStyleSheet(f"QSpinBox {{ {input_style} min-width: 70px; }}")
+        self.hata_adet_spin.setStyleSheet(f"QSpinBox {{ {input_style} min-width: {_sz(70)}px; }}")
         hata_header.addWidget(self.hata_adet_spin)
         hata_ekle_btn = QPushButton("+ Ekle")
-        hata_ekle_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('warning')}; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-weight: bold; }}")
+        hata_ekle_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('warning')}; color: white; border: none; border-radius: {_sz(6)}px; padding: {_sz(10)}px {_sz(16)}px; font-weight: bold; font-size: {_fs(14)}; }}")
         hata_ekle_btn.clicked.connect(self._hata_ekle)
         hata_header.addWidget(hata_ekle_btn)
         hata_layout.addLayout(hata_header)
 
         self.hata_list = QListWidget()
-        self.hata_list.setMaximumHeight(80)
-        self.hata_list.setStyleSheet(f"QListWidget {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; }}")
+        self.hata_list.setMaximumHeight(_sz(80))
+        self.hata_list.setStyleSheet(f"QListWidget {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: {_sz(6)}px; font-size: {_fs(13)}; }}")
         hata_layout.addWidget(self.hata_list)
 
         hata_sil_btn = QPushButton("Seçili Hatayı Sil")
-        hata_sil_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('error')}; color: white; border: none; border-radius: 6px; padding: 6px 12px; }}")
+        hata_sil_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('error')}; color: white; border: none; border-radius: {_sz(6)}px; padding: {_sz(8)}px {_sz(14)}px; font-size: {_fs(13)}; }}")
         hata_sil_btn.clicked.connect(self._hata_sil)
         hata_layout.addWidget(hata_sil_btn)
         layout.addWidget(hata_frame)
 
         not_layout = QHBoxLayout()
-        not_layout.addWidget(QLabel("Not:"))
+        not_lbl = QLabel("Not:")
+        not_lbl.setStyleSheet(f"font-size: {_fs(14)};")
+        not_layout.addWidget(not_lbl)
         self.not_input = QLineEdit()
         self.not_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
         not_layout.addWidget(self.not_input)
@@ -366,17 +441,24 @@ class FinalKontrolDialog(QDialog):
 
         layout.addStretch()
 
+        scroll.setWidget(scroll_content)
+        outer_layout.addWidget(scroll, 1)
+
+        # Butonlar scroll dışında - her zaman görünür
         btn_layout = QHBoxLayout()
+        btn_layout.setContentsMargins(_sz(20), _sz(8), _sz(20), _sz(12))
         btn_layout.addStretch()
         iptal_btn = QPushButton("İptal")
-        iptal_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; padding: 12px 20px; }}")
+        iptal_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: {_sz(8)}px; padding: {_sz(14)}px {_sz(24)}px; font-size: {_fs(14)}; }}")
         iptal_btn.clicked.connect(self.reject)
         btn_layout.addWidget(iptal_btn)
         kaydet_btn = QPushButton("Kaydet ve Etiket Bas")
-        kaydet_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('success')}; color: white; border: none; border-radius: 8px; padding: 12px 20px; font-weight: bold; }}")
+        kaydet_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('success')}; color: white; border: none; border-radius: {_sz(8)}px; padding: {_sz(14)}px {_sz(24)}px; font-weight: bold; font-size: {_fs(15)}; }}")
         kaydet_btn.clicked.connect(self._save)
+        kaydet_btn.setDefault(True)
+        kaydet_btn.setAutoDefault(True)
         btn_layout.addWidget(kaydet_btn)
-        layout.addLayout(btn_layout)
+        outer_layout.addLayout(btn_layout)
 
     def _update_sure(self):
         gecen = datetime.now() - self.baslangic_zamani
@@ -490,11 +572,68 @@ class KaliteFinalKontrolPage(BasePage):
         login_layout = QVBoxLayout(login_page)
         login_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Üst sağ köşe: Yazı boyutu ayarı
+        scale_row = QHBoxLayout()
+        scale_row.setContentsMargins(0, 8, 16, 0)
+        scale_row.addStretch()
+
+        scale_icon = QLabel("Aa")
+        scale_icon.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 13px; font-weight: bold;")
+        scale_row.addWidget(scale_icon)
+
+        self.scale_slider = QSlider(Qt.Horizontal)
+        self.scale_slider.setRange(6, 25)  # 0.6 - 2.5 arası (10'a bölünecek)
+        self.scale_slider.setValue(int(_kalite_scale() * 10))
+        self.scale_slider.setFixedWidth(120)
+        self.scale_slider.setStyleSheet(f"""
+            QSlider::groove:horizontal {{
+                background: {self.theme.get('border')};
+                height: 6px;
+                border-radius: 3px;
+            }}
+            QSlider::handle:horizontal {{
+                background: {self.theme.get('primary')};
+                width: 16px;
+                height: 16px;
+                margin: -5px 0;
+                border-radius: 8px;
+            }}
+        """)
+        self.scale_slider.valueChanged.connect(self._on_scale_changed)
+        scale_row.addWidget(self.scale_slider)
+
+        self.scale_value_label = QLabel(f"%{int(_kalite_scale() * 100)}")
+        self.scale_value_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px; min-width: 36px;")
+        scale_row.addWidget(self.scale_value_label)
+
+        scale_icon_big = QLabel("Aa")
+        scale_icon_big.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 18px; font-weight: bold;")
+        scale_row.addWidget(scale_icon_big)
+
+        scale_apply_btn = QPushButton("Uygula")
+        scale_apply_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('primary')};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 14px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: {self.theme.get('primary_hover', self.theme.get('primary'))}; }}
+        """)
+        scale_apply_btn.setCursor(Qt.PointingHandCursor)
+        scale_apply_btn.clicked.connect(self._apply_scale)
+        scale_row.addWidget(scale_apply_btn)
+
+        login_layout.addLayout(scale_row)
+
         # Ortala
         login_layout.addStretch(2)
 
         center_frame = QFrame()
-        center_frame.setFixedWidth(460)
+        center_frame.setFixedWidth(_sz(460))
         center_frame.setStyleSheet(f"""
             QFrame {{
                 background: {self.theme.get('bg_card')};
@@ -508,12 +647,12 @@ class KaliteFinalKontrolPage(BasePage):
 
         # Başlık
         title = QLabel("Final Kalite Kontrol")
-        title.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {self.theme.get('primary')}; border: none;")
+        title.setStyleSheet(f"font-size: {_fs(26)}; font-weight: bold; color: {self.theme.get('primary')}; border: none;")
         title.setAlignment(Qt.AlignCenter)
         center_layout.addWidget(title)
 
         desc = QLabel("Kartınızı okutun veya sicil numaranızı girin")
-        desc.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 13px; border: none;")
+        desc.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: {_fs(14)}; border: none;")
         desc.setAlignment(Qt.AlignCenter)
         center_layout.addWidget(desc)
 
@@ -533,8 +672,8 @@ class KaliteFinalKontrolPage(BasePage):
                 color: {self.theme.get('text')};
                 border: 2px solid {self.theme.get('border')};
                 border-radius: 10px;
-                padding: 14px 18px;
-                font-size: 16px;
+                padding: {_sz(14)}px {_sz(18)}px;
+                font-size: {_fs(17)};
             }}
             QLineEdit:focus {{
                 border-color: {self.theme.get('primary')};
@@ -552,9 +691,9 @@ class KaliteFinalKontrolPage(BasePage):
                 background: {self.theme.get('primary')};
                 color: white;
                 border: none;
-                border-radius: 10px;
-                padding: 14px;
-                font-size: 15px;
+                border-radius: {_sz(10)}px;
+                padding: {_sz(14)}px;
+                font-size: {_fs(16)};
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -566,7 +705,7 @@ class KaliteFinalKontrolPage(BasePage):
 
         # Durum mesajı
         self.login_status = QLabel("")
-        self.login_status.setStyleSheet(f"color: {self.theme.get('error')}; font-size: 12px; border: none;")
+        self.login_status.setStyleSheet(f"color: {self.theme.get('error')}; font-size: {_fs(13)}; border: none;")
         self.login_status.setAlignment(Qt.AlignCenter)
         self.login_status.setWordWrap(True)
         center_layout.addWidget(self.login_status)
@@ -593,19 +732,19 @@ class KaliteFinalKontrolPage(BasePage):
         self.personel_label = QLabel("")
         self.personel_label.setStyleSheet(f"""
             color: {self.theme.get('text')};
-            font-size: 14px;
+            font-size: {_fs(15)};
             font-weight: 600;
             background: {self.theme.get('bg_card')};
             border: 1px solid {self.theme.get('border')};
             border-radius: 8px;
-            padding: 8px 14px;
+            padding: {_sz(8)}px {_sz(14)}px;
         """)
         header.addWidget(self.personel_label)
 
         header.addStretch()
 
         self.saat_label = QLabel()
-        self.saat_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 15px; font-weight: bold;")
+        self.saat_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: {_fs(16)}; font-weight: bold;")
         header.addWidget(self.saat_label)
 
         refresh_btn = QPushButton("Yenile")
@@ -615,8 +754,9 @@ class KaliteFinalKontrolPage(BasePage):
                 color: {self.theme.get('text')};
                 border: 1px solid {self.theme.get('border')};
                 border-radius: 8px;
-                padding: 8px 16px;
+                padding: {_sz(8)}px {_sz(16)}px;
                 font-weight: 500;
+                font-size: {_fs(13)};
             }}
             QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
         """)
@@ -630,8 +770,9 @@ class KaliteFinalKontrolPage(BasePage):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                padding: 8px 16px;
+                padding: {_sz(8)}px {_sz(16)}px;
                 font-weight: 600;
+                font-size: {_fs(13)};
             }}
             QPushButton:hover {{ background: {self.theme.get('error_dark', self.theme.get('error'))}; }}
         """)
@@ -655,8 +796,8 @@ class KaliteFinalKontrolPage(BasePage):
                 border-bottom: none;
                 border-top-left-radius: 8px;
                 border-top-right-radius: 8px;
-                padding: 10px 24px;
-                font-size: 13px;
+                padding: {_sz(10)}px {_sz(24)}px;
+                font-size: {_fs(14)};
                 font-weight: 600;
                 margin-right: 2px;
             }}
@@ -701,8 +842,8 @@ class KaliteFinalKontrolPage(BasePage):
                 color: {self.theme.get('text')};
                 border: 1px solid {self.theme.get('border')};
                 border-radius: 8px;
-                padding: 8px 14px;
-                font-size: 13px;
+                padding: {_sz(8)}px {_sz(14)}px;
+                font-size: {_fs(14)};
             }}
             QLineEdit:focus {{ border-color: {self.theme.get('primary')}; }}
         """)
@@ -728,18 +869,28 @@ class KaliteFinalKontrolPage(BasePage):
         table_layout.setSpacing(0)
 
         self.product_table = QTableWidget()
+        self.product_table.setStyleSheet(f"""
+            QTableWidget {{
+                font-size: {_fs(13)};
+            }}
+            QHeaderView::section {{
+                font-size: {_fs(13)};
+                font-weight: bold;
+                padding: {_sz(6)}px;
+            }}
+        """)
         self.product_table.setColumnCount(8)
         self.product_table.setHorizontalHeaderLabels([
             "ID", "İş Emri", "Lot No", "Müşteri", "Ürün", "Miktar", "Bekleme", "urun_id"
         ])
         self.product_table.setColumnHidden(0, True)
         self.product_table.setColumnHidden(7, True)
-        self.product_table.setColumnWidth(1, 110)
-        self.product_table.setColumnWidth(2, 120)
-        self.product_table.setColumnWidth(3, 140)
+        self.product_table.setColumnWidth(1, _sz(110))
+        self.product_table.setColumnWidth(2, _sz(120))
+        self.product_table.setColumnWidth(3, _sz(140))
         self.product_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.product_table.setColumnWidth(5, 80)
-        self.product_table.setColumnWidth(6, 80)
+        self.product_table.setColumnWidth(5, _sz(80))
+        self.product_table.setColumnWidth(6, _sz(80))
         self.product_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.product_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.product_table.verticalHeader().setVisible(False)
@@ -763,14 +914,14 @@ class KaliteFinalKontrolPage(BasePage):
         detail_layout.setSpacing(10)
 
         self.image_label = QLabel("Ürün seçin")
-        self.image_label.setFixedSize(300, 220)
+        self.image_label.setFixedSize(_sz(300), _sz(220))
         self.image_label.setAlignment(Qt.AlignCenter)
         self.image_label.setStyleSheet(f"""
             background: {self.theme.get('bg_input')};
             border: 1px solid {self.theme.get('border')};
             border-radius: 8px;
             color: {self.theme.get('text_muted')};
-            font-size: 13px;
+            font-size: {_fs(14)};
         """)
         detail_layout.addWidget(self.image_label, alignment=Qt.AlignCenter)
 
@@ -792,10 +943,10 @@ class KaliteFinalKontrolPage(BasePage):
 
         for i, (label_text, obj_name) in enumerate(detail_labels):
             lbl = QLabel(label_text)
-            lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px; border: none;")
+            lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: {_fs(13)}; border: none;")
             val = QLabel("-")
             val.setObjectName(obj_name)
-            val.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 12px; font-weight: 600; border: none;")
+            val.setStyleSheet(f"color: {self.theme.get('text')}; font-size: {_fs(13)}; font-weight: 600; border: none;")
             val.setWordWrap(True)
             self.detail_grid.addWidget(lbl, i, 0)
             self.detail_grid.addWidget(val, i, 1)
@@ -803,7 +954,7 @@ class KaliteFinalKontrolPage(BasePage):
         detail_layout.addLayout(self.detail_grid)
 
         ambalaj_header = QLabel("Ambalajlama Talimatları")
-        ambalaj_header.setStyleSheet(f"color: {self.theme.get('primary')}; font-size: 12px; font-weight: bold; border: none; margin-top: 6px;")
+        ambalaj_header.setStyleSheet(f"color: {self.theme.get('primary')}; font-size: {_fs(14)}; font-weight: bold; border: none; margin-top: {_sz(6)}px;")
         detail_layout.addWidget(ambalaj_header)
 
         ambalaj_row = QHBoxLayout()
@@ -838,11 +989,11 @@ class KaliteFinalKontrolPage(BasePage):
                 background: {self.theme.get('primary')};
                 color: white;
                 border: none;
-                border-radius: 10px;
-                padding: 14px;
-                font-size: 15px;
+                border-radius: {_sz(10)}px;
+                padding: {_sz(14)}px;
+                font-size: {_fs(16)};
                 font-weight: bold;
-                min-height: 20px;
+                min-height: {_sz(20)}px;
             }}
             QPushButton:hover {{
                 background: {self.theme.get('primary_hover', self.theme.get('primary'))};
@@ -862,11 +1013,11 @@ class KaliteFinalKontrolPage(BasePage):
         self.son_islem_label = QLabel("")
         self.son_islem_label.setStyleSheet(f"""
             color: {self.theme.get('text_muted')};
-            font-size: 12px;
+            font-size: {_fs(13)};
             background: {self.theme.get('bg_card')};
             border: 1px solid {self.theme.get('border')};
             border-radius: 6px;
-            padding: 6px 12px;
+            padding: {_sz(6)}px {_sz(12)}px;
         """)
         bek_layout.addWidget(self.son_islem_label)
 
@@ -897,16 +1048,16 @@ class KaliteFinalKontrolPage(BasePage):
             }}
         """)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(14, 8, 14, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(_sz(14), _sz(8), _sz(14), _sz(8))
+        layout.setSpacing(_sz(4))
 
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px; border: none;")
+        title_lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: {_fs(13)}; border: none;")
         layout.addWidget(title_lbl)
 
         val_lbl = QLabel(value)
         val_lbl.setObjectName("stat_value")
-        val_lbl.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold; border: none;")
+        val_lbl.setStyleSheet(f"color: {color}; font-size: {_fs(24)}; font-weight: bold; border: none;")
         layout.addWidget(val_lbl)
 
         return card
@@ -958,6 +1109,41 @@ class KaliteFinalKontrolPage(BasePage):
             self.sicil_input.clear()
             self._do_login(card_id)
         # Ana ekrandaysa bir şey yapma (zaten giriş yapılmış)
+
+    # =========================================================================
+    # YAZI BOYUTU AYARI
+    # =========================================================================
+
+    def _on_scale_changed(self, value):
+        """Slider değiştiğinde label güncelle"""
+        scale = value / 10.0
+        self.scale_value_label.setText(f"%{int(scale * 100)}")
+
+    def _apply_scale(self):
+        """Yazı boyutunu kaydet ve sayfayı yeniden oluştur"""
+        scale = self.scale_slider.value() / 10.0
+        try:
+            from core.external_config import config_manager
+            config_manager.set('kalite_ui_scale', scale)
+            config_manager.save()
+        except Exception:
+            pass
+
+        # Mevcut layout ve içeriğini tamamen temizle
+        old_layout = self.layout()
+        if old_layout:
+            # Önce stacked widget'ı sil
+            if self.stacked:
+                self.stacked.setParent(None)
+                self.stacked.deleteLater()
+                self.stacked = None
+            # Layout'u kaldır
+            QWidget().setLayout(old_layout)
+
+        # Yeniden oluştur
+        self._setup_ui()
+        self.stacked.setCurrentIndex(0)
+        self.sicil_input.setFocus()
 
     # =========================================================================
     # GİRİŞ / ÇIKIŞ
@@ -1137,7 +1323,7 @@ class KaliteFinalKontrolPage(BasePage):
 
             self.product_table.setItem(i, 7, QTableWidgetItem(str(p.get('urun_id', '') or '')))
 
-            self.product_table.setRowHeight(i, 40)
+            self.product_table.setRowHeight(i, _sz(40))
 
     def _load_stats(self):
         """İstatistik kartlarını güncelle"""
@@ -1858,13 +2044,15 @@ class KaliteFinalKontrolPage(BasePage):
         layout.setContentsMargins(0, 8, 0, 0)
         layout.setSpacing(10)
 
-        input_style = f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 6px 10px;"
+        input_style = f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: {_sz(6)}px {_sz(10)}px; font-size: {_fs(13)};"
 
         # Filtre satırı
         filter_row = QHBoxLayout()
         filter_row.setSpacing(8)
 
-        filter_row.addWidget(QLabel("Başlangıç:"))
+        bas_lbl = QLabel("Başlangıç:")
+        bas_lbl.setStyleSheet(f"font-size: {_fs(13)};")
+        filter_row.addWidget(bas_lbl)
         self.onayli_tarih_bas = QDateEdit()
         self.onayli_tarih_bas.setDate(QDate.currentDate())
         self.onayli_tarih_bas.setCalendarPopup(True)
@@ -1873,7 +2061,9 @@ class KaliteFinalKontrolPage(BasePage):
         self.onayli_tarih_bas.dateChanged.connect(self._load_onayli_urunler)
         filter_row.addWidget(self.onayli_tarih_bas)
 
-        filter_row.addWidget(QLabel("Bitiş:"))
+        bit_lbl = QLabel("Bitiş:")
+        bit_lbl.setStyleSheet(f"font-size: {_fs(13)};")
+        filter_row.addWidget(bit_lbl)
         self.onayli_tarih_bit = QDateEdit()
         self.onayli_tarih_bit.setDate(QDate.currentDate())
         self.onayli_tarih_bit.setCalendarPopup(True)
@@ -1895,8 +2085,9 @@ class KaliteFinalKontrolPage(BasePage):
                 color: {self.theme.get('text')};
                 border: 1px solid {self.theme.get('border')};
                 border-radius: 6px;
-                padding: 6px 16px;
+                padding: {_sz(6)}px {_sz(16)}px;
                 font-weight: 500;
+                font-size: {_fs(13)};
             }}
             QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
         """)
@@ -1907,21 +2098,31 @@ class KaliteFinalKontrolPage(BasePage):
 
         # Tablo
         self.onayli_table = QTableWidget()
+        self.onayli_table.setStyleSheet(f"""
+            QTableWidget {{
+                font-size: {_fs(13)};
+            }}
+            QHeaderView::section {{
+                font-size: {_fs(13)};
+                font-weight: bold;
+                padding: {_sz(6)}px;
+            }}
+        """)
         self.onayli_table.setColumnCount(10)
         self.onayli_table.setHorizontalHeaderLabels([
             "ID", "İş Emri", "Lot No", "Müşteri", "Ürün",
             "Sağlam", "Hatalı", "Sonuç", "Tarih", "Kontrol Eden"
         ])
         self.onayli_table.setColumnHidden(0, True)
-        self.onayli_table.setColumnWidth(1, 110)
-        self.onayli_table.setColumnWidth(2, 130)
-        self.onayli_table.setColumnWidth(3, 150)
+        self.onayli_table.setColumnWidth(1, _sz(110))
+        self.onayli_table.setColumnWidth(2, _sz(130))
+        self.onayli_table.setColumnWidth(3, _sz(150))
         self.onayli_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.onayli_table.setColumnWidth(5, 80)
-        self.onayli_table.setColumnWidth(6, 80)
-        self.onayli_table.setColumnWidth(7, 80)
-        self.onayli_table.setColumnWidth(8, 130)
-        self.onayli_table.setColumnWidth(9, 140)
+        self.onayli_table.setColumnWidth(5, _sz(80))
+        self.onayli_table.setColumnWidth(6, _sz(80))
+        self.onayli_table.setColumnWidth(7, _sz(80))
+        self.onayli_table.setColumnWidth(8, _sz(130))
+        self.onayli_table.setColumnWidth(9, _sz(140))
         self.onayli_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.onayli_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.onayli_table.verticalHeader().setVisible(False)
@@ -1934,7 +2135,7 @@ class KaliteFinalKontrolPage(BasePage):
         btn_row.addStretch()
 
         self.onayli_info_label = QLabel("")
-        self.onayli_info_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.onayli_info_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: {_fs(13)};")
         btn_row.addWidget(self.onayli_info_label)
         btn_row.addStretch()
 
@@ -1946,8 +2147,8 @@ class KaliteFinalKontrolPage(BasePage):
                 color: white;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 24px;
-                font-size: 13px;
+                padding: {_sz(10)}px {_sz(24)}px;
+                font-size: {_fs(14)};
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -1956,6 +2157,23 @@ class KaliteFinalKontrolPage(BasePage):
         """)
         etiket_btn.clicked.connect(self._tekrar_etiket_bas)
         btn_row.addWidget(etiket_btn)
+
+        red_etiket_btn = QPushButton("Red Etiketi Bas")
+        red_etiket_btn.setCursor(Qt.PointingHandCursor)
+        red_etiket_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('danger', '#ef4444')};
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: {_sz(10)}px {_sz(24)}px;
+                font-size: {_fs(14)};
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #dc2626; }}
+        """)
+        red_etiket_btn.clicked.connect(self._red_etiket_bas)
+        btn_row.addWidget(red_etiket_btn)
 
         layout.addLayout(btn_row)
 
@@ -2129,6 +2347,57 @@ class KaliteFinalKontrolPage(BasePage):
             print(f"Tekrar etiket PDF: {temp_path}")
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Etiket oluşturma hatası: {e}")
+
+    def _red_etiket_bas(self):
+        """Seçili kayıt için RED etiketi bas"""
+        row = self.onayli_table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Uyarı", "Lütfen bir kayıt seçin!")
+            return
+
+        sonuc = self.onayli_table.item(row, 7).text() if self.onayli_table.item(row, 7) else ''
+        if sonuc != 'RED':
+            QMessageBox.warning(self, "Uyarı", "Red etiketi sadece RED sonuçlu kayıtlar için basılabilir!")
+            return
+
+        lot_no = self.onayli_table.item(row, 2).text() if self.onayli_table.item(row, 2) else ''
+        musteri = self.onayli_table.item(row, 3).text() if self.onayli_table.item(row, 3) else ''
+        urun = self.onayli_table.item(row, 4).text() if self.onayli_table.item(row, 4) else ''
+        saglam = self.onayli_table.item(row, 5).text() if self.onayli_table.item(row, 5) else '0'
+        hatali = self.onayli_table.item(row, 6).text() if self.onayli_table.item(row, 6) else '0'
+        kontrolcu = self.onayli_table.item(row, 9).text() if self.onayli_table.item(row, 9) else ''
+
+        parts = urun.split(' - ', 1)
+        stok_kodu = parts[0].strip() if parts else ''
+        stok_adi = parts[1].strip() if len(parts) > 1 else urun
+
+        try:
+            hatali_adet = float(hatali.replace(',', ''))
+        except ValueError:
+            hatali_adet = 0
+
+        etiket_data = {
+            'musteri': musteri,
+            'stok_kodu': stok_kodu,
+            'stok_adi': stok_adi,
+            'lot_no': lot_no,
+            'miktar': hatali_adet,
+            'birim': 'ADET',
+            'kontrolcu': kontrolcu,
+            'tarih': datetime.now(),
+            'sonuc': 'RED',
+        }
+
+        try:
+            from utils.etiket_yazdir import red_etiket_pdf_olustur
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='fk_red_')
+            temp_path = temp_file.name
+            temp_file.close()
+
+            red_etiket_pdf_olustur(temp_path, [etiket_data])
+            subprocess.Popen(['start', '', temp_path], shell=True)
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Red etiketi oluşturma hatası: {e}")
 
     # =========================================================================
     # TIMER / OTOMATİK YENİLEME

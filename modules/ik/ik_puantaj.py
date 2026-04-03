@@ -10,10 +10,10 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit,
     QAbstractItemView, QMessageBox, QDialog, QComboBox,
     QDateEdit, QCalendarWidget, QGridLayout, QWidget,
-    QScrollArea, QTabWidget
+    QScrollArea, QTabWidget, QMenu, QTimeEdit
 )
-from PySide6.QtCore import Qt, QTimer, QDate
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import Qt, QTimer, QDate, QTime
+from PySide6.QtGui import QColor, QFont, QAction
 
 from components.base_page import BasePage
 from core.database import get_db_connection
@@ -77,6 +77,14 @@ class IKPuantajPage(BasePage):
         self.dept_combo.setMinimumWidth(150)
         self.dept_combo.addItem("Tümü", None)
         filter_layout.addWidget(self.dept_combo)
+
+        # Vardiya
+        filter_layout.addWidget(QLabel("Vardiya:"))
+        self.vardiya_combo = QComboBox()
+        self.vardiya_combo.setStyleSheet(self._combo_style())
+        self.vardiya_combo.setMinimumWidth(130)
+        self.vardiya_combo.addItem("Tümü", None)
+        filter_layout.addWidget(self.vardiya_combo)
 
         # Hesapla butonu - PDKS'den puantaj oluştur + yükle
         calc_btn = QPushButton("🔄 Hesapla")
@@ -202,6 +210,8 @@ class IKPuantajPage(BasePage):
         self.gunluk_table.setStyleSheet(self._table_style())
         self.gunluk_table.verticalHeader().setVisible(False)
         self.gunluk_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.gunluk_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.gunluk_table.customContextMenuRequested.connect(self._on_gunluk_context_menu)
         self.gunluk_table.doubleClicked.connect(self._on_gunluk_double_click)
 
         layout.addWidget(self.gunluk_table)
@@ -298,16 +308,20 @@ class IKPuantajPage(BasePage):
         """
 
     def _load_departmanlar(self):
-        """Departman listesini yükle"""
+        """Departman ve vardiya listesini yükle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad FROM ik.departmanlar WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall():
                 self.dept_combo.addItem(row[1], row[0])
+
+            cursor.execute("SELECT id, ad FROM tanim.vardiyalar WHERE aktif_mi = 1 ORDER BY ad")
+            for row in cursor.fetchall():
+                self.vardiya_combo.addItem(row[1], row[0])
             conn.close()
         except Exception as e:
-            print(f"Departman yükleme hatası: {e}")
+            print(f"Departman/vardiya yükleme hatası: {e}")
 
     def _ilk_yukleme(self):
         """İlk açılışta puantaj hesapla ve yükle"""
@@ -477,6 +491,7 @@ class IKPuantajPage(BasePage):
             d_start = self.dt_start.date().toPython()
             d_end = self.dt_end.date().toPython()
             dept_id = self.dept_combo.currentData()
+            vardiya_id = self.vardiya_combo.currentData()
 
             # Filtre koşulları
             where = ["p.aktif_mi = 1"]
@@ -485,6 +500,10 @@ class IKPuantajPage(BasePage):
             if dept_id:
                 where.append("p.departman_id = ?")
                 params.append(dept_id)
+
+            if vardiya_id:
+                where.append("pu.vardiya_id = ?")
+                params.append(vardiya_id)
 
             where_clause = " AND ".join(where)
 
@@ -665,6 +684,353 @@ class IKPuantajPage(BasePage):
             per_id = item.data(Qt.UserRole)
             if per_id:
                 self._show_personel_detay(per_id)
+
+    def _on_gunluk_context_menu(self, pos):
+        """Günlük tabloda sağ tık menüsü"""
+        index = self.gunluk_table.indexAt(pos)
+        if not index.isValid():
+            return
+
+        row = index.row()
+        item = self.gunluk_table.item(row, 0)
+        if not item:
+            return
+        per_id = item.data(Qt.UserRole)
+        if not per_id:
+            return
+
+        personel_ad = self.gunluk_table.item(row, 1).text() if self.gunluk_table.item(row, 1) else ""
+        tarih_str = item.text()
+
+        menu = QMenu(self)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background: {self.theme.get('bg_card')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 4px;
+            }}
+            QMenu::item {{ padding: 8px 20px; }}
+            QMenu::item:selected {{ background: {self.theme.get('bg_hover')}; }}
+        """)
+
+        act_duzenle = menu.addAction("Giriş/Çıkış Düzelt")
+        act_pdks = menu.addAction("PDKS Hareket Tipini Düzelt")
+
+        action = menu.exec(self.gunluk_table.viewport().mapToGlobal(pos))
+
+        if action == act_duzenle:
+            self._duzenle_giris_cikis(row, per_id, personel_ad, tarih_str)
+        elif action == act_pdks:
+            self._duzenle_pdks_hareket(per_id, personel_ad, tarih_str)
+
+    def _duzenle_giris_cikis(self, row: int, per_id: int, personel_ad: str, tarih_str: str):
+        """Puantaj giriş/çıkış saatini manuel düzelt"""
+        bg = self.theme.get('bg_card', '#151B23')
+        txt = self.theme.get('text', '#E8ECF1')
+        border = self.theme.get('border', '#1E2736')
+        bg_input = self.theme.get('bg_input', '#232C3B')
+        primary = self.theme.get('primary', '#C41E1E')
+
+        # Mevcut değerleri al
+        giris_item = self.gunluk_table.item(row, 4)
+        cikis_item = self.gunluk_table.item(row, 5)
+        mevcut_giris = giris_item.text() if giris_item else "-"
+        mevcut_cikis = cikis_item.text() if cikis_item else "-"
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Giriş/Çıkış Düzelt - {personel_ad}")
+        dialog.setMinimumWidth(400)
+        dialog.setModal(True)
+        dialog.setStyleSheet(f"QDialog {{ background: {bg}; }} QLabel {{ color: {txt}; }}")
+
+        dlg_layout = QVBoxLayout(dialog)
+        dlg_layout.setContentsMargins(20, 20, 20, 20)
+        dlg_layout.setSpacing(12)
+
+        dlg_layout.addWidget(QLabel(f"{personel_ad} - {tarih_str}"))
+
+        time_style = f"""
+            QTimeEdit {{
+                background: {bg_input}; border: 1px solid {border};
+                border-radius: 6px; padding: 8px; color: {txt}; font-size: 14px;
+            }}
+        """
+
+        # Giriş
+        g_layout = QHBoxLayout()
+        g_layout.addWidget(QLabel(f"Giriş (mevcut: {mevcut_giris}):"))
+        giris_edit = QTimeEdit()
+        giris_edit.setDisplayFormat("HH:mm")
+        giris_edit.setStyleSheet(time_style)
+        if mevcut_giris and mevcut_giris != "-":
+            parts = mevcut_giris.split(":")
+            giris_edit.setTime(QTime(int(parts[0]), int(parts[1])))
+        g_layout.addWidget(giris_edit)
+        dlg_layout.addLayout(g_layout)
+
+        # Çıkış
+        c_layout = QHBoxLayout()
+        c_layout.addWidget(QLabel(f"Çıkış (mevcut: {mevcut_cikis}):"))
+        cikis_edit = QTimeEdit()
+        cikis_edit.setDisplayFormat("HH:mm")
+        cikis_edit.setStyleSheet(time_style)
+        if mevcut_cikis and mevcut_cikis != "-":
+            parts = mevcut_cikis.split(":")
+            cikis_edit.setTime(QTime(int(parts[0]), int(parts[1])))
+        c_layout.addWidget(cikis_edit)
+        dlg_layout.addLayout(c_layout)
+
+        # Ters al butonu
+        swap_btn = QPushButton("Giriş ↔ Çıkış Yer Değiştir")
+        swap_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('info', '#3b82f6')}; color: white;
+                border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;
+            }}
+        """)
+
+        def _swap():
+            g = giris_edit.time()
+            c = cikis_edit.time()
+            giris_edit.setTime(c)
+            cikis_edit.setTime(g)
+
+        swap_btn.clicked.connect(_swap)
+        dlg_layout.addWidget(swap_btn)
+
+        # Butonlar
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        cancel_btn = QPushButton("İptal")
+        cancel_btn.setStyleSheet(self._button_style())
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        save_btn = QPushButton("Kaydet")
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {primary}; color: white; border: none;
+                border-radius: 6px; padding: 8px 24px; font-weight: bold;
+            }}
+        """)
+        save_btn.clicked.connect(dialog.accept)
+        btn_layout.addWidget(save_btn)
+        dlg_layout.addLayout(btn_layout)
+
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        new_giris = giris_edit.time().toPython()
+        new_cikis = cikis_edit.time().toPython()
+
+        # Tarih parse
+        try:
+            tarih = datetime.strptime(tarih_str, '%d.%m.%Y').date()
+        except Exception:
+            QMessageBox.warning(self, "Hata", "Tarih okunamadı.")
+            return
+
+        # Süre hesapla
+        t1 = datetime.combine(tarih, new_giris)
+        t2 = datetime.combine(tarih, new_cikis)
+        if t2 <= t1:
+            t2 += timedelta(days=1)  # gece vardiyası
+        toplam_dk = (t2 - t1).total_seconds() / 60
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Vardiya bilgisi
+            cursor.execute("""
+                SELECT vardiya_id FROM ik.puantaj
+                WHERE personel_id = ? AND tarih = ?
+            """, (per_id, tarih))
+            vr = cursor.fetchone()
+            vardiya_id = vr[0] if vr else None
+
+            # Normal dk hesapla
+            normal_dk_limit = 480
+            if vardiya_id:
+                cursor.execute("""
+                    SELECT baslangic_saati, bitis_saati FROM tanim.vardiyalar WHERE id = ?
+                """, (vardiya_id,))
+                vd = cursor.fetchone()
+                if vd and vd[0] and vd[1]:
+                    try:
+                        b = vd[0]
+                        s = vd[1]
+                        if isinstance(b, timedelta):
+                            b = (datetime.min + b).time()
+                        if isinstance(s, timedelta):
+                            s = (datetime.min + s).time()
+                        diff = (datetime.combine(tarih, s) - datetime.combine(tarih, b)).total_seconds() / 60
+                        if diff > 0:
+                            normal_dk_limit = diff
+                    except Exception:
+                        pass
+
+            normal_saat = min(toplam_dk, normal_dk_limit) / 60.0
+            mesai_saat = max(0, toplam_dk - normal_dk_limit) / 60.0
+
+            cursor.execute("""
+                UPDATE ik.puantaj
+                SET giris_saati = ?, cikis_saati = ?,
+                    normal_saat = ROUND(?, 2), mesai_saat = ROUND(?, 2),
+                    durum = 'NORMAL', guncelleme_tarihi = GETDATE()
+                WHERE personel_id = ? AND tarih = ?
+            """, (new_giris, new_cikis, normal_saat, mesai_saat, per_id, tarih))
+            conn.commit()
+            conn.close()
+
+            QMessageBox.information(self, "Başarılı",
+                                    f"{personel_ad} - {tarih_str}\n"
+                                    f"Giriş: {new_giris.strftime('%H:%M')} → Çıkış: {new_cikis.strftime('%H:%M')}\n"
+                                    f"Normal: {normal_saat:.1f}s  Mesai: {mesai_saat:.1f}s")
+            self._load_data()
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Hata", f"Güncelleme hatası: {e}")
+
+    def _duzenle_pdks_hareket(self, per_id: int, personel_ad: str, tarih_str: str):
+        """PDKS hareket tiplerini düzelt (GIRIS↔CIKIS)"""
+        try:
+            tarih = datetime.strptime(tarih_str, '%d.%m.%Y').date()
+        except Exception:
+            QMessageBox.warning(self, "Hata", "Tarih okunamadı.")
+            return
+
+        bg = self.theme.get('bg_card', '#151B23')
+        txt = self.theme.get('text', '#E8ECF1')
+        border = self.theme.get('border', '#1E2736')
+        bg_input = self.theme.get('bg_input', '#232C3B')
+        primary = self.theme.get('primary', '#C41E1E')
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, hareket_zamani, hareket_tipi
+                FROM ik.pdks_hareketler
+                WHERE personel_id = ? AND CAST(hareket_zamani AS DATE) = ?
+                ORDER BY hareket_zamani
+            """, (per_id, tarih))
+            hareketler = cursor.fetchall()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"PDKS verileri okunamadı: {e}")
+            return
+
+        if not hareketler:
+            QMessageBox.information(self, "Bilgi",
+                                    f"{personel_ad} - {tarih_str} için PDKS kaydı bulunamadı.")
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"PDKS Hareket Düzelt - {personel_ad} ({tarih_str})")
+        dialog.setMinimumWidth(500)
+        dialog.setModal(True)
+        dialog.setStyleSheet(f"QDialog {{ background: {bg}; }} QLabel {{ color: {txt}; }}")
+
+        dlg_layout = QVBoxLayout(dialog)
+        dlg_layout.setContentsMargins(20, 20, 20, 20)
+        dlg_layout.setSpacing(10)
+
+        dlg_layout.addWidget(QLabel(
+            f"{personel_ad} - {tarih_str}  ({len(hareketler)} hareket)\n"
+            "Yanlış olan hareket tiplerini düzeltin:"
+        ))
+
+        # Hareket listesi
+        combos = []
+        for hrk in hareketler:
+            h_id, h_zaman, h_tip = hrk
+            saat_str = h_zaman.strftime('%H:%M:%S') if hasattr(h_zaman, 'strftime') else str(h_zaman)
+
+            h_layout = QHBoxLayout()
+            lbl = QLabel(f"  {saat_str}")
+            lbl.setStyleSheet(f"color: {txt}; font-size: 13px; font-weight: bold; min-width: 100px;")
+            h_layout.addWidget(lbl)
+
+            combo = QComboBox()
+            combo.setStyleSheet(f"""
+                QComboBox {{
+                    background: {bg_input}; border: 1px solid {border};
+                    border-radius: 6px; padding: 8px 12px; color: {txt};
+                    min-width: 120px; font-size: 13px;
+                }}
+            """)
+            combo.addItem("GİRİŞ", "GIRIS")
+            combo.addItem("ÇIKIŞ", "CIKIS")
+            combo.setCurrentIndex(0 if h_tip == "GIRIS" else 1)
+            combo.setProperty("hareket_id", h_id)
+            combo.setProperty("orijinal_tip", h_tip)
+            h_layout.addWidget(combo)
+            combos.append(combo)
+
+            # Mevcut durum etiketi
+            durum_lbl = QLabel(f"(şu an: {h_tip})")
+            durum_lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+            h_layout.addWidget(durum_lbl)
+            h_layout.addStretch()
+
+            dlg_layout.addLayout(h_layout)
+
+        # Butonlar
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        cancel_btn = QPushButton("İptal")
+        cancel_btn.setStyleSheet(self._button_style())
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        save_btn = QPushButton("Kaydet ve Yeniden Hesapla")
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {primary}; color: white; border: none;
+                border-radius: 6px; padding: 8px 24px; font-weight: bold;
+            }}
+        """)
+        save_btn.clicked.connect(dialog.accept)
+        btn_layout.addWidget(save_btn)
+        dlg_layout.addLayout(btn_layout)
+
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        # Değişiklikleri kaydet
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            degisen = 0
+            for combo in combos:
+                h_id = combo.property("hareket_id")
+                orijinal = combo.property("orijinal_tip")
+                yeni = combo.currentData()
+                if yeni != orijinal:
+                    cursor.execute("""
+                        UPDATE ik.pdks_hareketler SET hareket_tipi = ? WHERE id = ?
+                    """, (yeni, h_id))
+                    degisen += 1
+            conn.commit()
+            conn.close()
+
+            if degisen > 0:
+                QMessageBox.information(self, "Başarılı",
+                                        f"{degisen} hareket tipi düzeltildi.\nPuantaj yeniden hesaplanıyor...")
+                self._hesapla_ve_yukle()
+            else:
+                QMessageBox.information(self, "Bilgi", "Değişiklik yapılmadı.")
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Hata", f"PDKS güncelleme hatası: {e}")
 
     def _on_aylik_double_click(self, index):
         """Aylık tablodan personel detay aç"""

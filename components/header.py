@@ -6,7 +6,8 @@ REDLINE NEXOR ERP - Header Bileşeni
 from datetime import datetime
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QLineEdit,
-    QWidget, QScrollArea, QGraphicsDropShadowEffect, QApplication
+    QWidget, QScrollArea, QGraphicsDropShadowEffect, QApplication,
+    QDialog, QTextBrowser
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QPoint, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor, QCursor
@@ -328,6 +329,25 @@ class Header(QFrame):
         """)
         layout.addWidget(search)
 
+        # =============== YARDIM BUTONU ===============
+        help_btn = QPushButton("❓")
+        help_btn.setFixedSize(40, 40)
+        help_btn.setCursor(Qt.PointingHandCursor)
+        help_btn.setToolTip("Kullanım Kılavuzu")
+        help_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                font-size: 18px;
+                border-radius: 8px;
+            }}
+            QPushButton:hover {{
+                background: {self.theme['bg_hover']};
+            }}
+        """)
+        help_btn.clicked.connect(self._show_kilavuz)
+        layout.addWidget(help_btn)
+
         # =============== BİLDİRİM BUTONU ===============
         self.notif_container = QFrame()
         self.notif_container.setFixedSize(44, 44)
@@ -488,6 +508,180 @@ class Header(QFrame):
     def refresh_bildirimler(self):
         """Dışarıdan bildirim sayısını yenilemek için."""
         self._poll_bildirimleri()
+
+    def _show_kilavuz(self):
+        """Kullanım kılavuzunu dialog olarak göster."""
+        import os, re
+
+        kilavuz_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'docs', 'KULLANIM_KILAVUZU.md')
+        try:
+            with open(kilavuz_path, 'r', encoding='utf-8') as f:
+                md_content = f.read()
+        except FileNotFoundError:
+            md_content = "Kullanım kılavuzu dosyası bulunamadı."
+
+        # Basit markdown -> HTML dönüşümü
+        html = self._md_to_html(md_content)
+
+        t = self.theme
+        dlg = QDialog(self)
+        dlg.setWindowTitle("NEXOR ERP — Kullanım Kılavuzu")
+        dlg.resize(900, 700)
+        dlg.setStyleSheet(f"QDialog {{ background: {t.get('bg_main', '#121212')}; }}")
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        browser = QTextBrowser()
+        browser.setOpenExternalLinks(True)
+        browser.setHtml(html)
+        browser.setStyleSheet(f"""
+            QTextBrowser {{
+                background: {t.get('bg_main', '#121212')};
+                color: {t.get('text', '#E0E0E0')};
+                border: none;
+                padding: 24px 40px;
+                font-size: 14px;
+                font-family: 'Segoe UI', sans-serif;
+            }}
+            QScrollBar:vertical {{
+                background: {t.get('bg_card', '#1E1E1E')};
+                width: 8px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {t.get('border', '#333')};
+                border-radius: 4px;
+                min-height: 30px;
+            }}
+        """)
+        layout.addWidget(browser)
+        dlg.exec()
+
+    @staticmethod
+    def _md_to_html(md: str) -> str:
+        """Basit Markdown -> HTML çevirici."""
+        import re
+        lines = md.split('\n')
+        html_lines = []
+        in_table = False
+        in_code = False
+        in_list = False
+
+        for line in lines:
+            # Kod bloğu
+            if line.strip().startswith('```'):
+                if in_code:
+                    html_lines.append('</pre>')
+                    in_code = False
+                else:
+                    html_lines.append('<pre style="background:#1E1E1E; padding:12px; border-radius:8px; font-size:13px; color:#A0D0A0; overflow-x:auto;">')
+                    in_code = True
+                continue
+            if in_code:
+                html_lines.append(line.replace('<', '&lt;').replace('>', '&gt;'))
+                continue
+
+            stripped = line.strip()
+
+            # Boş satır
+            if not stripped:
+                if in_list:
+                    in_list = False
+                if in_table:
+                    html_lines.append('</table>')
+                    in_table = False
+                html_lines.append('<br>')
+                continue
+
+            # Yatay çizgi
+            if stripped == '---':
+                if in_table:
+                    html_lines.append('</table>')
+                    in_table = False
+                html_lines.append('<hr style="border:1px solid #333; margin:16px 0;">')
+                continue
+
+            # Başlıklar
+            if stripped.startswith('######'):
+                html_lines.append(f'<h6 style="color:#DC2626; margin:8px 0 4px;">{stripped[7:]}</h6>')
+                continue
+            if stripped.startswith('#####'):
+                html_lines.append(f'<h5 style="color:#DC2626; margin:8px 0 4px;">{stripped[6:]}</h5>')
+                continue
+            if stripped.startswith('####'):
+                html_lines.append(f'<h4 style="color:#DC2626; margin:10px 0 6px;">{stripped[5:]}</h4>')
+                continue
+            if stripped.startswith('###'):
+                html_lines.append(f'<h3 style="color:#DC2626; margin:12px 0 6px;">{stripped[4:]}</h3>')
+                continue
+            if stripped.startswith('## '):
+                html_lines.append(f'<h2 style="color:#DC2626; margin:20px 0 8px; border-bottom:1px solid #333; padding-bottom:6px;">{stripped[3:]}</h2>')
+                continue
+            if stripped.startswith('# '):
+                html_lines.append(f'<h1 style="color:#DC2626; margin:20px 0 10px;">{stripped[2:]}</h1>')
+                continue
+
+            # Tablo ayırıcı satırı (|---|---|)
+            if re.match(r'^\|[\s\-:|]+\|$', stripped):
+                continue
+
+            # Tablo
+            if stripped.startswith('|') and stripped.endswith('|'):
+                cells = [c.strip() for c in stripped.strip('|').split('|')]
+                if not in_table:
+                    html_lines.append('<table style="border-collapse:collapse; width:100%; margin:8px 0;">')
+                    tag = 'th'
+                    in_table = True
+                else:
+                    tag = 'td'
+                row = ''.join(
+                    f'<{tag} style="border:1px solid #333; padding:8px 12px; text-align:left;">{c}</{tag}>'
+                    for c in cells
+                )
+                html_lines.append(f'<tr>{row}</tr>')
+                continue
+
+            if in_table:
+                html_lines.append('</table>')
+                in_table = False
+
+            # Liste
+            if stripped.startswith('- ') or stripped.startswith('* '):
+                content = stripped[2:]
+                content = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', content)
+                content = re.sub(r'`(.+?)`', r'<code style="background:#1E1E1E; padding:2px 6px; border-radius:4px; font-size:12px;">\1</code>', content)
+                html_lines.append(f'<div style="margin:2px 0 2px 16px;">• {content}</div>')
+                in_list = True
+                continue
+
+            # Numaralı liste
+            m = re.match(r'^(\d+)\.\s+(.+)', stripped)
+            if m:
+                content = m.group(2)
+                content = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', content)
+                content = re.sub(r'`(.+?)`', r'<code style="background:#1E1E1E; padding:2px 6px; border-radius:4px; font-size:12px;">\1</code>', content)
+                html_lines.append(f'<div style="margin:2px 0 2px 16px;">{m.group(1)}. {content}</div>')
+                in_list = True
+                continue
+
+            # Blockquote
+            if stripped.startswith('> '):
+                html_lines.append(f'<div style="border-left:3px solid #DC2626; padding:4px 12px; margin:8px 0; color:#999;">{stripped[2:]}</div>')
+                continue
+
+            # Normal paragraf — inline formatting
+            p = stripped
+            p = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', p)
+            p = re.sub(r'`(.+?)`', r'<code style="background:#1E1E1E; padding:2px 6px; border-radius:4px; font-size:12px;">\1</code>', p)
+            html_lines.append(f'<p style="margin:4px 0;">{p}</p>')
+
+        if in_table:
+            html_lines.append('</table>')
+        if in_code:
+            html_lines.append('</pre>')
+
+        return '\n'.join(html_lines)
 
     def _apply_style(self):
         self.setStyleSheet(f"Header {{ background: {self.theme['bg_card']}; border-bottom: 1px solid {self.theme['border']}; }}")

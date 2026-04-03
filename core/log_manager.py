@@ -15,6 +15,7 @@ class LogManager:
     _current_user_id = None
     _current_user_name = None
     _ip_address = None
+    _lot_column_checked = False
     
     @classmethod
     def set_current_user(cls, user_id: int, user_name: str):
@@ -43,10 +44,11 @@ class LogManager:
     
     @classmethod
     def log(cls, modul: str, islem: str, tablo_adi: str = None, kayit_id: int = None,
-            aciklama: str = None, eski_deger: str = None, yeni_deger: str = None):
+            aciklama: str = None, eski_deger: str = None, yeni_deger: str = None,
+            lot_no: str = None):
         """
         İşlem logu kaydet
-        
+
         Args:
             modul: Modül adı (uretim, kalite, stok, sistem, vb.)
             islem: İşlem tipi (INSERT, UPDATE, DELETE, VIEW, LOGIN, LOGOUT, EXPORT)
@@ -55,17 +57,33 @@ class LogManager:
             aciklama: İşlem açıklaması
             eski_deger: Güncelleme öncesi değer (JSON string)
             yeni_deger: Güncelleme sonrası değer (JSON string)
+            lot_no: İlgili lot numarası
         """
         conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
+            # lot_no kolonu yoksa ekle (ilk çalışmada)
+            if lot_no and not cls._lot_column_checked:
+                try:
+                    cursor.execute("""
+                        IF NOT EXISTS (
+                            SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                            WHERE TABLE_SCHEMA = 'log' AND TABLE_NAME = 'islem_log' AND COLUMN_NAME = 'lot_no'
+                        )
+                        ALTER TABLE log.islem_log ADD lot_no NVARCHAR(50) NULL
+                    """)
+                    conn.commit()
+                except Exception:
+                    pass
+                cls._lot_column_checked = True
+
             cursor.execute("""
                 INSERT INTO log.islem_log
                 (tarih, kullanici_id, kullanici_adi, ip_adresi, modul, islem,
-                 tablo_adi, kayit_id, aciklama, eski_deger, yeni_deger)
-                VALUES (GETDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 tablo_adi, kayit_id, aciklama, eski_deger, yeni_deger, lot_no)
+                VALUES (GETDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [
                 cls._current_user_id,
                 cls._current_user_name or 'system',
@@ -76,7 +94,8 @@ class LogManager:
                 kayit_id,
                 aciklama,
                 eski_deger,
-                yeni_deger
+                yeni_deger,
+                lot_no
             ])
 
             conn.commit()
@@ -113,7 +132,8 @@ class LogManager:
         cls.clear_current_user()
     
     @classmethod
-    def log_insert(cls, modul: str, tablo: str, kayit_id: int, aciklama: str = None, yeni_deger: str = None):
+    def log_insert(cls, modul: str, tablo: str, kayit_id: int, aciklama: str = None,
+                   yeni_deger: str = None, lot_no: str = None):
         """Yeni kayıt ekleme logla"""
         cls.log(
             modul=modul,
@@ -121,12 +141,13 @@ class LogManager:
             tablo_adi=tablo,
             kayit_id=kayit_id,
             aciklama=aciklama or f'{tablo} tablosuna yeni kayıt eklendi',
-            yeni_deger=yeni_deger
+            yeni_deger=yeni_deger,
+            lot_no=lot_no
         )
-    
+
     @classmethod
-    def log_update(cls, modul: str, tablo: str, kayit_id: int, aciklama: str = None, 
-                   eski_deger: str = None, yeni_deger: str = None):
+    def log_update(cls, modul: str, tablo: str, kayit_id: int, aciklama: str = None,
+                   eski_deger: str = None, yeni_deger: str = None, lot_no: str = None):
         """Kayıt güncelleme logla"""
         cls.log(
             modul=modul,
@@ -135,11 +156,13 @@ class LogManager:
             kayit_id=kayit_id,
             aciklama=aciklama or f'{tablo} tablosunda kayıt güncellendi',
             eski_deger=eski_deger,
-            yeni_deger=yeni_deger
+            yeni_deger=yeni_deger,
+            lot_no=lot_no
         )
-    
+
     @classmethod
-    def log_delete(cls, modul: str, tablo: str, kayit_id: int, aciklama: str = None, eski_deger: str = None):
+    def log_delete(cls, modul: str, tablo: str, kayit_id: int, aciklama: str = None,
+                   eski_deger: str = None, lot_no: str = None):
         """Kayıt silme logla"""
         cls.log(
             modul=modul,
@@ -147,7 +170,8 @@ class LogManager:
             tablo_adi=tablo,
             kayit_id=kayit_id,
             aciklama=aciklama or f'{tablo} tablosundan kayıt silindi',
-            eski_deger=eski_deger
+            eski_deger=eski_deger,
+            lot_no=lot_no
         )
     
     @classmethod

@@ -276,7 +276,10 @@ class PersonelDetayDialog(QDialog):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
         
-        self.txt_sicil = QLineEdit(str(self.personel_data.get('sicil_no', '')))
+        sicil_val = self.personel_data.get('sicil_no', '')
+        if self.is_new and not sicil_val:
+            sicil_val = self._generate_sicil_no()
+        self.txt_sicil = QLineEdit(str(sicil_val))
         self.txt_sicil.setPlaceholderText("Personel sicil numarası")
         layout.addRow("Sicil No:", self.txt_sicil)
         
@@ -319,6 +322,15 @@ class PersonelDetayDialog(QDialog):
         self.txt_kart_id = QLineEdit(str(self.personel_data.get('kart_id', '') or ''))
         self.txt_kart_id.setPlaceholderText("USB Okuyucu Kart ID")
         layout.addRow("Kart ID (USB):", self.txt_kart_id)
+
+        # Departman ve Pozisyon (hızlı erişim)
+        self.cmb_dept_kart = QComboBox()
+        self._load_departmanlar_kart()
+        layout.addRow("Departman:", self.cmb_dept_kart)
+
+        self.cmb_poz_kart = QComboBox()
+        self._load_pozisyonlar_kart()
+        layout.addRow("Pozisyon:", self.cmb_poz_kart)
 
         self.cmb_kan = QComboBox()
         self.cmb_kan.addItems(["", "A Rh+", "A Rh-", "B Rh+", "B Rh-", "AB Rh+", "AB Rh-", "0 Rh+", "0 Rh-"])
@@ -608,42 +620,96 @@ class PersonelDetayDialog(QDialog):
         
         return frame
     
+    def _generate_sicil_no(self) -> str:
+        """Otomatik sicil numarasi uret: ATL + siradaki numara"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT MAX(CAST(REPLACE(sicil_no, 'ATL', '') AS INT))
+                FROM ik.personeller
+                WHERE sicil_no LIKE 'ATL%'
+                  AND ISNUMERIC(REPLACE(sicil_no, 'ATL', '')) = 1
+            """)
+            row = cursor.fetchone()
+            conn.close()
+            son = row[0] if row[0] else 0
+            return f"ATL{son + 1}"
+        except Exception:
+            return ""
+
+    def _load_departmanlar_kart(self):
+        """Kart sekmesindeki departman combo'sunu yükle"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, ad FROM ik.departmanlar WHERE aktif_mi = 1 ORDER BY ad")
+            current_id = self.personel_data.get('departman_id')
+            idx = 0
+            for i, row in enumerate(cursor.fetchall()):
+                self.cmb_dept_kart.addItem(row[1], row[0])
+                if row[0] == current_id:
+                    idx = i
+            if not self.is_new:
+                self.cmb_dept_kart.setCurrentIndex(idx)
+            conn.close()
+        except Exception as e:
+            print(f"Departman (kart) yükleme hatası: {e}")
+
+    def _load_pozisyonlar_kart(self):
+        """Kart sekmesindeki pozisyon combo'sunu yükle"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, ad FROM ik.pozisyonlar WHERE aktif_mi = 1 ORDER BY ad")
+            current_id = self.personel_data.get('pozisyon_id')
+            idx = 0
+            for i, row in enumerate(cursor.fetchall()):
+                self.cmb_poz_kart.addItem(row[1], row[0])
+                if row[0] == current_id:
+                    idx = i
+            if not self.is_new:
+                self.cmb_poz_kart.setCurrentIndex(idx)
+            conn.close()
+        except Exception as e:
+            print(f"Pozisyon (kart) yükleme hatası: {e}")
+
     def _load_departmanlar(self):
         """Departmanları yükle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad FROM ik.departmanlar WHERE aktif_mi = 1 ORDER BY ad")
-            
+
             current_id = self.personel_data.get('departman_id')
             idx = 0
             for i, row in enumerate(cursor.fetchall()):
                 self.cmb_dept.addItem(row[1], row[0])
                 if row[0] == current_id:
                     idx = i
-            
+
             # Sadece var olan kayıtta seçili index'i ayarla
             if not self.is_new:
                 self.cmb_dept.setCurrentIndex(idx)
-            
+
             conn.close()
         except Exception as e:
             print(f"Departman yükleme hatası: {e}")
-    
+
     def _load_pozisyonlar(self):
         """Pozisyonları yükle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad FROM ik.pozisyonlar WHERE aktif_mi = 1 ORDER BY ad")
-            
+
             current_id = self.personel_data.get('pozisyon_id')
             idx = 0
             for i, row in enumerate(cursor.fetchall()):
                 self.cmb_poz.addItem(row[1], row[0])
                 if row[0] == current_id:
                     idx = i
-            
+
             # Sadece var olan kayıtta seçili index'i ayarla
             if not self.is_new:
                 self.cmb_poz.setCurrentIndex(idx)
@@ -829,6 +895,19 @@ class PersonelDetayDialog(QDialog):
                 QMessageBox.warning(self, "Uyarı", "TC Kimlik No 11 haneli olmalıdır!")
                 return
             
+            # Kart sekmesindeki dept/poz secimini calisma sekmesine senkronla
+            if hasattr(self, 'cmb_dept_kart'):
+                kart_dept = self.cmb_dept_kart.currentData()
+                kart_poz = self.cmb_poz_kart.currentData()
+                if kart_dept:
+                    idx = self.cmb_dept.findData(kart_dept)
+                    if idx >= 0:
+                        self.cmb_dept.setCurrentIndex(idx)
+                if kart_poz:
+                    idx = self.cmb_poz.findData(kart_poz)
+                    if idx >= 0:
+                        self.cmb_poz.setCurrentIndex(idx)
+
             # Departman ve pozisyon kontrol
             dept_id = self.cmb_dept.currentData()
             poz_id = self.cmb_poz.currentData()
@@ -1751,17 +1830,20 @@ class IKPersonelPage(BasePage):
         
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            "Sicil No", "Ad Soyad", "Departman", "Pozisyon", "Telefon", "İşe Giriş", "Durum", "İşlem"
+            "Sicil No", "Ad Soyad", "Departman", "Bölüm", "Görev",
+            "Telefon", "İşe Giriş", "Durum", "İşlem"
         ])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.table.setColumnWidth(0, 90)
-        self.table.setColumnWidth(4, 120)
+        self.table.setColumnWidth(2, 110)
+        self.table.setColumnWidth(3, 120)
+        self.table.setColumnWidth(4, 160)
         self.table.setColumnWidth(5, 120)
-        self.table.setColumnWidth(6, 80)
+        self.table.setColumnWidth(6, 100)
         self.table.setColumnWidth(7, 80)
+        self.table.setColumnWidth(8, 80)
         self.table.setStyleSheet(self._table_style())
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -1903,53 +1985,60 @@ class IKPersonelPage(BasePage):
             # Veri çek
             offset = (self.current_page - 1) * self.page_size
             cursor.execute(f"""
-                SELECT p.id, p.sicil_no, p.ad, p.soyad, d.ad as dept, poz.ad as poz, 
+                SELECT p.id, p.sicil_no, p.ad, p.soyad,
+                       ISNULL(ust.ad, d.ad) as departman,
+                       CASE WHEN ust.id IS NOT NULL THEN d.ad ELSE NULL END as bolum,
+                       poz.ad as gorev,
                        p.telefon, p.ise_giris_tarihi, p.aktif_mi
                 FROM ik.personeller p
                 LEFT JOIN ik.departmanlar d ON p.departman_id = d.id
+                LEFT JOIN ik.departmanlar ust ON d.ust_departman_id = ust.id
                 LEFT JOIN ik.pozisyonlar poz ON p.pozisyon_id = poz.id
                 WHERE {where_clause}
                 ORDER BY p.ad, p.soyad
                 OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
             """, params + [offset, self.page_size])
-            
+
             self.table.setRowCount(0)
             for row in cursor.fetchall():
                 row_idx = self.table.rowCount()
                 self.table.insertRow(row_idx)
-                
+
                 # ID'yi sakla
                 item = QTableWidgetItem(row[1] or '')
                 item.setData(Qt.UserRole, row[0])
                 self.table.setItem(row_idx, 0, item)
-                
+
                 # Ad Soyad
                 self.table.setItem(row_idx, 1, QTableWidgetItem(f"{row[2]} {row[3]}"))
-                
-                # Departman
+
+                # Departman (ana departman)
                 self.table.setItem(row_idx, 2, QTableWidgetItem(row[4] or '-'))
-                
-                # Pozisyon
+
+                # Bölüm (alt departman)
                 self.table.setItem(row_idx, 3, QTableWidgetItem(row[5] or '-'))
-                
-                # Telefon
+
+                # Görev (pozisyon)
                 self.table.setItem(row_idx, 4, QTableWidgetItem(row[6] or '-'))
-                
+
+                # Telefon
+                self.table.setItem(row_idx, 5, QTableWidgetItem(row[7] or '-'))
+
                 # İşe Giriş
-                giris = row[7].strftime('%d.%m.%Y') if row[7] else '-'
-                self.table.setItem(row_idx, 5, QTableWidgetItem(giris))
-                
+                giris = row[8].strftime('%d.%m.%Y') if row[8] else '-'
+                self.table.setItem(row_idx, 6, QTableWidgetItem(giris))
+
                 # Durum
-                aktif = row[8]
-                durum_item = QTableWidgetItem("✓ Aktif" if aktif else "✗ Pasif")
+                aktif = row[9]
+                durum_item = QTableWidgetItem("Aktif" if aktif else "Pasif")
                 durum_item.setForeground(QColor('#22c55e' if aktif else '#ef4444'))
-                self.table.setItem(row_idx, 6, durum_item)
-                
+                self.table.setItem(row_idx, 7, durum_item)
+
                 # İşlem butonu
                 widget = self.create_action_buttons([
                     ("👁️", "Detay", lambda checked, pid=row[0]: self._show_detail(pid), "view"),
                 ])
-                self.table.setCellWidget(row_idx, 7, widget)
+                self.table.setCellWidget(row_idx, 8, widget)
                 self.table.setRowHeight(row_idx, 42)
             
             conn.close()

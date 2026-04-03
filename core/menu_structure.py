@@ -77,6 +77,7 @@ MENU_STRUCTURE = [
         {"id": "sevk_liste", "label": "Sevkiyat Listesi"},
         {"id": "sevk_yeni", "label": "Yeni Sevkiyat"},
         {"id": "sevk_irsaliye", "label": "İrsaliye Yazdır"},
+        {"id": "sevk_iade", "label": "İade Girişi"},
     ]},
     
     {"id": "satinalma", "icon": "🛒", "label": "Satınalma", "children": [
@@ -173,8 +174,7 @@ MENU_STRUCTURE = [
         {"id": "tanim_vardiya", "label": "Vardiya Tanımları"},
         {"id": "tanim_izin_turleri", "label": "İzin Türleri"},
         {"id": "tanim_zimmet_turleri", "label": "Zimmet Türleri"},
-        {"id": "tanim_departmanlar", "label": "Departman Tanımları"},
-        {"id": "tanim_pozisyonlar", "label": "Pozisyon Tanımları"},
+        {"id": "tanim_organizasyon", "label": "Organizasyon Tanımları"},
         {"id": "tanim_soforler", "label": "Şoför Tanımları"},
         {"id": "tanim_araclar", "label": "Araç Tanımları"},
         {"id": "tanim_numara", "label": "Numara Tanımları"},

@@ -52,18 +52,18 @@ class PozisyonDialog(QDialog):
         # Kod
         self.txt_kod = QLineEdit()
         self.txt_kod.setMaxLength(20)
-        self.txt_kod.setPlaceholderText("Örn: OPERTOR, KALITE_UZM")
-        form.addRow("Pozisyon Kodu*:", self.txt_kod)
-        
+        self.txt_kod.setPlaceholderText("Örn: KTL_ASK, ZN_OPR")
+        form.addRow("Görev Kodu*:", self.txt_kod)
+
         # Ad
         self.txt_ad = QLineEdit()
         self.txt_ad.setMaxLength(100)
-        self.txt_ad.setPlaceholderText("Örn: Üretim Operatörü")
-        form.addRow("Pozisyon Adı*:", self.txt_ad)
-        
-        # Departman
+        self.txt_ad.setPlaceholderText("Örn: Kataforez Askılama")
+        form.addRow("Görev Adı*:", self.txt_ad)
+
+        # Departman (Bölüm)
         self.cmb_departman = QComboBox()
-        form.addRow("Departman*:", self.cmb_departman)
+        form.addRow("Bölüm*:", self.cmb_departman)
         
         # Açıklama
         self.txt_aciklama = QTextEdit()
@@ -198,7 +198,7 @@ class TanimPozisyonlarPage(BasePage):
         layout.setSpacing(12)
         
         # Header
-        header = QLabel("🎯 Pozisyon Tanımları")
+        header = QLabel("Görev Tanımları")
         header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
         layout.addWidget(header)
         
@@ -208,7 +208,7 @@ class TanimPozisyonlarPage(BasePage):
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
-        btn_yeni = QPushButton("➕ Yeni Pozisyon")
+        btn_yeni = QPushButton("Yeni Görev")
         btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
@@ -232,7 +232,7 @@ class TanimPozisyonlarPage(BasePage):
         
         # Departman filtresi
         self.cmb_departman = QComboBox()
-        self.cmb_departman.addItem("Tüm Departmanlar", None)
+        self.cmb_departman.addItem("Tüm Bölümler", None)
         self.cmb_departman.setStyleSheet(f"""
             QComboBox {{
                 background: {self.theme.get('bg_input')};
@@ -255,9 +255,9 @@ class TanimPozisyonlarPage(BasePage):
         
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Kod", "Pozisyon Adı", "Departman", "Durum"
+            "ID", "Kod", "Görev Adı", "Departman", "Bölüm", "Personel", "Durum"
         ])
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -284,9 +284,11 @@ class TanimPozisyonlarPage(BasePage):
         
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
-        self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(4, 80)
+        self.table.setColumnWidth(1, 110)
+        self.table.setColumnWidth(3, 110)
+        self.table.setColumnWidth(4, 130)
+        self.table.setColumnWidth(5, 70)
+        self.table.setColumnWidth(6, 80)
         
         self.table.doubleClicked.connect(self._duzenle)
         layout.addWidget(self.table)
@@ -312,57 +314,75 @@ class TanimPozisyonlarPage(BasePage):
             pass
     
     def _load_data(self):
-        """Pozisyonları yükle"""
+        """Görevleri yükle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT 
+                SELECT
                     p.id, p.kod, p.ad,
-                    d.ad as departman,
+                    ISNULL(ust.ad, d.ad) as departman,
+                    CASE WHEN ust.id IS NOT NULL THEN d.ad ELSE NULL END as bolum,
                     p.aktif_mi,
-                    p.departman_id
+                    p.departman_id,
+                    (SELECT COUNT(*) FROM ik.personeller per
+                     WHERE per.pozisyon_id = p.id AND per.aktif_mi = 1) AS personel_sayisi
                 FROM ik.pozisyonlar p
                 LEFT JOIN ik.departmanlar d ON p.departman_id = d.id
-                ORDER BY d.kod, p.kod
+                LEFT JOIN ik.departmanlar ust ON d.ust_departman_id = ust.id
+                ORDER BY ISNULL(ust.ad, d.ad), d.ad, p.ad
             """)
             self.all_rows = cursor.fetchall()
             conn.close()
-            
+
             self._display_data(self.all_rows)
-            
+
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Veri yüklenirken hata: {str(e)}")
-    
+
     def _display_data(self, rows):
         """Verileri tabloda göster"""
         self.table.setRowCount(len(rows))
         aktif_sayisi = 0
-        
+
         for i, row in enumerate(rows):
             self.table.setItem(i, 0, QTableWidgetItem(str(row[0])))
             self.table.setItem(i, 1, QTableWidgetItem(row[1] or ""))
             self.table.setItem(i, 2, QTableWidgetItem(row[2] or ""))
+
+            # Departman (ana)
             self.table.setItem(i, 3, QTableWidgetItem(row[3] or "-"))
-            
-            aktif = row[4]
-            durum_item = QTableWidgetItem("✓ Aktif" if aktif else "✗ Pasif")
+
+            # Bölüm (alt departman)
+            self.table.setItem(i, 4, QTableWidgetItem(row[4] or "-"))
+
+            # Personel sayısı
+            per_item = QTableWidgetItem(str(row[7]) if row[7] else "0")
+            per_item.setTextAlignment(Qt.AlignCenter)
+            if row[7] and row[7] > 0:
+                per_item.setForeground(QColor(self.theme.get('info', '#3b82f6')))
+            self.table.setItem(i, 5, per_item)
+
+            # Durum
+            aktif = row[5]
+            durum_item = QTableWidgetItem("Aktif" if aktif else "Pasif")
             durum_item.setForeground(QColor(self.theme.get('success') if aktif else self.theme.get('danger')))
-            self.table.setItem(i, 4, durum_item)
-            
+            durum_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(i, 6, durum_item)
+
             if aktif:
                 aktif_sayisi += 1
-        
-        self.lbl_stat.setText(f"Toplam: {len(rows)} pozisyon | Aktif: {aktif_sayisi}")
+
+        self.lbl_stat.setText(f"Toplam: {len(rows)} görev | Aktif: {aktif_sayisi}")
     
     def _filter(self):
-        """Departmana göre filtrele"""
+        """Bölüme göre filtrele"""
         dept_id = self.cmb_departman.currentData()
-        
+
         if dept_id is None:
             self._display_data(self.all_rows)
         else:
-            filtered = [r for r in self.all_rows if r[5] == dept_id]
+            filtered = [r for r in self.all_rows if r[6] == dept_id]
             self._display_data(filtered)
     
     def _yeni(self):

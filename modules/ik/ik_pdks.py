@@ -17,169 +17,60 @@ from components.base_page import BasePage
 from core.database import get_db_connection
 
 
-class PersonelKart(QFrame):
-    """Personel durum kartı"""
-    
+class PersonelChip(QFrame):
+    """Kompakt personel kartı - chip görünümü"""
+
     def __init__(self, data: dict, theme: dict, parent=None):
         super().__init__(parent)
         self.data = data
         self.theme = theme
         self._setup_ui()
-    
+
     def _setup_ui(self):
-        status = self.data.get('status', 'OUT')
-        
-        # Renk belirleme
-        if status == 'IN':
-            border_color = '#22c55e'
-            bg_color = 'rgba(34, 197, 94, 0.1)'
-        elif status == 'LATE':
-            border_color = '#ef4444'
-            bg_color = 'rgba(239, 68, 68, 0.1)'
-        elif status == 'LEAVE':
-            border_color = '#f59e0b'
-            bg_color = 'rgba(245, 158, 11, 0.1)'
-        else:
-            border_color = '#6b7280'
-            bg_color = self.theme.get('bg_main')
-        
-        self.setFixedHeight(60)
+        self.setFixedSize(200, 44)
         self.setStyleSheet(f"""
-            PersonelKart {{
-                background: {bg_color};
-                border: 1px solid {self.theme.get('border')};
-                border-left: 4px solid {border_color};
-                border-radius: 6px;
+            PersonelChip {{
+                background: rgba(34, 197, 94, 0.08);
+                border: 1px solid rgba(34, 197, 94, 0.3);
+                border-radius: 22px;
             }}
         """)
-        
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(10)
-        
+        layout.setContentsMargins(4, 4, 12, 4)
+        layout.setSpacing(8)
+
         # Avatar
         avatar = QLabel()
-        avatar.setFixedSize(40, 40)
+        avatar.setFixedSize(36, 36)
         avatar.setAlignment(Qt.AlignCenter)
-        
+
         name = self.data.get('name', '?')
         initials = ''.join([n[0] for n in name.split()[:2]]).upper()
         avatar.setText(initials)
-        avatar.setStyleSheet(f"""
-            background: {border_color};
+        avatar.setStyleSheet("""
+            background: #22c55e;
             color: white;
-            border-radius: 20px;
+            border-radius: 18px;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px;
         """)
         layout.addWidget(avatar)
-        
-        # Bilgi
-        info_layout = QVBoxLayout()
-        info_layout.setSpacing(2)
-        
+
+        # İsim + saat
+        info = QVBoxLayout()
+        info.setSpacing(0)
+        info.setContentsMargins(0, 0, 0, 0)
+
         name_label = QLabel(name)
-        name_label.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 12px;")
-        info_layout.addWidget(name_label)
-        
-        detail_layout = QHBoxLayout()
-        detail_layout.setSpacing(8)
-        
-        status_text = self.data.get('status_text', 'Dışarıda')
-        status_label = QLabel(status_text)
-        status_label.setStyleSheet(f"color: {border_color}; font-size: 11px; font-weight: bold;")
-        detail_layout.addWidget(status_label)
-        
-        time_text = self.data.get('time', '--:--')
-        time_label = QLabel(time_text)
+        name_label.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 11px;")
+        info.addWidget(name_label)
+
+        time_label = QLabel(self.data.get('time', '--:--'))
         time_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 10px;")
-        detail_layout.addWidget(time_label)
-        
-        detail_layout.addStretch()
-        info_layout.addLayout(detail_layout)
-        
-        layout.addLayout(info_layout, 1)
+        info.addWidget(time_label)
 
-
-class DepartmanKolonu(QFrame):
-    """Departman kolonu"""
-    
-    def __init__(self, dept_name: str, persons: list, theme: dict, parent=None):
-        super().__init__(parent)
-        self.dept_name = dept_name
-        self.persons = persons
-        self.theme = theme
-        self._setup_ui()
-    
-    def _setup_ui(self):
-        self.setFixedWidth(280)
-        self.setStyleSheet(f"""
-            DepartmanKolonu {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-            }}
-        """)
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 12, 10, 12)
-        layout.setSpacing(8)
-        
-        # Header
-        header = QHBoxLayout()
-        
-        title = QLabel(self.dept_name.upper())
-        title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 13px;")
-        header.addWidget(title)
-        
-        header.addStretch()
-        
-        count = QLabel(str(len(self.persons)))
-        count.setStyleSheet(f"""
-            background: {self.theme.get('bg_input')};
-            color: {self.theme.get('text')};
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: bold;
-        """)
-        header.addWidget(count)
-        
-        layout.addLayout(header)
-        
-        # Scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet(f"""
-            QScrollArea {{
-                border: none;
-                background: transparent;
-            }}
-            QScrollBar:vertical {{
-                width: 6px;
-                background: transparent;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {self.theme.get('border')};
-                border-radius: 3px;
-            }}
-        """)
-        
-        content = QWidget()
-        content.setStyleSheet("background: transparent;")
-        content_layout = QVBoxLayout(content)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(6)
-        
-        for person in self.persons:
-            card = PersonelKart(person, self.theme)
-            content_layout.addWidget(card)
-        
-        content_layout.addStretch()
-        scroll.setWidget(content)
-        
-        layout.addWidget(scroll, 1)
+        layout.addLayout(info, 1)
 
 
 class IKPdksPage(BasePage):
@@ -286,34 +177,34 @@ class IKPdksPage(BasePage):
         
         layout.addWidget(ozet_frame)
         
-        # Departman kolonları
+        # Pozisyon bazlı dikey akış alanı
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
-        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.scroll.setStyleSheet(f"""
             QScrollArea {{
                 border: none;
                 background: transparent;
             }}
-            QScrollBar:horizontal {{
-                height: 8px;
+            QScrollBar:vertical {{
+                width: 8px;
                 background: transparent;
             }}
-            QScrollBar::handle:horizontal {{
+            QScrollBar::handle:vertical {{
                 background: {self.theme.get('border')};
                 border-radius: 4px;
             }}
         """)
-        
-        self.columns_container = QWidget()
-        self.columns_container.setStyleSheet("background: transparent;")
-        self.columns_layout = QHBoxLayout(self.columns_container)
-        self.columns_layout.setSpacing(16)
-        self.columns_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.columns_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.scroll.setWidget(self.columns_container)
+
+        self.content_container = QWidget()
+        self.content_container.setStyleSheet("background: transparent;")
+        self.content_layout = QVBoxLayout(self.content_container)
+        self.content_layout.setSpacing(16)
+        self.content_layout.setAlignment(Qt.AlignTop)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.scroll.setWidget(self.content_container)
         layout.addWidget(self.scroll, 1)
     
     def _create_ozet_kart(self, icon: str, baslik: str, deger: str, renk: str) -> QFrame:
@@ -360,18 +251,20 @@ class IKPdksPage(BasePage):
             
             today = date.today()
             
-            # Aktif personelleri al
+            # Aktif ve içeride olan personelleri al
             cursor.execute("""
-                SELECT 
-                    p.id, p.sicil_no, p.ad, p.soyad, 
-                    d.ad as departman,
+                SELECT
+                    p.id, p.sicil_no, p.ad, p.soyad,
+                    ISNULL(poz.ad, 'Tanımsız') as pozisyon,
                     p.gunluk_durum,
                     p.son_giris,
-                    p.son_cikis
+                    p.son_cikis,
+                    d.ad as departman
                 FROM ik.personeller p
                 LEFT JOIN ik.departmanlar d ON p.departman_id = d.id
+                LEFT JOIN ik.pozisyonlar poz ON p.pozisyon_id = poz.id
                 WHERE p.aktif_mi = 1
-                ORDER BY d.ad, p.ad
+                ORDER BY poz.ad, p.ad
             """)
             
             employees = cursor.fetchall()
@@ -395,19 +288,16 @@ class IKPdksPage(BasePage):
             
             conn.close()
             
-            # Personelleri departmanlara göre grupla
-            dept_map = {}
+            # Personelleri pozisyonlara göre grupla (sadece içeridekiler)
+            poz_map = {}
             counts = {'toplam': 0, 'iceride': 0, 'gelmedi': 0, 'izinli': 0}
-            
+
             for emp in employees:
                 emp_id = emp[0]
-                dept = emp[4] or 'Tanımsız'
+                pozisyon = emp[4] or 'Tanımsız'
                 gunluk_durum = emp[5] or 0
                 son_giris = emp[6]
-                
-                if dept not in dept_map:
-                    dept_map[dept] = []
-                
+
                 # Durum belirleme
                 if emp_id in izinli_ids:
                     status = 'LEAVE'
@@ -421,14 +311,18 @@ class IKPdksPage(BasePage):
                     status = 'OUT'
                     status_text = 'Dışarıda'
                     counts['gelmedi'] += 1
-                
+
                 counts['toplam'] += 1
-                
+
+                # Sadece içeride olanları kartlarda göster
+                if status != 'IN':
+                    continue
+
                 # Son hareket zamanı
                 time_str = '--:--'
                 if son_giris:
                     time_str = son_giris.strftime('%H:%M')
-                
+
                 person_data = {
                     'id': emp_id,
                     'name': f"{emp[2]} {emp[3]}",
@@ -436,27 +330,74 @@ class IKPdksPage(BasePage):
                     'status_text': status_text,
                     'time': time_str
                 }
-                
-                dept_map[dept].append(person_data)
-            
+
+                if pozisyon not in poz_map:
+                    poz_map[pozisyon] = []
+                poz_map[pozisyon].append(person_data)
+
             # Kartları güncelle
             self.kart_toplam.findChild(QLabel, "value").setText(str(counts['toplam']))
             self.kart_iceride.findChild(QLabel, "value").setText(str(counts['iceride']))
             self.kart_gelmedi.findChild(QLabel, "value").setText(str(counts['gelmedi']))
             self.kart_izinli.findChild(QLabel, "value").setText(str(counts['izinli']))
-            
-            # Kolonları temizle ve yeniden oluştur
-            while self.columns_layout.count():
-                item = self.columns_layout.takeAt(0)
+
+            # İçeriği temizle ve yeniden oluştur
+            while self.content_layout.count():
+                item = self.content_layout.takeAt(0)
                 if item.widget():
                     item.widget().deleteLater()
-            
-            # Departman kolonlarını ekle
-            for dept_name in sorted(dept_map.keys()):
-                column = DepartmanKolonu(dept_name, dept_map[dept_name], self.theme)
-                self.columns_layout.addWidget(column)
-            
-            self.columns_layout.addStretch()
+
+            # Pozisyon bölümlerini ekle
+            COLS = 5  # Satır başına kart sayısı
+            for poz_name in sorted(poz_map.keys()):
+                persons = poz_map[poz_name]
+
+                # Pozisyon başlığı
+                header_frame = QFrame()
+                header_frame.setStyleSheet(f"""
+                    QFrame {{
+                        background: {self.theme.get('bg_card')};
+                        border: 1px solid {self.theme.get('border')};
+                        border-left: 4px solid {self.theme.get('primary')};
+                        border-radius: 6px;
+                    }}
+                """)
+                header_layout = QHBoxLayout(header_frame)
+                header_layout.setContentsMargins(12, 8, 12, 8)
+
+                title = QLabel(poz_name.upper())
+                title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 13px;")
+                header_layout.addWidget(title)
+
+                header_layout.addStretch()
+
+                badge = QLabel(str(len(persons)))
+                badge.setStyleSheet(f"""
+                    background: {self.theme.get('primary')};
+                    color: white;
+                    padding: 2px 10px;
+                    border-radius: 10px;
+                    font-size: 11px;
+                    font-weight: bold;
+                """)
+                header_layout.addWidget(badge)
+
+                self.content_layout.addWidget(header_frame)
+
+                # Kartları grid olarak yerleştir
+                grid_widget = QWidget()
+                grid_widget.setStyleSheet("background: transparent;")
+                grid = QGridLayout(grid_widget)
+                grid.setContentsMargins(0, 0, 0, 0)
+                grid.setSpacing(8)
+
+                for i, person in enumerate(persons):
+                    chip = PersonelChip(person, self.theme)
+                    grid.addWidget(chip, i // COLS, i % COLS)
+
+                self.content_layout.addWidget(grid_widget)
+
+            self.content_layout.addStretch()
             
         except Exception as e:
             import traceback

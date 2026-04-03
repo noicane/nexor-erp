@@ -516,7 +516,7 @@ class PDKSReaderService(QThread):
                 SELECT id, cihaz_kodu, cihaz_adi, ip_adresi, port,
                        cihaz_tipi, okuma_periyodu
                 FROM ik.pdks_cihazlari
-                WHERE aktif_mi = 1
+                WHERE aktif_mi = 1 AND cihaz_tipi = 'ZK'
                 ORDER BY cihaz_kodu
             """)
 
@@ -598,7 +598,7 @@ class PDKSReaderService(QThread):
                 SELECT id, cihaz_kodu, cihaz_adi, ip_adresi, port,
                        cihaz_tipi, okuma_periyodu
                 FROM ik.pdks_cihazlari
-                WHERE id = ? AND aktif_mi = 1
+                WHERE id = ? AND aktif_mi = 1 AND cihaz_tipi = 'ZK'
             """, (cihaz_id,))
 
             row = cursor.fetchone()

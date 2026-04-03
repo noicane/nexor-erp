@@ -513,6 +513,12 @@ class IKIzinPage(BasePage):
                     ])
                     self.table.setCellWidget(row_idx, 7, widget)
                     self.table.setRowHeight(row_idx, 42)
+                elif durum == 'ONAYLANDI':
+                    widget = self.create_action_buttons([
+                        ("🖨", "Yazdir", lambda checked, tid=row[0]: self._yazdir(tid), "info"),
+                    ])
+                    self.table.setCellWidget(row_idx, 7, widget)
+                    self.table.setRowHeight(row_idx, 42)
                 else:
                     self.table.setItem(row_idx, 7, QTableWidgetItem("-"))
             
@@ -547,9 +553,21 @@ class IKIzinPage(BasePage):
 
                 self._load_data()
                 QMessageBox.information(self, "Başarılı", "İzin talebi onaylandı.")
+                # Onay sonrasi formu yazdir
+                self._yazdir(talep_id)
             except Exception as e:
                 QMessageBox.critical(self, "Hata", f"Onay hatası: {e}")
-    
+
+    def _yazdir(self, talep_id: int):
+        """Izin formunu PDF olarak yazdir"""
+        try:
+            from utils.izin_formu_pdf import izin_formu_pdf
+            pdf_path = izin_formu_pdf(talep_id)
+            if pdf_path:
+                QMessageBox.information(self, "Yazdir", f"Izin formu olusturuldu.")
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"PDF olusturulamadi: {e}")
+
     def _reddet(self, talep_id: int):
         """İzin talebini reddet"""
         reply = QMessageBox.question(self, "Red", "Bu izin talebi reddedilecek. Devam edilsin mi?")

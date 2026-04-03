@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit,
     QAbstractItemView, QMessageBox, QDialog, QComboBox,
     QDateEdit, QTextEdit, QFormLayout, QWidget, QSpinBox,
-    QTabWidget, QFileDialog
+    QTabWidget, QFileDialog, QCheckBox, QScrollArea, QGridLayout
 )
 from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor
@@ -20,17 +20,19 @@ from core.log_manager import LogManager
 
 
 class ZimmetTeslimDialog(QDialog):
-    """Yeni zimmet teslim dialog'u"""
-    
+    """Coklu zimmet teslim dialog'u - birden fazla malzeme secilip tek seferde teslim edilir"""
+
     def __init__(self, theme: dict, personel_id: int = None, parent=None):
         super().__init__(parent)
         self.theme = theme
         self.personel_id = personel_id
         self.setWindowTitle("Zimmet Teslim")
-        self.setMinimumSize(550, 500)
+        self.setMinimumSize(750, 650)
+        self._malzeme_rows = []
+        self._zimmet_turleri = []
         self._setup_ui()
         self._load_data()
-    
+
     def _setup_ui(self):
         self.setStyleSheet(f"""
             QDialog {{ background: {self.theme.get('bg_main')}; }}
@@ -42,74 +44,100 @@ class ZimmetTeslimDialog(QDialog):
                 padding: 8px;
                 color: {self.theme.get('text')};
             }}
+            QCheckBox {{ color: {self.theme.get('text')}; }}
         """)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        # Başlık
-        title = QLabel("📦 Zimmet Teslim")
+        layout.setSpacing(12)
+
+        # Baslik
+        title = QLabel("Zimmet Teslim (Coklu Malzeme)")
         title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
         layout.addWidget(title)
-        
-        # Form
-        form = QFormLayout()
-        form.setSpacing(12)
-        
-        # Personel seçimi
+
+        # Ust form: Personel + Tarih
+        top_form = QHBoxLayout()
+        top_form.addWidget(QLabel("Personel:"))
         self.cmb_personel = QComboBox()
         self.cmb_personel.setMinimumWidth(300)
-        form.addRow("Personel:", self.cmb_personel)
-        
-        # Zimmet türü
-        self.cmb_zimmet_turu = QComboBox()
-        self.cmb_zimmet_turu.currentIndexChanged.connect(self._on_tur_changed)
-        form.addRow("Zimmet Türü:", self.cmb_zimmet_turu)
-        
-        # Teslim tarihi
+        top_form.addWidget(self.cmb_personel, 1)
+        top_form.addWidget(QLabel("Teslim Tarihi:"))
         self.dt_teslim = QDateEdit()
         self.dt_teslim.setCalendarPopup(True)
         self.dt_teslim.setDate(QDate.currentDate())
-        form.addRow("Teslim Tarihi:", self.dt_teslim)
-        
-        # Miktar
-        self.spn_miktar = QSpinBox()
-        self.spn_miktar.setRange(1, 100)
-        self.spn_miktar.setValue(1)
-        form.addRow("Miktar:", self.spn_miktar)
-        
-        # Beden
-        self.cmb_beden = QComboBox()
-        self.cmb_beden.setEditable(True)
-        self.cmb_beden.addItems(["", "XS", "S", "M", "L", "XL", "XXL", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45"])
-        form.addRow("Beden:", self.cmb_beden)
-        
-        # Seri no
-        self.txt_seri = QLineEdit()
-        self.txt_seri.setPlaceholderText("Varsa seri/barkod numarası")
-        form.addRow("Seri No:", self.txt_seri)
-        
-        # Açıklama
+        top_form.addWidget(self.dt_teslim)
+        layout.addLayout(top_form)
+
+        # Malzeme secim tablosu
+        lbl = QLabel("Teslim edilecek malzemeleri secin:")
+        lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        layout.addWidget(lbl)
+
+        self.malzeme_table = QTableWidget()
+        self.malzeme_table.setColumnCount(5)
+        self.malzeme_table.setHorizontalHeaderLabels(["Sec", "Malzeme", "Miktar", "Beden", "Seri No"])
+        self.malzeme_table.verticalHeader().setVisible(False)
+        self.malzeme_table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {self.theme.get('bg_card')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                gridline-color: {self.theme.get('border')};
+                color: {self.theme.get('text')};
+            }}
+            QTableWidget::item {{ padding: 4px; }}
+            QHeaderView::section {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                padding: 8px;
+                border: none;
+                border-bottom: 2px solid {self.theme.get('primary')};
+                font-weight: bold;
+            }}
+        """)
+        h = self.malzeme_table.horizontalHeader()
+        h.setSectionResizeMode(0, QHeaderView.Fixed)
+        h.resizeSection(0, 40)
+        h.setSectionResizeMode(1, QHeaderView.Stretch)
+        h.setSectionResizeMode(2, QHeaderView.Fixed)
+        h.resizeSection(2, 70)
+        h.setSectionResizeMode(3, QHeaderView.Fixed)
+        h.resizeSection(3, 80)
+        h.setSectionResizeMode(4, QHeaderView.Fixed)
+        h.resizeSection(4, 140)
+        layout.addWidget(self.malzeme_table, 1)
+
+        # Secim ozet
+        self.lbl_secim = QLabel("0 malzeme secili")
+        self.lbl_secim.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        layout.addWidget(self.lbl_secim)
+
+        # Aciklama
         self.txt_aciklama = QTextEdit()
-        self.txt_aciklama.setMaximumHeight(60)
-        self.txt_aciklama.setPlaceholderText("Ek notlar...")
-        form.addRow("Açıklama:", self.txt_aciklama)
-        
-        layout.addLayout(form)
-        
-        # Yenileme bilgisi
-        self.lbl_yenileme = QLabel("")
-        self.lbl_yenileme.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
-        layout.addWidget(self.lbl_yenileme)
-        
-        layout.addStretch()
-        
+        self.txt_aciklama.setMaximumHeight(50)
+        self.txt_aciklama.setPlaceholderText("Genel not (opsiyonel)...")
+        layout.addWidget(self.txt_aciklama)
+
         # Butonlar
         btn_layout = QHBoxLayout()
+
+        tumunu_sec = QPushButton("Tumunu Sec")
+        tumunu_sec.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 8px 16px;
+            }}
+        """)
+        tumunu_sec.clicked.connect(self._tumunu_sec)
+        btn_layout.addWidget(tumunu_sec)
+
         btn_layout.addStretch()
-        
-        cancel_btn = QPushButton("İptal")
+
+        cancel_btn = QPushButton("Iptal")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {self.theme.get('bg_input')};
@@ -121,8 +149,8 @@ class ZimmetTeslimDialog(QDialog):
         """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
-        
-        save_btn = QPushButton("💾 Teslim Et")
+
+        save_btn = QPushButton("Teslim Et")
         save_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {self.theme.get('success')};
@@ -135,101 +163,161 @@ class ZimmetTeslimDialog(QDialog):
         """)
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
-        
+
         layout.addLayout(btn_layout)
-    
+
     def _load_data(self):
-        """Verileri yükle"""
+        """Verileri yukle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             # Personeller
             cursor.execute("""
                 SELECT id, sicil_no, ad + ' ' + soyad as ad_soyad
-                FROM ik.personeller
-                WHERE aktif_mi = 1
-                ORDER BY ad, soyad
+                FROM ik.personeller WHERE aktif_mi = 1 ORDER BY ad, soyad
             """)
-            
             idx = 0
             for i, row in enumerate(cursor.fetchall()):
                 self.cmb_personel.addItem(f"{row[1]} - {row[2]}", row[0])
                 if self.personel_id and row[0] == self.personel_id:
                     idx = i
-            
             if self.personel_id:
                 self.cmb_personel.setCurrentIndex(idx)
-            
-            # Zimmet türleri
-            cursor.execute("SELECT id, ad, periyot_gun FROM ik.zimmet_turleri WHERE aktif_mi = 1 ORDER BY kategori, ad")
-            for row in cursor.fetchall():
-                self.cmb_zimmet_turu.addItem(row[1], {"id": row[0], "periyot": row[2]})
-            
-            conn.close()
-        except Exception as e:
-            print(f"Veri yükleme hatası: {e}")
-    
-    def _on_tur_changed(self):
-        """Zimmet türü değiştiğinde"""
-        data = self.cmb_zimmet_turu.currentData()
-        if data and data.get('periyot'):
-            periyot = data['periyot']
-            sonraki = date.today() + timedelta(days=periyot)
-            self.lbl_yenileme.setText(f"ℹ️ Yenileme periyodu: {periyot} gün | Sonraki yenileme: {sonraki.strftime('%d.%m.%Y')}")
-        else:
-            self.lbl_yenileme.setText("")
-    
-    def _save(self):
-        """Zimmet teslim et"""
-        try:
-            personel_id = self.cmb_personel.currentData()
-            zimmet_data = self.cmb_zimmet_turu.currentData()
-            
-            if not personel_id:
-                QMessageBox.warning(self, "Uyarı", "Lütfen personel seçin.")
-                return
-            
-            if not zimmet_data:
-                QMessageBox.warning(self, "Uyarı", "Lütfen zimmet türü seçin.")
-                return
-            
-            zimmet_turu_id = zimmet_data['id']
-            periyot = zimmet_data.get('periyot')
-            teslim_tarihi = self.dt_teslim.date().toPython()
-            miktar = self.spn_miktar.value()
-            beden = self.cmb_beden.currentText() or None
-            seri_no = self.txt_seri.text() or None
-            aciklama = self.txt_aciklama.toPlainText() or None
-            
-            # Sonraki yenileme tarihi
-            sonraki_yenileme = None
-            if periyot:
-                sonraki_yenileme = teslim_tarihi + timedelta(days=periyot)
-            
-            # Zimmet no oluştur
-            zimmet_no = f"ZMT-{datetime.now().strftime('%Y%m%d%H%M%S')}"
-            
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
+
+            # Zimmet turleri -> tabloya ekle
             cursor.execute("""
-                INSERT INTO ik.zimmetler (
-                    zimmet_no, personel_id, zimmet_turu_id, teslim_tarihi,
-                    miktar, beden, seri_no, durum, sonraki_yenileme, aciklama
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'TESLIM', ?, ?)
-            """, (zimmet_no, personel_id, zimmet_turu_id, teslim_tarihi,
-                  miktar, beden, seri_no, sonraki_yenileme, aciklama))
-            
-            conn.commit()
-            LogManager.log_insert('ik', 'ik.zimmetler', None, f'Zimmet teslim edildi: {zimmet_no}')
+                SELECT id, ad, kategori, periyot_gun
+                FROM ik.zimmet_turleri WHERE aktif_mi = 1
+                ORDER BY kategori, ad
+            """)
+            self._zimmet_turleri = cursor.fetchall()
             conn.close()
 
-            QMessageBox.information(self, "Başarılı", f"Zimmet teslim edildi.\nZimmet No: {zimmet_no}")
-            self.accept()
-            
+            self._fill_malzeme_table()
+
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Kayıt hatası: {e}")
+            print(f"Veri yukleme hatasi: {e}")
+
+    def _fill_malzeme_table(self):
+        """Malzeme tablosunu doldur"""
+        self._malzeme_rows = []
+        self.malzeme_table.setRowCount(len(self._zimmet_turleri))
+
+        bedenler = ["", "XS", "S", "M", "L", "XL", "XXL", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45"]
+
+        for i, tur in enumerate(self._zimmet_turleri):
+            tur_id, tur_ad, kategori, periyot = tur[0], tur[1], tur[2] or '', tur[3]
+
+            # Checkbox
+            chk = QCheckBox()
+            chk.stateChanged.connect(self._update_secim_sayisi)
+            chk_widget = QWidget()
+            chk_layout = QHBoxLayout(chk_widget)
+            chk_layout.addWidget(chk)
+            chk_layout.setAlignment(Qt.AlignCenter)
+            chk_layout.setContentsMargins(0, 0, 0, 0)
+            self.malzeme_table.setCellWidget(i, 0, chk_widget)
+
+            # Malzeme adi (kategori ile)
+            display = f"[{kategori}] {tur_ad}" if kategori else tur_ad
+            item = QTableWidgetItem(display)
+            item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+            self.malzeme_table.setItem(i, 1, item)
+
+            # Miktar
+            spn = QSpinBox()
+            spn.setRange(1, 100)
+            spn.setValue(1)
+            self.malzeme_table.setCellWidget(i, 2, spn)
+
+            # Beden
+            cmb = QComboBox()
+            cmb.setEditable(True)
+            cmb.addItems(bedenler)
+            self.malzeme_table.setCellWidget(i, 3, cmb)
+
+            # Seri no
+            txt = QLineEdit()
+            txt.setPlaceholderText("Opsiyonel")
+            self.malzeme_table.setCellWidget(i, 4, txt)
+
+            self._malzeme_rows.append({
+                'tur_id': tur_id,
+                'tur_ad': tur_ad,
+                'periyot': periyot,
+                'chk': chk,
+                'spn': spn,
+                'cmb_beden': cmb,
+                'txt_seri': txt,
+            })
+
+            self.malzeme_table.setRowHeight(i, 36)
+
+    def _update_secim_sayisi(self):
+        secili = sum(1 for r in self._malzeme_rows if r['chk'].isChecked())
+        self.lbl_secim.setText(f"{secili} malzeme secili")
+
+    def _tumunu_sec(self):
+        herhangi = any(r['chk'].isChecked() for r in self._malzeme_rows)
+        for r in self._malzeme_rows:
+            r['chk'].setChecked(not herhangi)
+        self._update_secim_sayisi()
+
+    def _save(self):
+        """Secili malzemeleri toplu teslim et"""
+        try:
+            personel_id = self.cmb_personel.currentData()
+            if not personel_id:
+                QMessageBox.warning(self, "Uyari", "Lutfen personel secin.")
+                return
+
+            secili = [r for r in self._malzeme_rows if r['chk'].isChecked()]
+            if not secili:
+                QMessageBox.warning(self, "Uyari", "Lutfen en az bir malzeme secin.")
+                return
+
+            teslim_tarihi = self.dt_teslim.date().toPython()
+            aciklama = self.txt_aciklama.toPlainText() or None
+            ts = datetime.now().strftime('%Y%m%d%H%M%S')
+
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            eklenen = 0
+            for idx, r in enumerate(secili):
+                periyot = r['periyot']
+                sonraki = None
+                if periyot:
+                    sonraki = teslim_tarihi + timedelta(days=periyot)
+
+                zimmet_no = f"Z{ts}{idx + 1:02d}"
+                beden = (r['cmb_beden'].currentText() or "")[:20] or None
+                seri_no = (r['txt_seri'].text() or "")[:50] or None
+                aciklama_val = (aciklama or "")[:500] or None
+
+                cursor.execute("""
+                    INSERT INTO ik.zimmetler (
+                        zimmet_no, personel_id, zimmet_turu_id, teslim_tarihi,
+                        miktar, beden, seri_no, durum, sonraki_yenileme, aciklama
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'TESLIM', ?, ?)
+                """, (zimmet_no, personel_id, r['tur_id'], teslim_tarihi,
+                      r['spn'].value(), beden, seri_no, sonraki, aciklama_val))
+
+                eklenen += 1
+
+            conn.commit()
+            LogManager.log_insert('ik', 'ik.zimmetler', None,
+                                  f'Toplu zimmet teslim: {eklenen} kalem')
+            conn.close()
+
+            malzeme_list = ", ".join(r['tur_ad'] for r in secili)
+            QMessageBox.information(self, "Basarili",
+                                    f"{eklenen} kalem zimmet teslim edildi.\n\n{malzeme_list}")
+            self.accept()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Kayit hatasi: {e}")
 
 
 class IKZimmetPage(BasePage):

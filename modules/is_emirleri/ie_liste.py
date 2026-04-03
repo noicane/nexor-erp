@@ -174,6 +174,13 @@ class IsEmriListePage(BasePage):
         pdf_btn.clicked.connect(self._export_pdf)
         layout.addWidget(pdf_btn)
 
+        birlesik_btn = QPushButton("📋 Birleşik Çıktı")
+        birlesik_btn.setCursor(Qt.PointingHandCursor)
+        birlesik_btn.setToolTip("Seçili iş emirleri + depo çıkış emirlerini tek kağıtta listele")
+        birlesik_btn.setStyleSheet(f"QPushButton {{ background: {s.get('success', '#10B981')}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }} QPushButton:hover {{ background: #059669; }}")
+        birlesik_btn.clicked.connect(self._birlesik_cikti)
+        layout.addWidget(birlesik_btn)
+
         layout.addWidget(self.create_export_button(title="Is Emirleri"))
 
         layout.addStretch()
@@ -202,7 +209,7 @@ class IsEmriListePage(BasePage):
         table.setColumnWidth(8, 90)
         table.setColumnWidth(9, 90)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.verticalHeader().setVisible(False)
         table.setAlternatingRowColors(False)
@@ -378,6 +385,36 @@ class IsEmriListePage(BasePage):
             is_emri_pdf_olustur(is_emri_id)
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"PDF oluşturma hatası: {e}")
+
+    def _birlesik_cikti(self):
+        """Seçili iş emirleri + depo çıkış emirlerini tek kağıtta listele"""
+        selected_rows = set()
+        for item in self.table.selectedItems():
+            selected_rows.add(item.row())
+
+        if not selected_rows:
+            QMessageBox.warning(self, "Uyarı", "Lütfen en az bir iş emri seçin.\n(Ctrl+Click ile çoklu seçim yapabilirsiniz)")
+            return
+
+        is_emri_ids = []
+        for row in sorted(selected_rows):
+            item = self.table.item(row, 0)
+            if item:
+                ie_id = item.data(Qt.UserRole)
+                if ie_id:
+                    try:
+                        is_emri_ids.append(int(ie_id))
+                    except (ValueError, TypeError):
+                        pass
+
+        if not is_emri_ids:
+            return
+
+        try:
+            from utils.birlesik_is_emri_depo_cikis_pdf import birlesik_pdf_olustur_ve_ac
+            birlesik_pdf_olustur_ve_ac(is_emri_ids)
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Birleşik PDF hatası: {e}")
 
     def _new_is_emri(self):
         from modules.is_emirleri.ie_yeni import IsEmriYeniPage

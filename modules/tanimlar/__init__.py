@@ -22,6 +22,7 @@ from .tanim_departmanlar import TanimDepartmanlarPage
 from .tanim_etiket_tasarim import EtiketTasarimPage
 from .tanim_giris_kalite_kriterleri import GirisKaliteKriterleriPage
 from .tanim_pozisyonlar import TanimPozisyonlarPage
+from .tanim_organizasyon import TanimOrganizasyonPage
 from .tanim_soforler import TanimSoforlerPage
 from .tanim_araclar import TanimAraclarPage
 from .tanim_numara import TanimNumaraPage
@@ -45,6 +46,7 @@ PageRegistry.register("tanim_departmanlar", TanimDepartmanlarPage, MODULE_NAME)
 PageRegistry.register("tanim_etiket_tasarim", EtiketTasarimPage, MODULE_NAME)
 PageRegistry.register("tanim_giris_kalite_kriterleri", GirisKaliteKriterleriPage, MODULE_NAME)
 PageRegistry.register("tanim_pozisyonlar", TanimPozisyonlarPage, MODULE_NAME)
+PageRegistry.register("tanim_organizasyon", TanimOrganizasyonPage, MODULE_NAME)
 PageRegistry.register("tanim_soforler", TanimSoforlerPage, MODULE_NAME)
 PageRegistry.register("tanim_araclar", TanimAraclarPage, MODULE_NAME)
 PageRegistry.register("tanim_numara", TanimNumaraPage, MODULE_NAME)

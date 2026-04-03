@@ -279,7 +279,7 @@ class TanimDepartmanlarPage(BasePage):
         layout.setSpacing(12)
         
         # Header
-        header = QLabel("🏢 Departman Tanımları")
+        header = QLabel("Departman / Bölüm Tanımları")
         header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
         layout.addWidget(header)
         
@@ -320,9 +320,9 @@ class TanimDepartmanlarPage(BasePage):
         
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
+        self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Kod", "Departman Adı", "Üst Departman", "Yönetici", "Durum"
+            "ID", "Kod", "Departman Adı", "Üst Departman", "Yönetici", "Personel", "Pozisyon", "Durum"
         ])
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
@@ -351,13 +351,15 @@ class TanimDepartmanlarPage(BasePage):
                 font-weight: bold;
             }}
         """)
-        
+
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionResizeMode(4, QHeaderView.Stretch)
         self.table.setColumnWidth(1, 100)
+        self.table.setColumnWidth(3, 140)
         self.table.setColumnWidth(5, 80)
+        self.table.setColumnWidth(6, 80)
+        self.table.setColumnWidth(7, 80)
         
         self.table.doubleClicked.connect(self._duzenle)
         layout.addWidget(self.table)
@@ -368,47 +370,101 @@ class TanimDepartmanlarPage(BasePage):
         layout.addWidget(self.lbl_stat)
     
     def _load_data(self):
-        """Departman listesini yükle"""
+        """Departman listesini hiyerarşik sırayla yükle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT 
-                    d.id, d.kod, d.ad, 
+                SELECT
+                    d.id, d.kod, d.ad,
                     ust.ad as ust_ad,
                     p.ad + ' ' + p.soyad as yonetici,
-                    d.aktif_mi
+                    d.aktif_mi,
+                    d.ust_departman_id,
+                    (SELECT COUNT(*) FROM ik.personeller per
+                     WHERE per.departman_id = d.id AND per.aktif_mi = 1) AS personel_sayisi,
+                    (SELECT COUNT(*) FROM ik.pozisyonlar poz
+                     WHERE poz.departman_id = d.id AND poz.aktif_mi = 1) AS pozisyon_sayisi
                 FROM ik.departmanlar d
                 LEFT JOIN ik.departmanlar ust ON d.ust_departman_id = ust.id
                 LEFT JOIN ik.personeller p ON d.yonetici_id = p.id
                 ORDER BY d.kod
             """)
-            rows = cursor.fetchall()
+            all_rows = cursor.fetchall()
             conn.close()
-            
-            self.table.setRowCount(len(rows))
+
+            # Hiyerarşik sırala: önce ana departmanlar, sonra alt departmanları
+            ana_rows = [r for r in all_rows if r[6] is None]
+            alt_rows = [r for r in all_rows if r[6] is not None]
+
+            sorted_rows = []
+            for ana in ana_rows:
+                sorted_rows.append((ana, 0))  # seviye 0
+                for alt in alt_rows:
+                    if alt[6] == ana[0]:
+                        sorted_rows.append((alt, 1))  # seviye 1
+                        # 3. seviye (alt-alt)
+                        for alt2 in alt_rows:
+                            if alt2[6] == alt[0]:
+                                sorted_rows.append((alt2, 2))
+
+            self.table.setRowCount(len(sorted_rows))
             aktif_sayisi = 0
-            
-            for i, row in enumerate(rows):
+            toplam_personel = 0
+
+            for i, (row, seviye) in enumerate(sorted_rows):
                 self.table.setItem(i, 0, QTableWidgetItem(str(row[0])))
                 self.table.setItem(i, 1, QTableWidgetItem(row[1] or ""))
-                self.table.setItem(i, 2, QTableWidgetItem(row[2] or ""))
+
+                # Departman adı - girinti ile hiyerarşi göster
+                indent = "    " * seviye
+                prefix = "└─ " if seviye > 0 else ""
+                ad_item = QTableWidgetItem(f"{indent}{prefix}{row[2] or ''}")
+                if seviye == 0:
+                    ad_item.setFont(self._bold_font())
+                self.table.setItem(i, 2, ad_item)
+
                 self.table.setItem(i, 3, QTableWidgetItem(row[3] or "-"))
                 self.table.setItem(i, 4, QTableWidgetItem(row[4] or "-"))
-                
+
+                # Personel sayısı
+                per_sayi = row[7] or 0
+                per_item = QTableWidgetItem(str(per_sayi) if per_sayi > 0 else "-")
+                per_item.setTextAlignment(Qt.AlignCenter)
+                if per_sayi > 0:
+                    per_item.setForeground(QColor(self.theme.get('info', '#3b82f6')))
+                self.table.setItem(i, 5, per_item)
+                toplam_personel += per_sayi
+
+                # Pozisyon sayısı
+                poz_sayi = row[8] or 0
+                poz_item = QTableWidgetItem(str(poz_sayi) if poz_sayi > 0 else "-")
+                poz_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(i, 6, poz_item)
+
                 # Durum
                 aktif = row[5]
-                durum_item = QTableWidgetItem("✓ Aktif" if aktif else "✗ Pasif")
+                durum_item = QTableWidgetItem("Aktif" if aktif else "Pasif")
                 durum_item.setForeground(QColor(self.theme.get('success') if aktif else self.theme.get('danger')))
-                self.table.setItem(i, 5, durum_item)
-                
+                durum_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(i, 7, durum_item)
+
                 if aktif:
                     aktif_sayisi += 1
-            
-            self.lbl_stat.setText(f"Toplam: {len(rows)} departman | Aktif: {aktif_sayisi}")
-            
+
+            self.lbl_stat.setText(
+                f"Toplam: {len(sorted_rows)} departman | Aktif: {aktif_sayisi} | "
+                f"Toplam Personel: {toplam_personel}"
+            )
+
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Veri yüklenirken hata: {str(e)}")
+
+    def _bold_font(self):
+        from PySide6.QtGui import QFont
+        f = QFont()
+        f.setBold(True)
+        return f
     
     def _yeni_departman(self):
         """Yeni departman ekle"""

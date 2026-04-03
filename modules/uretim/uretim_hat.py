@@ -355,6 +355,8 @@ class UretimHatPage(BasePage):
         rec_filt.addWidget(self.cmb_recete_hat)
 
         rec_filt.addStretch()
+        btn_recete_export = self.create_export_button(table_attr="tbl_recete", title="Recete Analizi")
+        rec_filt.addWidget(btn_recete_export)
         tab6_layout.addLayout(rec_filt)
 
         self.tbl_recete = QTableWidget()

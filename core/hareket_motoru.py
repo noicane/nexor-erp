@@ -57,6 +57,7 @@ class HareketNedeni(Enum):
     SAYIM = "SAYIM"
     DUZELTME = "DUZELTME"
     REWORK = "REWORK"
+    KIMYASAL_TUKETIM = "KIMYASAL_TUKETIM"
 
 
 @dataclass

@@ -491,3 +491,295 @@ def zirve_aktarim_kontrol(irsaliye_id: int) -> dict:
         return {'aktarildi': False, 'durum': None}
     except Exception:
         return {'aktarildi': False, 'durum': None}
+
+
+# ============================================================================
+# CARİ SENKRONLAMA - Zirve CARIGEN → Nexor musteri.cariler
+# ============================================================================
+
+def zirve_cari_senkronla() -> dict:
+    """
+    Zirve CARIGEN tablosundaki tüm carileri Nexor musteri.cariler'e senkronize eder.
+    - Zirve'de olup Nexor'da olmayan: yeni kayıt (zirve_cari_kodu=CRK ile)
+    - Zirve'de olup Nexor'da olan: unvan, vergi bilgileri, adres güncelle
+    Returns: {'eklenen': int, 'guncellenen': int, 'toplam_zirve': int, 'hata': str|None}
+    """
+    sonuc = {'eklenen': 0, 'guncellenen': 0, 'toplam_zirve': 0, 'hatalar': [], 'hata': None}
+
+    zirve_conn = None
+    nexor_conn = None
+    try:
+        zirve_conn = _get_zirve_connection()
+        zirve_cursor = zirve_conn.cursor()
+
+        nexor_conn = get_db_connection()
+        nexor_cursor = nexor_conn.cursor()
+
+        # Zirve'den sadece müşteri/tedarikçi carilerini çek (120=müşteri, 320=tedarikçi)
+        zirve_cursor.execute("""
+            SELECT CRK, STA, VERGINO, VERGID, ADRES1, SEHIR, SEMT,
+                   ULKE, TEL, EPOSTA, POSTAKODU
+            FROM dbo.CARIGEN
+            WHERE CRK IS NOT NULL AND CRK <> ''
+              AND (CRK LIKE '120 %' OR CRK LIKE '320 %')
+        """)
+        zirve_cariler = zirve_cursor.fetchall()
+        sonuc['toplam_zirve'] = len(zirve_cariler)
+
+        # Nexor'daki mevcut zirve eşleştirmeleri
+        nexor_cursor.execute("SELECT id, zirve_cari_kodu FROM musteri.cariler WHERE zirve_cari_kodu IS NOT NULL")
+        mevcut = {row[1]: row[0] for row in nexor_cursor.fetchall()}
+
+        for row in zirve_cariler:
+            crk = (row[0] or '').strip()
+            if not crk:
+                continue
+
+            unvan = (row[1] or '').strip()
+            vergi_no = (row[2] or '').strip()
+            vergi_dairesi = (row[3] or '').strip()
+            adres = (row[4] or '').strip()
+            sehir = (row[5] or '').strip()
+            semt = (row[6] or '').strip()
+            telefon = (row[8] or '').strip()
+            email = (row[9] or '').strip()
+
+            # Cari tipi: 120=müşteri, 320=tedarikçi
+            cari_tipi = 'MUSTERI' if crk.startswith('120') else 'TEDARIKCI'
+
+            try:
+                if crk in mevcut:
+                    # Güncelle
+                    nexor_cursor.execute("""
+                        UPDATE musteri.cariler SET
+                            unvan = ?, vergi_no = ?, vergi_dairesi = ?,
+                            adres = ?, telefon = ?, email = ?,
+                            cari_tipi = ?,
+                            guncelleme_tarihi = GETDATE()
+                        WHERE id = ?
+                    """, (unvan or None, vergi_no or None, vergi_dairesi or None,
+                          adres or None, telefon or None, email or None,
+                          cari_tipi, mevcut[crk]))
+                    sonuc['guncellenen'] += 1
+                else:
+                    # Zirve CRK kodunu doğrudan cari_kodu olarak kullan
+                    nexor_cursor.execute("""
+                        INSERT INTO musteri.cariler
+                            (cari_kodu, unvan, cari_tipi, vergi_no, vergi_dairesi,
+                             adres, telefon, email, zirve_cari_kodu, aktif_mi)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                    """, (crk, unvan or crk, cari_tipi, vergi_no or None,
+                          vergi_dairesi or None, adres or None,
+                          telefon or None, email or None, crk))
+                    sonuc['eklenen'] += 1
+
+            except Exception as e:
+                sonuc['hatalar'].append(f"{crk}: {str(e)}")
+
+        nexor_conn.commit()
+
+    except Exception as e:
+        sonuc['hata'] = str(e)
+    finally:
+        if zirve_conn:
+            try: zirve_conn.close()
+            except Exception: pass
+        if nexor_conn:
+            try: nexor_conn.close()
+            except Exception: pass
+
+    return sonuc
+
+
+# ============================================================================
+# STOK SENKRONLAMA - Zirve STOKGEN → Nexor stok.urunler
+# Kural: Mevcut urunlerde sadece fiyat guncellenir, ad/kod/birim dokunulmaz
+# ============================================================================
+
+def zirve_stok_senkronla(sadece_yeni=False):
+    """
+    Zirve STOKGEN tablosundan stok kartlarini senkronize eder.
+
+    Kurallar:
+        - NEXOR'da OLMAYAN urunler: STK, STA, birim, fiyat ile yeni eklenir
+        - NEXOR'da OLAN urunler: Sadece alis fiyati (ALIS1_1) ve satis fiyati (SAT1_1) guncellenir
+        - Urun adi, kodu, birimi, tipi ASLA degistirilmez (kullanici duzeltmeleri korunur)
+
+    Args:
+        sadece_yeni: True ise sadece yeni urunleri ekler, mevcutlari guncellemez
+
+    Returns:
+        dict: {'eklenen': int, 'fiyat_guncellenen': int, 'toplam_zirve': int, 'hata': str}
+    """
+    sonuc = {'eklenen': 0, 'fiyat_guncellenen': 0, 'toplam_zirve': 0, 'hata': None}
+    zirve_conn = None
+    nexor_conn = None
+
+    try:
+        zirve_conn = _get_zirve_connection()
+        nexor_conn = get_db_connection()
+        z_cursor = zirve_conn.cursor()
+        n_cursor = nexor_conn.cursor()
+
+        # Zirve'den stok kartlarini cek
+        z_cursor.execute("""
+            SELECT STK, STA, BBIRIM, ALIS1_1, SAT1_1, KDV,
+                   OZELKOD1, OZELKOD2, GRUP1, ASSTOK, AZSTOK, ACIKLAMA
+            FROM STOKGEN
+            WHERE STK IS NOT NULL AND LTRIM(RTRIM(STK)) <> ''
+            ORDER BY STK
+        """)
+        zirve_stoklar = z_cursor.fetchall()
+        sonuc['toplam_zirve'] = len(zirve_stoklar)
+
+        # NEXOR'daki mevcut urun kodlarini ve id'lerini al
+        n_cursor.execute("SELECT id, urun_kodu FROM stok.urunler WHERE aktif_mi = 1")
+        nexor_map = {}
+        for r in n_cursor.fetchall():
+            if r[1]:
+                nexor_map[r[1].strip()] = r[0]
+
+        for zs in zirve_stoklar:
+            stk = (zs[0] or '').strip()
+            sta = (zs[1] or '').strip()
+            birim = (zs[2] or 'ADET').strip() or 'ADET'
+            alis_fiyat = float(zs[3] or 0)
+            satis_fiyat = float(zs[4] or 0)
+            kdv = float(zs[5] or 0)
+            ozelkod1 = (zs[6] or '').strip()
+            ozelkod2 = (zs[7] or '').strip()
+            grup = (zs[8] or '').strip()
+            min_stok = float(zs[9] or 0)
+            max_stok = float(zs[10] or 0)
+            aciklama = (zs[11] or '').strip()
+
+            if not stk or not sta:
+                continue
+
+            if stk in nexor_map:
+                # MEVCUT - Sadece fiyat guncelle (kullanici duzeltmeleri korunur)
+                if not sadece_yeni and (alis_fiyat > 0 or satis_fiyat > 0):
+                    urun_id = nexor_map[stk]
+                    n_cursor.execute("""
+                        UPDATE stok.urunler SET
+                            zirve_alis_fiyat = ?,
+                            zirve_satis_fiyat = ?,
+                            zirve_son_senkron = GETDATE()
+                        WHERE id = ? AND aktif_mi = 1
+                    """, (alis_fiyat, satis_fiyat, urun_id))
+                    if n_cursor.rowcount > 0:
+                        sonuc['fiyat_guncellenen'] += 1
+            else:
+                # YENI - Ekle
+                # Birim eslestirme
+                birim_map = {'KG': 2, 'GR': 3, 'TON': 4, 'LT': 5, 'ML': 6,
+                             'M3': 7, 'M2': 8, 'M': 11, 'CM': 12, 'MM': 13,
+                             'ADET': 1, 'AD': 1, 'PAKET': 1, 'KUTU': 1}
+                birim_id = birim_map.get(birim.upper(), 1)
+
+                try:
+                    n_cursor.execute("""
+                        INSERT INTO stok.urunler
+                            (urun_kodu, urun_adi, urun_tipi, birim_id, aktif_mi,
+                             zirve_alis_fiyat, zirve_satis_fiyat, zirve_son_senkron,
+                             min_stok, max_stok, notlar)
+                        VALUES (?, ?, 'HAMMADDE', ?, 1, ?, ?, GETDATE(), ?, ?, ?)
+                    """, (stk[:50], sta[:250], birim_id, alis_fiyat, satis_fiyat,
+                          min_stok if min_stok else None,
+                          max_stok if max_stok else None,
+                          aciklama[:500] if aciklama else None))
+                    sonuc['eklenen'] += 1
+                except Exception:
+                    pass  # Constraint hatasi - atla
+
+        nexor_conn.commit()
+        # MetaData2025'ten tedarikci eslesmesi (stok kodu + urun adi ile)
+        tedarikci_eslesen = 0
+        try:
+            z_cursor.execute("""
+                SELECT StokKodu, StokAdi, HesapKoduTD, UnvaniTD, AlisTutari
+                FROM MetaData2025.dbo.StokGenelTedarikci
+                WHERE HesapKoduTD IS NOT NULL AND HesapKoduTD <> ''
+            """)
+            td_rows = z_cursor.fetchall()
+
+            # NEXOR urun adi -> id map (ad ile eslestirme icin)
+            n_cursor.execute("SELECT id, urun_kodu, UPPER(LTRIM(RTRIM(urun_adi))) FROM stok.urunler WHERE aktif_mi = 1")
+            nexor_ad_map = {}
+            for r in n_cursor.fetchall():
+                if r[2]:
+                    nexor_ad_map[r[2]] = r[0]
+
+            # Tedarikci CRK -> id cache
+            tedarikci_cache = {}
+
+            for td in td_rows:
+                stk_kodu = (td[0] or '').strip()
+                stk_adi = (td[1] or '').strip()
+                crk = (td[2] or '').strip()
+                alis = float(td[4] or 0)
+
+                if not crk:
+                    continue
+
+                # NEXOR'da urun bul: once kod, sonra tam ad, sonra icerik eslesmesi
+                urun_id = nexor_map.get(stk_kodu)
+                if not urun_id and stk_adi:
+                    urun_id = nexor_ad_map.get(stk_adi.upper())
+                if not urun_id and stk_adi:
+                    # Icerik eslesmesi: NEXOR adi MetaData adini iceriyor mu veya tersi
+                    aranan = stk_adi.upper().strip()
+                    for nexor_ad, nid in nexor_ad_map.items():
+                        if aranan in nexor_ad or nexor_ad in aranan:
+                            urun_id = nid
+                            break
+
+                if not urun_id:
+                    continue
+
+                # Tedarikci bul (cache)
+                if crk not in tedarikci_cache:
+                    n_cursor.execute("""
+                        SELECT id FROM musteri.cariler
+                        WHERE zirve_cari_kodu = ? AND aktif_mi = 1
+                    """, (crk,))
+                    cari_row = n_cursor.fetchone()
+                    tedarikci_cache[crk] = cari_row[0] if cari_row else None
+
+                tedarikci_id = tedarikci_cache.get(crk)
+                if not tedarikci_id:
+                    continue
+
+                # Guncelle (mevcut cari_id'yi bozma)
+                n_cursor.execute("""
+                    UPDATE stok.urunler SET
+                        cari_id = ISNULL(cari_id, ?),
+                        zirve_alis_fiyat = CASE WHEN ? > 0 THEN ? ELSE zirve_alis_fiyat END,
+                        zirve_son_senkron = GETDATE()
+                    WHERE id = ?
+                """, (tedarikci_id, alis, alis, urun_id))
+                if n_cursor.rowcount > 0:
+                    tedarikci_eslesen += 1
+
+            nexor_conn.commit()
+        except Exception as e:
+            print(f"[WARN] Tedarikci eslestirme hatasi: {e}")
+
+        sonuc['tedarikci_eslesen'] = tedarikci_eslesen
+        print(f"[INFO] Stok senkron: {sonuc['eklenen']} eklendi, "
+              f"{sonuc['fiyat_guncellenen']} fiyat guncellendi, "
+              f"{tedarikci_eslesen} tedarikci eslesti, "
+              f"Zirve toplam: {sonuc['toplam_zirve']}")
+
+    except Exception as e:
+        sonuc['hata'] = str(e)
+        print(f"[ERROR] Stok senkron hatasi: {e}")
+    finally:
+        if zirve_conn:
+            try: zirve_conn.close()
+            except Exception: pass
+        if nexor_conn:
+            try: nexor_conn.close()
+            except Exception: pass
+
+    return sonuc

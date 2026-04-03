@@ -22,22 +22,25 @@ from datetime import datetime
 
 
 class TalepSatirDialog(QDialog):
-    """Talep satırı ekleme/düzenleme"""
-    
-    def __init__(self, theme: dict, talep_id: int, parent=None, satir_id=None):
+    """Talep satiri ekleme/duzenleme - Tedarikci, depo stok ve anlasma fiyati destekli"""
+
+    def __init__(self, theme: dict, talep_id: int, parent=None, satir_id=None, tedarikci_id=None):
         super().__init__(parent)
         self.theme = theme
         self.talep_id = talep_id
         self.satir_id = satir_id
-        self.setWindowTitle("Kalem Ekle" if not satir_id else "Kalem Düzenle")
-        self.setMinimumWidth(500)
+        self.tedarikci_id = tedarikci_id
+        self._urun_stok = {}  # urun_id -> depo stok bilgisi
+        self._anlasma_fiyat = {}  # urun_id -> anlasma fiyati
+        self.setWindowTitle("Kalem Ekle" if not satir_id else "Kalem Duzenle")
+        self.setMinimumWidth(600)
         self.setModal(True)
         self._setup_ui()
         self._load_combos()
-        
+
         if satir_id:
             self._load_data()
-    
+
     def _setup_ui(self):
         self.setStyleSheet(f"""
             QDialog {{ background: {self.theme.get('bg_main')}; }}
@@ -50,20 +53,37 @@ class TalepSatirDialog(QDialog):
                 color: {self.theme.get('text')};
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
         form = QFormLayout()
-        
-        # Ürün seçimi veya manuel giriş
+
+        # Urun tipi filtresi
+        self.cmb_tip = QComboBox()
+        self.cmb_tip.addItems(["Tumu", "KIMYASAL", "HAMMADDE", "PARCA", "YEDEK_PARCA"])
+        self.cmb_tip.currentIndexChanged.connect(self._filter_urunler)
+        form.addRow("Urun Tipi:", self.cmb_tip)
+
+        # Urun secimi
         self.cmb_urun = QComboBox()
         self.cmb_urun.setEditable(True)
+        self.cmb_urun.setMinimumWidth(400)
         self.cmb_urun.currentIndexChanged.connect(self._on_urun_changed)
-        form.addRow("Ürün:", self.cmb_urun)
-        
+        form.addRow("Urun:", self.cmb_urun)
+
         self.txt_urun_adi = QLineEdit()
-        self.txt_urun_adi.setPlaceholderText("Ürün/Malzeme adı")
-        form.addRow("Ürün Adı*:", self.txt_urun_adi)
-        
+        self.txt_urun_adi.setPlaceholderText("Urun/Malzeme adi")
+        form.addRow("Urun Adi*:", self.txt_urun_adi)
+
+        # Stok bilgisi (read-only)
+        self.lbl_stok = QLabel("-")
+        self.lbl_stok.setStyleSheet(f"color: {self.theme.get('info')}; font-size: 12px; font-weight: bold; padding: 4px;")
+        form.addRow("Depo Stok:", self.lbl_stok)
+
+        # Anlasma fiyati (read-only)
+        self.lbl_anlasma = QLabel("-")
+        self.lbl_anlasma.setStyleSheet(f"color: {self.theme.get('success')}; font-size: 12px; font-weight: bold; padding: 4px;")
+        form.addRow("Anlasma Fiyati:", self.lbl_anlasma)
+
         # Miktar
         miktar_layout = QHBoxLayout()
         self.spin_miktar = QDoubleSpinBox()
@@ -71,61 +91,135 @@ class TalepSatirDialog(QDialog):
         self.spin_miktar.setDecimals(2)
         self.spin_miktar.setValue(1)
         miktar_layout.addWidget(self.spin_miktar)
-        
+
         self.cmb_birim = QComboBox()
         self.cmb_birim.addItems(["ADET", "KG", "LT", "MT", "M2", "M3", "PAKET", "KUTU", "VARIL"])
         miktar_layout.addWidget(self.cmb_birim)
         form.addRow("Miktar*:", miktar_layout)
-        
+
         # Tahmini fiyat
         self.spin_fiyat = QDoubleSpinBox()
         self.spin_fiyat.setRange(0, 9999999)
         self.spin_fiyat.setDecimals(4)
-        self.spin_fiyat.setPrefix("₺ ")
-        form.addRow("Tahmini Birim Fiyat:", self.spin_fiyat)
-        
+        self.spin_fiyat.setPrefix("TL ")
+        form.addRow("Birim Fiyat:", self.spin_fiyat)
+
         self.txt_aciklama = QTextEdit()
         self.txt_aciklama.setMaximumHeight(60)
-        form.addRow("Açıklama:", self.txt_aciklama)
-        
+        form.addRow("Aciklama:", self.txt_aciklama)
+
         layout.addLayout(form)
         layout.addStretch()
-        
+
         # Butonlar
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        
-        btn_iptal = QPushButton("İptal")
+
+        btn_iptal = QPushButton("Iptal")
         btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; border-radius: 6px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
-        
-        btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 20px; border-radius: 6px;")
+
+        btn_kaydet = QPushButton("Kaydet")
+        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
-        
+
         layout.addLayout(btn_layout)
-    
+
     def _load_combos(self):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            self.cmb_urun.addItem("-- Manuel Giriş --", None)
-            cursor.execute("SELECT id, urun_kodu, urun_adi FROM stok.urunler WHERE aktif_mi = 1 ORDER BY urun_kodu")
-            for row in cursor.fetchall():
-                self.cmb_urun.addItem(f"{row[1]} - {row[2]}", row[0])
-            
+
+            # Tum urunleri yukle (dahili cache)
+            cursor.execute("""
+                SELECT u.id, u.urun_kodu, u.urun_adi, u.urun_tipi, u.birim_id
+                FROM stok.urunler u WHERE u.aktif_mi = 1 ORDER BY u.urun_kodu
+            """)
+            self._all_urunler = cursor.fetchall()
+
+            # Depo stok bilgileri
+            cursor.execute("""
+                SELECT urun_id, SUM(ISNULL(kullanilabilir_miktar, miktar)) as toplam, birim
+                FROM stok.stok_bakiye
+                WHERE bloke_mi = 0
+                GROUP BY urun_id, birim
+            """)
+            for r in cursor.fetchall():
+                self._urun_stok[r[0]] = {'miktar': float(r[1] or 0), 'birim': r[2] or ''}
+
+            # Tedarikci anlasma fiyatlari
+            if self.tedarikci_id:
+                cursor.execute("""
+                    SELECT urun_id, urun_adi, birim_fiyat
+                    FROM satinalma.tedarikci_fiyatlari
+                    WHERE tedarikci_id = ? AND aktif_mi = 1
+                      AND GETDATE() BETWEEN gecerlilik_baslangic AND ISNULL(gecerlilik_bitis, '2099-12-31')
+                """, (self.tedarikci_id,))
+                for r in cursor.fetchall():
+                    if r[0]:
+                        self._anlasma_fiyat[r[0]] = {'fiyat': float(r[2] or 0), 'urun_adi': r[1]}
+
             conn.close()
-        except Exception:
-            pass
-    
+            self._filter_urunler()
+        except Exception as e:
+            print(f"Combo yukleme hatasi: {e}")
+
+    def _filter_urunler(self):
+        """Urun tipine gore filtrele"""
+        self.cmb_urun.blockSignals(True)
+        self.cmb_urun.clear()
+        self.cmb_urun.addItem("-- Manuel Giris --", None)
+
+        tip = self.cmb_tip.currentText()
+        for row in self._all_urunler:
+            urun_id, kod, ad, urun_tipi = row[0], row[1], row[2], row[3] or ''
+            if tip != "Tumu" and urun_tipi != tip:
+                continue
+
+            # Stok ve anlasma bilgisi goster
+            etiketler = []
+            stok = self._urun_stok.get(urun_id)
+            if stok and stok['miktar'] > 0:
+                etiketler.append(f"Stok:{stok['miktar']:.0f}")
+            anlasma = self._anlasma_fiyat.get(urun_id)
+            if anlasma:
+                etiketler.append(f"TL{anlasma['fiyat']:.2f}")
+
+            suffix = f" ({', '.join(etiketler)})" if etiketler else ""
+            self.cmb_urun.addItem(f"{kod} - {ad}{suffix}", urun_id)
+
+        self.cmb_urun.blockSignals(False)
+
     def _on_urun_changed(self, index):
-        if index > 0:
-            text = self.cmb_urun.currentText()
-            if " - " in text:
-                self.txt_urun_adi.setText(text.split(" - ", 1)[1])
+        urun_id = self.cmb_urun.currentData()
+        if not urun_id:
+            self.lbl_stok.setText("-")
+            self.lbl_anlasma.setText("-")
+            return
+
+        text = self.cmb_urun.currentText()
+        if " - " in text:
+            ad = text.split(" - ", 1)[1].split(" (")[0]
+            self.txt_urun_adi.setText(ad)
+
+        # Stok goster
+        stok = self._urun_stok.get(urun_id)
+        if stok and stok['miktar'] > 0:
+            self.lbl_stok.setText(f"{stok['miktar']:.2f} {stok['birim']}")
+            self.lbl_stok.setStyleSheet(f"color: {self.theme.get('success')}; font-size: 12px; font-weight: bold;")
+        else:
+            self.lbl_stok.setText("Stok yok")
+            self.lbl_stok.setStyleSheet(f"color: {self.theme.get('danger')}; font-size: 12px; font-weight: bold;")
+
+        # Anlasma fiyati goster ve otomatik doldur
+        anlasma = self._anlasma_fiyat.get(urun_id)
+        if anlasma:
+            self.lbl_anlasma.setText(f"TL {anlasma['fiyat']:.4f} (Anlasma)")
+            self.spin_fiyat.setValue(anlasma['fiyat'])
+        else:
+            self.lbl_anlasma.setText("Anlasma fiyati yok")
     
     def _load_data(self):
         try:
@@ -266,9 +360,14 @@ class TalepDialog(QDialog):
         self.date_termin.setCalendarPopup(True)
         genel_layout.addRow("İstenen Termin:", self.date_termin)
         
+        # Tedarikci secimi (opsiyonel - fiyat ve stok bilgisi icin)
+        self.cmb_tedarikci = QComboBox()
+        self.cmb_tedarikci.setEditable(True)
+        genel_layout.addRow("Tedarikci:", self.cmb_tedarikci)
+
         self.txt_neden = QTextEdit()
         self.txt_neden.setMaximumHeight(60)
-        self.txt_neden.setPlaceholderText("Talep nedeni/açıklaması")
+        self.txt_neden.setPlaceholderText("Talep nedeni/aciklamasi")
         genel_layout.addRow("Talep Nedeni:", self.txt_neden)
         
         self.txt_notlar = QTextEdit()
@@ -419,10 +518,20 @@ class TalepDialog(QDialog):
                         if self.cmb_talep_eden.itemData(i) == personel_id:
                             self.cmb_talep_eden.setCurrentIndex(i)
                             break
-            
+
+            # Tedarikciler
+            self.cmb_tedarikci.addItem("-- Tedarikci (Opsiyonel) --", None)
+            cursor.execute("""
+                SELECT id, cari_kodu, unvan FROM musteri.cariler
+                WHERE cari_tipi IN ('TEDARIKCI', 'HER_IKISI') AND aktif_mi = 1
+                ORDER BY unvan
+            """)
+            for row in cursor.fetchall():
+                self.cmb_tedarikci.addItem(f"{row[1]} - {row[2]}", row[0])
+
             conn.close()
         except Exception as e:
-            print(f"Combo yükleme hatası: {e}")
+            print(f"Combo yukleme hatasi: {e}")
             import traceback
             traceback.print_exc()
             QMessageBox.warning(self, "Hata", f"Personel listesi yüklenemedi:\n{str(e)}")
@@ -535,19 +644,21 @@ class TalepDialog(QDialog):
             QMessageBox.warning(self, "Uyarı", "Önce talebi kaydedin!")
             return
         
-        dialog = TalepSatirDialog(self.theme, self.talep_id, self)
+        tedarikci_id = self.cmb_tedarikci.currentData() if hasattr(self, 'cmb_tedarikci') else None
+        dialog = TalepSatirDialog(self.theme, self.talep_id, self, tedarikci_id=tedarikci_id)
         if dialog.exec() == QDialog.Accepted:
             self._load_satirlar()
             self._update_talep_tutar()
-    
+
     def _edit_satir(self):
         row = self.table_satirlar.currentRow()
         if row < 0:
-            QMessageBox.warning(self, "Uyarı", "Bir satır seçin!")
+            QMessageBox.warning(self, "Uyari", "Bir satir secin!")
             return
-        
+
         satir_id = int(self.table_satirlar.item(row, 0).text())
-        dialog = TalepSatirDialog(self.theme, self.talep_id, self, satir_id)
+        tedarikci_id = self.cmb_tedarikci.currentData() if hasattr(self, 'cmb_tedarikci') else None
+        dialog = TalepSatirDialog(self.theme, self.talep_id, self, satir_id, tedarikci_id=tedarikci_id)
         if dialog.exec() == QDialog.Accepted:
             self._load_satirlar()
             self._update_talep_tutar()
@@ -1014,6 +1125,16 @@ class SatinalmaTaleplerPage(BasePage):
         btn_reddet.clicked.connect(self._reddet)
         toolbar_layout.addWidget(btn_reddet)
 
+        btn_yazdir = QPushButton("Yazdir")
+        btn_yazdir.setStyleSheet(f"background: {self.theme.get('info')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_yazdir.clicked.connect(lambda: self._yazdir())
+        toolbar_layout.addWidget(btn_yazdir)
+
+        btn_siparise = QPushButton("Siparise Donustur")
+        btn_siparise.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_siparise.clicked.connect(self._siparise_donustur)
+        toolbar_layout.addWidget(btn_siparise)
+
         toolbar_layout.addStretch()
 
         toolbar_layout.addWidget(self.create_export_button(title="Satinalma Talepleri"))
@@ -1188,15 +1309,133 @@ class SatinalmaTaleplerPage(BasePage):
             
             self._load_data()
             QMessageBox.information(self, "Başarılı", "Talep onaylandı ve ilgili kişilere bildirim gönderildi!")
-            
+            self._yazdir(talep_id)
+
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Onaylama hatası: {str(e)}")
+
+    def _yazdir(self, talep_id: int = None):
+        """Satinalma talep formunu PDF olarak yazdir"""
+        if talep_id is None:
+            row = self.table.currentRow()
+            if row < 0:
+                QMessageBox.warning(self, "Uyarı", "Bir talep seçin!")
+                return
+            talep_id = int(self.table.item(row, 0).text())
+        try:
+            from utils.satinalma_talep_pdf import satinalma_talep_pdf
+            satinalma_talep_pdf(talep_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"PDF olusturulamadi: {e}")
     
-    def _reddet(self):
-        """Seçili talebi reddet"""
+    def _siparise_donustur(self):
+        """Onaylanan talebi satin alma siparisine donustur"""
         row = self.table.currentRow()
         if row < 0:
-            QMessageBox.warning(self, "Uyarı", "Bir talep seçin!")
+            QMessageBox.warning(self, "Uyari", "Bir talep secin!")
+            return
+
+        talep_id = int(self.table.item(row, 0).text())
+        durum = self.table.item(row, 6).text()
+
+        if durum not in ("AMIR_ONAYLADI", "SATINALMA_ONAYLANDI"):
+            QMessageBox.warning(self, "Uyari", "Sadece onaylanmis talepler siparise donusturulebilir!")
+            return
+
+        reply = QMessageBox.question(self, "Siparis Olustur",
+                                     "Bu talep satirlari siparis formuna aktarilacak. Devam edilsin mi?")
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Talep bilgilerini al
+            cursor.execute("""
+                SELECT t.departman_id, t.istenen_termin, t.notlar
+                FROM satinalma.talepler t WHERE t.id = ?
+            """, (talep_id,))
+            talep = cursor.fetchone()
+
+            # Siparis no olustur
+            cursor.execute("""
+                SELECT ISNULL(MAX(CAST(RIGHT(siparis_no, 4) AS INT)), 0) + 1
+                FROM satinalma.siparisler
+                WHERE siparis_no LIKE ?
+            """, (f"SIP-{datetime.now().strftime('%Y%m%d')}-%",))
+            sira = cursor.fetchone()[0]
+            siparis_no = f"SIP-{datetime.now().strftime('%Y%m%d')}-{sira:04d}"
+
+            # Siparis olustur
+            cursor.execute("""
+                INSERT INTO satinalma.siparisler
+                    (siparis_no, tarih, istenen_teslim_tarihi, notlar, durum)
+                OUTPUT INSERTED.id
+                VALUES (?, GETDATE(), ?, ?, 'TASLAK')
+            """, (siparis_no, talep[1], talep[2] or f"Talep #{talep_id} den olusturuldu"))
+            siparis_id = int(cursor.fetchone()[0])
+
+            # Talep satirlarini siparis satirlarina aktar
+            cursor.execute("""
+                SELECT satir_no, urun_id, urun_adi, talep_miktar, birim,
+                       tahmini_birim_fiyat, tahmini_tutar, aciklama
+                FROM satinalma.talep_satirlari WHERE talep_id = ?
+                ORDER BY satir_no
+            """, (talep_id,))
+            satirlar = cursor.fetchall()
+
+            for s in satirlar:
+                fiyat = float(s[5]) if s[5] else 0
+                miktar = float(s[3]) if s[3] else 0
+                tutar = fiyat * miktar
+                kdv_orani = 20.0
+                kdv_tutari = tutar * kdv_orani / 100
+                toplam = tutar + kdv_tutari
+
+                cursor.execute("""
+                    INSERT INTO satinalma.siparis_satirlari
+                        (siparis_id, satir_no, urun_id, urun_adi, siparis_miktar,
+                         birim, birim_fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (siparis_id, s[0], s[1], s[2], miktar,
+                      s[4], fiyat, tutar, kdv_orani, kdv_tutari, toplam, s[7]))
+
+            # Siparis toplamlarini guncelle
+            cursor.execute("""
+                UPDATE satinalma.siparisler SET
+                    ara_toplam = (SELECT ISNULL(SUM(tutar), 0) FROM satinalma.siparis_satirlari WHERE siparis_id = ?),
+                    kdv_toplam = (SELECT ISNULL(SUM(kdv_tutari), 0) FROM satinalma.siparis_satirlari WHERE siparis_id = ?),
+                    genel_toplam = (SELECT ISNULL(SUM(toplam), 0) FROM satinalma.siparis_satirlari WHERE siparis_id = ?)
+                WHERE id = ?
+            """, (siparis_id, siparis_id, siparis_id, siparis_id))
+
+            # Talep satirlarini siparis ile iliskilendir
+            cursor.execute("""
+                UPDATE satinalma.talep_satirlari
+                SET siparis_id = ?, siparis_durumu = 'SIPARISE_DONUSTURULDU'
+                WHERE talep_id = ?
+            """, (siparis_id, talep_id))
+
+            conn.commit()
+            LogManager.log_insert('satinalma', 'satinalma.siparisler', siparis_id,
+                                  f'Talep #{talep_id} siparise donusturuldu: {siparis_no}')
+            conn.close()
+
+            QMessageBox.information(self, "Basarili",
+                                    f"Siparis olusturuldu!\n\nSiparis No: {siparis_no}\n"
+                                    f"Aktarilan kalem: {len(satirlar)}\n\n"
+                                    "Satinalma Siparisleri sayfasindan duzenleyebilirsiniz.")
+            self._load_data()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Siparis olusturma hatasi: {e}")
+
+    def _reddet(self):
+        """Secili talebi reddet"""
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "Uyari", "Bir talep secin!")
             return
         
         talep_id = int(self.table.item(row, 0).text())

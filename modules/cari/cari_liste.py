@@ -695,6 +695,23 @@ class CariListePage(BasePage):
         refresh_btn.clicked.connect(self._load_data)
         toolbar.addWidget(refresh_btn)
 
+        zirve_btn = QPushButton("📥 Zirve Senkron")
+        zirve_btn.setToolTip("Zirve Ticari'den cari kartlarını senkronize et")
+        zirve_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: #2563eb;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 16px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #1d4ed8; }}
+        """)
+        zirve_btn.clicked.connect(self._zirve_senkron)
+        toolbar.addWidget(zirve_btn)
+
         layout.addLayout(toolbar)
         
         # Table
@@ -911,6 +928,49 @@ class CariListePage(BasePage):
             self.current_page += 1
             self._load_data()
     
+    def _zirve_senkron(self):
+        """Zirve'den cari kartlarını senkronize et"""
+        reply = QMessageBox.question(
+            self, "Zirve Cari Senkron",
+            "Zirve Ticari'deki (ATLAS_KATAFOREZ_2026T) tüm cari kartları\n"
+            "Nexor'a senkronize edilecek.\n\n"
+            "- Yeni cariler eklenecek\n"
+            "- Mevcut cariler güncellenecek\n\n"
+            "Devam edilsin mi?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            from core.zirve_entegrasyon import zirve_cari_senkronla
+            sonuc = zirve_cari_senkronla()
+
+            if sonuc.get('hata'):
+                QMessageBox.critical(self, "Hata", f"Senkronizasyon hatası:\n{sonuc['hata']}")
+                return
+
+            mesaj = (
+                f"Senkronizasyon tamamlandı!\n\n"
+                f"Zirve'deki toplam cari: {sonuc['toplam_zirve']}\n"
+                f"Yeni eklenen: {sonuc['eklenen']}\n"
+                f"Güncellenen: {sonuc['guncellenen']}"
+            )
+            if sonuc.get('hatalar'):
+                mesaj += f"\n\nHatalı kayıtlar ({len(sonuc['hatalar'])}):\n"
+                for h in sonuc['hatalar'][:5]:
+                    mesaj += f"  - {h}\n"
+                if len(sonuc['hatalar']) > 5:
+                    mesaj += f"  ... ve {len(sonuc['hatalar']) - 5} daha"
+
+            QMessageBox.information(self, "Zirve Cari Senkron", mesaj)
+            self._load_data()
+
+        except ImportError:
+            QMessageBox.critical(self, "Hata", "Zirve entegrasyon modülü yüklenemedi!")
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Beklenmeyen hata:\n{e}")
+
     def _on_row_double_click(self, index):
         row = index.row()
         cari_id = self.table.item(row, 0).data(Qt.UserRole)

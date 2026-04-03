@@ -16,6 +16,15 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from reportlab.graphics.barcode import code128
 
+# Resim DPI düşürme (etiket performansı için)
+ETIKET_RESIM_MAX_PX = 300  # Etiket resmi max piksel (genişlik veya yükseklik)
+
+try:
+    from PIL import Image as PILImage
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+
 # Etiket boyutu (100x50mm)
 ETIKET_GENISLIK = 100 * mm_unit
 ETIKET_YUKSEKLIK = 50 * mm_unit
@@ -70,15 +79,35 @@ def lot_no_olustur(tarih: datetime, sira: int, palet_no: int = None) -> str:
 
 
 def urun_resmi_bul(stok_kodu: str) -> str:
-    """NAS'tan ürün resmini bul"""
+    """NAS'tan ürün resmini bul ve etiket için DPI düşür"""
     extensions = ['.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG']
-    
+
     for ext in extensions:
         path = os.path.join(NAS_IMAGE_PATH, f"{stok_kodu}{ext}")
         if os.path.exists(path):
-            return path
-    
+            return _resim_kucult(path)
+
     return None
+
+
+def _resim_kucult(path: str) -> str:
+    """Resmi etiket için küçültür (düşük DPI). Küçültülmüş dosyayı temp'e yazar."""
+    if not PIL_AVAILABLE:
+        return path
+    try:
+        img = PILImage.open(path)
+        w, h = img.size
+        if max(w, h) <= ETIKET_RESIM_MAX_PX:
+            return path  # Zaten küçük
+        ratio = ETIKET_RESIM_MAX_PX / max(w, h)
+        new_size = (int(w * ratio), int(h * ratio))
+        img = img.resize(new_size, PILImage.LANCZOS)
+        # Temp dosyaya kaydet
+        tmp = os.path.join(tempfile.gettempdir(), f"nexor_etiket_{os.path.basename(path)}")
+        img.save(tmp, quality=75, optimize=True)
+        return tmp
+    except Exception:
+        return path
 
 
 def etiket_pdf_olustur(
@@ -533,7 +562,14 @@ def _etiket_icerik_ciz(c: canvas.Canvas, etiket: dict):
     info_y -= 3.5 * mm_unit
     lot_no = etiket.get('lot_no', '')
     c.drawString(info_x, info_y, f"LOT: {lot_no}")
-    
+
+    # Kontrolcü
+    kontrolcu = etiket.get('kontrolcu', '')
+    if kontrolcu:
+        info_y -= 3 * mm_unit
+        c.setFont("Helvetica", 6)
+        c.drawString(info_x, info_y, f"KONTROL: {str(kontrolcu)[:25]}")
+
     # Barkod
     try:
         barcode = code128.Code128(lot_no, barWidth=0.35 * mm_unit, barHeight=7 * mm_unit)
@@ -547,6 +583,124 @@ def _etiket_icerik_ciz(c: canvas.Canvas, etiket: dict):
     if tarih:
         tarih_str = tarih.strftime("%d.%m.%Y") if hasattr(tarih, 'strftime') else str(tarih)[:10]
         c.drawRightString(ETIKET_GENISLIK - margin, 3 * mm_unit, tarih_str)
+
+
+def _red_etiket_icerik_ciz(c: canvas.Canvas, etiket: dict):
+    """RED etiketi içeriğini çiz - kırmızı çerçeveli, RED damgalı"""
+
+    margin = 3 * mm_unit
+
+    # Kırmızı çerçeve
+    c.setStrokeColorRGB(0.93, 0.27, 0.27)
+    c.setLineWidth(2)
+    c.rect(1 * mm_unit, 1 * mm_unit, ETIKET_GENISLIK - 2 * mm_unit, ETIKET_YUKSEKLIK - 2 * mm_unit)
+    c.setLineWidth(0.5)
+
+    # RED damgası (çapraz)
+    c.saveState()
+    c.setFillColorRGB(0.93, 0.27, 0.27, 0.15)
+    c.setFont("Helvetica-Bold", 40)
+    c.translate(ETIKET_GENISLIK / 2, ETIKET_YUKSEKLIK / 2)
+    c.rotate(30)
+    c.drawCentredString(0, -8, "RED")
+    c.restoreState()
+
+    # Üst: RED başlığı
+    c.setFillColorRGB(0.93, 0.27, 0.27)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawCentredString(ETIKET_GENISLIK / 2, ETIKET_YUKSEKLIK - 7 * mm_unit, "RED / UYGUNSUZ ÜRÜN")
+
+    c.setStrokeColorRGB(0.93, 0.27, 0.27)
+    c.line(margin, ETIKET_YUKSEKLIK - 9 * mm_unit, ETIKET_GENISLIK - margin, ETIKET_YUKSEKLIK - 9 * mm_unit)
+
+    # Bilgiler
+    c.setFillColorRGB(0, 0, 0)
+    info_y = ETIKET_YUKSEKLIK - 13 * mm_unit
+    info_x = margin + 2 * mm_unit
+
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(info_x, info_y, f"Stok: {str(etiket.get('stok_kodu', ''))[:20]}")
+
+    info_y -= 4 * mm_unit
+    c.setFont("Helvetica", 7)
+    c.drawString(info_x, info_y, f"Ürün: {str(etiket.get('stok_adi', ''))[:30]}")
+
+    info_y -= 3.5 * mm_unit
+    c.drawString(info_x, info_y, f"Müşteri: {str(etiket.get('musteri', ''))[:28]}")
+
+    info_y -= 3.5 * mm_unit
+    c.setFont("Helvetica-Bold", 8)
+    miktar = etiket.get('miktar', 0)
+    c.drawString(info_x, info_y, f"Miktar: {miktar:,.0f} {etiket.get('birim', 'ADET')}")
+
+    info_y -= 3.5 * mm_unit
+    c.setFont("Helvetica", 7)
+    c.drawString(info_x, info_y, f"Lot: {etiket.get('lot_no', '')}")
+
+    info_y -= 3.5 * mm_unit
+    kontrolcu = etiket.get('kontrolcu', '')
+    if kontrolcu:
+        c.drawString(info_x, info_y, f"Kontrol: {str(kontrolcu)[:25]}")
+
+    # Red nedeni
+    info_y -= 3.5 * mm_unit
+    red_neden = etiket.get('red_neden', etiket.get('aciklama', ''))
+    if red_neden:
+        c.setFont("Helvetica-Bold", 7)
+        c.setFillColorRGB(0.93, 0.27, 0.27)
+        c.drawString(info_x, info_y, f"Neden: {str(red_neden)[:35]}")
+
+    # Tarih
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont("Helvetica", 6)
+    tarih = etiket.get('tarih')
+    if tarih:
+        tarih_str = tarih.strftime("%d.%m.%Y") if hasattr(tarih, 'strftime') else str(tarih)[:10]
+        c.drawRightString(ETIKET_GENISLIK - margin, 3 * mm_unit, tarih_str)
+
+
+def red_etiket_pdf_olustur(output_path: str, etiketler: list) -> str:
+    """RED etiketleri A4 PDF'i oluştur"""
+    from reportlab.lib.pagesizes import A4
+
+    a4_width, a4_height = A4
+    sutun_sayisi = 2
+    satir_sayisi = 5
+    etiket_w = 100 * mm_unit
+    etiket_h = 50 * mm_unit
+    margin_x = (a4_width - (sutun_sayisi * etiket_w)) / 2
+    margin_y = (a4_height - (satir_sayisi * etiket_h)) / 2
+
+    c = canvas.Canvas(output_path, pagesize=A4)
+    etiket_index = 0
+
+    while etiket_index < len(etiketler):
+        for satir in range(satir_sayisi):
+            for sutun in range(sutun_sayisi):
+                if etiket_index >= len(etiketler):
+                    break
+
+                etiket = etiketler[etiket_index]
+                x = margin_x + (sutun * etiket_w)
+                y = a4_height - margin_y - ((satir + 1) * etiket_h)
+
+                c.setStrokeColorRGB(0.8, 0.8, 0.8)
+                c.setDash(1, 2)
+                c.rect(x, y, etiket_w, etiket_h)
+                c.setDash()
+
+                c.saveState()
+                c.translate(x, y)
+                _red_etiket_icerik_ciz(c, etiket)
+                c.restoreState()
+
+                etiket_index += 1
+
+        if etiket_index < len(etiketler):
+            c.showPage()
+
+    c.save()
+    return output_path
 
 
 # Test

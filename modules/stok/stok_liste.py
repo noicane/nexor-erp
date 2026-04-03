@@ -2541,6 +2541,293 @@ class StokDetayDialog(QDialog):
             QMessageBox.warning(self, "Hata", "Dosya bulunamadı!")
 
 
+# ==================== YENİ ÜRÜN DIALOG ====================
+
+class YeniUrunDialog(QDialog):
+    """Yeni stok kartı ekleme dialog'u"""
+
+    def __init__(self, theme: dict, parent=None):
+        super().__init__(parent)
+        self.theme = theme
+        self.yeni_id = None
+        self.setWindowTitle("Yeni Stok Kartı")
+        self.setMinimumSize(600, 550)
+        self._setup_ui()
+        self._load_combos()
+        add_minimize_button(self)
+
+    def _setup_ui(self):
+        self.setStyleSheet(f"""
+            QDialog {{ background: {self.theme.get('bg_main')}; }}
+            QLabel {{ color: {self.theme.get('text')}; }}
+        """)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(16)
+
+        title = QLabel("➕ Yeni Stok Kartı Oluştur")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
+        layout.addWidget(title)
+
+        input_style = f"""
+            QLineEdit, QComboBox, QDoubleSpinBox, QSpinBox, QTextEdit {{
+                background: {self.theme.get('bg_input')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 8px;
+                color: {self.theme.get('text')};
+            }}
+        """
+        label_style = f"color: {self.theme.get('text')}; font-size: 12px;"
+
+        form_frame = QFrame()
+        form_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        form = QFormLayout(form_frame)
+        form.setContentsMargins(16, 16, 16, 16)
+        form.setSpacing(10)
+
+        # Ürün Kodu (zorunlu)
+        self.urun_kodu = QLineEdit()
+        self.urun_kodu.setPlaceholderText("Örn: PRD-001")
+        self.urun_kodu.setStyleSheet(input_style)
+        lbl = QLabel("Ürün Kodu *:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.urun_kodu)
+
+        # Ürün Adı (zorunlu)
+        self.urun_adi = QLineEdit()
+        self.urun_adi.setPlaceholderText("Ürün açıklaması")
+        self.urun_adi.setStyleSheet(input_style)
+        lbl = QLabel("Ürün Adı *:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.urun_adi)
+
+        # Müşteri
+        self.cari_combo = QComboBox()
+        self.cari_combo.setStyleSheet(input_style)
+        lbl = QLabel("Müşteri:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.cari_combo)
+
+        # Müşteri Parça No
+        self.musteri_parca_no = QLineEdit()
+        self.musteri_parca_no.setStyleSheet(input_style)
+        lbl = QLabel("Müşteri Parça No:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.musteri_parca_no)
+
+        # Ürün Tipi
+        self.tip_combo = QComboBox()
+        self.tip_combo.setStyleSheet(input_style)
+        lbl = QLabel("Ürün Tipi *:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.tip_combo)
+
+        # Birim
+        self.birim_combo = QComboBox()
+        self.birim_combo.setStyleSheet(input_style)
+        lbl = QLabel("Birim *:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.birim_combo)
+
+        # Kaplama Türü
+        self.kaplama_combo = QComboBox()
+        self.kaplama_combo.setStyleSheet(input_style)
+        lbl = QLabel("Kaplama Türü:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.kaplama_combo)
+
+        # Yüzey Alanı
+        self.yuzey_alani = QDoubleSpinBox()
+        self.yuzey_alani.setDecimals(4)
+        self.yuzey_alani.setRange(0, 999999)
+        self.yuzey_alani.setStyleSheet(input_style)
+        lbl = QLabel("Yüzey Alanı (m²):")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.yuzey_alani)
+
+        # Ağırlık
+        self.agirlik = QDoubleSpinBox()
+        self.agirlik.setDecimals(4)
+        self.agirlik.setRange(0, 999999)
+        self.agirlik.setStyleSheet(input_style)
+        lbl = QLabel("Ağırlık (kg):")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.agirlik)
+
+        # Not
+        self.notlar = QTextEdit()
+        self.notlar.setMaximumHeight(60)
+        self.notlar.setStyleSheet(input_style)
+        lbl = QLabel("Notlar:")
+        lbl.setStyleSheet(label_style)
+        form.addRow(lbl, self.notlar)
+
+        layout.addWidget(form_frame)
+
+        # Butonlar
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        iptal_btn = QPushButton("İptal")
+        iptal_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 10px 24px;
+            }}
+        """)
+        iptal_btn.clicked.connect(self.reject)
+        btn_layout.addWidget(iptal_btn)
+
+        kaydet_btn = QPushButton("💾 Kaydet")
+        kaydet_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('success', '#22c55e')};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 24px;
+                font-weight: bold;
+            }}
+        """)
+        kaydet_btn.clicked.connect(self._kaydet)
+        btn_layout.addWidget(kaydet_btn)
+
+        layout.addLayout(btn_layout)
+
+    def _load_combos(self):
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Müşteriler
+            self.cari_combo.addItem("-- Seçiniz --", None)
+            cursor.execute("SELECT id, COALESCE(unvan, kisa_ad) FROM musteri.cariler WHERE aktif_mi = 1 ORDER BY unvan")
+            for row in cursor.fetchall():
+                self.cari_combo.addItem(row[1], row[0])
+
+            # Ürün Tipleri
+            self.tip_combo.addItem("-- Seçiniz --", None)
+            try:
+                cursor.execute("SELECT id, ad FROM stok.urun_tipleri WHERE aktif_mi = 1 ORDER BY ad")
+                for row in cursor.fetchall():
+                    self.tip_combo.addItem(row[1], row[0])
+            except Exception:
+                # Tablo yoksa sabit değerler
+                for tip in ['MAMUL', 'YARI_MAMUL', 'HAMMADDE', 'YARDIMCI']:
+                    self.tip_combo.addItem(tip, tip)
+
+            # Birimler
+            self.birim_combo.addItem("-- Seçiniz --", None)
+            cursor.execute("SELECT id, COALESCE(ad, kod) FROM tanim.birimler WHERE aktif_mi = 1 ORDER BY kod")
+            for row in cursor.fetchall():
+                self.birim_combo.addItem(row[1], row[0])
+
+            # Kaplama Türleri
+            self.kaplama_combo.addItem("-- Seçiniz --", None)
+            cursor.execute("SELECT id, ad FROM tanim.kaplama_turleri WHERE aktif_mi = 1 ORDER BY ad")
+            for row in cursor.fetchall():
+                self.kaplama_combo.addItem(row[1], row[0])
+
+            conn.close()
+        except Exception as e:
+            print(f"Combo yükleme hatası: {e}")
+
+    def _kaydet(self):
+        urun_kodu = self.urun_kodu.text().strip()
+        urun_adi = self.urun_adi.text().strip()
+
+        if not urun_kodu:
+            QMessageBox.warning(self, "Uyarı", "Ürün kodu zorunludur!")
+            self.urun_kodu.setFocus()
+            return
+        if not urun_adi:
+            QMessageBox.warning(self, "Uyarı", "Ürün adı zorunludur!")
+            self.urun_adi.setFocus()
+            return
+
+        birim_id = self.birim_combo.currentData()
+        if not birim_id:
+            QMessageBox.warning(self, "Uyarı", "Birim seçimi zorunludur!")
+            return
+
+        # urun_tipi: id veya string olabilir
+        tip_data = self.tip_combo.currentData()
+        tip_id = None
+        tip_str = 'MAMUL'
+        if isinstance(tip_data, int):
+            tip_id = tip_data
+        elif isinstance(tip_data, str):
+            tip_str = tip_data
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Aynı kod var mı?
+            cursor.execute("SELECT id FROM stok.urunler WHERE urun_kodu = ?", (urun_kodu,))
+            if cursor.fetchone():
+                QMessageBox.warning(self, "Uyarı", f"'{urun_kodu}' kodlu ürün zaten mevcut!")
+                conn.close()
+                return
+
+            # urun_tipi_id kolonu var mı kontrol
+            cursor.execute("""
+                SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'stok' AND TABLE_NAME = 'urunler' AND COLUMN_NAME = 'urun_tipi_id'
+            """)
+            has_tip_id = cursor.fetchone()[0] > 0
+
+            if has_tip_id and tip_id:
+                cursor.execute("""
+                    INSERT INTO stok.urunler
+                        (urun_kodu, urun_adi, cari_id, musteri_parca_no, urun_tipi, urun_tipi_id,
+                         birim_id, kaplama_turu_id, yuzey_alani_m2, agirlik_kg, notlar)
+                    VALUES (?, ?, ?, ?, 'MAMUL', ?, ?, ?, ?, ?, ?)
+                """, (
+                    urun_kodu, urun_adi,
+                    self.cari_combo.currentData(),
+                    self.musteri_parca_no.text().strip() or None,
+                    tip_id, birim_id,
+                    self.kaplama_combo.currentData(),
+                    self.yuzey_alani.value() or None,
+                    self.agirlik.value() or None,
+                    self.notlar.toPlainText().strip() or None
+                ))
+            else:
+                cursor.execute("""
+                    INSERT INTO stok.urunler
+                        (urun_kodu, urun_adi, cari_id, musteri_parca_no, urun_tipi,
+                         birim_id, kaplama_turu_id, yuzey_alani_m2, agirlik_kg, notlar)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    urun_kodu, urun_adi,
+                    self.cari_combo.currentData(),
+                    self.musteri_parca_no.text().strip() or None,
+                    tip_str, birim_id,
+                    self.kaplama_combo.currentData(),
+                    self.yuzey_alani.value() or None,
+                    self.agirlik.value() or None,
+                    self.notlar.toPlainText().strip() or None
+                ))
+
+            cursor.execute("SELECT SCOPE_IDENTITY()")
+            self.yeni_id = int(cursor.fetchone()[0])
+
+            conn.commit()
+            conn.close()
+
+            LogManager.log_insert('stok', 'stok.urunler', self.yeni_id, f"Yeni stok kartı: {urun_kodu}")
+            QMessageBox.information(self, "Başarılı", f"Stok kartı oluşturuldu!\n\nKod: {urun_kodu}\nAd: {urun_adi}")
+            self.accept()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Kayıt hatası:\n{e}")
+
+
 # ==================== ANA LİSTE SAYFASI ====================
 
 class StokListePage(BasePage):
@@ -2627,6 +2914,23 @@ class StokListePage(BasePage):
         
         f_layout.addStretch()
         
+        # Yeni Ürün butonu
+        btn_yeni = QPushButton("➕ Yeni Stok Kartı")
+        btn_yeni.setCursor(Qt.PointingHandCursor)
+        btn_yeni.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('success', '#22c55e')};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #16a34a; }}
+        """)
+        btn_yeni.clicked.connect(self._yeni_urun)
+        f_layout.addWidget(btn_yeni)
+
         # Yenile butonu
         btn_refresh = QPushButton("🔄 Yenile")
         btn_refresh.setCursor(Qt.PointingHandCursor)
@@ -2906,6 +3210,16 @@ class StokListePage(BasePage):
             self.current_page += 1
             self._load_data()
     
+    def _yeni_urun(self):
+        """Yeni stok kartı oluştur"""
+        dialog = YeniUrunDialog(self.theme, self)
+        if dialog.exec() == QDialog.Accepted:
+            self._load_data()
+            if dialog.yeni_id:
+                detay = StokDetayDialog(dialog.yeni_id, self.theme, self)
+                detay.exec()
+                self._load_data()
+
     def _on_row_double_click(self, index):
         row = index.row()
         urun_id = self.table.item(row, 0).data(Qt.UserRole)

@@ -141,6 +141,9 @@ class KriterKontrolDialog(QDialog):
             b = QPushButton(text)
             b.setStyleSheet(f"background: {color}; color: white; border: none; border-radius: 6px; padding: 12px 20px; font-weight: bold;")
             b.clicked.connect(lambda _, d=durum: self._save(d))
+            if durum == 'ONAYLANDI':
+                b.setDefault(True)  # Enter tuşu ile onayla
+                b.setAutoDefault(True)
             btn.addWidget(b)
         btn.addStretch()
         cancel = QPushButton("İptal")
@@ -272,6 +275,9 @@ class PaletDetayDialog(QDialog):
                 b = QPushButton(text)
                 b.setStyleSheet(f"background: {color}; color: white; border: none; border-radius: 6px; padding: 10px 16px;")
                 b.clicked.connect(lambda _, d=durum_val: self._quick_update(d))
+                if durum_val == 'ONAYLANDI':
+                    b.setDefault(True)
+                    b.setAutoDefault(True)
                 h.addWidget(b)
             layout.addLayout(h)
         
@@ -421,6 +427,12 @@ class AnaLotDetayDialog(QDialog):
         
         # Butonlar
         h = QHBoxLayout()
+
+        tumunu_sec_btn = QPushButton("☑ Tümünü Seç")
+        tumunu_sec_btn.setStyleSheet(f"background: {self.theme.get('bg_input', '#2d3548')}; color: {self.theme.get('text', '#fff')}; border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 6px; padding: 10px 16px; font-weight: bold;")
+        tumunu_sec_btn.clicked.connect(self._tumunu_sec)
+        h.addWidget(tumunu_sec_btn)
+
         for text, color, durum in [("✅ Seçilenleri Onayla", self.theme.get('success', '#22c55e'), 'ONAYLANDI'), ("❌ Seçilenleri Reddet", self.theme.get('error', '#ef4444'), 'RED')]:
             b = QPushButton(text)
             b.setStyleSheet(f"background: {color}; color: white; border: none; border-radius: 6px; padding: 10px 16px; font-weight: bold;")
@@ -468,6 +480,25 @@ class AnaLotDetayDialog(QDialog):
             self._load_data()
             self._fill_table()
     
+    def _tumunu_sec(self):
+        """Bekleyen tüm paletleri seç/bırak toggle"""
+        # Önce hepsinin durumunu kontrol et
+        tumu_secili = True
+        for i in range(self.table.rowCount()):
+            w = self.table.cellWidget(i, 4)
+            if w:
+                cb = w.findChild(QCheckBox) if not isinstance(w, QCheckBox) else w
+                if cb and cb.isEnabled() and not cb.isChecked():
+                    tumu_secili = False
+                    break
+
+        for i in range(self.table.rowCount()):
+            w = self.table.cellWidget(i, 4)
+            if w:
+                cb = w.findChild(QCheckBox) if not isinstance(w, QCheckBox) else w
+                if cb and cb.isEnabled():
+                    cb.setChecked(not tumu_secili)
+
     def _bulk_update(self, durum):
         selected = []
         for i in range(self.table.rowCount()):
@@ -663,9 +694,12 @@ class KaliteGirisPage(BasePage):
             query = """
                 SELECT sb.parent_lot_no, MAX(u.urun_kodu), COUNT(*),
                     SUM(CASE WHEN sb.kalite_durumu = 'BEKLIYOR' THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN sb.kalite_durumu = 'ONAY' THEN 1 ELSE 0 END)
+                    SUM(CASE WHEN sb.kalite_durumu = 'ONAY' THEN 1 ELSE 0 END),
+                    MAX(COALESCE(gi.cari_unvani, sb.cari_unvani))
                 FROM stok.stok_bakiye sb
                 LEFT JOIN stok.urunler u ON sb.urun_id = u.id
+                LEFT JOIN siparis.giris_irsaliye_satirlar gis ON sb.irsaliye_satir_id = gis.id
+                LEFT JOIN siparis.giris_irsaliyeleri gi ON gis.irsaliye_id = gi.id
                 WHERE sb.parent_lot_no IS NOT NULL
                   AND sb.durum_kodu IN ('KABUL', 'GIRIS_KALITE', 'GIRIS_ONAY')
             """
@@ -712,7 +746,7 @@ class KaliteGirisPage(BasePage):
             for i, row in enumerate(rows):
                 self.table.setItem(i, 0, QTableWidgetItem(row[0] or ''))
                 self.table.setItem(i, 1, QTableWidgetItem(row[1] or ''))
-                self.table.setItem(i, 2, QTableWidgetItem(''))  # Müşteri - şimdilik boş
+                self.table.setItem(i, 2, QTableWidgetItem(row[5] or ''))
                 self.table.setItem(i, 3, QTableWidgetItem(str(row[2] or 0)))
 
                 bekleyen_item = QTableWidgetItem(str(row[3] or 0))

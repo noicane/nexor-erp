@@ -30,7 +30,8 @@ class PDKSServiceControlPage(BasePage):
         # Auto refresh
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self._update_status)
-        self.refresh_timer.start(2000)  # 2 saniyede bir
+        self.refresh_timer.timeout.connect(self._load_data)
+        self.refresh_timer.start(5000)  # 5 saniyede bir
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -229,6 +230,47 @@ class PDKSServiceControlPage(BasePage):
         
         logs_layout.addWidget(self.logs_table)
         layout.addWidget(logs_group)
+
+        # Turnike Durumu
+        turnike_group = QGroupBox("🚪 Turnike Sistemi")
+        turnike_group.setStyleSheet(stats_group.styleSheet())
+        turnike_layout = QVBoxLayout(turnike_group)
+
+        # Turnike durum satırı
+        turnike_status_row = QHBoxLayout()
+        self.turnike_indicator = QLabel("⚫")
+        self.turnike_indicator.setStyleSheet("font-size: 28px;")
+        turnike_status_row.addWidget(self.turnike_indicator)
+
+        turnike_info = QVBoxLayout()
+        self.turnike_label = QLabel("Turnike Durumu Kontrol Ediliyor...")
+        self.turnike_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.theme.get('text')};")
+        turnike_info.addWidget(self.turnike_label)
+
+        self.turnike_detail = QLabel("")
+        self.turnike_detail.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 13px;")
+        turnike_info.addWidget(self.turnike_detail)
+
+        turnike_status_row.addLayout(turnike_info)
+        turnike_status_row.addStretch()
+        turnike_layout.addLayout(turnike_status_row)
+
+        # Son turnike geçişleri tablosu
+        self.turnike_table = QTableWidget()
+        self.turnike_table.setColumnCount(4)
+        self.turnike_table.setHorizontalHeaderLabels(["Zaman", "Personel", "Kart No", "Yon"])
+        self.turnike_table.verticalHeader().setVisible(False)
+        self.turnike_table.setStyleSheet(self.stats_table.styleSheet())
+        self.turnike_table.setMaximumHeight(200)
+
+        t_header = self.turnike_table.horizontalHeader()
+        t_header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        t_header.setSectionResizeMode(1, QHeaderView.Stretch)
+        t_header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        t_header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+
+        turnike_layout.addWidget(self.turnike_table)
+        layout.addWidget(turnike_group)
     
     def _connect_signals(self):
         """Servis signal'lerini bağla"""
@@ -263,11 +305,11 @@ class PDKSServiceControlPage(BasePage):
             
             # Cihaz istatistikleri
             cursor.execute("""
-                SELECT 
+                SELECT
                     cihaz_adi, durum, son_okuma_zamani,
                     toplam_okuma, basarili_okuma, son_kayit_sayisi, hata_mesaji
                 FROM ik.pdks_cihazlari
-                WHERE aktif_mi = 1
+                WHERE aktif_mi = 1 AND cihaz_tipi = 'ZK'
                 ORDER BY cihaz_kodu
             """)
             
@@ -335,11 +377,71 @@ class PDKSServiceControlPage(BasePage):
                 
                 self.logs_table.setItem(i, 6, QTableWidgetItem(row[6] or "-"))
             
+            # Turnike durumu ve son geçişler
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT durum, son_okuma_zamani
+                FROM ik.pdks_cihazlari
+                WHERE cihaz_tipi = 'TURNIKE' AND aktif_mi = 1
+            """)
+            turnike_row = cursor.fetchone()
+
+            if turnike_row:
+                durum = turnike_row[0] or "PASIF"
+                son = turnike_row[1]
+
+                # Son 5 dakika içinde geçiş var mı? (canlı kontrolü)
+                cursor.execute("""
+                    SELECT COUNT(*) FROM ik.pdks_hareketler h
+                    JOIN ik.pdks_cihazlari c ON c.id = h.cihaz_id
+                    WHERE c.cihaz_tipi = 'TURNIKE'
+                      AND h.hareket_zamani >= DATEADD(MINUTE, -5, GETDATE())
+                """)
+                son5dk = cursor.fetchone()[0]
+
+                if son5dk > 0:
+                    self.turnike_indicator.setText("🟢")
+                    self.turnike_label.setText("Turnike Aktif - Canlı")
+                    self.turnike_detail.setText(f"Son 5 dakikada {son5dk} gecis")
+                else:
+                    self.turnike_indicator.setText("🟡")
+                    self.turnike_label.setText("Turnike Bagli - Bekleniyor")
+                    self.turnike_detail.setText("Son 5 dakikada gecis yok")
+            else:
+                self.turnike_indicator.setText("🔴")
+                self.turnike_label.setText("Turnike Tanimli Degil")
+                self.turnike_detail.setText("Henuz turnike cihazi kaydedilmemis")
+
+            # Son 20 turnike geçişi
+            cursor.execute("""
+                SELECT TOP 20
+                    h.hareket_zamani, h.personel_adi_soyadi, h.kart_no, h.hareket_tipi
+                FROM ik.pdks_hareketler h
+                JOIN ik.pdks_cihazlari c ON c.id = h.cihaz_id
+                WHERE c.cihaz_tipi = 'TURNIKE'
+                ORDER BY h.hareket_zamani DESC
+            """)
+            gecisler = cursor.fetchall()
+            self.turnike_table.setRowCount(len(gecisler))
+
+            for i, row in enumerate(gecisler):
+                zaman = row[0].strftime('%d.%m %H:%M:%S') if row[0] else '-'
+                self.turnike_table.setItem(i, 0, QTableWidgetItem(zaman))
+                self.turnike_table.setItem(i, 1, QTableWidgetItem(row[1] or ""))
+                self.turnike_table.setItem(i, 2, QTableWidgetItem(row[2] or ""))
+
+                yon_item = QTableWidgetItem(row[3] or "")
+                if row[3] == "GIRIS":
+                    yon_item.setForeground(QColor(self.theme.get('success', '#22c55e')))
+                else:
+                    yon_item.setForeground(QColor(self.theme.get('warning', '#f59e0b')))
+                self.turnike_table.setItem(i, 3, yon_item)
+
             conn.close()
-            
+
         except Exception as e:
             print(f"Veri yükleme hatası: {e}")
-    
+
     def _start_service(self):
         """Servisi başlat"""
         try:

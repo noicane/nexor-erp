@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXOR PKDS - Turnike Bağlantı Şeması</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 30px;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border-radius: 16px;
+            border: 1px solid #475569;
+        }
+        .header h1 { font-size: 28px; color: #f8fafc; margin-bottom: 8px; }
+        .header .subtitle { color: #94a3b8; font-size: 14px; }
+        .header .badge {
+            display: inline-block;
+            background: #dc2626;
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+
+        /* Bilgi Kartları */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .info-card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .info-card h3 {
+            font-size: 14px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .info-card .value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .info-card .desc { color: #94a3b8; font-size: 13px; margin-top: 6px; }
+        .green { color: #22c55e; }
+        .red { color: #ef4444; }
+        .blue { color: #3b82f6; }
+        .yellow { color: #eab308; }
+
+        /* Pin Diyagramı */
+        .pinout-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid #334155;
+            margin-bottom: 30px;
+        }
+        .pinout-section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .pinout-section h2 span {
+            background: #334155;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        /* Orange Pi Pinout Tablosu */
+        .pinout-board {
+            background: #0c1425;
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid #1e3a5f;
+            max-width: 680px;
+            margin: 0 auto 24px;
+            position: relative;
+        }
+        .board-label {
+            text-align: center;
+            font-size: 11px;
+            color: #475569;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+        .pin-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 3px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .pin-left, .pin-right {
+            display: flex;
+            align-items: center;
+            width: 280px;
+        }
+        .pin-left { justify-content: flex-end; text-align: right; }
+        .pin-right { justify-content: flex-start; text-align: left; }
+        .pin-name { padding: 0 8px; min-width: 100px; }
+        .pin-left .pin-name { text-align: right; }
+        .pin-num {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 12px;
+            margin: 0 3px;
+            border: 2px solid #334155;
+            background: #1e293b;
+            color: #94a3b8;
+        }
+        .pin-sep { width: 20px; text-align: center; color: #334155; }
+
+        /* Pin Türleri */
+        .pin-3v3 { background: #dc2626 !important; color: white !important; border-color: #dc2626 !important; }
+        .pin-5v { background: #b91c1c !important; color: white !important; border-color: #b91c1c !important; }
+        .pin-gnd { background: #1f2937 !important; color: #6b7280 !important; border-color: #4b5563 !important; }
+        .pin-gpio { background: #1e3a5f !important; color: #60a5fa !important; border-color: #3b82f6 !important; }
+
+        /* Aktif Pinler - HIGHLIGHT */
+        .pin-active-giris {
+            background: #15803d !important;
+            color: white !important;
+            border-color: #22c55e !important;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+            animation: pulse-green 2s infinite;
+        }
+        .pin-active-cikis {
+            background: #b45309 !important;
+            color: white !important;
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.5);
+            animation: pulse-yellow 2s infinite;
+        }
+        .pin-active-gnd {
+            background: #374151 !important;
+            color: white !important;
+            border-color: #9ca3af !important;
+            box-shadow: 0 0 8px rgba(156, 163, 175, 0.4);
+        }
+
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 8px rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.8); }
+        }
+        @keyframes pulse-yellow {
+            0%, 100% { box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.8); }
+        }
+
+        .pin-label-active {
+            font-weight: 700 !important;
+            color: #f8fafc !important;
+        }
+
+        /* Bağlantı Tablosu */
+        .conn-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .conn-table th {
+            background: #334155;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 13px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .conn-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #1e293b;
+            font-size: 14px;
+        }
+        .conn-table tr:hover td { background: #1e293b; }
+        .conn-table .pin-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+        }
+        .badge-giris { background: #14532d; color: #4ade80; border: 1px solid #22c55e; }
+        .badge-cikis { background: #451a03; color: #fbbf24; border: 1px solid #f59e0b; }
+        .badge-gnd { background: #1f2937; color: #9ca3af; border: 1px solid #4b5563; }
+        .badge-vcc { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+
+        /* Röle Şeması */
+        .relay-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid #334155;
+            margin-bottom: 30px;
+        }
+        .relay-section h2 { font-size: 20px; margin-bottom: 20px; }
+        .relay-diagram {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            flex-wrap: wrap;
+        }
+        .relay-card {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 24px;
+            border: 2px solid;
+            width: 320px;
+            text-align: center;
+        }
+        .relay-card.giris { border-color: #22c55e; }
+        .relay-card.cikis { border-color: #f59e0b; }
+        .relay-card h3 { font-size: 18px; margin-bottom: 16px; }
+        .relay-card h3.giris-title { color: #22c55e; }
+        .relay-card h3.cikis-title { color: #f59e0b; }
+
+        .wire {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            margin: 6px 0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+        .wire-signal-giris { background: #14532d33; border: 1px solid #22c55e44; }
+        .wire-signal-cikis { background: #451a0333; border: 1px solid #f59e0b44; }
+        .wire-gnd { background: #1f293744; border: 1px solid #4b556344; }
+        .wire-vcc { background: #450a0a33; border: 1px solid #ef444444; }
+
+        .wire-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-green { background: #22c55e; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-black { background: #6b7280; }
+        .dot-red { background: #ef4444; }
+
+        .arrow { color: #475569; font-size: 18px; }
+
+        /* Uyarılar */
+        .warning-box {
+            background: #451a03;
+            border: 1px solid #92400e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .warning-box h3 { color: #fbbf24; margin-bottom: 10px; font-size: 16px; }
+        .warning-box ul { padding-left: 20px; }
+        .warning-box li { color: #fde68a; margin: 6px 0; font-size: 14px; }
+
+        .success-box {
+            background: #052e16;
+            border: 1px solid #166534;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .success-box h3 { color: #4ade80; margin-bottom: 10px; font-size: 16px; }
+        .success-box ul { padding-left: 20px; }
+        .success-box li { color: #86efac; margin: 6px 0; font-size: 14px; }
+
+        /* Akış Diyagramı */
+        .flow-section {
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid #334155;
+            margin-bottom: 30px;
+        }
+        .flow-section h2 { font-size: 20px; margin-bottom: 20px; }
+        .flow-steps {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .flow-step {
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 120px;
+        }
+        .flow-arrow { color: #475569; font-size: 20px; }
+        .step-kart { background: #1e3a5f; color: #93c5fd; border: 1px solid #3b82f6; }
+        .step-api { background: #312e81; color: #a5b4fc; border: 1px solid #6366f1; }
+        .step-ok { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+        .step-turnike { background: #451a03; color: #fde68a; border: 1px solid #f59e0b; }
+        .step-db { background: #3b0764; color: #d8b4fe; border: 1px solid #a855f7; }
+        .step-red { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #475569;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin: 16px 0;
+            flex-wrap: wrap;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .legend-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        @media print {
+            body { background: white; color: #1e293b; }
+            .pin-num { border: 1px solid #ccc; }
+            .header { background: #f1f5f9; border: 1px solid #e2e8f0; }
+            .info-card, .pinout-section, .relay-section, .flow-section {
+                background: #f8fafc; border: 1px solid #e2e8f0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <!-- HEADER -->
+        <div class="header">
+            <h1>NEXOR PKDS - Turnike Baglanti Semasi</h1>
+            <div class="subtitle">Orange Pi Prime GPIO &rarr; Role Modulu &rarr; Turnike</div>
+            <div class="badge">REDLINE CREATIVE SOLUTIONS</div>
+        </div>
+
+        <!-- BİLGİ KARTLARI -->
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>Giris Turnike</h3>
+                <div class="value green">Pin 5 &mdash; GPIO (SCL/PA11)</div>
+                <div class="desc">Giris yonunde kart okutulunca role tetiklenir, turnike doner</div>
+            </div>
+            <div class="info-card">
+                <h3>Cikis Turnike</h3>
+                <div class="value yellow">Pin 8 &mdash; GPIO (TX/PA13)</div>
+                <div class="desc">Cikis yonunde kart okutulunca role tetiklenir, turnike doner</div>
+            </div>
+            <div class="info-card">
+                <h3>Turnike Acik Suresi</h3>
+                <div class="value blue">1.5 Saniye</div>
+                <div class="desc">Role tetiklendikten sonra otomatik kapanir</div>
+            </div>
+            <div class="info-card">
+                <h3>Cift Basim Korumasi</h3>
+                <div class="value red">30 Saniye</div>
+                <div class="desc">Ayni kart ayni yonde 30sn icinde tekrar okutulamaz</div>
+            </div>
+        </div>
+
+        <!-- PIN DİYAGRAMI -->
+        <div class="pinout-section">
+            <h2>Orange Pi Prime - GPIO Pinout <span>40-Pin Header</span></h2>
+
+            <div class="pinout-board">
+                <div class="board-label">&#9650; USB / ETHERNET TARAFI &#9650;</div>
+
+                <!-- Pin Satırları -->
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#ef4444;">3.3V</span></div>
+                    <div class="pin-num pin-3v3">1</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-5v">2</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#b91c1c;">5V</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#60a5fa;">SDA (PA12)</span></div>
+                    <div class="pin-num pin-gpio">3</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-5v">4</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#b91c1c;">5V</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#60a5fa;">SCL (PA11)</span></div>
+                    <div class="pin-num pin-gpio">5</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gnd">6</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#6b7280;">GND</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#60a5fa;">PWM (PA6)</span></div>
+                    <div class="pin-num pin-gpio">7</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">8</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">TX (PA13)</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#6b7280;">GND</span></div>
+                    <div class="pin-num pin-active-gnd">9</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">10</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">RX (PA14)</span></div>
+                </div>
+
+                <!-- PIN 11 - GİRİŞ TURNİKE -->
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name pin-label-active" style="color:#22c55e;">&#9654; GIRIS ROLE (PA1)</span></div>
+                    <div class="pin-num pin-active-giris">11</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">12</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">PD14</span></div>
+                </div>
+
+                <!-- PIN 13 - ÇIKIŞ TURNİKE -->
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name pin-label-active" style="color:#f59e0b;">&#9654; CIKIS ROLE (PA0)</span></div>
+                    <div class="pin-num pin-active-cikis">13</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-active-gnd">14</div>
+                    <div class="pin-right"><span class="pin-name pin-label-active" style="color:#9ca3af;">&#9654; GND</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#60a5fa;">PA3</span></div>
+                    <div class="pin-num pin-gpio">15</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">16</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">PD11</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#ef4444;">3.3V</span></div>
+                    <div class="pin-num pin-3v3">17</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">18</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">PC4</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#60a5fa;">MOSI (PC0)</span></div>
+                    <div class="pin-num pin-gpio">19</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gnd">20</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#6b7280;">GND</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#60a5fa;">MISO (PC1)</span></div>
+                    <div class="pin-num pin-gpio">21</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">22</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">PA2</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#60a5fa;">SCLK (PC2)</span></div>
+                    <div class="pin-num pin-gpio">23</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">24</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">CS (PC3)</span></div>
+                </div>
+
+                <div class="pin-row">
+                    <div class="pin-left"><span class="pin-name" style="color:#6b7280;">GND</span></div>
+                    <div class="pin-num pin-gnd">25</div>
+                    <div class="pin-sep">|</div>
+                    <div class="pin-num pin-gpio">26</div>
+                    <div class="pin-right"><span class="pin-name" style="color:#60a5fa;">PA21</span></div>
+                </div>
+
+                <div style="text-align:center; color:#334155; margin-top:8px; font-size:11px;">
+                    ... Pin 27-40 devam eder ...
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#22c55e;"></div> Giris Role (GPIO1)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> Cikis Role (GPIO0)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6b7280;"></div> GND (Toprak)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div> Diger GPIO</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#dc2626;"></div> Guc (3.3V/5V)</div>
+            </div>
+        </div>
+
+        <!-- BAĞLANTI TABLOSU -->
+        <div class="pinout-section">
+            <h2>Baglanti Tablosu</h2>
+            <table class="conn-table">
+                <thead>
+                    <tr>
+                        <th>Fonksiyon</th>
+                        <th>Orange Pi Pin</th>
+                        <th>GPIO No</th>
+                        <th>Sysfs Yolu</th>
+                        <th>Role Modulu</th>
+                        <th>Kablo Rengi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong class="green">GIRIS Turnike Sinyal</strong></td>
+                        <td><span class="pin-badge badge-giris">Pin 11</span></td>
+                        <td>GPIO 1 (PA1)</td>
+                        <td><code>/sys/class/gpio/gpio1</code></td>
+                        <td>Role 1 &rarr; IN1</td>
+                        <td><span class="wire-dot dot-green"></span> Yesil</td>
+                    </tr>
+                    <tr>
+                        <td><strong class="yellow">CIKIS Turnike Sinyal</strong></td>
+                        <td><span class="pin-badge badge-cikis">Pin 13</span></td>
+                        <td>GPIO 0 (PA0)</td>
+                        <td><code>/sys/class/gpio/gpio0</code></td>
+                        <td>Role 2 &rarr; IN2</td>
+                        <td><span class="wire-dot dot-yellow"></span> Sari</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color:#9ca3af;">GND (Toprak)</strong></td>
+                        <td><span class="pin-badge badge-gnd">Pin 9 veya 14</span></td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>Role &rarr; GND</td>
+                        <td><span class="wire-dot dot-black"></span> Siyah</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color:#ef4444;">VCC (Guc)</strong></td>
+                        <td><span class="pin-badge badge-vcc">Pin 1 (3.3V) veya Pin 2 (5V)</span></td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td>Role &rarr; VCC</td>
+                        <td><span class="wire-dot dot-red"></span> Kirmizi</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- RÖLE BAĞLANTI DİYAGRAMI -->
+        <div class="relay-section">
+            <h2>Role Modulu Baglanti Detayi</h2>
+            <div class="relay-diagram">
+
+                <!-- GİRİŞ RÖLE -->
+                <div class="relay-card giris">
+                    <h3 class="giris-title">GIRIS TURNIKE</h3>
+                    <p style="color:#64748b; font-size:12px; margin-bottom:16px;">Role Kanal 1</p>
+
+                    <div class="wire wire-vcc">
+                        <span><span class="wire-dot dot-red"></span> VCC</span>
+                        <span class="arrow">&larr;</span>
+                        <span>Pin 1 (3.3V)</span>
+                    </div>
+                    <div class="wire wire-signal-giris">
+                        <span><span class="wire-dot dot-green"></span> IN1</span>
+                        <span class="arrow">&larr;</span>
+                        <span><strong>Pin 11 (GPIO1)</strong></span>
+                    </div>
+                    <div class="wire wire-gnd">
+                        <span><span class="wire-dot dot-black"></span> GND</span>
+                        <span class="arrow">&larr;</span>
+                        <span>Pin 9 (GND)</span>
+                    </div>
+
+                    <div style="margin-top:16px; padding-top:16px; border-top:1px solid #22c55e33;">
+                        <p style="color:#94a3b8; font-size:12px;">Role Cikisi (NO/COM)</p>
+                        <div class="wire wire-signal-giris" style="margin-top:8px;">
+                            <span>COM + NO</span>
+                            <span class="arrow">&rarr;</span>
+                            <span><strong>Turnike Giris</strong></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ÇIKIŞ RÖLE -->
+                <div class="relay-card cikis">
+                    <h3 class="cikis-title">CIKIS TURNIKE</h3>
+                    <p style="color:#64748b; font-size:12px; margin-bottom:16px;">Role Kanal 2</p>
+
+                    <div class="wire wire-vcc">
+                        <span><span class="wire-dot dot-red"></span> VCC</span>
+                        <span class="arrow">&larr;</span>
+                        <span>Pin 1 (3.3V)</span>
+                    </div>
+                    <div class="wire wire-signal-cikis">
+                        <span><span class="wire-dot dot-yellow"></span> IN2</span>
+                        <span class="arrow">&larr;</span>
+                        <span><strong>Pin 13 (GPIO0)</strong></span>
+                    </div>
+                    <div class="wire wire-gnd">
+                        <span><span class="wire-dot dot-black"></span> GND</span>
+                        <span class="arrow">&larr;</span>
+                        <span>Pin 14 (GND)</span>
+                    </div>
+
+                    <div style="margin-top:16px; padding-top:16px; border-top:1px solid #f59e0b33;">
+                        <p style="color:#94a3b8; font-size:12px;">Role Cikisi (NO/COM)</p>
+                        <div class="wire wire-signal-cikis" style="margin-top:8px;">
+                            <span>COM + NO</span>
+                            <span class="arrow">&rarr;</span>
+                            <span><strong>Turnike Cikis</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UYARILAR -->
+        <div class="warning-box">
+            <h3>&#9888; Onemli Uyarilar</h3>
+            <ul>
+                <li>Role modulu 3.3V uyumlu olmalidir. 5V role kullaniyorsaniz <strong>Pin 2 (5V)</strong> ile besleyin ve bir <strong>seviye donusturucu (level shifter)</strong> kullanin.</li>
+                <li>GPIO pinleri maksimum <strong>20mA</strong> akim verebilir. Role modulu kendi transistor surucu icermelidir (SRD-05VDC gibi hazir moduller uygundur).</li>
+                <li>Turnike motoru ile Orange Pi arasinda <strong>galvanik izolasyon</strong> olmalidir (role bunu saglar).</li>
+                <li>Turnike guc kaynagi ile Orange Pi guc kaynagi <strong>ayni toprak hattina</strong> baglanmamalidir (toprak dongusu).</li>
+                <li>Kablolari <strong>lehimleyin</strong> veya <strong>sikmali terminal</strong> kullanin, bread-board baglanti uretimde guvenilir degildir.</li>
+                <li>Ortam isisi yuksekse (<strong>45C+</strong>) role modulu icin sogutucu dusunun.</li>
+            </ul>
+        </div>
+
+        <div class="success-box">
+            <h3>&#10004; Onerilen Role Modulu</h3>
+            <ul>
+                <li><strong>2 Kanalli 3.3V Role Modulu</strong> (optokupler izolasyonlu)</li>
+                <li>Tetikleme: LOW-level trigger (aktif LOW) veya HIGH-level trigger (aktif HIGH - yazilim HIGH gonderir)</li>
+                <li>Kontaklari: <strong>NO (Normally Open)</strong> kullanin - role tetiklenince devre kapanir, turnike doner</li>
+                <li>Marka oneri: SRD-03VDC-SL-C, HK4100F-DC3V veya Songle SLA-03VDC-SL-A</li>
+            </ul>
+        </div>
+
+        <!-- ÇALIŞMA AKIŞI -->
+        <div class="flow-section">
+            <h2>Sistem Calisma Akisi</h2>
+            <div class="flow-steps">
+                <div class="flow-step step-kart">Kart<br>Okutuldu</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step step-api">NEXOR API<br>Dogrulama</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step step-ok">Personel<br>Tanindi</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step step-turnike">GPIO HIGH<br>Role Tetikle</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step step-turnike">Turnike<br>Doner (1.5sn)</div>
+                <div class="flow-arrow">&rarr;</div>
+                <div class="flow-step step-db">SQL Server<br>Kayit Yaz</div>
+            </div>
+            <div style="text-align:center; margin-top:20px;">
+                <div class="flow-steps" style="justify-content:center;">
+                    <div class="flow-step step-red">Tanimsiz<br>Kart</div>
+                    <div class="flow-arrow">&rarr;</div>
+                    <div class="flow-step step-red">Turnike<br>KAPALI</div>
+                    <div class="flow-arrow">&rarr;</div>
+                    <div class="flow-step step-red">Log<br>Yazilir</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KABLO ÖZETİ -->
+        <div class="pinout-section">
+            <h2>Toplam Kablo Ozeti (4 Kablo)</h2>
+            <table class="conn-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Renk</th>
+                        <th>Orange Pi</th>
+                        <th>Role Modulu</th>
+                        <th>Aciklama</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td><span class="wire-dot dot-red"></span> <strong>Kirmizi</strong></td>
+                        <td>Pin 1 (3.3V)</td>
+                        <td>VCC</td>
+                        <td>Role modulu guc beslemesi</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><span class="wire-dot dot-black"></span> <strong>Siyah</strong></td>
+                        <td>Pin 9 veya 14 (GND)</td>
+                        <td>GND</td>
+                        <td>Ortak toprak hatti</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><span class="wire-dot dot-green"></span> <strong>Yesil</strong></td>
+                        <td>Pin 11 (GPIO1 / PA1)</td>
+                        <td>IN1</td>
+                        <td>Giris turnike sinyal</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><span class="wire-dot dot-yellow"></span> <strong>Sari</strong></td>
+                        <td>Pin 13 (GPIO0 / PA0)</td>
+                        <td>IN2</td>
+                        <td>Cikis turnike sinyal</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            NEXOR ERP - PKDS Turnike Sistemi &bull; Redline Creative Solutions &bull; 2026<br>
+            Cihaz: Orange Pi Prime (Armbian) &bull; Yazilim: pkds_turnike.py &bull; API: 192.168.10.66:8000
+        </div>
+
+    </div>
+</body>
+</html>

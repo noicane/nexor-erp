@@ -360,6 +360,17 @@ class IKVardiyaPage(BasePage):
         self.poz_combo.currentIndexChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.poz_combo)
 
+        # Vardiya filtresi
+        lbl_var = QLabel("Vardiya:")
+        lbl_var.setStyleSheet(f"color: {self.theme.get('text')}; margin-left: 12px;")
+        filter_layout.addWidget(lbl_var)
+
+        self.vardiya_combo = QComboBox()
+        self.vardiya_combo.setStyleSheet(self._combo_style())
+        self.vardiya_combo.setMinimumWidth(130)
+        self.vardiya_combo.currentIndexChanged.connect(self._on_filter_changed)
+        filter_layout.addWidget(self.vardiya_combo)
+
         filter_layout.addStretch()
 
         # Vardiya renk göstergesi (legend)
@@ -374,6 +385,22 @@ class IKVardiyaPage(BasePage):
         filter_layout.addLayout(legend_layout)
 
         filter_layout.addStretch()
+
+        # Excel butonu
+        excel_btn = QPushButton("Excel")
+        excel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('bg_input')};
+                color: {self.theme.get('text')};
+                border: 1px solid {self.theme.get('border')};
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
+        """)
+        excel_btn.clicked.connect(self._export_excel)
+        filter_layout.addWidget(excel_btn)
 
         # PDF butonu
         pdf_btn = QPushButton("PDF")
@@ -517,6 +544,14 @@ class IKVardiyaPage(BasePage):
         except Exception as e:
             print(f"Vardiya yükleme hatası: {e}")
 
+        # Vardiya filtre combo'sunu doldur
+        self._loading = True
+        self.vardiya_combo.clear()
+        self.vardiya_combo.addItem("Tümü", None)
+        for v in self.vardiyalar:
+            self.vardiya_combo.addItem(v[1], v[0])
+        self._loading = False
+
     def _load_data(self):
         """Haftalık verileri yükle ve tabloyu doldur"""
         if self._loading:
@@ -607,12 +642,45 @@ class IKVardiyaPage(BasePage):
             traceback.print_exc()
             QMessageBox.critical(self, "Hata", f"Veri yüklenemedi: {e}")
 
+    def _get_filtered_personeller(self):
+        """Vardiya filtresine göre personel listesini döndür"""
+        filtre_vardiya_id = self.vardiya_combo.currentData() if hasattr(self, 'vardiya_combo') else None
+        if filtre_vardiya_id is None:
+            return list(self.personeller)
+
+        filtered = []
+        for per in self.personeller:
+            per_id = per[0]
+            varsayilan_vardiya_id = per[4]
+            # Hafta içinde bu vardiyaya atanmış mı kontrol et
+            match = False
+            for day_idx in range(7):
+                gun = self.current_week_start + timedelta(days=day_idx)
+                key = (per_id, gun)
+                plan_v = self.plan_map.get(key)
+                if plan_v == filtre_vardiya_id:
+                    match = True
+                    break
+            # Plan yoksa varsayılan vardiyaya bak
+            if not match and varsayilan_vardiya_id == filtre_vardiya_id:
+                # Hiçbir günde planı yoksa varsayılana göre göster
+                has_any_plan = any(
+                    (per_id, self.current_week_start + timedelta(days=d)) in self.plan_map
+                    for d in range(7)
+                )
+                if not has_any_plan:
+                    match = True
+            if match:
+                filtered.append(per)
+        return filtered
+
     def _populate_table(self):
         """Tabloyu personel ve plan verileriyle doldur"""
+        display_personeller = self._get_filtered_personeller()
         self.table.setRowCount(0)
-        self.table.setRowCount(len(self.personeller))
+        self.table.setRowCount(len(display_personeller))
 
-        for row_idx, per in enumerate(self.personeller):
+        for row_idx, per in enumerate(display_personeller):
             per_id, ad_soyad, dept_ad, poz_ad, varsayilan_vardiya_id = per
 
             self.table.setRowHeight(row_idx, 42)
@@ -720,7 +788,12 @@ class IKVardiyaPage(BasePage):
     # ──────────────────── Hücre Düzenleme ────────────────────
 
     def _on_cell_double_clicked(self, row: int, col: int):
-        """Gün hücresine çift tıklandığında QComboBox aç"""
+        """Gün hücresine çift tıklandığında QComboBox aç,
+        personel adına çift tıklandığında tüm hafta vardiyasını değiştir"""
+        if col == self.COL_PERSONEL:
+            self._change_personel_week_vardiya(row)
+            return
+
         if col < self.COL_DAY_START:
             return
 
@@ -803,6 +876,108 @@ class IKVardiyaPage(BasePage):
             item.setText("–")
             item.setForeground(QColor(self.theme.get('text_muted')))
             item.setBackground(QColor(self.theme.get('bg_card')))
+
+    # ──────────────────── Tekil Vardiya Değiştirme ────────────────────
+
+    def _change_personel_week_vardiya(self, row: int):
+        """Personel adına çift tıklandığında tüm hafta vardiyasını değiştir"""
+        name_item = self.table.item(row, self.COL_PERSONEL)
+        if not name_item:
+            return
+        per_id = name_item.data(Qt.UserRole)
+        per_ad = name_item.text()
+
+        # Mevcut baskın vardiyayı bul
+        current_vardiya_id = None
+        for day_idx in range(7):
+            gun = self.current_week_start + timedelta(days=day_idx)
+            key = (per_id, gun)
+            v_id = self.changes.get(key, self.plan_map.get(key))
+            if v_id:
+                current_vardiya_id = v_id
+                break
+
+        # Dialog oluştur
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Vardiya Değiştir - {per_ad}")
+        dialog.setMinimumWidth(350)
+        dialog.setModal(True)
+        dialog.setStyleSheet(f"""
+            QDialog {{ background: {self.theme.get('bg_card', '#151B23')}; }}
+            QLabel {{ color: {self.theme.get('text', '#E8ECF1')}; }}
+        """)
+
+        dlg_layout = QVBoxLayout(dialog)
+        dlg_layout.setContentsMargins(20, 20, 20, 20)
+        dlg_layout.setSpacing(12)
+
+        lbl = QLabel(f"{per_ad} için tüm haftanın vardiyasını seçin:")
+        lbl.setWordWrap(True)
+        lbl.setStyleSheet(f"font-size: 13px; color: {self.theme.get('text')};")
+        dlg_layout.addWidget(lbl)
+
+        combo = QComboBox()
+        combo.setStyleSheet(self._combo_style())
+        combo.addItem("– (Boş / Kaldır)", None)
+        current_index = 0
+        for idx, v in enumerate(self.vardiyalar):
+            combo.addItem(v[1], v[0])
+            if v[0] == current_vardiya_id:
+                current_index = idx + 1
+        combo.setCurrentIndex(current_index)
+        dlg_layout.addWidget(combo)
+
+        # Gün seçimi
+        gun_lbl = QLabel("Uygulanacak günler:")
+        gun_lbl.setStyleSheet(f"font-size: 11px; color: {self.theme.get('text_muted')};")
+        dlg_layout.addWidget(gun_lbl)
+
+        gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        gun_layout = QHBoxLayout()
+        gun_cbs = []
+        for g in gun_isimleri:
+            cb = QCheckBox(g)
+            cb.setStyleSheet(f"color: {self.theme.get('text')};")
+            cb.setChecked(True)
+            gun_layout.addWidget(cb)
+            gun_cbs.append(cb)
+        dlg_layout.addLayout(gun_layout)
+
+        # Butonlar
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        cancel_btn = QPushButton("İptal")
+        cancel_btn.setStyleSheet(self._button_style())
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        apply_btn = QPushButton("Uygula")
+        apply_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {self.theme.get('primary')};
+                color: white; border: none; border-radius: 6px;
+                padding: 8px 24px; font-weight: bold;
+            }}
+        """)
+        apply_btn.clicked.connect(dialog.accept)
+        btn_layout.addWidget(apply_btn)
+        dlg_layout.addLayout(btn_layout)
+
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        new_vardiya_id = combo.currentData()
+
+        for day_idx in range(7):
+            if not gun_cbs[day_idx].isChecked():
+                continue
+            gun = self.current_week_start + timedelta(days=day_idx)
+            if (per_id, gun) in self.izin_map:
+                continue
+            self.changes[(per_id, gun)] = new_vardiya_id
+
+        self._apply_changes_to_table()
 
     # ──────────────────── Toplu Atama ────────────────────
 
@@ -920,134 +1095,262 @@ class IKVardiyaPage(BasePage):
             traceback.print_exc()
             QMessageBox.critical(self, "Hata", f"Kaydetme hatası: {e}")
 
+    # ──────────────────── Ortak Gruplama ────────────────────
+
+    def _grupla_personeller(self):
+        """Personelleri baskın vardiyalarına göre grupla.
+        Returns: (vardiya_gruplari dict, atanmamis list)
+        """
+        vardiya_gruplari = {}
+        atanmamis = []
+
+        for per in self.personeller:
+            per_id, ad_soyad, dept_ad, poz_ad, varsayilan_vardiya_id = per
+            vardiya_sayac = {}
+            for day_idx in range(7):
+                gun = self.current_week_start + timedelta(days=day_idx)
+                key = (per_id, gun)
+                if key in self.izin_map:
+                    continue
+                v_id = self.plan_map.get(key)
+                if v_id:
+                    vardiya_sayac[v_id] = vardiya_sayac.get(v_id, 0) + 1
+
+            if vardiya_sayac:
+                baskin = max(vardiya_sayac, key=vardiya_sayac.get)
+                vardiya_gruplari.setdefault(baskin, []).append(per)
+            elif varsayilan_vardiya_id:
+                vardiya_gruplari.setdefault(varsayilan_vardiya_id, []).append(per)
+            else:
+                atanmamis.append(per)
+
+        return vardiya_gruplari, atanmamis
+
+    def _gun_metni(self, per_id, gun, grup_vardiya_id=None):
+        """Bir personelin belirli gün için hücre metnini döndür.
+        grup_vardiya_id verilirse, aynı vardiya için kısa gösterim (checkmark) kullanılır.
+        """
+        key = (per_id, gun)
+        if key in self.izin_map:
+            return "İZİN"
+        elif key in self.plan_map:
+            v_id = self.plan_map[key]
+            if grup_vardiya_id and v_id == grup_vardiya_id:
+                return "\u2713"  # ✓
+            return self._vardiya_adi(v_id)
+        return "–"
+
     # ──────────────────── PDF Dışa Aktarma ────────────────────
 
     def _export_pdf(self):
-        """Haftalık vardiya planını PDF olarak dışa aktar"""
+        """Haftalık vardiya planını vardiya bazında gruplandırarak PDF olarak dışa aktar"""
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.units import mm
         from reportlab.lib import colors
-        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.platypus import (
+            SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, HRFlowable,
+        )
         from reportlab.lib.styles import ParagraphStyle
 
         if not self.personeller:
             QMessageBox.warning(self, "Uyarı", "Dışa aktarılacak veri bulunmuyor.")
             return
 
-        # Font kayıt
         has_font = _register_dejavu_fonts()
         font_name = 'NexorFont' if has_font else 'Helvetica'
         font_bold = 'NexorFont-Bold' if has_font else 'Helvetica-Bold'
 
-        # Dosya yolu
         os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
         week_end = self.current_week_start + timedelta(days=6)
-        filename = f"vardiya_plani_{self.current_week_start.strftime('%Y%m%d')}_{week_end.strftime('%Y%m%d')}.pdf"
+        # Vardiya filtresi seçiliyse dosya adına ekle (çakışma önlenir)
+        filtre_vardiya_id = self.vardiya_combo.currentData()
+        vardiya_suffix = ""
+        if filtre_vardiya_id is not None:
+            vardiya_suffix = f"_{self.vardiya_combo.currentText().replace(' ', '_')}"
+        filename = (
+            f"vardiya_plani_{self.current_week_start.strftime('%Y%m%d')}"
+            f"_{week_end.strftime('%Y%m%d')}{vardiya_suffix}.pdf"
+        )
         pdf_path = os.path.join(str(REPORT_OUTPUT_DIR), filename)
-
-        # Firma bilgileri
         firma = get_firma_bilgileri()
 
-        # PDF dokümanı
         doc = SimpleDocTemplate(
-            pdf_path,
-            pagesize=landscape(A4),
-            leftMargin=15 * mm, rightMargin=15 * mm,
-            topMargin=15 * mm, bottomMargin=15 * mm,
+            pdf_path, pagesize=landscape(A4),
+            leftMargin=12 * mm, rightMargin=12 * mm,
+            topMargin=12 * mm, bottomMargin=12 * mm,
         )
-
-        elements = []
 
         # Stiller
         title_style = ParagraphStyle(
-            'VPTitle', fontName=font_bold, fontSize=16, alignment=1, spaceAfter=4,
+            'VPTitle', fontName=font_bold, fontSize=14, alignment=1, spaceAfter=2,
         )
         subtitle_style = ParagraphStyle(
-            'VPSub', fontName=font_name, fontSize=10, alignment=1, spaceAfter=2,
-            textColor=colors.HexColor('#888888'),
+            'VPSub', fontName=font_name, fontSize=9, alignment=1, spaceAfter=2,
+            textColor=colors.HexColor('#555555'),
         )
         info_style = ParagraphStyle(
-            'VPInfo', fontName=font_name, fontSize=9, spaceAfter=10,
-            textColor=colors.HexColor('#aaaaaa'),
+            'VPInfo', fontName=font_name, fontSize=8, alignment=1, spaceAfter=4,
+            textColor=colors.HexColor('#777777'),
         )
+        section_style = ParagraphStyle(
+            'VPSection', fontName=font_bold, fontSize=11, spaceAfter=2, spaceBefore=2,
+            textColor=colors.HexColor('#1a1a1a'),
+        )
+        count_style = ParagraphStyle(
+            'VPCount', fontName=font_name, fontSize=8, spaceAfter=4,
+            textColor=colors.HexColor('#555555'),
+        )
+        # Hücre içi Paragraph stili
+        cell_style = ParagraphStyle('VPCell', fontName=font_name, fontSize=7, leading=9)
+        cell_bold_style = ParagraphStyle('VPCellB', fontName=font_bold, fontSize=7, leading=9)
+        cell_center = ParagraphStyle('VPCellC', fontName=font_name, fontSize=7, leading=9, alignment=1)
+        cell_center_bold = ParagraphStyle('VPCellCB', fontName=font_bold, fontSize=7, leading=9, alignment=1)
 
-        # Başlık
-        elements.append(Paragraph(firma.get('name', 'NEXOR ERP'), title_style))
-        elements.append(Paragraph(
-            f"Haftalık Vardiya Planı &mdash; "
-            f"{self.current_week_start.strftime('%d.%m.%Y')} - {week_end.strftime('%d.%m.%Y')}",
-            subtitle_style,
-        ))
+        # Gün başlıkları
+        gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        header_labels = ["#", "Personel", "Departman", "Pozisyon"]
+        for i in range(7):
+            gun = self.current_week_start + timedelta(days=i)
+            header_labels.append(f"{gun_isimleri[i]}\n{gun.strftime('%d.%m')}")
+
+        headers = [Paragraph(h.replace('\n', '<br/>'), cell_center_bold) for h in header_labels]
+
+        # Grupla
+        vardiya_gruplari, atanmamis = self._grupla_personeller()
 
         # Filtre bilgisi
         dept_text = self.dept_combo.currentText()
         poz_text = self.poz_combo.currentText()
+        filtre_vardiya_text = self.vardiya_combo.currentText()
         filtre = (
-            f"Departman: {dept_text} | Pozisyon: {poz_text} | "
+            f"Departman: {dept_text}  |  Pozisyon: {poz_text}  |  "
+            f"Vardiya: {filtre_vardiya_text}  |  "
             f"Oluşturulma: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
         )
-        elements.append(Paragraph(filtre, info_style))
-        elements.append(Spacer(1, 3 * mm))
 
-        # Tablo verisi
-        gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
-        headers = ["Personel", "Departman", "Pozisyon"]
-        for i in range(7):
-            gun = self.current_week_start + timedelta(days=i)
-            headers.append(f"{gun_isimleri[i]} {gun.strftime('%d.%m')}")
-
-        table_data = [headers]
-        for per in self.personeller:
-            per_id, ad_soyad, dept_ad, poz_ad, varsayilan_vardiya_id = per
-            row = [ad_soyad, dept_ad, poz_ad]
-            for day_idx in range(7):
-                gun = self.current_week_start + timedelta(days=day_idx)
-                key = (per_id, gun)
-                if key in self.izin_map:
-                    row.append("İZİN")
-                elif key in self.plan_map:
-                    row.append(self._vardiya_adi(self.plan_map[key]))
-                else:
-                    row.append("–")
-            table_data.append(row)
-
-        # Sütun genişlikleri
-        page_w = landscape(A4)[0] - 30 * mm
-        fixed = [page_w * 0.17, page_w * 0.10, page_w * 0.10]
-        day_w = (page_w - sum(fixed)) / 7
-        col_widths = fixed + [day_w] * 7
-
-        tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
-
-        # Tablo stili
-        cmds = [
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E2736')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTNAME', (0, 0), (-1, 0), font_bold),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('FONTNAME', (0, 1), (-1, -1), font_name),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ('ALIGN', (3, 1), (-1, -1), 'CENTER'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#3a3f4b')),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        # Sütun genişlikleri - sabit ve orantılı
+        page_w = landscape(A4)[0] - 24 * mm
+        col_widths = [
+            page_w * 0.03,   # #
+            page_w * 0.14,   # Personel
+            page_w * 0.10,   # Departman
+            page_w * 0.10,   # Pozisyon
         ]
+        day_w = (page_w - sum(col_widths)) / 7
+        col_widths += [day_w] * 7
 
-        # Alternatif satır renkleri + İZİN vurgu
-        for i in range(1, len(table_data)):
-            bg = '#1a1f2e' if i % 2 == 0 else '#151B23'
-            cmds.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor(bg)))
-            per_id = self.personeller[i - 1][0]
-            for day_idx in range(7):
-                gun = self.current_week_start + timedelta(days=day_idx)
-                if (per_id, gun) in self.izin_map:
-                    cmds.append(('TEXTCOLOR', (3 + day_idx, i), (3 + day_idx, i),
-                                 colors.HexColor('#f59e0b')))
+        def _build_rows(per_list, grup_vardiya_id=None):
+            rows = []
+            for sira, per in enumerate(per_list, 1):
+                per_id, ad_soyad, dept_ad, poz_ad, _ = per
+                row = [
+                    Paragraph(str(sira), cell_center),
+                    Paragraph(ad_soyad, cell_bold_style),
+                    Paragraph(dept_ad, cell_style),
+                    Paragraph(poz_ad, cell_style),
+                ]
+                for day_idx in range(7):
+                    gun = self.current_week_start + timedelta(days=day_idx)
+                    metin = self._gun_metni(per_id, gun, grup_vardiya_id)
+                    row.append(Paragraph(metin, cell_center_bold if metin == "İZİN" else cell_center))
+                rows.append(row)
+            return rows
 
-        tbl.setStyle(TableStyle(cmds))
-        elements.append(tbl)
+        def _build_table_style(data_len, per_list):
+            cmds = [
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#5a7a9b')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#d0d0d0')),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 3),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 3),
+            ]
+            for i in range(1, data_len):
+                bg = '#f5f7fa' if i % 2 == 0 else '#ffffff'
+                cmds.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor(bg)))
+                if i - 1 < len(per_list):
+                    per_id = per_list[i - 1][0]
+                    for day_idx in range(7):
+                        gun = self.current_week_start + timedelta(days=day_idx)
+                        col_idx = 4 + day_idx
+                        if (per_id, gun) in self.izin_map:
+                            cmds.append(('BACKGROUND', (col_idx, i), (col_idx, i),
+                                         colors.HexColor('#fef3c7')))
+                        elif (per_id, gun) in self.plan_map:
+                            cmds.append(('BACKGROUND', (col_idx, i), (col_idx, i),
+                                         colors.HexColor('#e8f5e9')))
+            return TableStyle(cmds)
+
+        # ── Sayfa oluştur ──
+        elements = []
+        vardiya_sira = [(v[0], v[1]) for v in self.vardiyalar]
+        filtre_vardiya_id = self.vardiya_combo.currentData()
+        ilk_bolum = True
+
+        for v_id, v_adi in vardiya_sira:
+            per_list = vardiya_gruplari.get(v_id, [])
+            if not per_list:
+                continue
+            if filtre_vardiya_id is not None and v_id != filtre_vardiya_id:
+                continue
+
+            if not ilk_bolum:
+                elements.append(PageBreak())
+
+            # Başlık bloğu
+            elements.append(Paragraph(firma.get('name', 'NEXOR ERP'), title_style))
+            elements.append(Paragraph(
+                f"Haftalık Vardiya Planı &mdash; "
+                f"{self.current_week_start.strftime('%d.%m.%Y')} - {week_end.strftime('%d.%m.%Y')}",
+                subtitle_style,
+            ))
+            elements.append(Paragraph(filtre, info_style))
+            elements.append(HRFlowable(
+                width="100%", thickness=1.5, color=colors.HexColor('#5a7a9b'),
+                spaceBefore=2, spaceAfter=3,
+            ))
+            elements.append(Paragraph(f"{v_adi} Vardiyası", section_style))
+            elements.append(Paragraph(
+                f"{len(per_list)} personel  |  "
+                f"\u2713 = {v_adi}  |  İZİN = İzinli",
+                count_style,
+            ))
+
+            table_data = [headers] + _build_rows(per_list, v_id)
+            tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
+            tbl.setStyle(_build_table_style(len(table_data), per_list))
+            elements.append(tbl)
+            elements.append(Spacer(1, 4 * mm))
+            ilk_bolum = False
+
+        # Atanmamış
+        if atanmamis and filtre_vardiya_id is None:
+            if not ilk_bolum:
+                elements.append(PageBreak())
+            elements.append(Paragraph(firma.get('name', 'NEXOR ERP'), title_style))
+            elements.append(Paragraph(
+                f"Haftalık Vardiya Planı &mdash; "
+                f"{self.current_week_start.strftime('%d.%m.%Y')} - {week_end.strftime('%d.%m.%Y')}",
+                subtitle_style,
+            ))
+            elements.append(Paragraph(filtre, info_style))
+            elements.append(HRFlowable(
+                width="100%", thickness=1.5, color=colors.HexColor('#5a7a9b'),
+                spaceBefore=2, spaceAfter=3,
+            ))
+            elements.append(Paragraph("Vardiya Atanmamış", section_style))
+            elements.append(Paragraph(f"{len(atanmamis)} personel", count_style))
+            table_data = [headers] + _build_rows(atanmamis)
+            tbl = Table(table_data, colWidths=col_widths, repeatRows=1)
+            tbl.setStyle(_build_table_style(len(table_data), atanmamis))
+            elements.append(tbl)
+            ilk_bolum = False
+
+        if not elements:
+            QMessageBox.warning(self, "Uyarı", "Seçili filtreye uygun personel bulunmuyor.")
+            return
 
         try:
             doc.build(elements)
@@ -1056,6 +1359,190 @@ class IKVardiyaPage(BasePage):
             import traceback
             traceback.print_exc()
             QMessageBox.critical(self, "Hata", f"PDF oluşturulamadı: {e}")
+
+    # ──────────────────── Excel Dışa Aktarma ────────────────────
+
+    def _export_excel(self):
+        """Haftalık vardiya planını vardiya bazında gruplandırarak Excel'e aktar"""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        except ImportError:
+            QMessageBox.critical(self, "Hata", "openpyxl kütüphanesi bulunamadı.\npip install openpyxl")
+            return
+
+        if not self.personeller:
+            QMessageBox.warning(self, "Uyarı", "Dışa aktarılacak veri bulunmuyor.")
+            return
+
+        os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
+        week_end = self.current_week_start + timedelta(days=6)
+        filtre_vardiya_id = self.vardiya_combo.currentData()
+        vardiya_suffix = ""
+        if filtre_vardiya_id is not None:
+            vardiya_suffix = f"_{self.vardiya_combo.currentText().replace(' ', '_')}"
+        filename = (
+            f"vardiya_plani_{self.current_week_start.strftime('%Y%m%d')}"
+            f"_{week_end.strftime('%Y%m%d')}{vardiya_suffix}.xlsx"
+        )
+        excel_path = os.path.join(str(REPORT_OUTPUT_DIR), filename)
+        firma = get_firma_bilgileri()
+
+        wb = Workbook()
+        # Varsayılan sayfayı kaldır
+        wb.remove(wb.active)
+
+        # Stiller
+        header_font = Font(name='Calibri', bold=True, size=10, color='FFFFFF')
+        header_fill = PatternFill('solid', fgColor='5A7A9B')
+        section_font = Font(name='Calibri', bold=True, size=12, color='1A1A1A')
+        title_font = Font(name='Calibri', bold=True, size=14)
+        info_font = Font(name='Calibri', size=9, color='777777')
+        data_font = Font(name='Calibri', size=10)
+        bold_font = Font(name='Calibri', bold=True, size=10)
+        center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        left = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        thin_border = Border(
+            left=Side(style='thin', color='D0D0D0'),
+            right=Side(style='thin', color='D0D0D0'),
+            top=Side(style='thin', color='D0D0D0'),
+            bottom=Side(style='thin', color='D0D0D0'),
+        )
+        izin_fill = PatternFill('solid', fgColor='FEF3C7')
+        izin_font = Font(name='Calibri', bold=True, size=10, color='D97706')
+        check_fill = PatternFill('solid', fgColor='E8F5E9')
+        check_font = Font(name='Calibri', bold=True, size=10, color='2E7D32')
+        alt_fill = PatternFill('solid', fgColor='F5F7FA')
+
+        # Gün başlıkları
+        gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        header_labels = ["#", "Personel", "Departman", "Pozisyon"]
+        for i in range(7):
+            gun = self.current_week_start + timedelta(days=i)
+            header_labels.append(f"{gun_isimleri[i]} {gun.strftime('%d.%m')}")
+
+        # Grupla
+        vardiya_gruplari, atanmamis = self._grupla_personeller()
+        vardiya_sira = [(v[0], v[1]) for v in self.vardiyalar]
+        filtre_vardiya_id = self.vardiya_combo.currentData()
+
+        dept_text = self.dept_combo.currentText()
+        poz_text = self.poz_combo.currentText()
+        filtre_vardiya_text = self.vardiya_combo.currentText()
+
+        def _write_sheet(ws, sheet_title, per_list, grup_vardiya_id=None):
+            """Bir vardiya grubunu Excel sayfasına yaz"""
+            # Başlık
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=11)
+            ws.cell(1, 1, firma.get('name', 'NEXOR ERP')).font = title_font
+            ws.cell(1, 1).alignment = Alignment(horizontal='center')
+
+            ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=11)
+            ws.cell(2, 1,
+                    f"Haftalık Vardiya Planı - "
+                    f"{self.current_week_start.strftime('%d.%m.%Y')} - {week_end.strftime('%d.%m.%Y')}"
+                    ).font = info_font
+            ws.cell(2, 1).alignment = Alignment(horizontal='center')
+
+            ws.merge_cells(start_row=3, start_column=1, end_row=3, end_column=11)
+            ws.cell(3, 1,
+                    f"Departman: {dept_text}  |  Pozisyon: {poz_text}  |  "
+                    f"Vardiya: {filtre_vardiya_text}  |  "
+                    f"Oluşturulma: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+                    ).font = info_font
+            ws.cell(3, 1).alignment = Alignment(horizontal='center')
+
+            # Bölüm başlığı
+            ws.merge_cells(start_row=4, start_column=1, end_row=4, end_column=11)
+            ws.cell(4, 1, f"{sheet_title}  ({len(per_list)} personel)").font = section_font
+
+            # Tablo başlığı (satır 5)
+            hdr_row = 5
+            for col_idx, label in enumerate(header_labels, 1):
+                c = ws.cell(hdr_row, col_idx, label)
+                c.font = header_font
+                c.fill = header_fill
+                c.alignment = center
+                c.border = thin_border
+
+            # Veriler
+            for sira, per in enumerate(per_list, 1):
+                row = hdr_row + sira
+                per_id, ad_soyad, dept_ad, poz_ad, _ = per
+
+                ws.cell(row, 1, sira).font = data_font
+                ws.cell(row, 1).alignment = center
+                ws.cell(row, 1).border = thin_border
+
+                ws.cell(row, 2, ad_soyad).font = bold_font
+                ws.cell(row, 2).alignment = left
+                ws.cell(row, 2).border = thin_border
+
+                ws.cell(row, 3, dept_ad).font = data_font
+                ws.cell(row, 3).alignment = left
+                ws.cell(row, 3).border = thin_border
+
+                ws.cell(row, 4, poz_ad).font = data_font
+                ws.cell(row, 4).alignment = left
+                ws.cell(row, 4).border = thin_border
+
+                # Alternatif satır rengi
+                if sira % 2 == 0:
+                    for c in range(1, 12):
+                        ws.cell(row, c).fill = alt_fill
+
+                for day_idx in range(7):
+                    gun = self.current_week_start + timedelta(days=day_idx)
+                    col = 5 + day_idx
+                    metin = self._gun_metni(per_id, gun, grup_vardiya_id)
+                    c = ws.cell(row, col, metin)
+                    c.alignment = center
+                    c.border = thin_border
+
+                    if metin == "İZİN":
+                        c.font = izin_font
+                        c.fill = izin_fill
+                    elif metin == "\u2713":
+                        c.font = check_font
+                        c.fill = check_fill
+                    else:
+                        c.font = data_font
+
+            # Sütun genişlikleri
+            ws.column_dimensions['A'].width = 5
+            ws.column_dimensions['B'].width = 22
+            ws.column_dimensions['C'].width = 18
+            ws.column_dimensions['D'].width = 20
+            for i, letter in enumerate(['E', 'F', 'G', 'H', 'I', 'J', 'K']):
+                ws.column_dimensions[letter].width = 12
+
+        # ── Her vardiya için ayrı sayfa ──
+        for v_id, v_adi in vardiya_sira:
+            per_list = vardiya_gruplari.get(v_id, [])
+            if not per_list:
+                continue
+            if filtre_vardiya_id is not None and v_id != filtre_vardiya_id:
+                continue
+
+            ws = wb.create_sheet(title=v_adi[:31])
+            _write_sheet(ws, f"{v_adi} Vardiyası", per_list, v_id)
+
+        # Atanmamış
+        if atanmamis and filtre_vardiya_id is None:
+            ws = wb.create_sheet(title="Atanmamış")
+            _write_sheet(ws, "Vardiya Atanmamış", atanmamis)
+
+        if len(wb.sheetnames) == 0:
+            QMessageBox.warning(self, "Uyarı", "Seçili filtreye uygun personel bulunmuyor.")
+            return
+
+        try:
+            wb.save(excel_path)
+            os.startfile(excel_path)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Hata", f"Excel oluşturulamadı: {e}")
 
     # ──────────────────── Canlı Vardiya Monitörü ────────────────────
 
