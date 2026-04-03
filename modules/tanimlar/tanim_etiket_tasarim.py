@@ -1718,6 +1718,19 @@ class EtiketTasarimPage(BasePage):
         del_tmpl_btn.clicked.connect(self._delete_sablon)
         layout.addWidget(del_tmpl_btn)
 
+        # Varsayılan yap butonu
+        varsayilan_btn = QPushButton("⭐ Final Kalite Varsayılanı Yap")
+        varsayilan_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent; color: {self.theme.get('warning', '#f59e0b')};
+                border: 1px solid {self.theme.get('warning', '#f59e0b')};
+                border-radius: 4px; padding: 4px 8px; font-size: 11px;
+            }}
+            QPushButton:hover {{ background: {self.theme.get('warning', '#f59e0b')}; color: black; }}
+        """)
+        varsayilan_btn.clicked.connect(self._set_varsayilan)
+        layout.addWidget(varsayilan_btn)
+
         # ── Label Size ──
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
@@ -2018,19 +2031,22 @@ class EtiketTasarimPage(BasePage):
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, sablon_kodu, sablon_adi, sablon_tipi, genislik_mm, yukseklik_mm
+                SELECT id, sablon_kodu, sablon_adi, sablon_tipi, genislik_mm, yukseklik_mm,
+                       ISNULL(varsayilan_mi, 0) as varsayilan_mi
                 FROM tanim.etiket_sablonlari
                 WHERE aktif_mi = 1
-                ORDER BY sablon_adi
+                ORDER BY varsayilan_mi DESC, sablon_adi
             """)
 
             self.sablon_list.clear()
             for row in cursor.fetchall():
-                sid, kod, adi, tip, w, h = row
+                sid, kod, adi, tip, w, h = row[0], row[1], row[2], row[3], row[4], row[5]
+                varsayilan = row[6] if len(row) > 6 else 0
                 w = float(w) if w else 100.0
                 h = float(h) if h else 50.0
                 display = f"{adi} ({w:.0f}×{h:.0f}mm)"
-                item = QListWidgetItem(f"⭐ {display}" if tip == 'PALET' else display)
+                prefix = "⭐ " if varsayilan else ""
+                item = QListWidgetItem(f"{prefix}{display}")
                 item.setData(Qt.UserRole, {
                     'sablon_id': sid, 'kod': kod, 'adi': adi,
                     'genislik': w, 'yukseklik': h
@@ -2132,6 +2148,33 @@ class EtiketTasarimPage(BasePage):
             QMessageBox.information(self, "Başarılı", "Şablon kaydedildi! ✓")
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Kayıt hatası:\n{str(e)}")
+
+    def _set_varsayilan(self):
+        """Seçili şablonu Final Kalite varsayılanı yap"""
+        if not self.current_sablon_id:
+            QMessageBox.warning(self, "Uyarı", "Önce bir şablon seçin!")
+            return
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # varsayilan_mi kolonu yoksa ekle
+            cursor.execute("""
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('tanim.etiket_sablonlari') AND name = 'varsayilan_mi')
+                ALTER TABLE tanim.etiket_sablonlari ADD varsayilan_mi BIT DEFAULT 0
+            """)
+
+            # Önce hepsini sıfırla
+            cursor.execute("UPDATE tanim.etiket_sablonlari SET varsayilan_mi = 0")
+            # Seçileni varsayılan yap
+            cursor.execute("UPDATE tanim.etiket_sablonlari SET varsayilan_mi = 1 WHERE id = ?", (self.current_sablon_id,))
+            conn.commit()
+            conn.close()
+
+            self._load_sablonlar()
+            QMessageBox.information(self, "Başarılı", "Bu şablon Final Kalite varsayılanı olarak ayarlandı!")
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Varsayılan ayarlanamadı:\n{str(e)}")
 
     def _delete_sablon(self):
         if not self.current_sablon_id:

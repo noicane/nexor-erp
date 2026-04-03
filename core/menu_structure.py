@@ -21,7 +21,7 @@ MENU_STRUCTURE = [
         {"id": "stok_fiyat", "label": "Fiyat Listesi"},
         {"id": "stok_maliyet", "label": "Maliyet Tanımları"},
         {"id": "stok_kimyasal", "label": "Kimyasal Tüketim"},
-        {"id": "urun_rota_atama", "label": "Ürün Rota Atama"},
+        {"id": "stok_havuzu", "label": "Stok Havuzu"},
     ]},
 
     {"id": "teklifler", "icon": "📝", "label": "Teklifler", "children": [
@@ -147,13 +147,6 @@ MENU_STRUCTURE = [
         {"id": "aksiyon_bana_atanan", "label": "Bana Atananlar"},
     ]},
 
-    {"id": "maliyet", "icon": "💰", "label": "Maliyet", "children": [
-        {"id": "tanim_is_merkezi", "label": "İş Merkezi Tanımları"},
-        {"id": "maliyet_personel", "label": "Personel Maliyet"},
-        {"id": "stok_maliyet", "label": "Ürün Maliyet Tanımları"},
-        {"id": "stok_fiyat", "label": "Fiyat Listesi"},
-    ]},
-
     {"id": "raporlar", "icon": "📈", "label": "Raporlar", "children": [
         {"id": "rapor_uretim", "label": "Üretim Raporları"},
         {"id": "rapor_kalite", "label": "Kalite Raporları"},
@@ -161,7 +154,7 @@ MENU_STRUCTURE = [
         {"id": "rapor_kpi", "label": "KPI Dashboard"},
         {"id": "urun_izlenebilirlik", "label": "Ürün İzlenebilirlik"},
     ]},
-    
+
     {"id": "tanimlar", "icon": "⚙️", "label": "Tanımlar", "children": [
         {"id": "tanim_hat", "label": "Üretim Hatları"},
         {"id": "tanim_proses", "label": "Prosesler"},
@@ -181,7 +174,16 @@ MENU_STRUCTURE = [
         {"id": "tanim_etiket_tasarim", "label": "Etiket Tasarım"},
         {"id": "tanim_giris_kalite_kriterleri", "label": "Giriş Kalite Kriterleri"},
     ]},
-    
+
+    {"id": "yonetim", "icon": "📊", "label": "Yönetim", "password": "Nexor-Atlas2026", "children": [
+        {"id": "yonetim_ciro_analiz", "label": "Ciro Analizi"},
+        {"id": "yonetim_bara_hesaplama", "label": "Bara Hesaplama"},
+        {"id": "tanim_is_merkezi", "label": "İş Merkezi Tanımları"},
+        {"id": "maliyet_personel", "label": "Personel Maliyet"},
+        {"id": "stok_maliyet", "label": "Ürün Maliyet Tanımları"},
+        {"id": "stok_fiyat", "label": "Fiyat Listesi"},
+    ]},
+
     {"id": "sistem", "icon": "🛡️", "label": "Sistem", "children": [
         {"id": "sistem_veritabani", "label": "Veritabanı Bağlantıları"},
         {"id": "bildirim_sistemi", "label": "Bildirimler"},

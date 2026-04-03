@@ -333,7 +333,7 @@ class DashboardPageV2(QWidget):
         
         # Tablo
         self.islem_table = NexorTable(self.theme)
-        self.islem_table.set_columns(["Saat", "Hat", "Ürün", "Miktar"])
+        self.islem_table.set_columns(["Saat", "Hat", "Pozisyon", "Reçete"])
         self.islem_table.setMinimumHeight(200)
         
         card.add_widget(self.islem_table)
@@ -523,9 +523,66 @@ class DashboardPageV2(QWidget):
             print(f"Hat durumu hatasi: {e}")
     
     def _load_son_islemler(self):
-        """Son islemleri yukle"""
-        # Şimdilik devre dışı - tablo yapısı farklı
-        pass
+        """Son islemleri PLC tarihce'den yukle"""
+        try:
+            self.islem_table.clear_rows()
+
+            conn = get_db_connection()
+            if not conn:
+                return
+            cursor = conn.cursor()
+
+            # Önce kolon adlarını öğren
+            cursor.execute("SELECT TOP 1 * FROM uretim.plc_tarihce")
+            col_names = [desc[0] for desc in cursor.description]
+
+            # Tarih kolonu bul
+            tarih_col = None
+            for c in col_names:
+                if 'tarih' in c.lower() or 'zaman' in c.lower() or 'date' in c.lower() or 'time' in c.lower():
+                    tarih_col = c
+                    break
+
+            if not tarih_col:
+                # id'ye göre sırala
+                tarih_col = 'id'
+
+            cursor.execute(f"""
+                SELECT TOP 15 *
+                FROM uretim.plc_tarihce
+                ORDER BY [{tarih_col}] DESC
+            """)
+            cols = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+            conn.close()
+
+            # Kolon indekslerini bul
+            def find_col(keywords):
+                for kw in keywords:
+                    for i, c in enumerate(cols):
+                        if kw in c.lower():
+                            return i
+                return None
+
+            idx_tarih = find_col(['tarih', 'zaman', 'date', 'time'])
+            idx_hat = find_col(['hat'])
+            idx_kazan = find_col(['kazan'])
+            idx_recete = find_col(['recete'])
+
+            for row in rows:
+                saat = '-'
+                if idx_tarih is not None and row[idx_tarih]:
+                    val = row[idx_tarih]
+                    saat = val.strftime('%H:%M') if hasattr(val, 'strftime') else str(val)[-8:-3]
+
+                hat = str(row[idx_hat] or '-') if idx_hat is not None else '-'
+                kazan = f"Kazan {row[idx_kazan]}" if idx_kazan is not None and row[idx_kazan] else '-'
+                recete = str(int(row[idx_recete])) if idx_recete is not None and row[idx_recete] else '0'
+
+                self.islem_table.add_row([saat, hat, kazan, recete])
+
+        except Exception as e:
+            print(f"Son islemler hatasi: {e}")
     
     def update_theme(self, theme: dict):
         """Temayi guncelle"""

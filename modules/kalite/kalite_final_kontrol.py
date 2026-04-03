@@ -184,21 +184,26 @@ class EtiketOnizlemeDialog(QDialog):
 
     def _load_sablonlar(self):
         self.sablon_combo.clear()
+        varsayilan_index = 0
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, sablon_kodu, sablon_adi, varsayilan_mi
+                SELECT id, sablon_kodu, sablon_adi, ISNULL(varsayilan_mi, 0) as varsayilan_mi
                 FROM tanim.etiket_sablonlari
-                WHERE aktif_mi = 1 AND sablon_tipi IN ('PALET', 'MAMUL', 'SEVK', 'KALITE')
+                WHERE aktif_mi = 1
                 ORDER BY varsayilan_mi DESC, sablon_adi
             """)
-            for row in cursor.fetchall():
-                varsayilan = " *" if row[3] else ""
-                self.sablon_combo.addItem(f"{row[2]}{varsayilan}", row[0])
+            for i, row in enumerate(cursor.fetchall()):
+                prefix = "⭐ " if row[3] else ""
+                self.sablon_combo.addItem(f"{prefix}{row[2]}", row[0])
+                if row[3]:
+                    varsayilan_index = i
             conn.close()
             if self.sablon_combo.count() == 0:
                 self.sablon_combo.addItem("Varsayılan Şablon", None)
+            else:
+                self.sablon_combo.setCurrentIndex(varsayilan_index)
         except Exception as e:
             print(f"Şablon yükleme hatası: {e}")
             self.sablon_combo.addItem("Varsayılan Şablon", None)
@@ -858,16 +863,7 @@ class KaliteFinalKontrolPage(BasePage):
 
         bek_layout.addLayout(filter_layout)
 
-        # Splitter: Tablo + Detay
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.setStyleSheet(f"QSplitter::handle {{ background: {self.theme.get('border')}; width: 2px; }}")
-
-        # Sol: Ürün Tablosu
-        table_frame = QFrame()
-        table_layout = QVBoxLayout(table_frame)
-        table_layout.setContentsMargins(0, 0, 0, 0)
-        table_layout.setSpacing(0)
-
+        # Ürün Tablosu (tam genişlik)
         self.product_table = QTableWidget()
         self.product_table.setStyleSheet(f"""
             QTableWidget {{
@@ -887,99 +883,43 @@ class KaliteFinalKontrolPage(BasePage):
         self.product_table.setColumnHidden(7, True)
         self.product_table.setColumnWidth(1, _sz(110))
         self.product_table.setColumnWidth(2, _sz(120))
-        self.product_table.setColumnWidth(3, _sz(140))
+        self.product_table.setColumnWidth(3, _sz(180))
         self.product_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.product_table.setColumnWidth(5, _sz(80))
-        self.product_table.setColumnWidth(6, _sz(80))
+        self.product_table.setColumnWidth(5, _sz(90))
+        self.product_table.setColumnWidth(6, _sz(90))
         self.product_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.product_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.product_table.verticalHeader().setVisible(False)
         self.product_table.setAlternatingRowColors(True)
         self.product_table.currentCellChanged.connect(self._on_product_selected)
-        table_layout.addWidget(self.product_table)
+        self.product_table.doubleClicked.connect(self._show_product_detail_dialog)
+        bek_layout.addWidget(self.product_table, 1)
 
-        splitter.addWidget(table_frame)
+        # Alt bar: Detay butonu + Kontrole Başla
+        bottom_bar = QHBoxLayout()
+        bottom_bar.setSpacing(12)
 
-        # Sağ: Detay Paneli
-        self.detail_frame = QFrame()
-        self.detail_frame.setStyleSheet(f"""
-            QFrame {{
+        detail_btn = QPushButton("📋 Ürün Detay / Ambalaj")
+        detail_btn.setCursor(Qt.PointingHandCursor)
+        detail_btn.setStyleSheet(f"""
+            QPushButton {{
                 background: {self.theme.get('bg_card')};
+                color: {self.theme.get('text')};
                 border: 1px solid {self.theme.get('border')};
-                border-radius: 12px;
+                border-radius: {_sz(10)}px;
+                padding: {_sz(12)}px {_sz(20)}px;
+                font-size: {_fs(15)};
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                border-color: {self.theme.get('primary')};
+                color: {self.theme.get('primary')};
             }}
         """)
-        detail_layout = QVBoxLayout(self.detail_frame)
-        detail_layout.setContentsMargins(16, 16, 16, 16)
-        detail_layout.setSpacing(10)
+        detail_btn.clicked.connect(self._show_product_detail_dialog)
+        bottom_bar.addWidget(detail_btn)
 
-        self.image_label = QLabel("Ürün seçin")
-        self.image_label.setFixedSize(_sz(300), _sz(220))
-        self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setStyleSheet(f"""
-            background: {self.theme.get('bg_input')};
-            border: 1px solid {self.theme.get('border')};
-            border-radius: 8px;
-            color: {self.theme.get('text_muted')};
-            font-size: {_fs(14)};
-        """)
-        detail_layout.addWidget(self.image_label, alignment=Qt.AlignCenter)
-
-        self.detail_grid = QGridLayout()
-        self.detail_grid.setSpacing(6)
-
-        detail_labels = [
-            ("Müşteri:", "detail_musteri"),
-            ("Stok Kodu:", "detail_stok_kodu"),
-            ("Teknik Resim:", "detail_teknik_resim"),
-            ("Boyut:", "detail_boyut"),
-            ("Ağırlık:", "detail_agirlik"),
-            ("Kaplama:", "detail_kaplama"),
-            ("Kalınlık:", "detail_kalinlik"),
-            ("Renk:", "detail_renk"),
-            ("Yüzey Alanı:", "detail_yuzey"),
-            ("Kontrol Miktarı:", "detail_miktar"),
-        ]
-
-        for i, (label_text, obj_name) in enumerate(detail_labels):
-            lbl = QLabel(label_text)
-            lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: {_fs(13)}; border: none;")
-            val = QLabel("-")
-            val.setObjectName(obj_name)
-            val.setStyleSheet(f"color: {self.theme.get('text')}; font-size: {_fs(13)}; font-weight: 600; border: none;")
-            val.setWordWrap(True)
-            self.detail_grid.addWidget(lbl, i, 0)
-            self.detail_grid.addWidget(val, i, 1)
-
-        detail_layout.addLayout(self.detail_grid)
-
-        ambalaj_header = QLabel("Ambalajlama Talimatları")
-        ambalaj_header.setStyleSheet(f"color: {self.theme.get('primary')}; font-size: {_fs(14)}; font-weight: bold; border: none; margin-top: {_sz(6)}px;")
-        detail_layout.addWidget(ambalaj_header)
-
-        ambalaj_row = QHBoxLayout()
-        ambalaj_row.setSpacing(6)
-        self.ambalaj_thumbs = []
-        for i in range(3):
-            thumb = QLabel()
-            thumb.setFixedSize(95, 70)
-            thumb.setAlignment(Qt.AlignCenter)
-            thumb.setStyleSheet(f"""
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 4px;
-                color: {self.theme.get('text_muted')};
-                font-size: 10px;
-            """)
-            thumb.setText(f"{i + 1}")
-            thumb.setCursor(Qt.PointingHandCursor)
-            thumb.mousePressEvent = lambda event, idx=i: self._show_ambalaj_buyuk(idx)
-            ambalaj_row.addWidget(thumb)
-            self.ambalaj_thumbs.append(thumb)
-        ambalaj_row.addStretch()
-        detail_layout.addLayout(ambalaj_row)
-
-        detail_layout.addStretch()
+        bottom_bar.addStretch()
 
         self.basla_btn = QPushButton("KONTROLE BAŞLA")
         self.basla_btn.setEnabled(False)
@@ -990,10 +930,9 @@ class KaliteFinalKontrolPage(BasePage):
                 color: white;
                 border: none;
                 border-radius: {_sz(10)}px;
-                padding: {_sz(14)}px;
+                padding: {_sz(12)}px {_sz(40)}px;
                 font-size: {_fs(16)};
                 font-weight: bold;
-                min-height: {_sz(20)}px;
             }}
             QPushButton:hover {{
                 background: {self.theme.get('primary_hover', self.theme.get('primary'))};
@@ -1004,11 +943,9 @@ class KaliteFinalKontrolPage(BasePage):
             }}
         """)
         self.basla_btn.clicked.connect(self._basla_kontrol)
-        detail_layout.addWidget(self.basla_btn)
+        bottom_bar.addWidget(self.basla_btn)
 
-        splitter.addWidget(self.detail_frame)
-        splitter.setSizes([550, 350])
-        bek_layout.addWidget(splitter, 1)
+        bek_layout.addLayout(bottom_bar)
 
         self.son_islem_label = QLabel("")
         self.son_islem_label.setStyleSheet(f"""
@@ -1226,7 +1163,7 @@ class KaliteFinalKontrolPage(BasePage):
         self._selected_product = None
         self._products = []
         self.product_table.setRowCount(0)
-        self._clear_detail_panel()
+        self.basla_btn.setEnabled(False)
         self.stacked.setCurrentIndex(0)
         self.sicil_input.setFocus()
 
@@ -1436,23 +1373,18 @@ class KaliteFinalKontrolPage(BasePage):
     # =========================================================================
 
     def _on_product_selected(self, row, col, prev_row, prev_col):
-        """Tablo satırı seçildiğinde detay panelini doldur"""
+        """Tablo satırı seçildiğinde ürünü seç"""
         if row < 0 or row >= self.product_table.rowCount():
-            self._clear_detail_panel()
+            self._selected_product = None
+            self.basla_btn.setEnabled(False)
             return
 
-        # Tablodaki veriden ürün bilgisini al
         is_emri_id_item = self.product_table.item(row, 0)
-        urun_id_item = self.product_table.item(row, 7)
         lot_no_item = self.product_table.item(row, 2)
-        musteri_item = self.product_table.item(row, 3)
-        stok_kodu_item = self.product_table.item(row, 4)
-        miktar_item = self.product_table.item(row, 5)
 
         if not is_emri_id_item:
             return
 
-        # _products listesinden bul
         is_emri_id_text = is_emri_id_item.text()
         lot_no_text = lot_no_item.text() if lot_no_item else ''
 
@@ -1463,198 +1395,238 @@ class KaliteFinalKontrolPage(BasePage):
                 break
 
         if not selected:
-            self._clear_detail_panel()
+            self._selected_product = None
+            self.basla_btn.setEnabled(False)
             return
 
         self._selected_product = selected
         self.basla_btn.setEnabled(True)
 
-        # Detay bilgilerini doldur
-        self._find_detail("detail_musteri").setText(selected.get('cari_unvani', '-'))
-        self._find_detail("detail_stok_kodu").setText(selected.get('stok_kodu', '-'))
-        self._find_detail("detail_miktar").setText(f"{selected.get('miktar', 0):,.0f} adet")
+    def _show_product_detail_dialog(self, *args):
+        """Seçili ürünün detayını dialog olarak göster"""
+        if not self._selected_product:
+            return
 
-        # Ürün detaylarını DB'den çek
-        urun_id = selected.get('urun_id')
-        # Ambalaj fotoğraflarını yükle
-        self._load_ambalaj_images(selected.get('stok_kodu', ''), selected.get('cari_unvani', ''))
+        p = self._selected_product
+        t = self.theme
 
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Ürün Detay — {p.get('stok_kodu', '')}")
+        dlg.setMinimumSize(_sz(700), _sz(550))
+        dlg.setStyleSheet(f"QDialog {{ background: {t.get('bg_main')}; }}")
+
+        main_layout = QVBoxLayout(dlg)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(16)
+
+        # Üst: Resim + Bilgiler yan yana
+        top_layout = QHBoxLayout()
+        top_layout.setSpacing(20)
+
+        # Sol: Ürün Resmi
+        img_label = QLabel("Resim bulunamadı")
+        img_label.setFixedSize(_sz(320), _sz(240))
+        img_label.setAlignment(Qt.AlignCenter)
+        img_label.setStyleSheet(f"""
+            background: {t.get('bg_input')};
+            border: 1px solid {t.get('border')};
+            border-radius: 10px;
+            color: {t.get('text_muted')};
+            font-size: {_fs(14)};
+        """)
+
+        # Resmi yükle
+        stok_kodu = p.get('stok_kodu', '')
+        if stok_kodu:
+            base = NAS_PATHS.get("image_path", "")
+            for ext in ['.jpg', '.JPG', '.jpeg', '.png', '.PNG']:
+                path = os.path.join(base, f"{stok_kodu}{ext}")
+                if os.path.exists(path):
+                    pixmap = QPixmap(path).scaled(_sz(320), _sz(240), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    img_label.setPixmap(pixmap)
+                    break
+
+        top_layout.addWidget(img_label)
+
+        # Sağ: Bilgiler
+        info_frame = QFrame()
+        info_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {t.get('bg_card')};
+                border: 1px solid {t.get('border')};
+                border-radius: 10px;
+            }}
+        """)
+        info_layout = QGridLayout(info_frame)
+        info_layout.setContentsMargins(16, 16, 16, 16)
+        info_layout.setSpacing(8)
+
+        detail_data = [
+            ("Müşteri", p.get('cari_unvani', '-')),
+            ("Stok Kodu", stok_kodu or '-'),
+            ("Kontrol Miktarı", f"{p.get('miktar', 0):,.0f} adet"),
+        ]
+
+        # DB'den ürün detaylarını çek
+        urun_id = p.get('urun_id')
         if urun_id:
-            self._load_product_detail(urun_id)
-            self._load_product_image(selected.get('stok_kodu', ''))
-        else:
-            self._find_detail("detail_teknik_resim").setText("-")
-            self._find_detail("detail_boyut").setText("-")
-            self._find_detail("detail_agirlik").setText("-")
-            self._find_detail("detail_kaplama").setText("-")
-            self._find_detail("detail_kalinlik").setText("-")
-            self._find_detail("detail_renk").setText("-")
-            self._find_detail("detail_yuzey").setText("-")
-            self.image_label.setText("Resim bulunamadı")
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT
+                        u.teknik_resim_no,
+                        u.en_mm, u.boy_mm, u.yukseklik_mm, u.agirlik_kg,
+                        u.yuzey_alani_m2, u.renk_kodu, u.ral_kodu,
+                        u.kalinlik_min_um, u.kalinlik_hedef_um, u.kalinlik_max_um,
+                        kt.ad as kaplama_turu_adi
+                    FROM stok.urunler u
+                    LEFT JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id
+                    WHERE u.id = ?
+                """, (urun_id,))
+                row = cursor.fetchone()
+                conn.close()
 
-    def _load_product_detail(self, urun_id):
-        """Ürün detay bilgilerini DB'den yükle"""
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT
-                    u.urun_kodu, u.urun_adi, u.teknik_resim_no,
-                    u.en_mm, u.boy_mm, u.yukseklik_mm, u.agirlik_kg,
-                    u.yuzey_alani_m2, u.renk_kodu, u.ral_kodu,
-                    u.kalinlik_min_um, u.kalinlik_hedef_um, u.kalinlik_max_um,
-                    kt.ad as kaplama_turu_adi,
-                    u.resim_yolu
-                FROM stok.urunler u
-                LEFT JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id
-                WHERE u.id = ?
-            """, (urun_id,))
-            row = cursor.fetchone()
-            conn.close()
+                if row:
+                    detail_data.append(("Teknik Resim", row[0] or '-'))
 
-            if row:
-                self._find_detail("detail_teknik_resim").setText(row[2] or '-')
+                    parts = []
+                    if row[1]: parts.append(str(row[1]))
+                    if row[2]: parts.append(str(row[2]))
+                    if row[3]: parts.append(str(row[3]))
+                    detail_data.append(("Boyut", (" x ".join(parts) + " mm") if parts else '-'))
 
-                # Boyut
-                parts = []
-                if row[3]: parts.append(f"{row[3]}")
-                if row[4]: parts.append(f"{row[4]}")
-                if row[5]: parts.append(f"{row[5]}")
-                boyut = " x ".join(parts) + " mm" if parts else "-"
-                self._find_detail("detail_boyut").setText(boyut)
+                    detail_data.append(("Ağırlık", f"{row[4]} kg" if row[4] else '-'))
+                    detail_data.append(("Kaplama", row[11] or '-'))
 
-                self._find_detail("detail_agirlik").setText(f"{row[6]} kg" if row[6] else "-")
-                self._find_detail("detail_kaplama").setText(row[13] or '-')
+                    kal = []
+                    if row[8]: kal.append(str(row[8]))
+                    if row[9]: kal.append(str(row[9]))
+                    if row[10]: kal.append(str(row[10]))
+                    detail_data.append(("Kalınlık", ("/".join(kal) + " µm") if kal else '-'))
 
-                # Kalınlık
-                kal_parts = []
-                if row[10]: kal_parts.append(str(row[10]))
-                if row[11]: kal_parts.append(str(row[11]))
-                if row[12]: kal_parts.append(str(row[12]))
-                kalinlik = "/".join(kal_parts) + " µm" if kal_parts else "-"
-                self._find_detail("detail_kalinlik").setText(kalinlik)
+                    renk = []
+                    if row[6]: renk.append(row[6])
+                    if row[7]: renk.append(f"RAL {row[7]}")
+                    detail_data.append(("Renk", " / ".join(renk) if renk else '-'))
 
-                # Renk
-                renk_parts = []
-                if row[8]: renk_parts.append(row[8])
-                if row[9]: renk_parts.append(f"RAL {row[9]}")
-                renk = " / ".join(renk_parts) if renk_parts else "-"
-                self._find_detail("detail_renk").setText(renk)
+                    detail_data.append(("Yüzey Alanı", f"{row[5]} m²" if row[5] else '-'))
+            except Exception as e:
+                print(f"Detay dialog DB hatası: {e}")
 
-                self._find_detail("detail_yuzey").setText(f"{row[7]} m²" if row[7] else "-")
-            else:
-                for name in ["detail_teknik_resim", "detail_boyut", "detail_agirlik",
-                             "detail_kaplama", "detail_kalinlik", "detail_renk", "detail_yuzey"]:
-                    self._find_detail(name).setText("-")
-        except Exception as e:
-            print(f"Ürün detay yükleme hatası: {e}")
+        for i, (label, value) in enumerate(detail_data):
+            lbl = QLabel(label)
+            lbl.setStyleSheet(f"color: {t.get('text_muted')}; font-size: {_fs(13)}; border: none;")
+            val = QLabel(str(value))
+            val.setStyleSheet(f"color: {t.get('text')}; font-size: {_fs(14)}; font-weight: 600; border: none;")
+            val.setWordWrap(True)
+            info_layout.addWidget(lbl, i, 0)
+            info_layout.addWidget(val, i, 1)
 
-    def _load_product_image(self, stok_kodu):
-        """NAS'tan ürün resmini yükle"""
-        if not stok_kodu:
-            self.image_label.setText("Resim bulunamadı")
-            return
+        info_layout.setRowStretch(len(detail_data), 1)
+        top_layout.addWidget(info_frame, 1)
+        main_layout.addLayout(top_layout)
 
-        base = NAS_PATHS.get("image_path", "")
-        for ext in ['.jpg', '.JPG', '.jpeg', '.png', '.PNG']:
-            path = os.path.join(base, f"{stok_kodu}{ext}")
-            if os.path.exists(path):
-                pixmap = QPixmap(path).scaled(
-                    300, 220, Qt.KeepAspectRatio, Qt.SmoothTransformation
-                )
-                self.image_label.setPixmap(pixmap)
-                return
-        self.image_label.setText("Resim bulunamadı")
+        # Alt: Ambalajlama Talimatları
+        ambalaj_header = QLabel("📦 Ambalajlama Talimatları")
+        ambalaj_header.setStyleSheet(f"color: {t.get('primary')}; font-size: {_fs(15)}; font-weight: bold;")
+        main_layout.addWidget(ambalaj_header)
 
-    def _find_detail(self, obj_name):
-        """Detay panelindeki label'ı bul"""
-        lbl = self.detail_frame.findChild(QLabel, obj_name)
-        if not lbl:
-            lbl = QLabel("-")
-        return lbl
+        ambalaj_row = QHBoxLayout()
+        ambalaj_row.setSpacing(12)
 
-    def _clear_detail_panel(self):
-        """Detay panelini temizle"""
-        self._selected_product = None
-        self.basla_btn.setEnabled(False)
-        self.image_label.clear()
-        self.image_label.setText("Ürün seçin")
-        for name in ["detail_musteri", "detail_stok_kodu", "detail_teknik_resim",
-                      "detail_boyut", "detail_agirlik", "detail_kaplama",
-                      "detail_kalinlik", "detail_renk", "detail_yuzey", "detail_miktar"]:
-            self._find_detail(name).setText("-")
-        # Ambalaj thumbnail'larını temizle
-        if hasattr(self, 'ambalaj_thumbs'):
-            for i, thumb in enumerate(self.ambalaj_thumbs):
-                thumb.clear()
-                thumb.setText(f"{i + 1}")
-            self._ambalaj_full_paths = [None, None, None]
-
-    def _load_ambalaj_images(self, stok_kodu: str, cari_unvani: str):
-        """NAS'tan ambalaj talimat fotoğraflarını thumbnail olarak yükle"""
-        self._ambalaj_full_paths = [None, None, None]
-
-        if not stok_kodu or not cari_unvani:
-            return
-
-        # Geçersiz karakterleri temizle
+        cari_unvani = p.get('cari_unvani', '')
         cari_temiz = cari_unvani
         kod_temiz = stok_kodu
         for char in ['<', '>', ':', '"', '/', '\\', '|', '?', '*']:
             cari_temiz = cari_temiz.replace(char, '_') if cari_temiz else 'Genel'
             kod_temiz = kod_temiz.replace(char, '_') if kod_temiz else ''
 
-        base = NAS_PATHS.get("product_path", "")
-        klasor = os.path.join(base, cari_temiz, kod_temiz, '10_Ambalajlama_Talimatlari')
+        base_path = NAS_PATHS.get("product_path", "")
+        klasor = os.path.join(base_path, cari_temiz, kod_temiz, '10_Ambalajlama_Talimatlari')
 
+        ambalaj_paths = []
         for i in range(3):
-            found = False
+            found_path = None
             for ext in ['.jpg', '.jpeg', '.png', '.bmp', '.JPG', '.JPEG', '.PNG', '.BMP']:
                 dosya = os.path.join(klasor, f"ambalaj_{i + 1}{ext}")
                 if os.path.exists(dosya):
-                    try:
-                        pixmap = QPixmap(dosya)
-                        if not pixmap.isNull():
-                            scaled = pixmap.scaled(95, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                            self.ambalaj_thumbs[i].setPixmap(scaled)
-                            self.ambalaj_thumbs[i].setStyleSheet(f"""
-                                background: {self.theme.get('bg_input')};
-                                border: 1px solid {self.theme.get('success', '#10B981')};
-                                border-radius: 4px;
-                            """)
-                            self._ambalaj_full_paths[i] = dosya
-                            found = True
-                            break
-                    except Exception:
-                        pass
+                    found_path = dosya
+                    break
+            ambalaj_paths.append(found_path)
 
-            if not found:
-                self.ambalaj_thumbs[i].clear()
-                self.ambalaj_thumbs[i].setText(f"{i + 1}")
-                self.ambalaj_thumbs[i].setStyleSheet(f"""
-                    background: {self.theme.get('bg_input')};
-                    border: 1px solid {self.theme.get('border')};
-                    border-radius: 4px;
-                    color: {self.theme.get('text_muted')};
-                    font-size: 10px;
-                """)
+            thumb_frame = QFrame()
+            thumb_frame.setStyleSheet(f"""
+                QFrame {{
+                    background: {t.get('bg_card')};
+                    border: 1px solid {t.get('border') if not found_path else t.get('success', '#10B981')};
+                    border-radius: 8px;
+                }}
+            """)
+            thumb_layout = QVBoxLayout(thumb_frame)
+            thumb_layout.setContentsMargins(8, 8, 8, 8)
+            thumb_layout.setSpacing(4)
 
-    def _show_ambalaj_buyuk(self, index: int):
-        """Ambalaj fotoğrafını büyük göster"""
-        if not hasattr(self, '_ambalaj_full_paths') or not self._ambalaj_full_paths[index]:
-            return
+            thumb_label = QLabel()
+            thumb_label.setFixedSize(_sz(180), _sz(130))
+            thumb_label.setAlignment(Qt.AlignCenter)
 
-        dosya = self._ambalaj_full_paths[index]
+            if found_path:
+                pix = QPixmap(found_path)
+                if not pix.isNull():
+                    thumb_label.setPixmap(pix.scaled(_sz(180), _sz(130), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+                    thumb_label.setCursor(Qt.PointingHandCursor)
+                    fp = found_path
+                    idx = i
+                    thumb_label.mousePressEvent = lambda ev, f=fp, n=idx: self._show_ambalaj_dialog(f, n, dlg)
+            else:
+                thumb_label.setText(f"Adım {i + 1}\n(yok)")
+                thumb_label.setStyleSheet(f"color: {t.get('text_muted')}; font-size: {_fs(12)};")
+
+            thumb_layout.addWidget(thumb_label, alignment=Qt.AlignCenter)
+
+            step_lbl = QLabel(f"Adım {i + 1}")
+            step_lbl.setAlignment(Qt.AlignCenter)
+            step_lbl.setStyleSheet(f"color: {t.get('text_secondary')}; font-size: {_fs(12)}; font-weight: bold;")
+            thumb_layout.addWidget(step_lbl)
+
+            ambalaj_row.addWidget(thumb_frame)
+
+        ambalaj_row.addStretch()
+        main_layout.addLayout(ambalaj_row)
+
+        # Kapat butonu
+        close_btn = QPushButton("Kapat")
+        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {t.get('bg_card')};
+                color: {t.get('text')};
+                border: 1px solid {t.get('border')};
+                border-radius: 8px;
+                padding: 10px 30px;
+                font-size: {_fs(14)};
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ border-color: {t.get('primary')}; color: {t.get('primary')}; }}
+        """)
+        close_btn.clicked.connect(dlg.close)
+        main_layout.addWidget(close_btn, alignment=Qt.AlignRight)
+
+        dlg.exec()
+
+    def _show_ambalaj_dialog(self, dosya, index, parent_dlg):
+        """Ambalaj fotoğrafını tam boyut göster"""
         pixmap = QPixmap(dosya)
         if pixmap.isNull():
             return
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"Ambalajlama - Adım {index + 1}")
-        dialog.setMinimumSize(700, 520)
-        dialog.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main')}; }}")
+        dlg = QDialog(parent_dlg)
+        dlg.setWindowTitle(f"Ambalajlama — Adım {index + 1}")
+        dlg.setMinimumSize(700, 520)
+        dlg.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main')}; }}")
 
-        layout = QVBoxLayout(dialog)
+        layout = QVBoxLayout(dlg)
         layout.setContentsMargins(16, 16, 16, 16)
 
         img_label = QLabel()
@@ -1665,10 +1637,12 @@ class KaliteFinalKontrolPage(BasePage):
 
         close_btn = QPushButton("Kapat")
         close_btn.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-weight: bold;")
-        close_btn.clicked.connect(dialog.close)
+        close_btn.clicked.connect(dlg.close)
         layout.addWidget(close_btn, alignment=Qt.AlignCenter)
 
-        dialog.exec()
+        dlg.exec()
+
+    # Eski detay panel metodları kaldırıldı — artık dialog kullanılıyor
 
     # =========================================================================
     # FİLTRELEME
@@ -1745,12 +1719,21 @@ class KaliteFinalKontrolPage(BasePage):
             # 1. kalite.final_kontrol tablosuna kayıt ekle
             kontrol_id = None
             try:
+                # kontrol_eden_adi kolonu yoksa ekle
+                try:
+                    cursor.execute("""
+                        IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('kalite.final_kontrol') AND name = 'kontrol_eden_adi')
+                        ALTER TABLE kalite.final_kontrol ADD kontrol_eden_adi NVARCHAR(100) NULL
+                    """)
+                except Exception:
+                    pass
+
                 cursor.execute("""
                     INSERT INTO kalite.final_kontrol
                     (is_emri_id, lot_no, kontrol_miktar, saglam_adet, hatali_adet,
-                     kontrol_eden_id, kontrol_tarihi, sonuc, aciklama, olusturma_tarihi)
+                     kontrol_eden_id, kontrol_eden_adi, kontrol_tarihi, sonuc, aciklama, olusturma_tarihi)
                     OUTPUT INSERTED.id
-                    VALUES (?, ?, ?, ?, ?, ?, GETDATE(), ?, ?, GETDATE())
+                    VALUES (?, ?, ?, ?, ?, ?, ?, GETDATE(), ?, ?, GETDATE())
                 """, (
                     gorev_data['is_emri_id'],
                     gorev_data.get('lot_no', ''),
@@ -1758,6 +1741,7 @@ class KaliteFinalKontrolPage(BasePage):
                     saglam,
                     hatali,
                     self.personel_data['id'],
+                    self.personel_data.get('ad_soyad', ''),
                     sonuc,
                     result.get('not', '')
                 ))
@@ -1958,7 +1942,8 @@ class KaliteFinalKontrolPage(BasePage):
             # Verileri yenile
             self._load_products()
             self._load_son_islemler()
-            self._clear_detail_panel()
+            self._selected_product = None
+            self.basla_btn.setEnabled(False)
 
         except Exception as e:
             import traceback
@@ -2199,10 +2184,10 @@ class KaliteFinalKontrolPage(BasePage):
                        ie.cari_unvani, CONCAT(ie.stok_kodu, ' - ', ie.stok_adi),
                        fk.saglam_adet, fk.hatali_adet, fk.sonuc,
                        fk.kontrol_tarihi,
-                       CONCAT(p.ad, ' ', p.soyad) as kontrolcu
+                       ISNULL(fk.kontrol_eden_adi, CONCAT(p.ad, ' ', p.soyad)) as kontrolcu
                 FROM kalite.final_kontrol fk
                 LEFT JOIN siparis.is_emirleri ie ON fk.is_emri_id = ie.id
-                LEFT JOIN ik.personeller p ON fk.kontrol_eden_id = p.id
+                LEFT JOIN ik.personeller p ON p.id = fk.kontrol_eden_id
                 WHERE CAST(fk.kontrol_tarihi AS DATE) >= ?
                   AND CAST(fk.kontrol_tarihi AS DATE) <= ?
             """

@@ -261,12 +261,29 @@ class KalibrasyonKayitDialog(QDialog):
                   firma, self.txt_sertifika.text() or None, self.cmb_sonuc.currentText(),
                   self.txt_maliyet.value() if self.txt_maliyet.value() > 0 else None, self.txt_notlar.toPlainText() or None))
             
-            # Kalibrasyon planını güncelle
+            # Kalibrasyon planını güncelle (sonraki = geçerlilik tarihi)
+            sonraki_tarih = self.date_gecerlilik.date().toPython()
+            kal_tarih = self.date_kalibrasyon.date().toPython()
+
             cursor.execute("""
-                UPDATE kalite.kalibrasyon_planlari SET son_kalibrasyon_tarihi = ?, 
-                sonraki_kalibrasyon_tarihi = DATEADD(MONTH, kalibrasyon_periyodu_ay, ?)
+                UPDATE kalite.kalibrasyon_planlari
+                SET son_kalibrasyon_tarihi = ?, sonraki_kalibrasyon_tarihi = ?,
+                    yapan_firma = ?
                 WHERE cihaz_id = ? AND aktif_mi = 1
-            """, (self.date_kalibrasyon.date().toPython(), self.date_kalibrasyon.date().toPython(), self.cihaz_id))
+            """, (kal_tarih, sonraki_tarih, firma, self.cihaz_id))
+
+            # Plan yoksa otomatik oluştur
+            if cursor.rowcount == 0:
+                # Periyodu ay cinsinden hesapla
+                ay_fark = (sonraki_tarih.year - kal_tarih.year) * 12 + (sonraki_tarih.month - kal_tarih.month)
+                if ay_fark < 1:
+                    ay_fark = 12
+                cursor.execute("""
+                    INSERT INTO kalite.kalibrasyon_planlari
+                    (uuid, cihaz_id, kalibrasyon_periyodu_ay, son_kalibrasyon_tarihi,
+                     sonraki_kalibrasyon_tarihi, yapan_firma, aktif_mi, olusturma_tarihi)
+                    VALUES (NEWID(), ?, ?, ?, ?, ?, 1, GETDATE())
+                """, (self.cihaz_id, ay_fark, kal_tarih, sonraki_tarih, firma))
             
             conn.commit()
             conn.close()
@@ -331,9 +348,9 @@ class KaliteKalibrasyonPage(BasePage):
         
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels(["ID", "Kod", "Cihaz Adı", "Marka/Model", "Lokasyon", "Son Kalibrasyon", "Sonraki", "Durum", "İşlem"])
-        self.table.setColumnWidth(8, 170)
+        self.table.setColumnCount(10)
+        self.table.setHorizontalHeaderLabels(["ID", "Kod", "Cihaz Adı", "Marka/Model", "Lokasyon", "Son Kalibrasyon", "Sonraki", "Yapan Firma", "Durum", "İşlem"])
+        self.table.setColumnWidth(9, 170)
         self.table.setColumnHidden(0, True)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -383,10 +400,11 @@ class KaliteKalibrasyonPage(BasePage):
             where_clause = "" if durum_filtre == 'Tümü' else f"AND c.durum = '{durum_filtre}'"
             
             cursor.execute(f"""
-                SELECT c.id, c.cihaz_kodu, c.cihaz_adi, 
+                SELECT c.id, c.cihaz_kodu, c.cihaz_adi,
                        ISNULL(c.marka, '') + ' ' + ISNULL(c.model, ''), c.lokasyon,
                        (SELECT TOP 1 kalibrasyon_tarihi FROM kalite.kalibrasyon_kayitlari WHERE cihaz_id = c.id ORDER BY kalibrasyon_tarihi DESC),
-                       p.sonraki_kalibrasyon_tarihi, c.durum
+                       p.sonraki_kalibrasyon_tarihi, c.durum,
+                       (SELECT TOP 1 yapan_firma FROM kalite.kalibrasyon_kayitlari WHERE cihaz_id = c.id ORDER BY kalibrasyon_tarihi DESC)
                 FROM kalite.olcum_cihazlari c
                 LEFT JOIN kalite.kalibrasyon_planlari p ON c.id = p.cihaz_id AND p.aktif_mi = 1
                 WHERE c.aktif_mi = 1 {where_clause}
@@ -416,15 +434,18 @@ class KaliteKalibrasyonPage(BasePage):
                     elif (sonraki - today).days <= 30:
                         sonraki_item.setForeground(QColor(self.theme.get('warning')))
                 self.table.setItem(i, 6, sonraki_item)
-                
-                self.table.setItem(i, 7, QTableWidgetItem(row[7] or ''))
-                
+
+                # Yapan Firma (son kayıttan)
+                self.table.setItem(i, 7, QTableWidgetItem(row[8] if len(row) > 8 and row[8] else '-'))
+
+                self.table.setItem(i, 8, QTableWidgetItem(row[7] or ''))
+
                 # İşlem butonları
                 widget = self.create_action_buttons([
                     ("📋", "Kalibrasyon Ekle", lambda checked, cid=row[0], cad=row[2]: self._kalibrasyon_ekle(cid, cad), "info"),
                     ("✏️", "Düzenle", lambda checked, cid=row[0]: self._duzenle_cihaz(cid), "edit"),
                 ])
-                self.table.setCellWidget(i, 8, widget)
+                self.table.setCellWidget(i, 9, widget)
                 self.table.setRowHeight(i, 42)
             
             # İstatistikler

@@ -10,8 +10,8 @@ Eski Sidebar ile %100 uyumlu:
 """
 
 from PySide6.QtWidgets import (
-    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, 
-    QWidget, QSizePolicy, QPushButton
+    QFrame, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
+    QWidget, QSizePolicy, QPushButton, QInputDialog, QLineEdit
 )
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QPixmap, QCursor
@@ -299,6 +299,7 @@ class Sidebar(QFrame):
         self.child_containers = {}
         self.active_item_id = None
         self._recent_pages = []  # Son kullanilan sayfalar (max 5)
+        self._unlocked_menus = set()  # Şifre girilen menüler (oturum boyunca)
 
         # Yetki manager
         self.yetki_manager = YetkiManager()
@@ -504,6 +505,19 @@ class Sidebar(QFrame):
             return
 
         if item.has_children:
+            # Şifre korumalı menü kontrolü
+            if item_id not in self._unlocked_menus:
+                menu_def = next((m for m in MENU_STRUCTURE if m['id'] == item_id), None)
+                if menu_def and menu_def.get('password'):
+                    pwd, ok = QInputDialog.getText(
+                        self, "Şifre Gerekli",
+                        f"'{menu_def['label']}' menüsüne erişim için şifre girin:",
+                        QLineEdit.Password
+                    )
+                    if not ok or pwd != menu_def['password']:
+                        return
+                    self._unlocked_menus.add(item_id)
+
             # Alt menuyu animasyonlu ac/kapat
             item.is_expanded = not item.is_expanded
             item._apply_style()
