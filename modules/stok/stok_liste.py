@@ -2518,7 +2518,101 @@ class StokDetayDialog(QDialog):
                     except Exception: pass
     
     def _add_fiyat(self):
-        QMessageBox.information(self, "Bilgi", "Fiyat ekleme özelliği yakında aktif olacak.")
+        if not self.urun_id:
+            QMessageBox.warning(self, "Uyari", "Urun secili degil!"); return
+
+        t = self.theme
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Fiyat Ekle")
+        dlg.setMinimumWidth(450); dlg.setModal(True)
+        dlg.setStyleSheet(f"""
+            QDialog {{ background: {t.get('bg_main')}; }}
+            QLabel {{ color: {t.get('text')}; }}
+            QComboBox, QDoubleSpinBox, QDateEdit, QLineEdit {{ background: {t.get('bg_input')};
+                border: 1px solid {t.get('border')}; border-radius: 6px; padding: 8px; color: {t.get('text')}; }}
+        """)
+        lay = QVBoxLayout(dlg); lay.setContentsMargins(20, 20, 20, 20); lay.setSpacing(14)
+        lay.addWidget(QLabel("Yeni Fiyat Ekle"))
+
+        form = QFormLayout(); form.setSpacing(10)
+
+        cmb_tip = QComboBox()
+        cmb_tip.addItems(["ALIS", "SATIS", "LISTE", "KAMPANYA"])
+        form.addRow("Fiyat Tipi:", cmb_tip)
+
+        from PySide6.QtWidgets import QDoubleSpinBox, QDateEdit
+        spin_fiyat = QDoubleSpinBox(); spin_fiyat.setRange(0, 99999999); spin_fiyat.setDecimals(4)
+        form.addRow("Fiyat:", spin_fiyat)
+
+        cmb_pb = QComboBox()
+        try:
+            conn = get_db_connection(); cursor = conn.cursor()
+            cursor.execute("SELECT kod FROM tanim.para_birimleri WHERE aktif_mi = 1 ORDER BY CASE WHEN varsayilan_mi = 1 THEN 0 ELSE 1 END, kod")
+            for r in cursor.fetchall(): cmb_pb.addItem(r[0])
+            conn.close()
+        except:
+            cmb_pb.addItems(["TRY", "USD", "EUR"])
+        form.addRow("Para Birimi:", cmb_pb)
+
+        from PySide6.QtCore import QDate
+        dt_gecerlilik = QDateEdit(); dt_gecerlilik.setDate(QDate.currentDate()); dt_gecerlilik.setCalendarPopup(True)
+        form.addRow("Gecerlilik:", dt_gecerlilik)
+
+        cmb_cari = QComboBox(); cmb_cari.addItem("-- Genel --", None)
+        try:
+            conn = get_db_connection(); cursor = conn.cursor()
+            cursor.execute("SELECT id, unvan FROM musteri.cariler WHERE aktif_mi = 1 ORDER BY unvan")
+            for r in cursor.fetchall(): cmb_cari.addItem(r[1][:40], r[0])
+            conn.close()
+        except: pass
+        form.addRow("Cari:", cmb_cari)
+
+        lay.addLayout(form)
+
+        btn_bar = QHBoxLayout(); btn_bar.addStretch()
+        btn_iptal = QPushButton("Iptal"); btn_iptal.clicked.connect(dlg.reject); btn_bar.addWidget(btn_iptal)
+        btn_kaydet = QPushButton("Kaydet")
+        btn_kaydet.setStyleSheet(f"background: {t.get('success')}; color: white; padding: 8px 20px; border-radius: 6px; font-weight: bold;")
+
+        def _save_fiyat():
+            fiyat = spin_fiyat.value()
+            if fiyat <= 0:
+                QMessageBox.warning(dlg, "Uyari", "Fiyat giriniz!"); return
+            try:
+                conn = get_db_connection(); cursor = conn.cursor()
+                cursor.execute("""
+                    IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'stok' AND TABLE_NAME = 'urun_fiyatlari')
+                    BEGIN
+                        CREATE TABLE stok.urun_fiyatlari (
+                            id BIGINT IDENTITY(1,1) PRIMARY KEY,
+                            urun_id BIGINT NOT NULL,
+                            fiyat_tipi NVARCHAR(20),
+                            fiyat DECIMAL(18,4),
+                            para_birimi NVARCHAR(10) DEFAULT 'TRY',
+                            gecerlilik_baslangic DATE,
+                            gecerlilik_bitis DATE,
+                            cari_id BIGINT,
+                            aktif_mi BIT DEFAULT 1,
+                            olusturma_tarihi DATETIME DEFAULT GETDATE()
+                        )
+                    END
+                """)
+                cursor.execute("""
+                    INSERT INTO stok.urun_fiyatlari (urun_id, fiyat_tipi, fiyat, para_birimi, gecerlilik_baslangic, cari_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (self.urun_id, cmb_tip.currentText(), fiyat, cmb_pb.currentText(),
+                      dt_gecerlilik.date().toPython(), cmb_cari.currentData()))
+                conn.commit(); conn.close()
+                QMessageBox.information(dlg, "Basarili", "Fiyat eklendi!")
+                dlg.accept()
+                self._load_fiyatlar()
+            except Exception as e:
+                QMessageBox.critical(dlg, "Hata", str(e))
+
+        btn_kaydet.clicked.connect(_save_fiyat)
+        btn_bar.addWidget(btn_kaydet)
+        lay.addLayout(btn_bar)
+        dlg.exec()
     
     def _upload_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Dosya Seç", "",

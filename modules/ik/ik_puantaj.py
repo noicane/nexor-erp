@@ -368,6 +368,7 @@ class IKPuantajPage(BasePage):
                 vardiya_map[r[0]] = normal_dk
 
             # 2. PDKS hareketlerini gruplanmış getir (personel + tarih bazında)
+            # Giriş/çıkış eksik olabilir - ilk hareket ve son hareket de alınıyor
             cursor.execute("""
                 SELECT
                     h.personel_id,
@@ -378,9 +379,12 @@ class IKPuantajPage(BasePage):
                         MIN(CASE WHEN h.hareket_tipi = 'GIRIS' THEN h.hareket_zamani END),
                         MAX(CASE WHEN h.hareket_tipi = 'CIKIS' THEN h.hareket_zamani END)
                     ),
-                    p.varsayilan_vardiya_id
+                    p.varsayilan_vardiya_id,
+                    MIN(CAST(h.hareket_zamani AS TIME)) as ilk_hareket,
+                    MAX(CAST(h.hareket_zamani AS TIME)) as son_hareket
                 FROM ik.pdks_hareketler h
                 JOIN ik.personeller p ON h.personel_id = p.id
+                JOIN ik.pdks_cihazlari c ON h.cihaz_id = c.id AND c.cihaz_tipi = 'TURNIKE'
                 WHERE CAST(h.hareket_zamani AS DATE) BETWEEN ? AND ?
                   AND h.personel_id IS NOT NULL
                   AND p.aktif_mi = 1
@@ -395,7 +399,22 @@ class IKPuantajPage(BasePage):
             # 3. Her PDKS kaydı için puantaj MERGE
             inserted = 0
             for row in pdks_rows:
-                per_id, tarih, giris, cikis, dakika, vardiya_id = row
+                per_id, tarih, giris, cikis, dakika, vardiya_id, ilk_hareket, son_hareket = row
+
+                # Eksik giriş/çıkış durumunda ilk/son hareketi kullan
+                if giris is None and ilk_hareket is not None:
+                    giris = ilk_hareket
+                if cikis is None and son_hareket is not None and son_hareket != giris:
+                    cikis = son_hareket
+
+                # Dakika hesapla (giriş ve çıkış varsa)
+                if dakika is None and giris and cikis:
+                    try:
+                        g = datetime.combine(date.today(), (datetime.min + giris).time()) if isinstance(giris, timedelta) else datetime.combine(date.today(), giris)
+                        c = datetime.combine(date.today(), (datetime.min + cikis).time()) if isinstance(cikis, timedelta) else datetime.combine(date.today(), cikis)
+                        dakika = int((c - g).total_seconds() / 60)
+                    except Exception:
+                        dakika = 0
 
                 toplam_dk = dakika or 0
 

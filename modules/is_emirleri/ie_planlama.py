@@ -162,7 +162,7 @@ class IsEmriPlanlamaPage(BasePage):
         # Tree Widget
         self.stok_tree = QTreeWidget()
         self.stok_tree.setColumnCount(7)
-        self.stok_tree.setHeaderLabels(["Ürün / Lot", "Müşteri", "Miktar", "Bara", "Kaplama", "Geliş Tarihi", "Seç"])
+        self.stok_tree.setHeaderLabels(["Ürün / Lot", "Stok Adı", "Müşteri", "Miktar", "Bara", "Kaplama", "Geliş Tarihi", "Seç"])
         self.stok_tree.setStyleSheet(f"""
             QTreeWidget {{ background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; border-radius: 4px; }}
             QTreeWidget::item {{ padding: 6px 4px; border-bottom: 1px solid {self.border}; }}
@@ -173,10 +173,11 @@ class IsEmriPlanlamaPage(BasePage):
         
         h = self.stok_tree.header()
         h.setSectionResizeMode(0, QHeaderView.Stretch)
-        for i in range(1, 6):
+        h.setSectionResizeMode(1, QHeaderView.Stretch)
+        for i in range(2, 7):
             h.setSectionResizeMode(i, QHeaderView.ResizeToContents)
-        h.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.stok_tree.setColumnWidth(6, 60)
+        h.setSectionResizeMode(7, QHeaderView.Fixed)
+        self.stok_tree.setColumnWidth(7, 60)
         self.stok_tree.itemExpanded.connect(self._on_item_expanded)
         self.stok_tree.itemCollapsed.connect(self._on_item_collapsed)
         layout.addWidget(self.stok_tree, 1)
@@ -212,11 +213,11 @@ class IsEmriPlanlamaPage(BasePage):
     def _create_planlanan_panel(self) -> QFrame:
         frame = QFrame()
         frame.setStyleSheet(f"QFrame {{ background: {self.bg_card}; border-radius: 8px; border: 2px solid {self.success}; }}")
-        frame.setMaximumHeight(220)
+        frame.setMaximumHeight(320)
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
-        
+
         # Başlık
         header_layout = QHBoxLayout()
         header = QLabel("🎯 Planlanan Ürünler")
@@ -231,32 +232,66 @@ class IsEmriPlanlamaPage(BasePage):
         temizle_btn.clicked.connect(self._clear_planned)
         header_layout.addWidget(temizle_btn)
         layout.addLayout(header_layout)
-        
+
         # Tablo
         self.planlanan_table = QTableWidget()
-        self.planlanan_table.setColumnCount(5)
-        self.planlanan_table.setHorizontalHeaderLabels(["Stok Kodu", "Lot", "Miktar", "Bara", "X"])
+        self.planlanan_table.setColumnCount(6)
+        self.planlanan_table.setHorizontalHeaderLabels(["Stok Kodu", "Stok Adı", "Lot", "Miktar", "Bara", "X"])
         self.planlanan_table.setStyleSheet(f"QTableWidget {{ background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; font-size: 11px; }} QHeaderView::section {{ background: {self.bg_card}; color: {self.text}; padding: 4px; border: none; font-size: 10px; }}")
         h = self.planlanan_table.horizontalHeader()
-        h.setSectionResizeMode(0, QHeaderView.Stretch)
-        h.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(1, QHeaderView.Stretch)
         h.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        h.setSectionResizeMode(4, QHeaderView.Fixed)
-        self.planlanan_table.setColumnWidth(4, 120)
+        h.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        h.setSectionResizeMode(5, QHeaderView.Fixed)
+        self.planlanan_table.setColumnWidth(5, 120)
         self.planlanan_table.verticalHeader().setVisible(False)
         layout.addWidget(self.planlanan_table, 1)
-        
-        # Kaydet butonu
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        self.planla_kaydet_btn = QPushButton("📅 Planlamayı Kaydet")
-        self.planla_kaydet_btn.setStyleSheet(f"QPushButton {{ background: {self.success}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold; }} QPushButton:hover {{ background: #1da34d; }} QPushButton:disabled {{ background: {self.border}; }}")
-        self.planla_kaydet_btn.clicked.connect(self._show_planlama_dialog)
+
+        # Inline planlama ayarları
+        input_style = f"background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; border-radius: 4px; padding: 5px 8px;"
+
+        plan_row = QHBoxLayout()
+        plan_row.setSpacing(8)
+
+        plan_row.addWidget(QLabel("Hat:"))
+        self.plan_hat_combo = QComboBox()
+        self.plan_hat_combo.setStyleSheet(f"QComboBox {{ {input_style} min-width: 110px; }}")
+        self.plan_hat_combo.currentIndexChanged.connect(self._update_inline_kapasite)
+        plan_row.addWidget(self.plan_hat_combo)
+
+        plan_row.addWidget(QLabel("Vardiya:"))
+        self.plan_vardiya_combo = QComboBox()
+        self.plan_vardiya_combo.setStyleSheet(f"QComboBox {{ {input_style} min-width: 90px; }}")
+        self.plan_vardiya_combo.currentIndexChanged.connect(self._update_inline_kapasite)
+        plan_row.addWidget(self.plan_vardiya_combo)
+
+        plan_row.addWidget(QLabel("Tarih:"))
+        self.plan_tarih_combo = QComboBox()
+        self.plan_tarih_combo.setStyleSheet(f"QComboBox {{ {input_style} min-width: 100px; }}")
+        bugun = date.today()
+        yarin = bugun + timedelta(days=1)
+        self.plan_tarih_combo.addItem(f"BUGÜN ({bugun.strftime('%d.%m')})", bugun)
+        self.plan_tarih_combo.addItem(f"YARIN ({yarin.strftime('%d.%m')})", yarin)
+        self.plan_tarih_combo.currentIndexChanged.connect(self._update_inline_kapasite)
+        plan_row.addWidget(self.plan_tarih_combo)
+
+        layout.addLayout(plan_row)
+
+        # Kapasite bilgi + kaydet butonu
+        bottom_row = QHBoxLayout()
+        self.inline_kapasite_label = QLabel("")
+        self.inline_kapasite_label.setStyleSheet(f"color: {self.text_muted}; font-size: 11px;")
+        bottom_row.addWidget(self.inline_kapasite_label, 1)
+
+        self.planla_kaydet_btn = QPushButton("📅 Planla")
+        self.planla_kaydet_btn.setStyleSheet(f"QPushButton {{ background: {self.success}; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background: #1da34d; }} QPushButton:disabled {{ background: {self.border}; }}")
+        self.planla_kaydet_btn.clicked.connect(self._inline_planla)
         self.planla_kaydet_btn.setEnabled(False)
-        btn_layout.addWidget(self.planla_kaydet_btn)
-        layout.addLayout(btn_layout)
-        
+        bottom_row.addWidget(self.planla_kaydet_btn)
+        layout.addLayout(bottom_row)
+
         return frame
     
     def _create_takvim_panel(self) -> QFrame:
@@ -351,14 +386,18 @@ class IsEmriPlanlamaPage(BasePage):
             self.hatlar = []
             self.takvim_hat_combo.blockSignals(True)
             self.takvim_hat_combo.clear()
+            self.plan_hat_combo.blockSignals(True)
+            self.plan_hat_combo.clear()
             self.hat_filter.blockSignals(True)
             self.hat_filter.clear()
             self.hat_filter.addItem("Tüm Hatlar", "")
             for row in cursor.fetchall():
                 self.hatlar.append({'id': row[0], 'kod': row[1], 'ad': row[2], 'kapasite': row[3] or 350})
                 self.takvim_hat_combo.addItem(f"{row[1]}", row[0])
+                self.plan_hat_combo.addItem(f"{row[1]} - {row[2]}", row[0])
                 self.hat_filter.addItem(f"{row[1]} - {row[2]}", row[0])
             self.takvim_hat_combo.blockSignals(False)
+            self.plan_hat_combo.blockSignals(False)
             self.hat_filter.blockSignals(False)
         except Exception as e:
             print(f"Hat yükleme hatası: {e}")
@@ -367,8 +406,13 @@ class IsEmriPlanlamaPage(BasePage):
         try:
             cursor.execute("SELECT id, kod, ad, baslangic_saati, bitis_saati FROM tanim.vardiyalar WHERE aktif_mi = 1 ORDER BY id")
             self.vardiyalar = []
+            self.plan_vardiya_combo.blockSignals(True)
+            self.plan_vardiya_combo.clear()
             for row in cursor.fetchall():
-                self.vardiyalar.append({'id': row[0], 'kod': row[1], 'ad': row[2], 'baslangic': str(row[3])[:5] if row[3] else '', 'bitis': str(row[4])[:5] if row[4] else ''})
+                v = {'id': row[0], 'kod': row[1], 'ad': row[2], 'baslangic': str(row[3])[:5] if row[3] else '', 'bitis': str(row[4])[:5] if row[4] else ''}
+                self.vardiyalar.append(v)
+                self.plan_vardiya_combo.addItem(f"{v['kod']} ({v['baslangic']}-{v['bitis']})", v['id'])
+            self.plan_vardiya_combo.blockSignals(False)
         except Exception as e:
             print(f"Vardiya yükleme hatası: {e}")
 
@@ -429,7 +473,8 @@ class IsEmriPlanlamaPage(BasePage):
                 SELECT sb.id, sb.lot_no, u.urun_kodu, u.urun_adi,
                        sb.miktar - ISNULL(sb.rezerve_miktar, 0), u.bara_adedi,
                        kt.ad as kaplama_tip_adi, c.unvan as cari_unvani,
-                       sb.urun_id, sb.giris_tarihi, sb.miktar
+                       sb.urun_id, sb.giris_tarihi, sb.miktar,
+                       u.varsayilan_hat_id
                 FROM stok.stok_bakiye sb
                 INNER JOIN stok.urunler u ON sb.urun_id = u.id
                 LEFT JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id
@@ -468,7 +513,8 @@ class IsEmriPlanlamaPage(BasePage):
                 lot_data = {
                     'id': row[0], 'lot_no': row[1] or "-", 'stok_kodu': stok_kodu, 'stok_adi': row[3] or "-",
                     'miktar': miktar, 'bara': bara_adet, 'bara_miktar': bara_miktar,
-                    'kaplama': row[6], 'musteri': row[7], 'urun_id': row[8], 'giris_tarihi': giris_str
+                    'kaplama': row[6], 'musteri': row[7], 'urun_id': row[8], 'giris_tarihi': giris_str,
+                    'varsayilan_hat_id': row[11]
                 }
                 
                 if stok_kodu not in self.stok_data:
@@ -493,34 +539,35 @@ class IsEmriPlanlamaPage(BasePage):
             
             parent = QTreeWidgetItem()
             parent.setText(0, f"📦 {stok_kodu}" + (f" ({lot_sayisi} lot)" if lot_sayisi > 1 else ""))
-            parent.setToolTip(0, data['stok_adi'])
-            parent.setText(1, (data['musteri'] or "-")[:20])
-            parent.setText(2, f"{toplam_miktar:,.0f}")
-            parent.setTextAlignment(2, Qt.AlignRight | Qt.AlignVCenter)
-            parent.setText(3, f"{toplam_bara:,.2f}")
+            parent.setText(1, data['stok_adi'] or "-")
+            parent.setToolTip(1, data['stok_adi'] or "")
+            parent.setText(2, (data['musteri'] or "-")[:20])
+            parent.setText(3, f"{toplam_miktar:,.0f}")
             parent.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
-            parent.setForeground(3, QBrush(QColor(self.primary)))
-            parent.setText(4, data['kaplama'] or "-")
-            parent.setText(5, lots[0]['giris_tarihi'] if lots else "-")
+            parent.setText(4, f"{toplam_bara:,.2f}")
+            parent.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
+            parent.setForeground(4, QBrush(QColor(self.primary)))
+            parent.setText(5, data['kaplama'] or "-")
+            parent.setText(6, lots[0]['giris_tarihi'] if lots else "-")
             parent.setData(0, Qt.UserRole, {'type': 'parent', 'stok_kodu': stok_kodu})
             
             font = QFont()
             font.setBold(True)
             parent.setFont(0, font)
-            parent.setFont(3, font)
+            parent.setFont(4, font)
             
             for lot in lots:
                 child = QTreeWidgetItem(parent)
                 child.setText(0, f"   └ {lot['lot_no']}")
                 child.setForeground(0, QBrush(QColor(self.text_muted)))
-                child.setText(2, f"{lot['miktar']:,.0f}")
-                child.setTextAlignment(2, Qt.AlignRight | Qt.AlignVCenter)
-                child.setText(3, f"{lot['bara']:,.2f}")
+                child.setText(3, f"{lot['miktar']:,.0f}")
                 child.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
-                child.setForeground(3, QBrush(QColor(self.primary)))
-                child.setText(5, lot['giris_tarihi'])
+                child.setText(4, f"{lot['bara']:,.2f}")
+                child.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
+                child.setForeground(4, QBrush(QColor(self.primary)))
+                child.setText(6, lot['giris_tarihi'])
                 child.setData(0, Qt.UserRole, {'type': 'lot', 'lot_data': lot})
-                
+
                 cb = QCheckBox()
                 cb.setProperty("lot_data", lot)
                 cb.stateChanged.connect(self._update_secim)
@@ -529,8 +576,8 @@ class IsEmriPlanlamaPage(BasePage):
                 cb_layout.addWidget(cb)
                 cb_layout.setAlignment(Qt.AlignCenter)
                 cb_layout.setContentsMargins(0, 0, 0, 0)
-                self.stok_tree.setItemWidget(child, 6, cb_widget)
-            
+                self.stok_tree.setItemWidget(child, 7, cb_widget)
+
             if lot_sayisi == 1:
                 cb = QCheckBox()
                 cb.setProperty("lot_data", lots[0])
@@ -540,7 +587,7 @@ class IsEmriPlanlamaPage(BasePage):
                 cb_layout.addWidget(cb)
                 cb_layout.setAlignment(Qt.AlignCenter)
                 cb_layout.setContentsMargins(0, 0, 0, 0)
-                self.stok_tree.setItemWidget(parent, 6, cb_widget)
+                self.stok_tree.setItemWidget(parent, 7, cb_widget)
                 parent.setData(0, Qt.UserRole, {'type': 'single', 'lot_data': lots[0]})
             
             self.stok_tree.addTopLevelItem(parent)
@@ -566,7 +613,7 @@ class IsEmriPlanlamaPage(BasePage):
         
         def check_items(item):
             nonlocal toplam_miktar, toplam_bara
-            cb_widget = self.stok_tree.itemWidget(item, 6)
+            cb_widget = self.stok_tree.itemWidget(item, 7)
             if cb_widget:
                 cb = cb_widget.findChild(QCheckBox)
                 if cb and cb.isChecked():
@@ -596,11 +643,23 @@ class IsEmriPlanlamaPage(BasePage):
         if added > 0:
             self._update_planlanan_table()
             self._clear_selections()
+            self._auto_select_inline_hat()
             QMessageBox.information(self, "✓", f"{added} lot eklendi.")
+
+    def _auto_select_inline_hat(self):
+        """Planlanan lotların varsayılan hat bilgisine göre hat combo'yu otomatik seç"""
+        hat_ids = [l.get('varsayilan_hat_id') for l in self.planned_lots if l.get('varsayilan_hat_id')]
+        if hat_ids:
+            from collections import Counter
+            en_cok = Counter(hat_ids).most_common(1)[0][0]
+            for i in range(self.plan_hat_combo.count()):
+                if self.plan_hat_combo.itemData(i) == en_cok:
+                    self.plan_hat_combo.setCurrentIndex(i)
+                    break
 
     def _clear_selections(self):
         def uncheck(item):
-            cb_widget = self.stok_tree.itemWidget(item, 6)
+            cb_widget = self.stok_tree.itemWidget(item, 7)
             if cb_widget:
                 cb = cb_widget.findChild(QCheckBox)
                 if cb:
@@ -619,22 +678,24 @@ class IsEmriPlanlamaPage(BasePage):
         toplam_bara = 0
         for i, lot in enumerate(self.planned_lots):
             self.planlanan_table.setItem(i, 0, QTableWidgetItem(lot.get('stok_kodu', '-')[:20]))
-            self.planlanan_table.setItem(i, 1, QTableWidgetItem(lot.get('lot_no', '-')))
-            self.planlanan_table.setItem(i, 2, QTableWidgetItem(f"{lot.get('miktar', 0):,.0f}"))
+            self.planlanan_table.setItem(i, 1, QTableWidgetItem(lot.get('stok_adi', '-')))
+            self.planlanan_table.setItem(i, 2, QTableWidgetItem(lot.get('lot_no', '-')))
+            self.planlanan_table.setItem(i, 3, QTableWidgetItem(f"{lot.get('miktar', 0):,.0f}"))
             bara = lot.get('bara', 0)
             toplam_bara += bara
             bara_item = QTableWidgetItem(f"{bara}")
             bara_item.setForeground(QColor(self.primary))
-            self.planlanan_table.setItem(i, 3, bara_item)
-            
+            self.planlanan_table.setItem(i, 4, bara_item)
+
             widget = self.create_action_buttons([
                 ("🗑️", "Kaldir", lambda c, lid=lot['id']: self._remove_from_planned(lid), "delete"),
             ])
-            self.planlanan_table.setCellWidget(i, 4, widget)
+            self.planlanan_table.setCellWidget(i, 5, widget)
             self.planlanan_table.setRowHeight(i, 42)
         
         self.planlanan_ozet_label.setText(f"{len(self.planned_lots)} ürün, {toplam_bara:,.2f} bara")
         self.planla_kaydet_btn.setEnabled(len(self.planned_lots) > 0)
+        self._update_inline_kapasite()
 
     def _remove_from_planned(self, lot_id):
         self.planned_lots = [l for l in self.planned_lots if l['id'] != lot_id]
@@ -644,6 +705,95 @@ class IsEmriPlanlamaPage(BasePage):
         if self.planned_lots:
             self.planned_lots = []
             self._update_planlanan_table()
+
+    def _update_inline_kapasite(self):
+        """Inline kapasite bilgisini güncelle"""
+        hat_id = self.plan_hat_combo.currentData()
+        vardiya_id = self.plan_vardiya_combo.currentData()
+        tarih = self.plan_tarih_combo.currentData()
+        if not all([hat_id, vardiya_id, tarih]):
+            self.inline_kapasite_label.setText("")
+            return
+
+        hat = next((h for h in self.hatlar if h['id'] == hat_id), None)
+        kapasite = hat['kapasite'] if hat else 350
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT ISNULL(SUM(planlanan_bara), 0) FROM uretim.planlama WHERE hat_id = ? AND tarih = ? AND vardiya_id = ?", (hat_id, tarih, vardiya_id))
+            mevcut = int(cursor.fetchone()[0] or 0)
+            conn.close()
+
+            toplam_bara = sum(l.get('bara', 0) for l in self.planned_lots)
+            yeni = mevcut + toplam_bara
+            kalan = kapasite - mevcut
+
+            if toplam_bara > 0 and yeni > kapasite:
+                self.inline_kapasite_label.setText(f"⚠️ Kapasite aşılacak! {mevcut}/{kapasite} + {toplam_bara:.1f}")
+                self.inline_kapasite_label.setStyleSheet(f"color: #ef4444; font-size: 11px; font-weight: bold;")
+            elif toplam_bara > 0:
+                self.inline_kapasite_label.setText(f"✓ {mevcut}/{kapasite} bara dolu, +{toplam_bara:.1f} eklenecek")
+                self.inline_kapasite_label.setStyleSheet(f"color: {self.success}; font-size: 11px;")
+            else:
+                self.inline_kapasite_label.setText(f"{mevcut}/{kapasite} bara dolu")
+                self.inline_kapasite_label.setStyleSheet(f"color: {self.text_muted}; font-size: 11px;")
+        except Exception as e:
+            print(f"Inline kapasite hatası: {e}")
+
+    def _inline_planla(self):
+        """Inline planlama - dialog açmadan doğrudan planla"""
+        if not self.planned_lots:
+            return
+
+        hat_id = self.plan_hat_combo.currentData()
+        vardiya_id = self.plan_vardiya_combo.currentData()
+        tarih = self.plan_tarih_combo.currentData()
+
+        if not hat_id:
+            QMessageBox.warning(self, "Uyarı", "Lütfen hat seçin!")
+            return
+        if not vardiya_id:
+            QMessageBox.warning(self, "Uyarı", "Lütfen vardiya seçin!")
+            return
+
+        hat_kod = self.plan_hat_combo.currentText()
+        toplam_bara = sum(l.get('bara', 0) for l in self.planned_lots)
+
+        cevap = QMessageBox.question(
+            self, "Planlama Onayı",
+            f"{len(self.planned_lots)} lot planlanacak:\n\n"
+            f"Hat: {hat_kod}\n"
+            f"Vardiya: {self.plan_vardiya_combo.currentText()}\n"
+            f"Tarih: {self.plan_tarih_combo.currentText()}\n"
+            f"Toplam: {toplam_bara:,.2f} bara\n\n"
+            f"Onaylıyor musunuz?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if cevap != QMessageBox.Yes:
+            return
+
+        # PlanlamaDialog._save() ile aynı kayıt işlemini yap
+        dialog = PlanlamaDialog(self, self.planned_lots, self.hatlar, self.vardiyalar, self.theme)
+        # Dialog'u göstermeden combo'ları ayarla
+        for i in range(dialog.hat_combo.count()):
+            if dialog.hat_combo.itemData(i) == hat_id:
+                dialog.hat_combo.setCurrentIndex(i)
+                break
+        for i in range(dialog.vardiya_combo.count()):
+            if dialog.vardiya_combo.itemData(i) == vardiya_id:
+                dialog.vardiya_combo.setCurrentIndex(i)
+                break
+        for i in range(dialog.tarih_combo.count()):
+            if dialog.tarih_combo.itemData(i) == tarih:
+                dialog.tarih_combo.setCurrentIndex(i)
+                break
+
+        dialog._save()
+        if dialog.result() == QDialog.Accepted:
+            self.planned_lots = []
+            self._update_planlanan_table()
+            self._load_data()
 
     def _show_planlama_dialog(self):
         if not self.planned_lots:
@@ -822,7 +972,19 @@ class PlanlamaDialog(QDialog):
         self.setMinimumSize(450, 350)
         self.setModal(True)
         self._setup_ui()
+        self._auto_select_hat()
         self._update_kapasite()
+
+    def _auto_select_hat(self):
+        """Lotların varsayılan hat bilgisine göre hat combo'yu otomatik seç"""
+        hat_ids = [l.get('varsayilan_hat_id') for l in self.lots if l.get('varsayilan_hat_id')]
+        if hat_ids:
+            from collections import Counter
+            en_cok = Counter(hat_ids).most_common(1)[0][0]
+            for i in range(self.hat_combo.count()):
+                if self.hat_combo.itemData(i) == en_cok:
+                    self.hat_combo.setCurrentIndex(i)
+                    break
 
     def _setup_ui(self):
         bg = self.theme.get('bg_card', '#242938')

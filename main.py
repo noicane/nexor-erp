@@ -163,13 +163,13 @@ except ImportError:
     THEMED_MESSAGEBOX_AVAILABLE = False
     logger.warning("Themed MessageBox modülü bulunamadı.")
 
-# PDKS Servisi (opsiyonel - eğer modül yoksa sessizce geç)
-try:
-    from core.pdks_reader_service import get_pdks_service, stop_pdks_service
-    PDKS_SERVICE_AVAILABLE = True
-except ImportError:
-    PDKS_SERVICE_AVAILABLE = False
-    logger.warning("PDKS Reader Service bulunamadı, servis devre dışı.")
+# PDKS Servisi - ZK cihazı devre dışı, turnike sistemi aktif
+# try:
+#     from core.pdks_reader_service import get_pdks_service, stop_pdks_service
+#     PDKS_SERVICE_AVAILABLE = True
+# except ImportError:
+PDKS_SERVICE_AVAILABLE = False
+logger.info("PDKS ZK Reader devre dışı - Turnike sistemi aktif")
 
 # PLC Sync Servisi (opsiyonel - KAPLAMA DB'den veri çekme)
 try:

@@ -57,6 +57,7 @@ class UretimGirisPage(BasePage):
         self.s = get_modern_style(theme)  # Modern stil
         self.selected_row_data = None
         self.baslama_zamani = None  # 🆕 FAZ 2: Başlama zamanı
+        self._global_rfid_connected = False
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)
         
@@ -216,7 +217,22 @@ class UretimGirisPage(BasePage):
         """)
         table_layout = QVBoxLayout(table_frame)
         table_layout.setContentsMargins(16, 16, 16, 16)
-        
+
+        # Filtre satırı
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(8)
+        filter_lbl = QLabel("Müşteri:")
+        filter_lbl.setStyleSheet(f"color: {s['text_secondary']}; font-size: 12px;")
+        filter_row.addWidget(filter_lbl)
+        musteri_combo = QComboBox()
+        musteri_combo.setObjectName("musteri_filter")
+        musteri_combo.setStyleSheet(f"QComboBox {{ background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 6px; padding: 6px 10px; min-width: 200px; }}")
+        musteri_combo.addItem("Tüm Müşteriler", "")
+        musteri_combo.currentIndexChanged.connect(lambda _, ti=self.tab_widget.count(): self._load_is_emirleri(self.tab_widget.currentIndex()))
+        filter_row.addWidget(musteri_combo)
+        filter_row.addStretch()
+        table_layout.addLayout(filter_row)
+
         # Tablo
         table = QTableWidget()
         table.setProperty("hat_id", hat_id)
@@ -556,6 +572,56 @@ class UretimGirisPage(BasePage):
         layout.addWidget(splitter)
         return container
     
+    def showEvent(self, event):
+        """Sayfa göründüğünde RFID servisine bağlan"""
+        super().showEvent(event)
+        self._connect_rfid()
+
+    def _connect_rfid(self):
+        if self._global_rfid_connected:
+            return
+        try:
+            from core.rfid_service import RFIDService
+            svc = RFIDService.instance()
+            svc.card_detected.connect(self._on_card_detected)
+            self._global_rfid_connected = True
+        except Exception as e:
+            print(f"[URETIM] RFID bağlantı hatası: {e}")
+
+    def _on_card_detected(self, card_id):
+        """RFID kart okunduğunda aktif sekmedeki operatör combo'sunu ayarla"""
+        if not self.isVisible():
+            return
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT p.id, p.ad + ' ' + p.soyad AS ad_soyad
+                FROM ik.personeller p
+                WHERE (p.kart_id = ? OR p.kart_no = ?)
+                  AND p.aktif_mi = 1 AND p.silindi_mi = 0
+            """, (card_id, card_id))
+            row = cursor.fetchone()
+            conn.close()
+
+            if not row:
+                return
+
+            personel_id = row[0]
+            container = self.tab_widget.currentWidget()
+            if not container:
+                return
+            operator_combo = container.findChild(QComboBox, "operator_combo")
+            if not operator_combo:
+                return
+
+            for i in range(operator_combo.count()):
+                if operator_combo.itemData(i) == personel_id:
+                    operator_combo.setCurrentIndex(i)
+                    break
+        except Exception as e:
+            print(f"[URETIM] Kart okuma hatası: {e}")
+
     def _on_tab_changed(self, index):
         """Sekme değiştiğinde"""
         if index >= 0:
@@ -572,18 +638,35 @@ class UretimGirisPage(BasePage):
             table = container.findChild(QTableWidget, "is_emri_table")
             if not table:
                 return
-            
+
+            musteri_combo = container.findChild(QComboBox, "musteri_filter")
+            secili_musteri = musteri_combo.currentData() if musteri_combo else ""
+
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
+            # Müşteri filtre listesini güncelle
+            if musteri_combo and musteri_combo.count() <= 1:
+                cursor.execute("""
+                    SELECT DISTINCT LEFT(ie.cari_unvani, 45)
+                    FROM siparis.is_emirleri ie
+                    WHERE ie.hat_id = ? AND ie.durum IN ('URETIMDE', 'KALITE_BEKLIYOR')
+                      AND ISNULL(ie.silindi_mi, 0) = 0 AND ie.cari_unvani IS NOT NULL
+                    ORDER BY 1
+                """, (hat_id,))
+                musteri_combo.blockSignals(True)
+                for r in cursor.fetchall():
+                    if r[0]:
+                        musteri_combo.addItem(r[0], r[0])
+                musteri_combo.blockSignals(False)
+
             # Hat kodunu al
             cursor.execute("SELECT kod FROM tanim.uretim_hatlari WHERE id = ?", (hat_id,))
             hat_row = cursor.fetchone()
             hat_kodu = hat_row[0] if hat_row else ''
-            
+
             # İş emirlerini çek - Bu hatta üretilecek olanlar
-            # İş emirlerini çek - Bu hatta üretilecek olanlar
-            cursor.execute("""
+            query = """
                 SELECT DISTINCT
                     ie.id,
                     CASE WHEN ie.oncelik = 1 THEN 1 ELSE 0 END as acil,
@@ -595,15 +678,15 @@ class UretimGirisPage(BasePage):
                     ISNULL(ie.uretilen_miktar, 0) as uretilen_adet,
                     ISNULL(ie.toplam_miktar, 0) - ISNULL(ie.uretilen_miktar, 0) as kalan_adet,
                     ISNULL(ie.bara_adet, ISNULL(u.bara_adedi, 1)) as parca_bara,
-                    CASE 
-                        WHEN ISNULL(ie.bara_adet, ISNULL(u.bara_adedi, 1)) > 0 
+                    CASE
+                        WHEN ISNULL(ie.bara_adet, ISNULL(u.bara_adedi, 1)) > 0
                         THEN CEILING(CAST(ISNULL(ie.toplam_miktar, 0) AS FLOAT) / ISNULL(ie.bara_adet, ISNULL(u.bara_adedi, 1)))
-                        ELSE 0 
+                        ELSE 0
                     END as hedef_bara,
-                    CASE 
-                        WHEN ISNULL(ie.bara_adet, ISNULL(u.bara_adedi, 1)) > 0 
+                    CASE
+                        WHEN ISNULL(ie.bara_adet, ISNULL(u.bara_adedi, 1)) > 0
                         THEN CEILING(CAST(ISNULL(ie.toplam_miktar, 0) - ISNULL(ie.uretilen_miktar, 0) AS FLOAT) / ISNULL(ie.bara_adet, ISNULL(u.bara_adedi, 1)))
-                        ELSE 0 
+                        ELSE 0
                     END as kalan_bara,
                     ISNULL(ie.guncelleme_tarihi, ie.olusturma_tarihi) as islem_tarihi,
                     ie.durum,
@@ -617,8 +700,13 @@ class UretimGirisPage(BasePage):
                   AND ie.durum IN ('URETIMDE', 'KALITE_BEKLIYOR')
                   AND ISNULL(ie.silindi_mi, 0) = 0
                   AND (ISNULL(ie.toplam_miktar, 0) - ISNULL(ie.uretilen_miktar, 0)) > 0
-                ORDER BY acil DESC, islem_tarihi DESC
-            """, (hat_id,))
+            """
+            params = [hat_id]
+            if secili_musteri:
+                query += " AND LEFT(ie.cari_unvani, 45) = ?"
+                params.append(secili_musteri)
+            query += " ORDER BY acil DESC, islem_tarihi DESC"
+            cursor.execute(query, params)
             
             rows = cursor.fetchall()
             conn.close()

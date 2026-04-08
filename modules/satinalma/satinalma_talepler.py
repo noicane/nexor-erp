@@ -97,12 +97,17 @@ class TalepSatirDialog(QDialog):
         miktar_layout.addWidget(self.cmb_birim)
         form.addRow("Miktar*:", miktar_layout)
 
-        # Tahmini fiyat
+        # Tahmini fiyat + para birimi
+        fiyat_layout = QHBoxLayout()
         self.spin_fiyat = QDoubleSpinBox()
         self.spin_fiyat.setRange(0, 9999999)
         self.spin_fiyat.setDecimals(4)
-        self.spin_fiyat.setPrefix("TL ")
-        form.addRow("Birim Fiyat:", self.spin_fiyat)
+        fiyat_layout.addWidget(self.spin_fiyat)
+        self.cmb_para_birimi = QComboBox()
+        self.cmb_para_birimi.setMinimumWidth(80)
+        self._load_para_birimleri()
+        fiyat_layout.addWidget(self.cmb_para_birimi)
+        form.addRow("Birim Fiyat:", fiyat_layout)
 
         self.txt_aciklama = QTextEdit()
         self.txt_aciklama.setMaximumHeight(60)
@@ -126,6 +131,20 @@ class TalepSatirDialog(QDialog):
         btn_layout.addWidget(btn_kaydet)
 
         layout.addLayout(btn_layout)
+
+    def _load_para_birimleri(self):
+        """Para birimleri combosunu doldur"""
+        self.cmb_para_birimi.clear()
+        try:
+            conn = get_db_connection(); cursor = conn.cursor()
+            cursor.execute("SELECT kod, sembol FROM tanim.para_birimleri WHERE aktif_mi = 1 ORDER BY CASE WHEN varsayilan_mi = 1 THEN 0 ELSE 1 END, kod")
+            rows = cursor.fetchall(); conn.close()
+            for r in rows:
+                self.cmb_para_birimi.addItem(f"{r[0]} ({r[1]})" if r[1] else r[0], r[0])
+        except Exception:
+            self.cmb_para_birimi.addItem("TRY", "TRY")
+            self.cmb_para_birimi.addItem("USD", "USD")
+            self.cmb_para_birimi.addItem("EUR", "EUR")
 
     def _load_combos(self):
         try:
@@ -225,13 +244,20 @@ class TalepSatirDialog(QDialog):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            # para_birimi kolonunu kontrol et, yoksa ekle
             cursor.execute("""
-                SELECT urun_id, urun_adi, talep_miktar, birim, tahmini_birim_fiyat, aciklama
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = 'satinalma' AND TABLE_NAME = 'talep_satirlari' AND COLUMN_NAME = 'para_birimi')
+                ALTER TABLE satinalma.talep_satirlari ADD para_birimi NVARCHAR(10) DEFAULT 'TRY'
+            """)
+            conn.commit()
+            cursor.execute("""
+                SELECT urun_id, urun_adi, talep_miktar, birim, tahmini_birim_fiyat, aciklama, para_birimi
                 FROM satinalma.talep_satirlari WHERE id = ?
             """, (self.satir_id,))
             row = cursor.fetchone()
             conn.close()
-            
+
             if row:
                 if row[0]:
                     idx = self.cmb_urun.findData(row[0])
@@ -244,6 +270,10 @@ class TalepSatirDialog(QDialog):
                     self.cmb_birim.setCurrentIndex(idx)
                 self.spin_fiyat.setValue(float(row[4]) if row[4] else 0)
                 self.txt_aciklama.setPlainText(row[5] or "")
+                if row[6]:
+                    idx = self.cmb_para_birimi.findData(row[6])
+                    if idx >= 0:
+                        self.cmb_para_birimi.setCurrentIndex(idx)
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
     
@@ -261,27 +291,34 @@ class TalepSatirDialog(QDialog):
             miktar = self.spin_miktar.value()
             fiyat = self.spin_fiyat.value()
             tutar = miktar * fiyat if fiyat else None
-            
+            para_birimi = self.cmb_para_birimi.currentData() or 'TRY'
+
+            # para_birimi kolonu yoksa ekle
+            cursor.execute("""
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = 'satinalma' AND TABLE_NAME = 'talep_satirlari' AND COLUMN_NAME = 'para_birimi')
+                ALTER TABLE satinalma.talep_satirlari ADD para_birimi NVARCHAR(10) DEFAULT 'TRY'
+            """)
+
             if self.satir_id:
                 cursor.execute("""
                     UPDATE satinalma.talep_satirlari SET
                         urun_id = ?, urun_adi = ?, talep_miktar = ?, birim = ?,
-                        tahmini_birim_fiyat = ?, tahmini_tutar = ?, aciklama = ?
+                        tahmini_birim_fiyat = ?, tahmini_tutar = ?, para_birimi = ?, aciklama = ?
                     WHERE id = ?
                 """, (urun_id, urun_adi, miktar, self.cmb_birim.currentText(),
-                      fiyat if fiyat else None, tutar, 
+                      fiyat if fiyat else None, tutar, para_birimi,
                       self.txt_aciklama.toPlainText().strip() or None, self.satir_id))
             else:
-                # Satır no bul
                 cursor.execute("SELECT ISNULL(MAX(satir_no), 0) + 1 FROM satinalma.talep_satirlari WHERE talep_id = ?", (self.talep_id,))
                 satir_no = cursor.fetchone()[0]
-                
+
                 cursor.execute("""
                     INSERT INTO satinalma.talep_satirlari
-                    (talep_id, satir_no, urun_id, urun_adi, talep_miktar, birim, tahmini_birim_fiyat, tahmini_tutar, aciklama)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (talep_id, satir_no, urun_id, urun_adi, talep_miktar, birim, tahmini_birim_fiyat, tahmini_tutar, para_birimi, aciklama)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (self.talep_id, satir_no, urun_id, urun_adi, miktar, self.cmb_birim.currentText(),
-                      fiyat if fiyat else None, tutar, self.txt_aciklama.toPlainText().strip() or None))
+                      fiyat if fiyat else None, tutar, para_birimi, self.txt_aciklama.toPlainText().strip() or None))
             
             conn.commit()
             LogManager.log_insert('satinalma', 'satinalma.talep_satirlari', None, 'Talep kaydi olustu')
@@ -419,8 +456,8 @@ class TalepDialog(QDialog):
         kalem_layout.addLayout(toolbar)
         
         self.table_satirlar = QTableWidget()
-        self.table_satirlar.setColumnCount(7)
-        self.table_satirlar.setHorizontalHeaderLabels(["ID", "Sıra", "Ürün Adı", "Miktar", "Birim", "Birim Fiyat", "Tutar"])
+        self.table_satirlar.setColumnCount(8)
+        self.table_satirlar.setHorizontalHeaderLabels(["ID", "Sıra", "Ürün Adı", "Miktar", "Birim", "Birim Fiyat", "P.Birimi", "Tutar"])
         self.table_satirlar.setColumnHidden(0, True)
         self.table_satirlar.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_satirlar.setStyleSheet(f"""
@@ -614,28 +651,36 @@ class TalepDialog(QDialog):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            # para_birimi kolonu yoksa ekle
             cursor.execute("""
-                SELECT id, satir_no, urun_adi, talep_miktar, birim, tahmini_birim_fiyat, tahmini_tutar
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = 'satinalma' AND TABLE_NAME = 'talep_satirlari' AND COLUMN_NAME = 'para_birimi')
+                ALTER TABLE satinalma.talep_satirlari ADD para_birimi NVARCHAR(10) DEFAULT 'TRY'
+            """)
+            conn.commit()
+            cursor.execute("""
+                SELECT id, satir_no, urun_adi, talep_miktar, birim, tahmini_birim_fiyat, ISNULL(para_birimi, 'TRY'), tahmini_tutar
                 FROM satinalma.talep_satirlari WHERE talep_id = ? ORDER BY satir_no
             """, (self.talep_id,))
             rows = cursor.fetchall()
             conn.close()
-            
+
             self.table_satirlar.setRowCount(len(rows))
             toplam = 0
-            
+
             for i, row in enumerate(rows):
                 for j, val in enumerate(row):
                     if j == 5 and val:  # Birim fiyat
-                        item = QTableWidgetItem(f"₺ {val:,.4f}")
-                    elif j == 6 and val:  # Tutar
-                        item = QTableWidgetItem(f"₺ {val:,.2f}")
+                        item = QTableWidgetItem(f"{val:,.4f}")
+                    elif j == 7 and val:  # Tutar
+                        pb = row[6] or 'TRY'
+                        item = QTableWidgetItem(f"{val:,.2f} {pb}")
                         toplam += val
                     else:
                         item = QTableWidgetItem(str(val) if val else "")
                     self.table_satirlar.setItem(i, j, item)
-            
-            self.lbl_toplam.setText(f"Tahmini Toplam: ₺ {toplam:,.2f}")
+
+            self.lbl_toplam.setText(f"Tahmini Toplam: {toplam:,.2f}")
         except Exception as e:
             print(f"Satır yükleme hatası: {e}")
     

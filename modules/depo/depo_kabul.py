@@ -1663,9 +1663,35 @@ class IrsaliyeDetayDialog(QDialog):
                     sofor = None
                 
                 notlar = self.notlar_input.text().strip() or None
-                
+
                 print(f"[SAVE DEBUG] tarih={tarih} | cari={cari_unvani}")
-                
+
+                # Müşteri irsaliye no tekrar kontrolü
+                if cari_irsaliye_no:
+                    exclude_id = None if self.yeni_kayit else self.irsaliye_id
+                    dup_query = """
+                        SELECT irsaliye_no, cari_unvani FROM siparis.giris_irsaliyeleri
+                        WHERE cari_irsaliye_no = ?
+                    """
+                    dup_params = [cari_irsaliye_no]
+                    if exclude_id:
+                        dup_query += " AND id != ?"
+                        dup_params.append(exclude_id)
+
+                    cursor.execute(dup_query, dup_params)
+                    dup_row = cursor.fetchone()
+                    if dup_row:
+                        QMessageBox.warning(
+                            self, "Mükerrer İrsaliye No",
+                            f"Bu müşteri irsaliye numarası daha önce kullanılmış!\n\n"
+                            f"İrsaliye No: {dup_row[0]}\n"
+                            f"Müşteri: {dup_row[1]}\n"
+                            f"Cari İrsaliye No: {cari_irsaliye_no}"
+                        )
+                        if conn:
+                            conn.close()
+                        return
+
                 if self.yeni_kayit:
                     # Yeni irsaliye no oluştur - SEQUENCE kullan (Thread-Safe, Deadlock yok!)
                     try:
@@ -1764,7 +1790,6 @@ class IrsaliyeDetayDialog(QDialog):
                 conn.commit()
                 LogManager.log_insert('depo', 'siparis.giris_irsaliye_satirlar', None, 'Irsaliye kaydi olustu')
                 print(f"[SAVE DEBUG] ✅ conn.commit() başarılı! irsaliye_id={self.irsaliye_id}")
-                LogManager.log_insert('depo', 'siparis.giris_irsaliye_satirlar', None, 'Irsaliye kaydi olustu')
                 
                 # Satırları yeniden yükle (ID'leri almak için)
                 self._load_data()
@@ -1990,9 +2015,9 @@ class DepoKabulPage(BasePage):
         
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            "ID", "İrsaliye No", "Müşteri", "Tarih", "Satır", "Durum", "Lot Durumu", "İşlem"
+            "ID", "İrsaliye No", "Cari İrs. No", "Müşteri", "Tarih", "Satır", "Durum", "Lot Durumu", "İşlem"
         ])
         self.table.setColumnHidden(0, True)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
@@ -2016,11 +2041,12 @@ class DepoKabulPage(BasePage):
         """)
         self.table.verticalHeader().setVisible(False)
         self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(3, 100)
-        self.table.setColumnWidth(4, 60)
-        self.table.setColumnWidth(5, 100)
-        self.table.setColumnWidth(6, 110)
-        self.table.setColumnWidth(7, 120)
+        self.table.setColumnWidth(2, 120)
+        self.table.setColumnWidth(4, 100)
+        self.table.setColumnWidth(5, 60)
+        self.table.setColumnWidth(6, 100)
+        self.table.setColumnWidth(7, 110)
+        self.table.setColumnWidth(8, 120)
         self.table.doubleClicked.connect(self._on_row_double_click)
         layout.addWidget(self.table)
     
@@ -2036,7 +2062,7 @@ class DepoKabulPage(BasePage):
             durum = self.durum_combo.currentData()
             
             query = """
-                SELECT gi.id, gi.irsaliye_no, gi.cari_unvani, gi.tarih, 
+                SELECT gi.id, gi.irsaliye_no, gi.cari_irsaliye_no, gi.cari_unvani, gi.tarih,
                        (SELECT COUNT(*) FROM siparis.giris_irsaliye_satirlar WHERE irsaliye_id = gi.id) as satir_sayisi,
                        gi.durum,
                        (SELECT COUNT(*) FROM siparis.giris_irsaliye_satirlar WHERE irsaliye_id = gi.id AND lot_no IS NOT NULL AND lot_no <> '') as lot_sayisi
@@ -2046,8 +2072,8 @@ class DepoKabulPage(BasePage):
             params = [tarih_bas, tarih_bit]
             
             if search:
-                query += " AND (gi.irsaliye_no LIKE ? OR gi.cari_unvani LIKE ?)"
-                params.extend([f"%{search}%", f"%{search}%"])
+                query += " AND (gi.irsaliye_no LIKE ? OR gi.cari_unvani LIKE ? OR gi.cari_irsaliye_no LIKE ?)"
+                params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
             
             if durum:
                 query += " AND gi.durum = ?"
@@ -2065,23 +2091,24 @@ class DepoKabulPage(BasePage):
                 self.table.setItem(i, 0, QTableWidgetItem(str(row[0])))
                 self.table.setItem(i, 1, QTableWidgetItem(row[1] or ''))
                 self.table.setItem(i, 2, QTableWidgetItem(row[2] or ''))
-                
-                tarih = row[3]
+                self.table.setItem(i, 3, QTableWidgetItem(row[3] or ''))
+
+                tarih = row[4]
                 tarih_str = tarih.strftime('%d.%m.%Y') if tarih else ''
-                self.table.setItem(i, 3, QTableWidgetItem(tarih_str))
-                
-                self.table.setItem(i, 4, QTableWidgetItem(str(row[4] or 0)))
-                
+                self.table.setItem(i, 4, QTableWidgetItem(tarih_str))
+
+                self.table.setItem(i, 5, QTableWidgetItem(str(row[5] or 0)))
+
                 # Durum badge
-                durum = row[5] or 'TASLAK'
+                durum = row[6] or 'TASLAK'
                 durum_item = QTableWidgetItem(durum)
                 colors = {'TASLAK': QColor('#f59e0b'), 'ONAYLANDI': QColor('#22c55e'), 'IPTAL': QColor('#ef4444')}
                 durum_item.setForeground(colors.get(durum, QColor('#888')))
-                self.table.setItem(i, 5, durum_item)
-                
+                self.table.setItem(i, 6, durum_item)
+
                 # Lot durumu
-                satir_sayisi = row[4] or 0
-                lot_sayisi = row[6] or 0
+                satir_sayisi = row[5] or 0
+                lot_sayisi = row[7] or 0
                 if satir_sayisi > 0:
                     lot_durum = f"{lot_sayisi}/{satir_sayisi}"
                     if lot_sayisi == satir_sayisi:
@@ -2092,13 +2119,13 @@ class DepoKabulPage(BasePage):
                         lot_durum += " ❌"
                 else:
                     lot_durum = "-"
-                self.table.setItem(i, 6, QTableWidgetItem(lot_durum))
-                
+                self.table.setItem(i, 7, QTableWidgetItem(lot_durum))
+
                 # İşlem butonu
                 widget = self.create_action_buttons([
                     ("📋", "Detay", lambda checked, iid=row[0]: self._open_detail(iid), "view"),
                 ])
-                self.table.setCellWidget(i, 7, widget)
+                self.table.setCellWidget(i, 8, widget)
                 self.table.setRowHeight(i, 42)
 
             self.stat_label.setText(f"Toplam: {len(rows)} irsaliye")

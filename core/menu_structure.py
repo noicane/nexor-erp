@@ -68,7 +68,7 @@ MENU_STRUCTURE = [
         {"id": "lab_sonuc", "label": "Analiz Sonuçları"},
         {"id": "lab_analiz", "label": "Banyo Analiz Kayıtları"},
         {"id": "lab_banyo", "label": "Banyo Kartları"},
-        {"id": "lab_kimyasal", "label": "Kimyasal Stok"},
+        {"id": "stok_kimyasal", "label": "Kimyasal Stok"},
         {"id": "lab_tanim", "label": "Test Tanımları"},
         {"id": "lab_kaplama_test", "label": "🔬 Kaplama Test"},
     ]},

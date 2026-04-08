@@ -156,7 +156,8 @@ class EtiketOnizlemeDialog(QDialog):
         yazici_layout.addWidget(QLabel("Mod:"))
         self.mod_combo = QComboBox()
         self.mod_combo.addItem("PDF Yazdır", "PDF")
-        self.mod_combo.addItem("Godex Direkt (EZPL)", "EZPL")
+        self.mod_combo.addItem("Godex ZPL", "ZPL")
+        self.mod_combo.addItem("Godex EZPL", "EZPL")
         self.mod_combo.setStyleSheet(self.yazici_combo.styleSheet())
         yazici_layout.addWidget(self.mod_combo)
         yazici_layout.addStretch()
@@ -1988,35 +1989,41 @@ class KaliteFinalKontrolPage(BasePage):
             mod = dlg.get_mod()
 
             etiketler = [etiket_data]
+            if sablon_id:
+                etiketler[0]['sablon_id'] = sablon_id
+
+            if mod in ("ZPL", "EZPL") and yazici and yazici != 'PDF_ONLY':
+                # Godex direkt yazdirma (giris kalite ile ayni)
+                from utils.etiket_yazdir import godex_yazdir
+                basarili = godex_yazdir(etiketler, yazici, mod)
+                if basarili:
+                    print(f"Etiket Godex yaziciya gonderildi: {yazici}")
+                else:
+                    print("Godex gonderilemedi, PDF aciliyor")
+                    self._fallback_pdf_etiket(etiketler, sablon_id)
+            else:
+                # PDF mod
+                self._fallback_pdf_etiket(etiketler, sablon_id)
+        except Exception as e:
+            print(f"Etiket hatası: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _fallback_pdf_etiket(self, etiketler, sablon_id=None):
+        """PDF olarak etiket olustur ve ac"""
+        try:
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='fk_etiket_')
             temp_path = temp_file.name
             temp_file.close()
-
             if sablon_id:
                 from utils.etiket_yazdir import sablon_ile_etiket_pdf_olustur
                 sablon_ile_etiket_pdf_olustur(temp_path, etiketler, sablon_id)
             else:
                 from utils.etiket_yazdir import a4_etiket_pdf_olustur
                 a4_etiket_pdf_olustur(temp_path, etiketler)
-
-            if yazici == 'PDF_ONLY' or mod == 'PDF':
-                subprocess.Popen(['start', '', temp_path], shell=True)
-            else:
-                try:
-                    subprocess.run(
-                        ['powershell', '-Command',
-                         f'Start-Process -FilePath "{temp_path}" -Verb Print -ArgumentList "/p /h \\"{yazici}\\"" '],
-                        shell=True, timeout=30
-                    )
-                except Exception as pe:
-                    print(f"Yazıcı hatası: {pe}")
-                    subprocess.Popen(['start', '', temp_path], shell=True)
-
-            print(f"Etiket PDF: {temp_path}")
+            subprocess.Popen(['start', '', temp_path], shell=True)
         except Exception as e:
-            print(f"Etiket hatası: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"PDF etiket hatasi: {e}")
 
     # =========================================================================
     # ONAYLI ÜRÜNLER SEKMESİ
@@ -2305,31 +2312,19 @@ class KaliteFinalKontrolPage(BasePage):
 
         try:
             etiketler = [etiket_data]
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='fk_tekrar_')
-            temp_path = temp_file.name
-            temp_file.close()
-
             if sablon_id:
-                from utils.etiket_yazdir import sablon_ile_etiket_pdf_olustur
-                sablon_ile_etiket_pdf_olustur(temp_path, etiketler, sablon_id)
-            else:
-                from utils.etiket_yazdir import a4_etiket_pdf_olustur
-                a4_etiket_pdf_olustur(temp_path, etiketler)
+                etiketler[0]['sablon_id'] = sablon_id
 
-            if yazici == 'PDF_ONLY' or mod == 'PDF':
-                subprocess.Popen(['start', '', temp_path], shell=True)
+            if mod in ("ZPL", "EZPL") and yazici and yazici != 'PDF_ONLY':
+                from utils.etiket_yazdir import godex_yazdir
+                basarili = godex_yazdir(etiketler, yazici, mod)
+                if basarili:
+                    print(f"Tekrar etiket Godex yaziciya gonderildi: {yazici}")
+                else:
+                    print("Godex gonderilemedi, PDF aciliyor")
+                    self._fallback_pdf_etiket(etiketler, sablon_id)
             else:
-                try:
-                    subprocess.run(
-                        ['powershell', '-Command',
-                         f'Start-Process -FilePath "{temp_path}" -Verb Print -ArgumentList "/p /h \\"{yazici}\\"" '],
-                        shell=True, timeout=30
-                    )
-                except Exception as pe:
-                    print(f"Yazıcı hatası: {pe}")
-                    subprocess.Popen(['start', '', temp_path], shell=True)
-
-            print(f"Tekrar etiket PDF: {temp_path}")
+                self._fallback_pdf_etiket(etiketler, sablon_id)
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Etiket oluşturma hatası: {e}")
 
@@ -2373,16 +2368,39 @@ class KaliteFinalKontrolPage(BasePage):
             'sonuc': 'RED',
         }
 
+        dlg = EtiketOnizlemeDialog(self.theme, etiket_data, self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        yazici = dlg.get_yazici()
+        mod = dlg.get_mod()
+
+        try:
+            if mod in ("ZPL", "EZPL") and yazici and yazici != 'PDF_ONLY':
+                from utils.etiket_yazdir import godex_yazdir
+                etiket_data['sonuc'] = 'RED'
+                basarili = godex_yazdir([etiket_data], yazici, mod)
+                if basarili:
+                    print(f"Red etiketi Godex yaziciya gonderildi: {yazici}")
+                else:
+                    print("Godex gonderilemedi, PDF aciliyor")
+                    self._red_etiket_pdf(etiket_data)
+            else:
+                self._red_etiket_pdf(etiket_data)
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Red etiketi oluşturma hatası: {e}")
+
+    def _red_etiket_pdf(self, etiket_data):
+        """PDF olarak red etiketi olustur ve ac"""
         try:
             from utils.etiket_yazdir import red_etiket_pdf_olustur
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', prefix='fk_red_')
             temp_path = temp_file.name
             temp_file.close()
-
             red_etiket_pdf_olustur(temp_path, [etiket_data])
             subprocess.Popen(['start', '', temp_path], shell=True)
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Red etiketi oluşturma hatası: {e}")
+            print(f"Red PDF etiket hatasi: {e}")
 
     # =========================================================================
     # TIMER / OTOMATİK YENİLEME

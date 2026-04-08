@@ -2,6 +2,7 @@
 """
 REDLINE NEXOR ERP - Satinalma Talep Formu PDF
 Onaylanan satinalma taleplerini imzalatilabilir form olarak cikarir.
+Tek sayfa - kompakt tasarim.
 """
 import os
 from datetime import datetime, date
@@ -23,11 +24,9 @@ GRAY_300 = HexColor('#D1D5DB')
 GRAY_100 = HexColor('#F3F4F6')
 WHITE = white
 BLACK = black
-GREEN = HexColor('#10B981')
-BLUE = HexColor('#3B82F6')
 
 PAGE_W, PAGE_H = A4
-MARGIN = 18 * mm
+MARGIN = 15 * mm
 
 
 def _fmt(val):
@@ -44,33 +43,14 @@ def _fmt_para(val):
     return f"{val:,.2f} TL"
 
 
-def _draw_rounded_rect(c, x, y, w, h, r, fill_color=None, stroke_color=None):
-    p = c.beginPath()
-    p.moveTo(x + r, y)
-    p.lineTo(x + w - r, y)
-    p.arcTo(x + w - r, y, x + w, y + r, 0)
-    p.lineTo(x + w, y + h - r)
-    p.arcTo(x + w, y + h - r, x + w - r, y + h, 0)
-    p.lineTo(x + r, y + h)
-    p.arcTo(x + r, y + h, x, y + h - r, 0)
-    p.lineTo(x, y + r)
-    p.arcTo(x, y + r, x + r, y, 0)
-    p.close()
-    if fill_color:
-        c.setFillColor(fill_color)
-    if stroke_color:
-        c.setStrokeColor(stroke_color)
-        c.drawPath(p, fill=1 if fill_color else 0, stroke=1)
-    elif fill_color:
-        c.drawPath(p, fill=1, stroke=0)
-
-
 def _section(c, x, y, title, width):
-    _draw_rounded_rect(c, x, y - 1 * mm, width, 8 * mm, 2 * mm, fill_color=DARK_BG)
+    """Koyu baslikli section ciz"""
+    c.setFillColor(DARK_BG)
+    c.rect(x, y - 0.5 * mm, width, 6 * mm, fill=1, stroke=0)
     c.setFillColor(WHITE)
-    c.setFont("NexorFont-Bold", 9)
-    c.drawString(x + 4 * mm, y + 1.5 * mm, title)
-    return y - 11 * mm
+    c.setFont("NexorFont-Bold", 8)
+    c.drawString(x + 3 * mm, y + 1 * mm, title)
+    return y - 8 * mm
 
 
 def satinalma_talep_pdf(talep_id: int):
@@ -78,7 +58,6 @@ def satinalma_talep_pdf(talep_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Talep bilgileri
     cursor.execute("""
         SELECT
             t.id, t.talep_no, t.tarih, t.oncelik, t.istenen_termin,
@@ -116,10 +95,10 @@ def satinalma_talep_pdf(talep_id: int):
         'amir_adi': row[17] or '-', 'sa_onaylayan': row[18] or '-',
     }
 
-    # Talep satirlari
     cursor.execute("""
         SELECT satir_no, urun_kodu, urun_adi, talep_miktar, birim,
-               tahmini_birim_fiyat, tahmini_tutar, aciklama
+               tahmini_birim_fiyat, tahmini_tutar, aciklama,
+               ISNULL(para_birimi, 'TRY') as para_birimi
         FROM satinalma.talep_satirlari
         WHERE talep_id = ?
         ORDER BY satir_no
@@ -145,116 +124,113 @@ def satinalma_talep_pdf(talep_id: int):
     y = PAGE_H - MARGIN
 
     # ══════════════ HEADER ══════════════
-    header_h = 28 * mm
-    _draw_rounded_rect(c, MARGIN, y - header_h, usable_w, header_h, 3 * mm, fill_color=DARK_BG)
+    header_h = 22 * mm
+    c.setFillColor(DARK_BG)
+    c.rect(MARGIN, y - header_h, usable_w, header_h, fill=1, stroke=0)
 
     logo_w = 0
     if firma_logo and os.path.exists(firma_logo):
         try:
             from reportlab.lib.utils import ImageReader
-            logo_w = 20 * mm
-            c.drawImage(ImageReader(firma_logo), MARGIN + 4 * mm, y - header_h + 6 * mm,
+            logo_w = 18 * mm
+            c.drawImage(ImageReader(firma_logo), MARGIN + 3 * mm, y - header_h + 3 * mm,
                         width=16 * mm, height=16 * mm, preserveAspectRatio=True, mask='auto')
         except Exception:
             logo_w = 0
 
-    tx = MARGIN + 4 * mm + logo_w
+    tx = MARGIN + 3 * mm + logo_w
     c.setFillColor(WHITE)
-    c.setFont("NexorFont-Bold", 12)
-    c.drawString(tx, y - 9 * mm, firma_adi)
-    c.setFont("NexorFont-Bold", 15)
-    c.drawString(tx, y - 18 * mm, "SATINALMA TALEP FORMU")
+    c.setFont("NexorFont-Bold", 9)
+    c.drawString(tx, y - 8 * mm, firma_adi)
+    c.setFont("NexorFont-Bold", 13)
+    c.drawString(tx, y - 16 * mm, "SATINALMA TALEP FORMU")
 
-    c.setFont("NexorFont", 9)
+    c.setFont("NexorFont", 8)
     c.setFillColor(GRAY_300)
-    c.drawRightString(PAGE_W - MARGIN - 5 * mm, y - 9 * mm, f"Talep No: {talep['talep_no']}")
-    c.drawRightString(PAGE_W - MARGIN - 5 * mm, y - 18 * mm,
+    c.drawRightString(PAGE_W - MARGIN - 4 * mm, y - 8 * mm, f"Talep No: {talep['talep_no']}")
+    c.drawRightString(PAGE_W - MARGIN - 4 * mm, y - 15 * mm,
                       f"Basim: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
 
-    y -= header_h + 6 * mm
+    y -= header_h + 4 * mm
 
     # ══════════════ TALEP BILGILERI ══════════════
     y = _section(c, MARGIN, y, "TALEP BILGILERI", usable_w)
-    col_w = usable_w / 3 - 2 * mm
 
-    def field(x, yy, label, value):
+    lx = MARGIN + 3 * mm
+    col3 = usable_w / 3
+
+    def field(x, yy, label, value, font_size=9):
         c.setFillColor(GRAY_500)
-        c.setFont("NexorFont", 8)
+        c.setFont("NexorFont", 7)
         c.drawString(x, yy + 2 * mm, label)
         c.setFillColor(BLACK)
-        c.setFont("NexorFont-Bold", 10)
-        c.drawString(x, yy - 4 * mm, str(value))
+        c.setFont("NexorFont-Bold", font_size)
+        c.drawString(x, yy - 3.5 * mm, str(value)[:35])
 
-    lx = MARGIN + 4 * mm
+    # Satir 1
     field(lx, y, "Talep Eden", talep['talep_eden'])
-    field(lx + col_w, y, "Sicil No", talep['sicil_no'])
-    field(lx + col_w * 2, y, "Departman", talep['departman'])
-    y -= 14 * mm
+    field(lx + col3, y, "Sicil No", talep['sicil_no'])
+    field(lx + col3 * 2, y, "Departman", talep['departman'])
+    y -= 12 * mm
 
+    # Satir 2
     field(lx, y, "Talep Tarihi", _fmt(talep['tarih']))
-    field(lx + col_w, y, "Istenen Termin", _fmt(talep['istenen_termin']))
-    field(lx + col_w * 2, y, "Oncelik", talep['oncelik'])
-    y -= 14 * mm
+    field(lx + col3, y, "Istenen Termin", _fmt(talep['istenen_termin']))
+    field(lx + col3 * 2, y, "Oncelik", talep['oncelik'])
+    y -= 12 * mm
 
-    # Durum
+    # Satir 3
     field(lx, y, "Durum", talep['durum'])
-    field(lx + col_w, y, "Tahmini Tutar", _fmt_para(talep['tahmini_tutar']))
-    y -= 16 * mm
-
-    # Talep nedeni
+    field(lx + col3, y, "Tahmini Tutar", _fmt_para(talep['tahmini_tutar']))
+    # Talep nedeni - ayni satira koy
     if talep['talep_nedeni']:
         c.setFillColor(GRAY_500)
-        c.setFont("NexorFont", 8)
-        c.drawString(lx, y + 2 * mm, "Talep Nedeni")
+        c.setFont("NexorFont", 7)
+        c.drawString(lx + col3 * 2, y + 2 * mm, "Talep Nedeni")
         c.setFillColor(BLACK)
-        c.setFont("NexorFont", 10)
-        for line in talep['talep_nedeni'].split('\n')[:3]:
-            y -= 5 * mm
-            c.drawString(lx, y, line[:90])
-        y -= 6 * mm
+        c.setFont("NexorFont", 8)
+        neden_text = talep['talep_nedeni'].replace('\n', ' ')[:50]
+        c.drawString(lx + col3 * 2, y - 3.5 * mm, neden_text)
+    y -= 14 * mm
 
     # ══════════════ MALZEME LISTESI ══════════════
     y = _section(c, MARGIN, y, "TALEP EDILEN MALZEMELER", usable_w)
 
-    # Tablo baslik
     cols = [
         (8 * mm, "No"),
         (25 * mm, "Urun Kodu"),
-        (65 * mm, "Urun Adi"),
-        (18 * mm, "Miktar"),
+        (68 * mm, "Urun Adi"),
+        (20 * mm, "Miktar"),
         (15 * mm, "Birim"),
         (22 * mm, "B.Fiyat"),
         (22 * mm, "Tutar"),
     ]
 
-    _draw_rounded_rect(c, MARGIN, y - 1 * mm, usable_w, 7 * mm, 1 * mm, fill_color=GRAY_100)
+    # Tablo baslik
+    c.setFillColor(GRAY_100)
+    c.rect(MARGIN, y - 0.5 * mm, usable_w, 6 * mm, fill=1, stroke=0)
     c.setFillColor(GRAY_500)
-    c.setFont("NexorFont-Bold", 8)
+    c.setFont("NexorFont-Bold", 7)
     cx = MARGIN + 2 * mm
     for w, title in cols:
         c.drawString(cx, y + 1 * mm, title)
         cx += w
-    y -= 9 * mm
+    y -= 7 * mm
 
     # Satirlar
-    c.setFont("NexorFont", 9)
+    c.setFont("NexorFont", 8)
     genel_toplam = 0
     for satir in satirlar:
-        if y < MARGIN + 60 * mm:
-            # Yeni sayfa
-            c.showPage()
-            y = PAGE_H - MARGIN
-            y = _section(c, MARGIN, y, "MALZEME LISTESI (devam)", usable_w)
-
         cx = MARGIN + 2 * mm
+        pb = satir[8] if len(satir) > 8 and satir[8] else 'TRY'
         vals = [
             str(satir[0] or ''),
             str(satir[1] or '')[:15],
-            str(satir[2] or '')[:40],
-            str(satir[3] or ''),
+            str(satir[2] or '')[:45],
+            f"{float(satir[3]):,.2f}" if satir[3] else '-',
             str(satir[4] or ''),
-            _fmt_para(satir[5]).replace(' TL', '') if satir[5] else '-',
-            _fmt_para(satir[6]).replace(' TL', '') if satir[6] else '-',
+            f"{float(satir[5]):,.2f}" if satir[5] else '-',
+            f"{float(satir[6]):,.2f} {pb}" if satir[6] else '-',
         ]
         c.setFillColor(BLACK)
         for i, (w, _) in enumerate(cols):
@@ -264,71 +240,57 @@ def satinalma_talep_pdf(talep_id: int):
         if satir[6]:
             genel_toplam += float(satir[6])
 
-        # Alt cizgi
         c.setStrokeColor(GRAY_100)
         c.setLineWidth(0.3)
         c.line(MARGIN, y - 2 * mm, PAGE_W - MARGIN, y - 2 * mm)
-        y -= 7 * mm
+        y -= 6 * mm
 
-    # Toplam satiri
-    y -= 2 * mm
-    c.setFont("NexorFont-Bold", 10)
+    # Toplam
+    y -= 1 * mm
+    c.setFont("NexorFont-Bold", 9)
     c.setFillColor(PRIMARY)
-    c.drawRightString(PAGE_W - MARGIN - 5 * mm, y, f"GENEL TOPLAM: {_fmt_para(genel_toplam)}")
-    y -= 12 * mm
+    c.drawRightString(PAGE_W - MARGIN - 4 * mm, y, f"GENEL TOPLAM: {_fmt_para(genel_toplam)}")
+    y -= 10 * mm
 
     # ══════════════ ONAY BILGILERI ══════════════
     y = _section(c, MARGIN, y, "ONAY BILGILERI", usable_w)
 
-    col2 = usable_w / 2 - 2 * mm
-    field(lx, y, "Amir Onay Durumu", talep['amir_onay'] or "BEKLEMEDE")
-    field(lx + col2, y, "Amir Onay Tarihi", _fmt(talep['amir_onay_tarihi']))
+    col2 = usable_w / 2
+    # Satir 1
+    field(lx, y, "Amir Onay", f"{talep['amir_onay'] or 'BEKLEMEDE'} - {_fmt(talep['amir_onay_tarihi'])} - {talep['amir_adi']}", 8)
+    field(lx + col2, y, "Satinalma Onay", f"{talep['sa_onay'] or 'BEKLEMEDE'} - {_fmt(talep['sa_onay_tarihi'])} - {talep['sa_onaylayan']}", 8)
     y -= 14 * mm
-
-    field(lx, y, "Onaylayan Amir", talep['amir_adi'])
-    y -= 14 * mm
-
-    field(lx, y, "Satinalma Onay Durumu", talep['sa_onay'] or "BEKLEMEDE")
-    field(lx + col2, y, "Satinalma Onay Tarihi", _fmt(talep['sa_onay_tarihi']))
-    y -= 14 * mm
-
-    field(lx, y, "Satinalma Onaylayan", talep['sa_onaylayan'])
-    y -= 18 * mm
 
     # ══════════════ IMZA ALANI ══════════════
-    if y < MARGIN + 50 * mm:
-        c.showPage()
-        y = PAGE_H - MARGIN
-
     y = _section(c, MARGIN, y, "ONAY VE IMZA", usable_w)
 
-    imza_w = usable_w / 4 - 3 * mm
-    imza_h = 28 * mm
+    imza_w = usable_w / 4 - 2 * mm
+    imza_h = 22 * mm
     imza_labels = ["Talep Eden", "Birim Amiri", "Satinalma", "Genel Mudur"]
 
     for i, label in enumerate(imza_labels):
-        x = MARGIN + i * (imza_w + 3 * mm)
+        x = MARGIN + i * (imza_w + 2.5 * mm)
         c.setStrokeColor(GRAY_300)
         c.setLineWidth(0.5)
         c.rect(x, y - imza_h, imza_w, imza_h)
 
         c.setFillColor(GRAY_500)
-        c.setFont("NexorFont-Bold", 8)
-        c.drawCentredString(x + imza_w / 2, y + 2 * mm, label)
+        c.setFont("NexorFont-Bold", 7)
+        c.drawCentredString(x + imza_w / 2, y + 1.5 * mm, label)
 
         # Imza cizgisi
-        line_y = y - imza_h + 8 * mm
-        c.line(x + 6 * mm, line_y, x + imza_w - 6 * mm, line_y)
+        line_y = y - imza_h + 7 * mm
+        c.line(x + 5 * mm, line_y, x + imza_w - 5 * mm, line_y)
 
-        c.setFont("NexorFont", 6)
+        c.setFont("NexorFont", 5.5)
         c.drawCentredString(x + imza_w / 2, y - imza_h + 2 * mm, "Tarih: ...../...../........")
 
     # ══════════════ FOOTER ══════════════
     c.setFillColor(GRAY_500)
-    c.setFont("NexorFont", 7)
-    c.drawString(MARGIN, MARGIN - 5 * mm,
+    c.setFont("NexorFont", 6)
+    c.drawString(MARGIN, MARGIN - 4 * mm,
                  f"Bu belge {firma_adi} Satinalma birimi tarafindan olusturulmustur.")
-    c.drawRightString(PAGE_W - MARGIN, MARGIN - 5 * mm,
+    c.drawRightString(PAGE_W - MARGIN, MARGIN - 4 * mm,
                       f"NEXOR ERP - {datetime.now().strftime('%d.%m.%Y %H:%M')}")
 
     c.save()

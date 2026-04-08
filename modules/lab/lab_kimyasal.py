@@ -277,18 +277,23 @@ class TakviyeDialog(QDialog):
         except Exception: pass
     
     def _load_kimyasallar(self):
-        """YENİ: stok.urunler tablosundan kimyasal ürünler"""
+        """Kimyasal tipindeki urunler - stokta olanlar onde"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT u.id, u.urun_kodu, u.urun_adi 
+                SELECT u.id, u.urun_kodu, u.urun_adi,
+                       ISNULL((SELECT SUM(ISNULL(sb.miktar,0)) FROM stok.stok_bakiye sb WHERE sb.urun_id = u.id AND ISNULL(sb.bloke_mi,0) = 0), 0) as stok
                 FROM stok.urunler u
-                WHERE u.urun_tipi = 'KIMYASAL' AND u.aktif_mi = 1 AND u.silindi_mi = 0
+                LEFT JOIN stok.urun_tipleri ut ON u.urun_tipi_id = ut.id
+                WHERE (ut.kod IN ('KIMYASAL','HAMMADDE','YARDIMCI') OR u.urun_tipi IN ('KIMYASAL','HAMMADDE','YARDIMCI'))
+                  AND ISNULL(u.aktif_mi, 1) = 1 AND ISNULL(u.silindi_mi, 0) = 0
                 ORDER BY u.urun_kodu
             """)
             for row in cursor.fetchall():
-                self.kimyasal_combo.addItem(f"{row[1]} - {row[2]}", row[0])
+                stok = float(row[3] or 0)
+                stok_txt = f" [{stok:.0f}]" if stok > 0 else ""
+                self.kimyasal_combo.addItem(f"{row[1]} - {row[2]}{stok_txt}", row[0])
             conn.close()
             if self.data.get('kimyasal_id'):
                 idx = self.kimyasal_combo.findData(self.data['kimyasal_id'])
@@ -352,14 +357,54 @@ class TakviyeDialog(QDialog):
                     miktar=?, birim_id=?, takviye_nedeni=?, yapan_id=?, notlar=? WHERE id=?""",
                     params + (self.takviye_id,))
             else:
-                cursor.execute("""INSERT INTO uretim.banyo_takviyeler 
+                cursor.execute("""INSERT INTO uretim.banyo_takviyeler
                     (banyo_id, tarih, kimyasal_id, miktar, birim_id, takviye_nedeni, yapan_id, notlar)
                     VALUES (?,?,?,?,?,?,?,?)""", params)
-            
+
+            # Stoktan dus (FIFO lot bul)
+            if not self.takviye_id:  # sadece yeni takviyede
+                # Birim adini al
+                cursor.execute("SELECT kod FROM tanim.birimler WHERE id = ?", (birim_id,))
+                birim_row = cursor.fetchone()
+                birim_kod = birim_row[0] if birim_row else 'KG'
+
+                # FIFO lot bul
+                cursor.execute("""
+                    SELECT TOP 1 id, lot_no, miktar FROM stok.stok_bakiye
+                    WHERE urun_id = ? AND ISNULL(bloke_mi, 0) = 0
+                      AND ISNULL(ISNULL(kullanilabilir_miktar, miktar), 0) > 0
+                    ORDER BY giris_tarihi ASC
+                """, (kimyasal_id,))
+                bakiye = cursor.fetchone()
+
+                stok_msg = ""
+                if bakiye:
+                    bakiye_id, lot_no = bakiye[0], bakiye[1]
+                    # Stok hareketi olustur
+                    cursor.execute("""
+                        INSERT INTO stok.stok_hareketleri
+                        (uuid, hareket_tipi, hareket_nedeni, tarih, urun_id, depo_id,
+                         miktar, birim_id, lot_no, referans_tip, aciklama, olusturma_tarihi)
+                        VALUES (NEWID(), 'CIKIS', 'KIMYASAL_TUKETIM', GETDATE(), ?,
+                                (SELECT depo_id FROM stok.stok_bakiye WHERE id = ?),
+                                ?, ?, ?, 'BANYO_TAKVIYE', ?, GETDATE())
+                    """, (kimyasal_id, bakiye_id, miktar, birim_id, lot_no,
+                          f"Banyo takviye - {self.banyo_combo.currentText()[:50]}"))
+
+                    # Bakiye guncelle
+                    cursor.execute("""
+                        UPDATE stok.stok_bakiye SET miktar = miktar - ?,
+                            son_hareket_tarihi = GETDATE()
+                        WHERE id = ?
+                    """, (miktar, bakiye_id))
+                    stok_msg = f"\nStoktan düşüldü (Lot: {lot_no})"
+                else:
+                    stok_msg = "\nStok kaydı bulunamadı - sadece takviye kaydedildi"
+
             conn.commit()
             LogManager.log_insert('lab', 'uretim.banyo_takviyeler', None, 'Kimyasal takviye kaydedildi')
             conn.close()
-            QMessageBox.information(self, "✓ Başarılı", "Takviye kaydedildi!")
+            QMessageBox.information(self, "Başarılı", f"Takviye kaydedildi!{stok_msg if not self.takviye_id else ''}")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "❌ Hata", str(e))

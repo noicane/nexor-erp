@@ -83,7 +83,7 @@ class IKPdksPage(BasePage):
         # Otomatik yenileme
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self._load_data)
-        self.refresh_timer.start(5000)  # 5 saniyede bir
+        self.refresh_timer.start(3000)  # 3 saniyede bir
         
         QTimer.singleShot(100, self._load_data)
     
@@ -160,19 +160,19 @@ class IKPdksPage(BasePage):
         ozet_layout = QHBoxLayout(ozet_frame)
         ozet_layout.setContentsMargins(16, 16, 16, 16)
         
-        self.kart_toplam = self._create_ozet_kart("👥", "Toplam", "0", self.theme.get('primary'))
+        self.kart_toplam = self._create_ozet_kart("📋", "Planlanan", "0", self.theme.get('primary'))
         ozet_layout.addWidget(self.kart_toplam)
-        
+
         self.kart_iceride = self._create_ozet_kart("✅", "İçeride", "0", self.theme.get('success'))
         ozet_layout.addWidget(self.kart_iceride)
-        
+
         self.kart_gelmedi = self._create_ozet_kart("❌", "Gelmedi", "0", self.theme.get('danger'))
         ozet_layout.addWidget(self.kart_gelmedi)
-        
+
         self.kart_izinli = self._create_ozet_kart("🏖️", "İzinli", "0", self.theme.get('warning'))
         ozet_layout.addWidget(self.kart_izinli)
-        
-        self.kart_vardiya = self._create_ozet_kart("⏰", "Aktif Vardiya", "-", self.theme.get('info'))
+
+        self.kart_vardiya = self._create_ozet_kart("⏰", "Vardiya Dağılımı", "-", self.theme.get('info'))
         ozet_layout.addWidget(self.kart_vardiya)
         
         layout.addWidget(ozet_frame)
@@ -244,21 +244,18 @@ class IKPdksPage(BasePage):
             self.live_indicator.setText("⚫ CANLI")
     
     def _load_data(self):
-        """PDKS verilerini yükle"""
+        """PDKS verilerini yükle - Turnike tabanlı"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             today = date.today()
-            
-            # Aktif ve içeride olan personelleri al
+
+            # Tüm aktif personelleri al (beyaz yaka dahil)
             cursor.execute("""
                 SELECT
                     p.id, p.sicil_no, p.ad, p.soyad,
                     ISNULL(poz.ad, 'Tanımsız') as pozisyon,
-                    p.gunluk_durum,
-                    p.son_giris,
-                    p.son_cikis,
                     d.ad as departman
                 FROM ik.personeller p
                 LEFT JOIN ik.departmanlar d ON p.departman_id = d.id
@@ -266,44 +263,73 @@ class IKPdksPage(BasePage):
                 WHERE p.aktif_mi = 1
                 ORDER BY poz.ad, p.ad
             """)
-            
+
             employees = cursor.fetchall()
-            
+
             # İzinli personelleri al
             cursor.execute("""
                 SELECT personel_id FROM ik.izin_talepleri
-                WHERE durum = 'ONAYLANDI' 
+                WHERE durum = 'ONAYLANDI'
                   AND ? BETWEEN baslangic_tarihi AND bitis_tarihi
             """, (today,))
             izinli_ids = set(row[0] for row in cursor.fetchall())
-            
-            # Bugünkü hareketleri al
+
+            # Bugünkü son hareketleri turnike'den al
             cursor.execute("""
-                SELECT personel_id, MAX(hareket_zamani) as son_hareket
-                FROM ik.pdks_hareketler
-                WHERE CAST(hareket_zamani AS DATE) = ?
-                GROUP BY personel_id
+                SELECT h.personel_id,
+                       MAX(h.hareket_zamani) as son_hareket,
+                       (SELECT TOP 1 h2.hareket_tipi
+                        FROM ik.pdks_hareketler h2
+                        JOIN ik.pdks_cihazlari c2 ON h2.cihaz_id = c2.id AND c2.cihaz_tipi = 'TURNIKE'
+                        WHERE h2.personel_id = h.personel_id
+                          AND CAST(h2.hareket_zamani AS DATE) = ?
+                        ORDER BY h2.hareket_zamani DESC) as son_tip,
+                       MIN(CASE WHEN h.hareket_tipi = 'GIRIS' THEN h.hareket_zamani END) as ilk_giris
+                FROM ik.pdks_hareketler h
+                JOIN ik.pdks_cihazlari c ON h.cihaz_id = c.id AND c.cihaz_tipi = 'TURNIKE'
+                WHERE CAST(h.hareket_zamani AS DATE) = ?
+                GROUP BY h.personel_id
+            """, (today, today))
+            hareketler = {}
+            for row in cursor.fetchall():
+                hareketler[row[0]] = {
+                    'son_hareket': row[1],
+                    'son_tip': row[2],
+                    'ilk_giris': row[3]
+                }
+
+            # Bugünkü vardiya planını al
+            cursor.execute("""
+                SELECT vp.personel_id, v.kod, v.ad
+                FROM ik.vardiya_planlama vp
+                JOIN tanim.vardiyalar v ON vp.vardiya_id = v.id
+                WHERE vp.tarih = ?
             """, (today,))
-            hareketler = {row[0]: row[1] for row in cursor.fetchall()}
-            
+            vardiya_plan = {}
+            vardiya_sayilari = {}
+            for row in cursor.fetchall():
+                vardiya_plan[row[0]] = {'kod': row[1], 'ad': row[2]}
+                vardiya_sayilari[row[1]] = vardiya_sayilari.get(row[1], 0) + 1
+
             conn.close()
-            
-            # Personelleri pozisyonlara göre grupla (sadece içeridekiler)
+
+            # Personelleri pozisyonlara göre grupla
             poz_map = {}
-            counts = {'toplam': 0, 'iceride': 0, 'gelmedi': 0, 'izinli': 0}
+            gelmedi_list = []
+            counts = {'toplam': 0, 'iceride': 0, 'gelmedi': 0, 'izinli': 0, 'planlanan': len(vardiya_plan), 'plan_gelmedi': 0}
 
             for emp in employees:
                 emp_id = emp[0]
                 pozisyon = emp[4] or 'Tanımsız'
-                gunluk_durum = emp[5] or 0
-                son_giris = emp[6]
 
-                # Durum belirleme
+                hareket = hareketler.get(emp_id)
+
+                # Durum belirleme - turnike tabanlı
                 if emp_id in izinli_ids:
                     status = 'LEAVE'
                     status_text = 'İzinli'
                     counts['izinli'] += 1
-                elif gunluk_durum == 1:
+                elif hareket and hareket['son_tip'] == 'GIRIS':
                     status = 'IN'
                     status_text = 'İçeride'
                     counts['iceride'] += 1
@@ -314,14 +340,23 @@ class IKPdksPage(BasePage):
 
                 counts['toplam'] += 1
 
+                # Planlanan ama gelmeyen
+                if emp_id in vardiya_plan and status == 'OUT':
+                    counts['plan_gelmedi'] += 1
+                    gelmedi_list.append({
+                        'name': f"{emp[2]} {emp[3]}",
+                        'pozisyon': pozisyon,
+                        'vardiya': vardiya_plan[emp_id]['kod']
+                    })
+
                 # Sadece içeride olanları kartlarda göster
                 if status != 'IN':
                     continue
 
                 # Son hareket zamanı
                 time_str = '--:--'
-                if son_giris:
-                    time_str = son_giris.strftime('%H:%M')
+                if hareket and hareket['son_hareket']:
+                    time_str = hareket['son_hareket'].strftime('%H:%M')
 
                 person_data = {
                     'id': emp_id,
@@ -336,10 +371,14 @@ class IKPdksPage(BasePage):
                 poz_map[pozisyon].append(person_data)
 
             # Kartları güncelle
-            self.kart_toplam.findChild(QLabel, "value").setText(str(counts['toplam']))
+            self.kart_toplam.findChild(QLabel, "value").setText(str(counts['planlanan']))
             self.kart_iceride.findChild(QLabel, "value").setText(str(counts['iceride']))
-            self.kart_gelmedi.findChild(QLabel, "value").setText(str(counts['gelmedi']))
+            self.kart_gelmedi.findChild(QLabel, "value").setText(str(counts['plan_gelmedi']))
             self.kart_izinli.findChild(QLabel, "value").setText(str(counts['izinli']))
+
+            # Vardiya özeti
+            vardiya_text = " | ".join([f"{k}:{v}" for k, v in sorted(vardiya_sayilari.items())])
+            self.kart_vardiya.findChild(QLabel, "value").setText(vardiya_text or "-")
 
             # İçeriği temizle ve yeniden oluştur
             while self.content_layout.count():
@@ -396,6 +435,59 @@ class IKPdksPage(BasePage):
                     grid.addWidget(chip, i // COLS, i % COLS)
 
                 self.content_layout.addWidget(grid_widget)
+
+            # Gelmeyenler bölümü
+            if gelmedi_list:
+                gelmedi_frame = QFrame()
+                gelmedi_frame.setStyleSheet(f"""
+                    QFrame {{
+                        background: {self.theme.get('bg_card')};
+                        border: 1px solid {self.theme.get('danger', '#ef4444')};
+                        border-left: 4px solid {self.theme.get('danger', '#ef4444')};
+                        border-radius: 6px;
+                    }}
+                """)
+                gelmedi_header = QHBoxLayout()
+                gelmedi_header.setContentsMargins(12, 8, 12, 8)
+
+                gelmedi_title = QLabel("GELMEYENLER (Vardiya Planında Olup Giriş Yapmayan)")
+                gelmedi_title.setStyleSheet(f"color: {self.theme.get('danger', '#ef4444')}; font-weight: bold; font-size: 13px;")
+                gelmedi_header.addWidget(gelmedi_title)
+                gelmedi_header.addStretch()
+
+                gelmedi_badge = QLabel(str(len(gelmedi_list)))
+                gelmedi_badge.setStyleSheet(f"""
+                    background: {self.theme.get('danger', '#ef4444')};
+                    color: white;
+                    padding: 2px 10px;
+                    border-radius: 10px;
+                    font-size: 11px;
+                    font-weight: bold;
+                """)
+                gelmedi_header.addWidget(gelmedi_badge)
+
+                gelmedi_layout = QVBoxLayout(gelmedi_frame)
+                gelmedi_layout.setContentsMargins(0, 0, 0, 8)
+                gelmedi_layout.setSpacing(4)
+                gelmedi_layout.addLayout(gelmedi_header)
+
+                # Gelmeyenleri vardiyaya göre grupla
+                gelmedi_by_vardiya = {}
+                for g in gelmedi_list:
+                    v = g['vardiya']
+                    if v not in gelmedi_by_vardiya:
+                        gelmedi_by_vardiya[v] = []
+                    gelmedi_by_vardiya[v].append(g)
+
+                for v_kod in sorted(gelmedi_by_vardiya.keys()):
+                    kisiler = gelmedi_by_vardiya[v_kod]
+                    isimler = ", ".join([k['name'] for k in kisiler])
+                    row_label = QLabel(f"  {v_kod} ({len(kisiler)}): {isimler}")
+                    row_label.setWordWrap(True)
+                    row_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px; padding: 2px 12px;")
+                    gelmedi_layout.addWidget(row_label)
+
+                self.content_layout.addWidget(gelmedi_frame)
 
             self.content_layout.addStretch()
             

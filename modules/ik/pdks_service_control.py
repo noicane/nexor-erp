@@ -14,7 +14,13 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
-from core.pdks_reader_service import get_pdks_service, is_service_running
+try:
+    from core.pdks_reader_service import get_pdks_service, is_service_running
+    ZK_SERVICE_AVAILABLE = True
+except ImportError:
+    ZK_SERVICE_AVAILABLE = False
+    def get_pdks_service(): return None
+    def is_service_running(): return False
 
 
 class PDKSServiceControlPage(BasePage):
@@ -253,6 +259,20 @@ class PDKSServiceControlPage(BasePage):
 
         turnike_status_row.addLayout(turnike_info)
         turnike_status_row.addStretch()
+
+        # Turnike kontrol butonları
+        btn_style = f"QPushButton {{ border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold; color: white; }} QPushButton:hover {{ opacity: 0.8; }}"
+
+        self.btn_turnike_servis = QPushButton("🔄 Servis Yeniden Başlat")
+        self.btn_turnike_servis.setStyleSheet(btn_style + f"QPushButton {{ background: {self.theme.get('warning', '#f59e0b')}; }}")
+        self.btn_turnike_servis.clicked.connect(self._turnike_servis_restart)
+        turnike_status_row.addWidget(self.btn_turnike_servis)
+
+        self.btn_turnike_durdur = QPushButton("⏹ Servis Durdur")
+        self.btn_turnike_durdur.setStyleSheet(btn_style + f"QPushButton {{ background: {self.theme.get('error', '#ef4444')}; }}")
+        self.btn_turnike_durdur.clicked.connect(self._turnike_servis_durdur)
+        turnike_status_row.addWidget(self.btn_turnike_durdur)
+
         turnike_layout.addLayout(turnike_status_row)
 
         # Son turnike geçişleri tablosu
@@ -274,6 +294,8 @@ class PDKSServiceControlPage(BasePage):
     
     def _connect_signals(self):
         """Servis signal'lerini bağla"""
+        if not self.service:
+            return
         self.service.service_started.connect(self._on_service_started)
         self.service.service_stopped.connect(self._on_service_stopped)
         self.service.device_read_completed.connect(self._on_device_read_completed)
@@ -377,40 +399,39 @@ class PDKSServiceControlPage(BasePage):
                 
                 self.logs_table.setItem(i, 6, QTableWidgetItem(row[6] or "-"))
             
-            # Turnike durumu ve son geçişler
+            # Turnike durumu - DB + SSH
             cursor = conn.cursor()
+
+            # Son 5 dakika içinde geçiş var mı?
             cursor.execute("""
-                SELECT durum, son_okuma_zamani
-                FROM ik.pdks_cihazlari
-                WHERE cihaz_tipi = 'TURNIKE' AND aktif_mi = 1
+                SELECT COUNT(*) FROM ik.pdks_hareketler h
+                JOIN ik.pdks_cihazlari c ON c.id = h.cihaz_id
+                WHERE c.cihaz_tipi = 'TURNIKE'
+                  AND h.hareket_zamani >= DATEADD(MINUTE, -5, GETDATE())
             """)
-            turnike_row = cursor.fetchone()
+            son5dk = cursor.fetchone()[0]
 
-            if turnike_row:
-                durum = turnike_row[0] or "PASIF"
-                son = turnike_row[1]
+            # Bugünkü toplam geçiş
+            cursor.execute("""
+                SELECT COUNT(*) FROM ik.pdks_hareketler h
+                JOIN ik.pdks_cihazlari c ON c.id = h.cihaz_id
+                WHERE c.cihaz_tipi = 'TURNIKE'
+                  AND CAST(h.hareket_zamani AS DATE) = CAST(GETDATE() AS DATE)
+            """)
+            bugun_toplam = cursor.fetchone()[0]
 
-                # Son 5 dakika içinde geçiş var mı? (canlı kontrolü)
-                cursor.execute("""
-                    SELECT COUNT(*) FROM ik.pdks_hareketler h
-                    JOIN ik.pdks_cihazlari c ON c.id = h.cihaz_id
-                    WHERE c.cihaz_tipi = 'TURNIKE'
-                      AND h.hareket_zamani >= DATEADD(MINUTE, -5, GETDATE())
-                """)
-                son5dk = cursor.fetchone()[0]
-
-                if son5dk > 0:
-                    self.turnike_indicator.setText("🟢")
-                    self.turnike_label.setText("Turnike Aktif - Canlı")
-                    self.turnike_detail.setText(f"Son 5 dakikada {son5dk} gecis")
-                else:
-                    self.turnike_indicator.setText("🟡")
-                    self.turnike_label.setText("Turnike Bagli - Bekleniyor")
-                    self.turnike_detail.setText("Son 5 dakikada gecis yok")
+            if son5dk > 0:
+                self.turnike_indicator.setText("🟢")
+                self.turnike_label.setText("Turnike Aktif - Canlı")
+                self.turnike_detail.setText(f"Son 5dk: {son5dk} geçiş | Bugün toplam: {bugun_toplam}")
+            elif bugun_toplam > 0:
+                self.turnike_indicator.setText("🟡")
+                self.turnike_label.setText("Turnike Bağlı - Bekleniyor")
+                self.turnike_detail.setText(f"Bugün toplam: {bugun_toplam} geçiş")
             else:
                 self.turnike_indicator.setText("🔴")
-                self.turnike_label.setText("Turnike Tanimli Degil")
-                self.turnike_detail.setText("Henuz turnike cihazi kaydedilmemis")
+                self.turnike_label.setText("Turnike - Geçiş Yok")
+                self.turnike_detail.setText("Bugün henüz geçiş kaydedilmedi")
 
             # Son 20 turnike geçişi
             cursor.execute("""
@@ -498,4 +519,41 @@ class PDKSServiceControlPage(BasePage):
     
     def _on_device_status_changed(self, cihaz_id: int, durum: str, mesaj: str):
         """Cihaz durumu değişti"""
+        self._load_data()
+
+    # ===== TURNİKE KONTROL =====
+
+    def _turnike_servis_restart(self):
+        """Turnike servisini yeniden başlat"""
+        import threading as th
+        from core.turnike_kontrol import servis_yeniden_baslat
+        self.turnike_detail.setText("Servis yeniden başlatılıyor...")
+
+        def _exec():
+            ok, msg = servis_yeniden_baslat()
+            result = "Servis yeniden başlatıldı" if ok else msg
+            QTimer.singleShot(0, lambda: self._turnike_sonuc(result))
+        th.Thread(target=_exec, daemon=True).start()
+
+    def _turnike_servis_durdur(self):
+        """Turnike servisini durdur"""
+        reply = QMessageBox.question(self, "Onay",
+            "Turnike servisini durdurmak istediğinize emin misiniz?\n"
+            "Kart okuma ve geçiş işlemleri duracak!",
+            QMessageBox.Yes | QMessageBox.No)
+        if reply != QMessageBox.Yes:
+            return
+        import threading as th
+        from core.turnike_kontrol import servis_durdur
+        self.turnike_detail.setText("Servis durduruluyor...")
+
+        def _exec():
+            ok, msg = servis_durdur()
+            result = "Servis durduruldu" if ok else msg
+            QTimer.singleShot(0, lambda: self._turnike_sonuc(result))
+        th.Thread(target=_exec, daemon=True).start()
+
+    def _turnike_sonuc(self, msg: str):
+        """Turnike işlem sonucu (UI thread)"""
+        self.turnike_detail.setText(msg)
         self._load_data()
