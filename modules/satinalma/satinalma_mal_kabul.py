@@ -494,36 +494,38 @@ class MalKabulDialog(QDialog):
             if mevcut == 0:
                 cursor.execute("""
                     SELECT ss.urun_id, ss.urun_adi, ss.siparis_miktar, ss.birim,
-                           ISNULL(ss.teslim_edilen_miktar, 0) as teslim_edilen,
-                           ss.siparis_miktar - ISNULL(ss.teslim_edilen_miktar, 0) as kalan
+                           ISNULL(ss.teslim_miktar, 0) as teslim_edilen,
+                           ss.siparis_miktar - ISNULL(ss.teslim_miktar, 0) as kalan,
+                           ss.urun_kodu
                     FROM satinalma.siparis_satirlari ss
-                    WHERE ss.siparis_id = ? AND ss.siparis_miktar > ISNULL(ss.teslim_edilen_miktar, 0)
+                    WHERE ss.siparis_id = ? AND ss.siparis_miktar > ISNULL(ss.teslim_miktar, 0)
                     ORDER BY ss.satir_no
                 """, (siparis_id,))
                 satirlar = cursor.fetchall()
 
                 if satirlar:
-                    bilgi = "\n".join([f"  {r[1]}: {r[5]:,.0f} {r[3]} (kalan)" for r in satirlar])
-                    reply = QMessageBox.question(
-                        self, "Siparis Satirlari",
-                        f"Sipariste {len(satirlar)} acik kalem var:\n\n{bilgi}\n\n"
-                        f"Bu kalemleri mal kabul satirlarina aktarayim mi?",
-                        QMessageBox.Yes | QMessageBox.No
+                    # Otomatik aktar
+                    for satir in satirlar:
+                        row_count = self.table_satirlar.rowCount()
+                        self.table_satirlar.setRowCount(row_count + 1)
+                        self.table_satirlar.setItem(row_count, 0, QTableWidgetItem(""))
+                        urun_text = satir[1] or ""
+                        if satir[6]:  # urun_kodu varsa basina ekle
+                            urun_text = f"{satir[6]} - {urun_text}"
+                        self.table_satirlar.setItem(row_count, 1, QTableWidgetItem(urun_text))
+                        self.table_satirlar.setItem(row_count, 2, QTableWidgetItem(f"{float(satir[5]):,.0f}"))
+                        self.table_satirlar.setItem(row_count, 3, QTableWidgetItem(satir[3] or "ADET"))
+                        self.table_satirlar.setItem(row_count, 4, QTableWidgetItem(""))  # lot_no
+                        self.table_satirlar.setItem(row_count, 5, QTableWidgetItem(""))  # parti_no
+                        self.table_satirlar.setItem(row_count, 6, QTableWidgetItem(""))  # SKT
+                        self.table_satirlar.setItem(row_count, 7, QTableWidgetItem("Hayir"))  # sertifika
+                        self.table_satirlar.setItem(row_count, 8, QTableWidgetItem("BEKLIYOR"))  # kalite
+                        self.table_satirlar.setRowHeight(row_count, 36)
+
+                    QMessageBox.information(
+                        self, "Siparis Aktarimi",
+                        f"{len(satirlar)} kalem siparisindan otomatik aktarildi."
                     )
-                    if reply == QMessageBox.Yes:
-                        for satir in satirlar:
-                            row_count = self.table_satirlar.rowCount()
-                            self.table_satirlar.setRowCount(row_count + 1)
-                            self.table_satirlar.setItem(row_count, 0, QTableWidgetItem(""))
-                            self.table_satirlar.setItem(row_count, 1, QTableWidgetItem(satir[1] or ""))
-                            self.table_satirlar.setItem(row_count, 2, QTableWidgetItem(f"{satir[5]:,.0f}"))
-                            self.table_satirlar.setItem(row_count, 3, QTableWidgetItem(satir[3] or "ADET"))
-                            self.table_satirlar.setItem(row_count, 4, QTableWidgetItem(""))
-                            self.table_satirlar.setItem(row_count, 5, QTableWidgetItem(""))
-                            self.table_satirlar.setItem(row_count, 6, QTableWidgetItem(""))
-                            self.table_satirlar.setItem(row_count, 7, QTableWidgetItem("Hayir"))
-                            self.table_satirlar.setItem(row_count, 8, QTableWidgetItem("BEKLIYOR"))
-                            self.table_satirlar.setRowHeight(row_count, 36)
 
             conn.close()
         except Exception as e:

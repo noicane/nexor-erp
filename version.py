@@ -7,14 +7,14 @@ Manuel değişiklik yapmayın!
 """
 
 # Versiyon bilgileri (Semantic Versioning)
-VERSION = "3.1.13"
+VERSION = "3.1.17"
 VERSION_MAJOR = 3
 VERSION_MINOR = 1
-VERSION_PATCH = 13
+VERSION_PATCH = 17
 
 # Build bilgileri
-BUILD_DATE = "2026-04-07"
-BUILD_NUMBER = 58
+BUILD_DATE = "2026-04-09"
+BUILD_NUMBER = 62
 
 # Güncelleme sunucusu
 from config import NAS_PATHS as _NAS_PATHS

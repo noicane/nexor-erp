@@ -1455,12 +1455,16 @@ class SatinalmaTaleplerPage(BasePage):
             siparis_no = f"SIP-{datetime.now().strftime('%Y%m%d')}-{sira:04d}"
 
             # Siparis olustur - tedarikci_id ile
+            notlar_text = talep[2] or f"Talep #{talep_id}"
+            if len(str(notlar_text)) > 500:
+                notlar_text = str(notlar_text)[:500]
+            print(f"[SIPARIS DEBUG] no={siparis_no} ted={tedarikci_id} termin={talep[1]} notlar_len={len(str(notlar_text))}")
             cursor.execute("""
                 INSERT INTO satinalma.siparisler
                     (siparis_no, tarih, tedarikci_id, istenen_teslim_tarihi, notlar, durum)
                 OUTPUT INSERTED.id
                 VALUES (?, GETDATE(), ?, ?, ?, 'TASLAK')
-            """, (siparis_no, tedarikci_id, talep[1], talep[2] or f"Talep #{talep_id} den olusturuldu"))
+            """, (siparis_no, tedarikci_id, talep[1], notlar_text))
             siparis_id = int(cursor.fetchone()[0])
 
             # Talep satirlarini siparis satirlarina aktar
@@ -1479,14 +1483,19 @@ class SatinalmaTaleplerPage(BasePage):
                 kdv_orani = 20.0
                 kdv_tutari = tutar * kdv_orani / 100
                 toplam = tutar + kdv_tutari
+                urun_adi = str(s[2] or '')[:200]
+                birim = str(s[4] or 'ADET')[:20]
+                aciklama = str(s[7] or '')[:500] if s[7] else None
+
+                print(f"[SATIR DEBUG] urun_adi({len(urun_adi)})={urun_adi[:30]} birim({len(birim)})={birim} aciklama={len(str(aciklama)) if aciklama else 0}")
 
                 cursor.execute("""
                     INSERT INTO satinalma.siparis_satirlari
                         (siparis_id, satir_no, urun_id, urun_adi, siparis_miktar,
                          birim, birim_fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (siparis_id, s[0], s[1], s[2], miktar,
-                      s[4], fiyat, tutar, kdv_orani, kdv_tutari, toplam, s[7]))
+                """, (siparis_id, s[0], s[1], urun_adi, miktar,
+                      birim, fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama))
 
             # Siparis toplamlarini guncelle
             cursor.execute("""
@@ -1498,11 +1507,12 @@ class SatinalmaTaleplerPage(BasePage):
             """, (siparis_id, siparis_id, siparis_id, siparis_id))
 
             # Talep satirlarini siparis ile iliskilendir
+            print(f"[UPDATE DEBUG] siparis_id={siparis_id} type={type(siparis_id)} talep_id={talep_id} type={type(talep_id)}")
             cursor.execute("""
                 UPDATE satinalma.talep_satirlari
-                SET siparis_id = ?, siparis_durumu = 'SIPARISE_DONUSTURULDU'
+                SET siparis_id = ?, siparis_durumu = ?
                 WHERE talep_id = ?
-            """, (siparis_id, talep_id))
+            """, (int(siparis_id), 'SIPARIS_DONUSTU', int(talep_id)))
 
             conn.commit()
             LogManager.log_insert('satinalma', 'satinalma.siparisler', siparis_id,
@@ -1516,6 +1526,8 @@ class SatinalmaTaleplerPage(BasePage):
             self._load_data()
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             QMessageBox.critical(self, "Hata", f"Siparis olusturma hatasi: {e}")
 
     def _reddet(self):
