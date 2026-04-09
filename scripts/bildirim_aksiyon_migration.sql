@@ -414,6 +414,15 @@ BEGIN
 END
 GO
 
+-- Lab Analiz Hatali bildirim tanimi
+IF NOT EXISTS (SELECT 1 FROM sistem.bildirim_tanimlari WHERE kod = 'LAB_ANALIZ_HATALI')
+BEGIN
+    INSERT INTO sistem.bildirim_tanimlari (kod, baslik, aciklama, modul, onem_derecesi, bildirim_tipi, aktif_mi, olusturma_tarihi, sablon_mesaj, otomatik_mi, tetikleyici_olay, sayfa_yonlendirme)
+    VALUES ('LAB_ANALIZ_HATALI', 'Lab Analiz Limit Disi', 'Banyo analiz sonucu limit disinda', 'LAB', 'YUKSEK', 'UYARI', 1, GETDATE(), '{banyo_adi} banyo analiz sonucu {durum}. {detay}', 1, 'LAB_ANALIZ_HATALI', 'lab_analiz');
+    PRINT '  [+] LAB_ANALIZ_HATALI bildirim tanimi eklendi';
+END
+GO
+
 
 -- ============================================================================
 -- 9. Geciken aksiyonlari kontrol eden stored procedure

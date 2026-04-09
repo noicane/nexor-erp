@@ -188,7 +188,7 @@ MENU_STRUCTURE = [
         {"id": "sistem_veritabani", "label": "Veritabanı Bağlantıları"},
         {"id": "bildirim_sistemi", "label": "Bildirimler"},
         {"id": "bildirim_tercihleri", "label": "Bildirim Tercihleri"},
-        {"id": "sistem_whatsapp", "label": "WhatsApp Bildirimleri"},
+        {"id": "sistem_whatsapp", "label": "Bildirim Kanal Ayarlari"},
         {"id": "sistem_kullanici", "label": "Kullanıcılar"},
         {"id": "sistem_rol", "label": "Roller"},
         {"id": "sistem_yetki", "label": "İzinler"},

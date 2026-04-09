@@ -945,11 +945,31 @@ class AnalizDialog(QDialog):
                     conn.commit()
                     print(f"Lab event kaydedildi: BANYO-{banyo_id} -> {durum}")
 
-                    # WHATSAPP BILDIRIMI GONDER
+                    # NEXOR BILDIRIM SISTEMI (WhatsApp + Email otomatik)
                     try:
-                        gonder_lab_whatsapp_bildirimi(banyo_id, durum, params)
-                    except Exception as wp_err:
-                        print(f"WhatsApp gonderim hatasi: {wp_err}")
+                        from core.bildirim_tetikleyici import BildirimTetikleyici
+                        # Banyo adını al
+                        cursor.execute("SELECT kod + ' - ' + ad FROM uretim.banyo_tanimlari WHERE id = ?", (banyo_id,))
+                        b_row = cursor.fetchone()
+                        b_adi = b_row[0] if b_row else f"Banyo-{banyo_id}"
+
+                        # Detay bilgisi oluştur
+                        detay_parts = []
+                        if params[3]:
+                            detay_parts.append(f"Sicaklik: {params[3]:.1f}°C")
+                        if params[4]:
+                            detay_parts.append(f"pH: {params[4]:.2f}")
+                        if params[5]:
+                            detay_parts.append(f"Iletkenlik: {params[5]:.0f}")
+
+                        BildirimTetikleyici.lab_analiz_hatali(
+                            analiz_id=analiz_id if not self.analiz_id else self.analiz_id,
+                            banyo_adi=b_adi,
+                            durum=durum,
+                            detay=', '.join(detay_parts),
+                        )
+                    except Exception as bt_err:
+                        print(f"Bildirim tetikleyici hatasi: {bt_err}")
 
             except Exception as e:
                 print(f"Lab event hatasi (onemsiz): {e}")
@@ -1130,7 +1150,7 @@ class LabAnalizPage(BasePage):
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            sql = """SELECT a.id, b.kod, a.tarih, a.sicaklik, a.ph, a.iletkenlik,
+            sql = """SELECT a.id, b.kod + ' - ' + b.ad, a.tarih, a.sicaklik, a.ph, a.iletkenlik,
                      a.kati_madde_yuzde, a.pb_orani, a.solvent_yuzde, a.meq_degeri,
                      a.demir_ppm, a.cinko_ppm,
                      b.sicaklik_min, b.sicaklik_max, b.ph_min, b.ph_max,

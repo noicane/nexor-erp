@@ -967,7 +967,18 @@ class IsEmriYeniPage(QDialog):
                 conn.commit()
                 LogManager.log_insert('uretim', 'siparis.is_emirleri', None, 'Siparis kaydi olustu')
                 conn.close()
-                
+
+                # Bildirim: Yeni iş emri oluşturuldu
+                try:
+                    from core.bildirim_tetikleyici import BildirimTetikleyici
+                    BildirimTetikleyici.is_emri_olusturuldu(
+                        ie_id=self.is_emri_id,
+                        ie_no=is_emri_no,
+                        musteri_adi=cari,
+                    )
+                except Exception as bt_err:
+                    print(f"Bildirim hatasi: {bt_err}")
+
                 QMessageBox.information(self, "Başarılı", f"İş emri: {is_emri_no}")
                 self.accept()
             else:

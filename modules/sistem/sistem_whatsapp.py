@@ -65,7 +65,7 @@ class SistemWhatsappPage(BasePage):
         header_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 16px;")
         header_layout = QHBoxLayout(header_frame)
         
-        title = QLabel("📱 WhatsApp Bildirim Yönetimi")
+        title = QLabel("Bildirim Kanal Yonetimi")
         title.setStyleSheet(f"color: {s['text']}; font-size: 20px; font-weight: 600;")
         header_layout.addWidget(title)
         
@@ -119,7 +119,7 @@ class SistemWhatsappPage(BasePage):
         # Tab 4: Servis Ayarları (YENİ)
         self.tab_ayarlar = QWidget()
         self._setup_ayarlar_tab()
-        self.tabs.addTab(self.tab_ayarlar, "⚙️ Servis Ayarları")
+        self.tabs.addTab(self.tab_ayarlar, "WhatsApp + SMTP Ayarlari")
         
         # Tab 5: Gönderim Geçmişi
         self.tab_gecmis = QWidget()
@@ -248,379 +248,386 @@ class SistemWhatsappPage(BasePage):
         filter_layout.addWidget(self.modul_filter)
         
         filter_layout.addStretch()
+
+        btn_kaydet_tanim = QPushButton("Kaydet")
+        btn_kaydet_tanim.setStyleSheet(f"background: {s['primary']}; color: white; border: none; border-radius: 6px; padding: 8px 18px; font-weight: bold;")
+        btn_kaydet_tanim.clicked.connect(self._save_tanimlar)
+        filter_layout.addWidget(btn_kaydet_tanim)
+
         layout.addLayout(filter_layout)
-        
+
         # Tablo
         self.table_tanim = QTableWidget()
-        self.table_tanim.setColumnCount(6)
+        self.table_tanim.setColumnCount(9)
         self.table_tanim.setHorizontalHeaderLabels([
-            "Kod", "Başlık", "Modül", "Önem", "Tip", "Aktif"
+            "Kod", "Baslik", "Modul", "Onem", "Tip", "Uygulama", "E-Posta", "WhatsApp", "Aktif"
         ])
-        
+
         self.table_tanim.setStyleSheet(f"""
-            QTableWidget {{ 
-                background: {s['input_bg']}; 
-                color: {s['text']}; 
-                border: 1px solid {s['border']}; 
+            QTableWidget {{
+                background: {s['input_bg']};
+                color: {s['text']};
+                border: 1px solid {s['border']};
                 border-radius: 8px;
             }}
-            QHeaderView::section {{ 
-                background: rgba(0,0,0,0.3); 
-                color: {s['text_secondary']}; 
-                padding: 10px; 
+            QHeaderView::section {{
+                background: rgba(0,0,0,0.3);
+                color: {s['text_secondary']};
+                padding: 10px;
                 border: none;
             }}
         """)
-        
+
         self.table_tanim.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table_tanim.setColumnWidth(0, 200)
+        self.table_tanim.setColumnWidth(0, 180)
         self.table_tanim.setColumnWidth(2, 100)
-        self.table_tanim.setColumnWidth(3, 120)
-        self.table_tanim.setColumnWidth(4, 80)
-        self.table_tanim.setColumnWidth(5, 60)
+        self.table_tanim.setColumnWidth(3, 80)
+        self.table_tanim.setColumnWidth(4, 70)
+        self.table_tanim.setColumnWidth(5, 70)
+        self.table_tanim.setColumnWidth(6, 70)
+        self.table_tanim.setColumnWidth(7, 70)
+        self.table_tanim.setColumnWidth(8, 50)
         self.table_tanim.verticalHeader().setVisible(False)
-        
+
         layout.addWidget(self.table_tanim)
     
     def _setup_ayarlar_tab(self):
-        """Servis ayarları tab'ı"""
+        """Servis ayarlari tab'i - WhatsApp + SMTP"""
         s = self.s
         layout = QVBoxLayout(self.tab_ayarlar)
         layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
-        
-        # Açıklama
-        info_label = QLabel("WhatsApp gönderim servisi seçin ve yapılandırın")
-        info_label.setStyleSheet(f"color: {s['text_secondary']}; font-size: 13px; padding: 8px;")
-        layout.addWidget(info_label)
-        
-        # Servis Seçimi
-        servis_frame = QFrame()
-        servis_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 20px;")
-        servis_layout = QVBoxLayout(servis_frame)
-        
-        servis_title = QLabel("📱 WhatsApp Servisi Seçimi")
-        servis_title.setStyleSheet(f"color: {s['text']}; font-size: 16px; font-weight: 600; margin-bottom: 12px;")
-        servis_layout.addWidget(servis_title)
-        
-        # Radio buttons için grup
-        from PySide6.QtWidgets import QRadioButton, QButtonGroup
-        
-        self.servis_group = QButtonGroup()
-        
-        # Twilio Radio
-        self.radio_twilio = QRadioButton("Twilio WhatsApp API (Önerilen - Profesyonel)")
-        self.radio_twilio.setStyleSheet(f"color: {s['text']}; font-size: 13px; padding: 8px;")
-        self.servis_group.addButton(self.radio_twilio, 1)
-        servis_layout.addWidget(self.radio_twilio)
-        
-        twilio_info = QLabel("   ✅ Güvenilir, toplu gönderim\n   ✅ API bazlı, otomasyon friendly\n   ⚠️ Ücretli (~$0.005/mesaj)")
-        twilio_info.setStyleSheet(f"color: {s['text_muted']}; font-size: 11px; margin-left: 20px;")
-        servis_layout.addWidget(twilio_info)
-        
-        # pywhatkit Radio
-        self.radio_pywhatkit = QRadioButton("pywhatkit (Test için - Ücretsiz)")
-        self.radio_pywhatkit.setStyleSheet(f"color: {s['text']}; font-size: 13px; padding: 8px; margin-top: 12px;")
-        self.servis_group.addButton(self.radio_pywhatkit, 2)
-        servis_layout.addWidget(self.radio_pywhatkit)
-        
-        pywhatkit_info = QLabel("   ✅ Ücretsiz\n   ⚠️ WhatsApp Web açık olmalı\n   ⚠️ Manuel QR kod girişi gerekir")
-        pywhatkit_info.setStyleSheet(f"color: {s['text_muted']}; font-size: 11px; margin-left: 20px;")
-        servis_layout.addWidget(pywhatkit_info)
-        
-        layout.addWidget(servis_frame)
-        
-        # Twilio Ayarları
-        self.twilio_frame = QFrame()
-        self.twilio_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 20px;")
-        twilio_layout = QVBoxLayout(self.twilio_frame)
-        
-        twilio_title = QLabel("🔑 Twilio API Ayarları")
-        twilio_title.setStyleSheet(f"color: {s['text']}; font-size: 16px; font-weight: 600; margin-bottom: 12px;")
-        twilio_layout.addWidget(twilio_title)
-        
-        from PySide6.QtWidgets import QGridLayout
-        grid = QGridLayout()
-        grid.setSpacing(12)
-        
+        layout.setSpacing(14)
+
         input_style = f"background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 6px; padding: 10px; font-size: 13px;"
-        
-        # Account SID
-        grid.addWidget(QLabel("Account SID:", styleSheet=f"color: {s['text']}; font-size: 13px;"), 0, 0)
+        card_style = f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 20px;"
+        title_style = f"color: {s['text']}; font-size: 15px; font-weight: 600; margin-bottom: 8px;"
+        label_style = f"color: {s['text']}; font-size: 13px;"
+
+        # ========== WHATSAPP AYARLARI ==========
+        wa_frame = QFrame()
+        wa_frame.setStyleSheet(card_style)
+        wa_layout = QVBoxLayout(wa_frame)
+
+        wa_title = QLabel("WhatsApp Ayarlari")
+        wa_title.setStyleSheet(title_style)
+        wa_layout.addWidget(wa_title)
+
+        self.servis_group = QButtonGroup()
+
+        self.radio_whapi = QRadioButton("WHAPI Cloud (Onerilen)")
+        self.radio_whapi.setStyleSheet(f"color: {s['text']}; font-size: 13px; padding: 4px;")
+        self.servis_group.addButton(self.radio_whapi, 0)
+        wa_layout.addWidget(self.radio_whapi)
+
+        self.radio_twilio = QRadioButton("Twilio WhatsApp API")
+        self.radio_twilio.setStyleSheet(f"color: {s['text']}; font-size: 13px; padding: 4px;")
+        self.servis_group.addButton(self.radio_twilio, 1)
+        wa_layout.addWidget(self.radio_twilio)
+
+        self.radio_pywhatkit = QRadioButton("pywhatkit (Tarayici bazli)")
+        self.radio_pywhatkit.setStyleSheet(f"color: {s['text']}; font-size: 13px; padding: 4px;")
+        self.servis_group.addButton(self.radio_pywhatkit, 2)
+        wa_layout.addWidget(self.radio_pywhatkit)
+
+        # WHAPI Token
+        wa_grid = QGridLayout()
+        wa_grid.setSpacing(10)
+
+        wa_grid.addWidget(QLabel("WHAPI Token:", styleSheet=label_style), 0, 0)
+        self.txt_whapi_token = QLineEdit()
+        self.txt_whapi_token.setPlaceholderText("whapi.cloud API token")
+        self.txt_whapi_token.setStyleSheet(input_style)
+        wa_grid.addWidget(self.txt_whapi_token, 0, 1)
+
+        # Twilio alanlar
+        wa_grid.addWidget(QLabel("Twilio SID:", styleSheet=label_style), 1, 0)
         self.txt_twilio_sid = QLineEdit()
-        self.txt_twilio_sid.setPlaceholderText("ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        self.txt_twilio_sid.setPlaceholderText("ACxxxxxxxx")
         self.txt_twilio_sid.setStyleSheet(input_style)
-        grid.addWidget(self.txt_twilio_sid, 0, 1)
-        
-        # Auth Token
-        grid.addWidget(QLabel("Auth Token:", styleSheet=f"color: {s['text']}; font-size: 13px;"), 1, 0)
+        wa_grid.addWidget(self.txt_twilio_sid, 1, 1)
+
+        wa_grid.addWidget(QLabel("Twilio Token:", styleSheet=label_style), 2, 0)
         self.txt_twilio_token = QLineEdit()
-        self.txt_twilio_token.setPlaceholderText("********************************")
         self.txt_twilio_token.setEchoMode(QLineEdit.Password)
         self.txt_twilio_token.setStyleSheet(input_style)
-        grid.addWidget(self.txt_twilio_token, 1, 1)
-        
-        # WhatsApp Number
-        grid.addWidget(QLabel("Twilio WhatsApp No:", styleSheet=f"color: {s['text']}; font-size: 13px;"), 2, 0)
+        wa_grid.addWidget(self.txt_twilio_token, 2, 1)
+
+        wa_grid.addWidget(QLabel("Twilio WA No:", styleSheet=label_style), 3, 0)
         self.txt_twilio_number = QLineEdit()
         self.txt_twilio_number.setPlaceholderText("+14155238886")
         self.txt_twilio_number.setStyleSheet(input_style)
-        grid.addWidget(self.txt_twilio_number, 2, 1)
-        
-        twilio_layout.addLayout(grid)
-        
-        # Test butonu
-        test_twilio_btn = QPushButton("🧪 Bağlantıyı Test Et")
-        test_twilio_btn.setStyleSheet(f"QPushButton {{ background: {s['info']}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: 600; }} QPushButton:hover {{ background: #2563EB; }}")
-        test_twilio_btn.clicked.connect(self._test_twilio)
-        twilio_layout.addWidget(test_twilio_btn)
-        
-        layout.addWidget(self.twilio_frame)
-        
-        # pywhatkit Ayarları
-        self.pywhatkit_frame = QFrame()
-        self.pywhatkit_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 20px;")
-        pywhatkit_layout = QVBoxLayout(self.pywhatkit_frame)
-        
-        pywhatkit_title = QLabel("⚙️ pywhatkit Ayarları")
-        pywhatkit_title.setStyleSheet(f"color: {s['text']}; font-size: 16px; font-weight: 600; margin-bottom: 12px;")
-        pywhatkit_layout.addWidget(pywhatkit_title)
-        
-        grid2 = QGridLayout()
-        grid2.setSpacing(12)
-        
-        # Wait Time
-        grid2.addWidget(QLabel("Bekleme Süresi (sn):", styleSheet=f"color: {s['text']}; font-size: 13px;"), 0, 0)
-        from PySide6.QtWidgets import QSpinBox
-        self.spn_wait_time = QSpinBox()
-        self.spn_wait_time.setRange(5, 60)
-        self.spn_wait_time.setValue(10)
-        self.spn_wait_time.setStyleSheet(input_style)
-        grid2.addWidget(self.spn_wait_time, 0, 1)
-        
-        # Close Time
-        grid2.addWidget(QLabel("Kapanma Süresi (sn):", styleSheet=f"color: {s['text']}; font-size: 13px;"), 1, 0)
-        self.spn_close_time = QSpinBox()
-        self.spn_close_time.setRange(2, 30)
-        self.spn_close_time.setValue(5)
-        self.spn_close_time.setStyleSheet(input_style)
-        grid2.addWidget(self.spn_close_time, 1, 1)
-        
-        pywhatkit_layout.addLayout(grid2)
-        
-        info_pwk = QLabel("ℹ️ pywhatkit kullanmadan önce:\n1. WhatsApp Web'de oturum açın\n2. QR kod ile bağlantı kurun\n3. Tarayıcı açık kalmalı")
-        info_pwk.setStyleSheet(f"color: {s['warning']}; font-size: 12px; padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 6px; margin-top: 8px;")
-        pywhatkit_layout.addWidget(info_pwk)
-        
-        layout.addWidget(self.pywhatkit_frame)
-        
-        # Genel Ayarlar
-        genel_frame = QFrame()
-        genel_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 20px;")
-        genel_layout = QVBoxLayout(genel_frame)
-        
-        genel_title = QLabel("🔧 Genel Ayarlar")
-        genel_title.setStyleSheet(f"color: {s['text']}; font-size: 16px; font-weight: 600; margin-bottom: 12px;")
-        genel_layout.addWidget(genel_title)
-        
+        wa_grid.addWidget(self.txt_twilio_number, 3, 1)
+
+        wa_layout.addLayout(wa_grid)
+
         # Test modu
-        self.chk_test_modu = QCheckBox("Test Modu (Tüm mesajlar test numarasına gönderilir)")
-        self.chk_test_modu.setStyleSheet(f"color: {s['text']}; font-size: 13px; padding: 8px;")
-        self.chk_test_modu.setChecked(True)
-        genel_layout.addWidget(self.chk_test_modu)
-        
-        # Test telefon
-        test_layout = QHBoxLayout()
-        test_layout.addWidget(QLabel("Test Telefonu:", styleSheet=f"color: {s['text']}; font-size: 13px;"))
+        test_wa_layout = QHBoxLayout()
+        self.chk_test_modu = QCheckBox("Test Modu")
+        self.chk_test_modu.setStyleSheet(f"color: {s['text']}; font-size: 13px;")
+        test_wa_layout.addWidget(self.chk_test_modu)
         self.txt_test_telefon = QLineEdit()
-        self.txt_test_telefon.setPlaceholderText("+905321234567")
+        self.txt_test_telefon.setPlaceholderText("Test telefon: +905xxxxxxxxx")
         self.txt_test_telefon.setStyleSheet(input_style)
-        test_layout.addWidget(self.txt_test_telefon)
-        genel_layout.addLayout(test_layout)
-        
-        layout.addWidget(genel_frame)
-        
-        # Test Mesajı butonu
-        test_mesaj_btn = QPushButton("🧪 Test Mesajı Gönder")
-        test_mesaj_btn.setStyleSheet(f"QPushButton {{ background: {s['info']}; color: white; border: none; border-radius: 6px; padding: 12px 24px; font-size: 14px; font-weight: 600; }} QPushButton:hover {{ background: #2563EB; }}")
-        test_mesaj_btn.clicked.connect(self._test_mesaj_gonder)
-        layout.addWidget(test_mesaj_btn)
-        
-        # Kaydet butonu
-        kaydet_ayar_btn = QPushButton("💾 Ayarları Kaydet")
-        kaydet_ayar_btn.setStyleSheet(f"QPushButton {{ background: {s['success']}; color: white; border: none; border-radius: 6px; padding: 12px 24px; font-size: 14px; font-weight: 600; }} QPushButton:hover {{ background: #059669; }}")
-        kaydet_ayar_btn.clicked.connect(self._kaydet_ayarlar)
-        layout.addWidget(kaydet_ayar_btn)
-        
+        self.txt_test_telefon.setMaximumWidth(250)
+        test_wa_layout.addWidget(self.txt_test_telefon)
+        test_wa_layout.addStretch()
+        wa_layout.addLayout(test_wa_layout)
+
+        layout.addWidget(wa_frame)
+
+        # ========== SMTP / E-MAIL AYARLARI ==========
+        smtp_frame = QFrame()
+        smtp_frame.setStyleSheet(card_style)
+        smtp_layout = QVBoxLayout(smtp_frame)
+
+        smtp_title = QLabel("E-Posta (SMTP) Ayarlari")
+        smtp_title.setStyleSheet(title_style)
+        smtp_layout.addWidget(smtp_title)
+
+        smtp_grid = QGridLayout()
+        smtp_grid.setSpacing(10)
+
+        smtp_grid.addWidget(QLabel("SMTP Sunucu:", styleSheet=label_style), 0, 0)
+        self.txt_smtp_server = QLineEdit()
+        self.txt_smtp_server.setPlaceholderText("mail.domain.com")
+        self.txt_smtp_server.setStyleSheet(input_style)
+        smtp_grid.addWidget(self.txt_smtp_server, 0, 1)
+
+        smtp_grid.addWidget(QLabel("Port:", styleSheet=label_style), 0, 2)
+        self.spn_smtp_port = QSpinBox()
+        self.spn_smtp_port.setRange(25, 9999)
+        self.spn_smtp_port.setValue(465)
+        self.spn_smtp_port.setStyleSheet(input_style)
+        self.spn_smtp_port.setMaximumWidth(100)
+        smtp_grid.addWidget(self.spn_smtp_port, 0, 3)
+
+        smtp_grid.addWidget(QLabel("Gonderen E-Posta:", styleSheet=label_style), 1, 0)
+        self.txt_smtp_email = QLineEdit()
+        self.txt_smtp_email.setPlaceholderText("nexor@domain.com")
+        self.txt_smtp_email.setStyleSheet(input_style)
+        smtp_grid.addWidget(self.txt_smtp_email, 1, 1)
+
+        smtp_grid.addWidget(QLabel("SSL/TLS:", styleSheet=label_style), 1, 2)
+        self.chk_smtp_ssl = QCheckBox()
+        self.chk_smtp_ssl.setChecked(True)
+        smtp_grid.addWidget(self.chk_smtp_ssl, 1, 3)
+
+        smtp_grid.addWidget(QLabel("Sifre:", styleSheet=label_style), 2, 0)
+        self.txt_smtp_sifre = QLineEdit()
+        self.txt_smtp_sifre.setEchoMode(QLineEdit.Password)
+        self.txt_smtp_sifre.setStyleSheet(input_style)
+        smtp_grid.addWidget(self.txt_smtp_sifre, 2, 1)
+
+        smtp_grid.addWidget(QLabel("Gonderen Adi:", styleSheet=label_style), 2, 2)
+        self.txt_smtp_adi = QLineEdit()
+        self.txt_smtp_adi.setText("NEXOR ERP")
+        self.txt_smtp_adi.setStyleSheet(input_style)
+        smtp_grid.addWidget(self.txt_smtp_adi, 2, 3)
+
+        smtp_layout.addLayout(smtp_grid)
+        layout.addWidget(smtp_frame)
+
+        # ========== BUTONLAR ==========
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        btn_test = QPushButton("Test Mesaji Gonder")
+        btn_test.setStyleSheet(f"QPushButton {{ background: {s['info']}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: 600; }} QPushButton:hover {{ background: #2563EB; }}")
+        btn_test.clicked.connect(self._test_mesaj_gonder)
+        btn_layout.addWidget(btn_test)
+
+        btn_kaydet = QPushButton("Ayarlari Kaydet")
+        btn_kaydet.setStyleSheet(f"QPushButton {{ background: {s['success']}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: 600; }} QPushButton:hover {{ background: #059669; }}")
+        btn_kaydet.clicked.connect(self._kaydet_ayarlar)
+        btn_layout.addWidget(btn_kaydet)
+
+        layout.addLayout(btn_layout)
         layout.addStretch()
-        
-        # Radio değişimi dinle
+
+        # Radio degisimi
+        self.radio_whapi.toggled.connect(self._servis_degisti)
         self.radio_twilio.toggled.connect(self._servis_degisti)
         self.radio_pywhatkit.toggled.connect(self._servis_degisti)
-        
-        # Başlangıçta ayarları yükle
+
         QTimer.singleShot(100, self._load_ayarlar)
-    
+
     def _servis_degisti(self):
-        """Servis seçimi değiştiğinde frame'leri göster/gizle"""
-        self.twilio_frame.setVisible(self.radio_twilio.isChecked())
-        self.pywhatkit_frame.setVisible(self.radio_pywhatkit.isChecked())
-    
+        """Servis secimi degistiginde alanlari goster/gizle"""
+        is_whapi = self.radio_whapi.isChecked()
+        is_twilio = self.radio_twilio.isChecked()
+        self.txt_whapi_token.setEnabled(is_whapi)
+        self.txt_twilio_sid.setEnabled(is_twilio)
+        self.txt_twilio_token.setEnabled(is_twilio)
+        self.txt_twilio_number.setEnabled(is_twilio)
+
     def _load_ayarlar(self):
-        """Mevcut ayarları yükle"""
+        """Mevcut ayarlari yukle"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM sistem.whatsapp_ayarlari WHERE id = 1")
+
+            # WhatsApp ayarlari
+            cursor.execute("""
+                SELECT servis_tipi, twilio_account_sid, twilio_auth_token, twilio_whatsapp_number,
+                       test_modu, test_telefon, whapi_token
+                FROM sistem.whatsapp_ayarlari WHERE aktif_mi = 1
+            """)
             row = cursor.fetchone()
-            conn.close()
-            
             if row:
-                # Servis tipi
-                if row[1] == 'TWILIO':
+                if row[0] == 'WHAPI':
+                    self.radio_whapi.setChecked(True)
+                elif row[0] == 'TWILIO':
                     self.radio_twilio.setChecked(True)
                 else:
                     self.radio_pywhatkit.setChecked(True)
-                
-                # Twilio ayarları
-                self.txt_twilio_sid.setText(row[3] or '')
-                self.txt_twilio_token.setText(row[4] or '')
-                self.txt_twilio_number.setText(row[5] or '')
-                
-                # pywhatkit ayarları
-                self.spn_wait_time.setValue(row[6] or 10)
-                self.spn_close_time.setValue(row[7] or 5)
-                
-                # Genel
-                self.chk_test_modu.setChecked(bool(row[8]))
-                self.txt_test_telefon.setText(row[9] or '')
+                self.txt_twilio_sid.setText(row[1] or '')
+                self.txt_twilio_token.setText(row[2] or '')
+                self.txt_twilio_number.setText(row[3] or '')
+                self.chk_test_modu.setChecked(bool(row[4]))
+                self.txt_test_telefon.setText(row[5] or '')
+                self.txt_whapi_token.setText(row[6] or '')
             else:
-                # Varsayılan
-                self.radio_twilio.setChecked(True)
-                self.chk_test_modu.setChecked(True)
-            
+                self.radio_whapi.setChecked(True)
+
+            # SMTP ayarlari
+            cursor.execute("""
+                SELECT smtp_server, smtp_port, smtp_ssl, gonderen_email, gonderen_sifre, gonderen_adi
+                FROM sistem.email_ayarlari WHERE aktif_mi = 1
+            """)
+            smtp = cursor.fetchone()
+            if smtp:
+                self.txt_smtp_server.setText(smtp[0] or '')
+                self.spn_smtp_port.setValue(smtp[1] or 465)
+                self.chk_smtp_ssl.setChecked(bool(smtp[2]))
+                self.txt_smtp_email.setText(smtp[3] or '')
+                self.txt_smtp_sifre.setText(smtp[4] or '')
+                self.txt_smtp_adi.setText(smtp[5] or 'NEXOR ERP')
+
+            conn.close()
             self._servis_degisti()
-            
+
         except Exception as e:
-            print(f"Ayarlar yükleme hatası: {e}")
-            self.radio_twilio.setChecked(True)
+            print(f"Ayarlar yukleme hatasi: {e}")
+            self.radio_whapi.setChecked(True)
             self._servis_degisti()
-    
+
     def _kaydet_ayarlar(self):
-        """Ayarları kaydet"""
+        """WhatsApp + SMTP ayarlarini kaydet"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            servis_tipi = 'TWILIO' if self.radio_twilio.isChecked() else 'PYWHATKIT'
-            
-            # Var mı kontrol et
-            cursor.execute("SELECT id FROM sistem.whatsapp_ayarlari WHERE id = 1")
-            exists = cursor.fetchone()
-            
-            if exists:
+
+            # WhatsApp servis tipi
+            if self.radio_whapi.isChecked():
+                servis_tipi = 'WHAPI'
+            elif self.radio_twilio.isChecked():
+                servis_tipi = 'TWILIO'
+            else:
+                servis_tipi = 'PYWHATKIT'
+
+            cursor.execute("SELECT id FROM sistem.whatsapp_ayarlari WHERE aktif_mi = 1")
+            if cursor.fetchone():
                 cursor.execute("""
                     UPDATE sistem.whatsapp_ayarlari SET
-                        servis_tipi = ?,
-                        aktif_mi = 1,
-                        twilio_account_sid = ?,
-                        twilio_auth_token = ?,
-                        twilio_whatsapp_number = ?,
-                        pywhatkit_wait_time = ?,
-                        pywhatkit_close_time = ?,
-                        test_modu = ?,
-                        test_telefon = ?,
-                        guncelleme_tarihi = GETDATE()
-                    WHERE id = 1
-                """, (
-                    servis_tipi,
-                    self.txt_twilio_sid.text().strip() or None,
-                    self.txt_twilio_token.text().strip() or None,
-                    self.txt_twilio_number.text().strip() or None,
-                    self.spn_wait_time.value(),
-                    self.spn_close_time.value(),
-                    self.chk_test_modu.isChecked(),
-                    self.txt_test_telefon.text().strip() or None
-                ))
+                        servis_tipi = ?, whapi_token = ?,
+                        twilio_account_sid = ?, twilio_auth_token = ?, twilio_whatsapp_number = ?,
+                        test_modu = ?, test_telefon = ?, guncelleme_tarihi = GETDATE()
+                    WHERE aktif_mi = 1
+                """, (servis_tipi, self.txt_whapi_token.text().strip() or None,
+                      self.txt_twilio_sid.text().strip() or None,
+                      self.txt_twilio_token.text().strip() or None,
+                      self.txt_twilio_number.text().strip() or None,
+                      self.chk_test_modu.isChecked(),
+                      self.txt_test_telefon.text().strip() or None))
             else:
                 cursor.execute("""
-                    INSERT INTO sistem.whatsapp_ayarlari 
-                    (servis_tipi, aktif_mi, twilio_account_sid, twilio_auth_token, 
-                     twilio_whatsapp_number, pywhatkit_wait_time, pywhatkit_close_time,
-                     test_modu, test_telefon)
-                    VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    servis_tipi,
-                    self.txt_twilio_sid.text().strip() or None,
-                    self.txt_twilio_token.text().strip() or None,
-                    self.txt_twilio_number.text().strip() or None,
-                    self.spn_wait_time.value(),
-                    self.spn_close_time.value(),
-                    self.chk_test_modu.isChecked(),
-                    self.txt_test_telefon.text().strip() or None
-                ))
-            
+                    INSERT INTO sistem.whatsapp_ayarlari
+                    (servis_tipi, aktif_mi, whapi_token, twilio_account_sid, twilio_auth_token,
+                     twilio_whatsapp_number, test_modu, test_telefon)
+                    VALUES (?, 1, ?, ?, ?, ?, ?, ?)
+                """, (servis_tipi, self.txt_whapi_token.text().strip() or None,
+                      self.txt_twilio_sid.text().strip() or None,
+                      self.txt_twilio_token.text().strip() or None,
+                      self.txt_twilio_number.text().strip() or None,
+                      self.chk_test_modu.isChecked(),
+                      self.txt_test_telefon.text().strip() or None))
+
+            # SMTP kaydet
+            cursor.execute("SELECT id FROM sistem.email_ayarlari WHERE aktif_mi = 1")
+            if cursor.fetchone():
+                cursor.execute("""
+                    UPDATE sistem.email_ayarlari SET
+                        smtp_server = ?, smtp_port = ?, smtp_ssl = ?,
+                        gonderen_email = ?, gonderen_sifre = ?, gonderen_adi = ?
+                    WHERE aktif_mi = 1
+                """, (self.txt_smtp_server.text().strip(),
+                      self.spn_smtp_port.value(),
+                      self.chk_smtp_ssl.isChecked(),
+                      self.txt_smtp_email.text().strip(),
+                      self.txt_smtp_sifre.text().strip() or None,
+                      self.txt_smtp_adi.text().strip() or 'NEXOR ERP'))
+            else:
+                cursor.execute("""
+                    INSERT INTO sistem.email_ayarlari
+                    (smtp_server, smtp_port, smtp_ssl, gonderen_email, gonderen_sifre, gonderen_adi, aktif_mi)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)
+                """, (self.txt_smtp_server.text().strip(),
+                      self.spn_smtp_port.value(),
+                      self.chk_smtp_ssl.isChecked(),
+                      self.txt_smtp_email.text().strip(),
+                      self.txt_smtp_sifre.text().strip() or None,
+                      self.txt_smtp_adi.text().strip() or 'NEXOR ERP'))
+
             conn.commit()
             conn.close()
-            
-            QMessageBox.information(self, "Başarılı", f"WhatsApp ayarları kaydedildi!\n\nAktif Servis: {servis_tipi}")
+
+            # Singleton cache temizle
+            import utils.whatsapp_service as ws_mod
+            ws_mod._whatsapp_service = None
+            import utils.email_service as es_mod
+            es_mod._email_service = None
+
+            QMessageBox.information(self, "Basarili",
+                f"Ayarlar kaydedildi!\n\nWhatsApp: {servis_tipi}\nSMTP: {self.txt_smtp_server.text()}")
             
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Ayar kaydetme hatası:\n{str(e)}")
     
     def _test_mesaj_gonder(self):
-        """Test mesajı gönder"""
-        # Önce ayarları kaydet
+        """WhatsApp + Email test mesaji gonder"""
         self._kaydet_ayarlar()
-        
+
+        sonuclar = []
+
+        # WhatsApp test
         test_telefon = self.txt_test_telefon.text().strip()
-        
-        if not test_telefon:
-            QMessageBox.warning(self, "Uyarı", "Test telefon numarası boş!")
-            return
-        
-        # Onay al
-        reply = QMessageBox.question(self, "Test Mesajı", 
-            f"Test mesajı gönderilecek:\n\n📱 {test_telefon}\n\nDevam edilsin mi?",
-            QMessageBox.Yes | QMessageBox.No)
-        
-        if reply != QMessageBox.Yes:
-            return
-        
-        try:
-            # WhatsApp servisini import et
-            from utils.whatsapp_service import gonder_whatsapp
-            
-            # Test mesajı
-            mesaj = """🧪 NEXOR ERP - Test Mesajı
+        if test_telefon:
+            try:
+                from utils.whatsapp_service import WhatsAppService
+                ws = WhatsAppService()
+                ok, msg = ws.gonder(test_telefon, f"[NEXOR] Test mesaji - {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+                sonuclar.append(f"WhatsApp: {'OK' if ok else 'HATA'} - {msg}")
+            except Exception as e:
+                sonuclar.append(f"WhatsApp: HATA - {e}")
+        else:
+            sonuclar.append("WhatsApp: Test telefon bos")
 
-✅ WhatsApp bildirim sistemi çalışıyor!
+        # Email test
+        test_email = self.txt_smtp_email.text().strip()
+        if test_email and self.txt_smtp_server.text().strip():
+            try:
+                from utils.email_service import EmailService
+                es = EmailService()
+                ok, msg = es.gonder(test_email,
+                    "NEXOR ERP - E-Mail Test",
+                    f"<h2>NEXOR ERP</h2><p>E-mail bildirim sistemi calisiyor!</p><p>{datetime.now().strftime('%d.%m.%Y %H:%M')}</p>")
+                sonuclar.append(f"E-Mail: {'OK' if ok else 'HATA'} - {msg}")
+            except Exception as e:
+                sonuclar.append(f"E-Mail: HATA - {e}")
+        else:
+            sonuclar.append("E-Mail: SMTP ayarlari eksik")
 
-Tarih: {tarih}
-Servis: {servis}
-
-Bu bir test mesajıdır.""".format(
-                tarih=datetime.now().strftime('%d.%m.%Y %H:%M'),
-                servis='Twilio' if self.radio_twilio.isChecked() else 'pywhatkit'
-            )
-            
-            # Gönder
-            success, msg = gonder_whatsapp(test_telefon, mesaj)
-            
-            if success:
-                QMessageBox.information(self, "Başarılı", 
-                    f"✅ Test mesajı gönderildi!\n\n📱 {test_telefon}\n\nSonuç: {msg}")
-            else:
-                QMessageBox.warning(self, "Hata", 
-                    f"❌ Test mesajı gönderilemedi!\n\n{msg}")
-            
-        except ImportError as e:
-            QMessageBox.critical(self, "Eksik Kütüphane", 
-                f"WhatsApp servisi bulunamadı!\n\n{str(e)}\n\nwhatsapp_service.py dosyası utils/ klasöründe olmalı.")
-        except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Test mesajı hatası:\n{str(e)}")
-            import traceback
-            traceback.print_exc()
+        QMessageBox.information(self, "Test Sonucu", "\n".join(sonuclar))
     
     def _test_twilio(self):
         """Twilio bağlantısını test et"""
@@ -828,49 +835,93 @@ Bu bir test mesajıdır.""".format(
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             modul = self.modul_filter.currentText()
             if modul == "Tümü":
                 cursor.execute("""
-                    SELECT kod, baslik, modul, onem_derecesi, bildirim_tipi, aktif_mi
+                    SELECT kod, baslik, modul, onem_derecesi, bildirim_tipi,
+                           ISNULL(uygulama_ici_varsayilan, 1), ISNULL(email_varsayilan, 0),
+                           ISNULL(whatsapp_varsayilan, 0), aktif_mi
                     FROM sistem.bildirim_tanimlari
                     ORDER BY modul, kod
                 """)
             else:
                 cursor.execute("""
-                    SELECT kod, baslik, modul, onem_derecesi, bildirim_tipi, aktif_mi
+                    SELECT kod, baslik, modul, onem_derecesi, bildirim_tipi,
+                           ISNULL(uygulama_ici_varsayilan, 1), ISNULL(email_varsayilan, 0),
+                           ISNULL(whatsapp_varsayilan, 0), aktif_mi
                     FROM sistem.bildirim_tanimlari
                     WHERE modul = ?
                     ORDER BY kod
                 """, (modul,))
-            
+
             rows = cursor.fetchall()
             conn.close()
-            
+
             self.table_tanim.setRowCount(len(rows))
             for i, row in enumerate(rows):
                 self.table_tanim.setItem(i, 0, QTableWidgetItem(row[0] or ''))
                 self.table_tanim.setItem(i, 1, QTableWidgetItem(row[1] or ''))
                 self.table_tanim.setItem(i, 2, QTableWidgetItem(row[2] or ''))
-                
-                # Önem derecesi - renkli
+
                 onem_item = QTableWidgetItem(row[3] or '')
                 if row[3] == 'KRITIK':
                     onem_item.setForeground(QColor(s['error']))
                 elif row[3] == 'YUKSEK':
                     onem_item.setForeground(QColor(s['warning']))
                 self.table_tanim.setItem(i, 3, onem_item)
-                
+
                 self.table_tanim.setItem(i, 4, QTableWidgetItem(row[4] or ''))
-                
-                # Aktif checkbox
-                chk = QCheckBox()
-                chk.setChecked(bool(row[5]))
-                self.table_tanim.setCellWidget(i, 5, chk)
+
+                # Kanal checkbox'lari
+                for col, val in [(5, row[5]), (6, row[6]), (7, row[7]), (8, row[8])]:
+                    chk = QCheckBox()
+                    chk.setChecked(bool(val))
+                    chk.setStyleSheet("QCheckBox { margin-left: 20px; }")
+                    self.table_tanim.setCellWidget(i, col, chk)
+
                 self.table_tanim.setRowHeight(i, 42)
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Tanımlar yüklenirken hata:\n{str(e)}")
+            QMessageBox.critical(self, "Hata", f"Tanimlar yuklenirken hata:\n{str(e)}")
+
+    def _save_tanimlar(self):
+        """Bildirim tanim kanal ayarlarini kaydet"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            degisen = 0
+
+            for i in range(self.table_tanim.rowCount()):
+                kod_item = self.table_tanim.item(i, 0)
+                if not kod_item:
+                    continue
+                kod = kod_item.text()
+
+                uygulama = self.table_tanim.cellWidget(i, 5)
+                email = self.table_tanim.cellWidget(i, 6)
+                whatsapp = self.table_tanim.cellWidget(i, 7)
+                aktif = self.table_tanim.cellWidget(i, 8)
+
+                cursor.execute("""
+                    UPDATE sistem.bildirim_tanimlari
+                    SET uygulama_ici_varsayilan = ?, email_varsayilan = ?,
+                        whatsapp_varsayilan = ?, aktif_mi = ?
+                    WHERE kod = ?
+                """, (
+                    1 if uygulama and uygulama.isChecked() else 0,
+                    1 if email and email.isChecked() else 0,
+                    1 if whatsapp and whatsapp.isChecked() else 0,
+                    1 if aktif and aktif.isChecked() else 0,
+                    kod
+                ))
+                degisen += cursor.rowcount
+
+            conn.commit()
+            conn.close()
+            QMessageBox.information(self, "Basarili", f"{degisen} tanim guncellendi.")
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Kaydetme hatasi:\n{str(e)}")
     
     def _load_gecmis(self):
         """Gönderim geçmişini yükle"""

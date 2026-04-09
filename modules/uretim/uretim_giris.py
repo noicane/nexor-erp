@@ -415,16 +415,18 @@ class UretimGirisPage(BasePage):
         
         grid.addWidget(vardiya_combo, 0, 1)
         
-        # ========== OPERATÖR SEÇİMİ ==========
-        operator_lbl = QLabel("Operatör:")
+        # ========== OPERATÖR SEÇİMİ (SADECE KART İLE) ==========
+        operator_lbl = QLabel("Operatör (Kart Okutun):")
         operator_lbl.setStyleSheet(label_style)
         grid.addWidget(operator_lbl, 1, 0)
-        
+
+        operator_row = QHBoxLayout()
         operator_combo = QComboBox()
         operator_combo.setObjectName("operator_combo")
+        operator_combo.setEnabled(False)
         operator_combo.setStyleSheet(input_style)
-        
-        # Operatörleri yükle
+
+        # Operatörleri yükle (arka planda - RFID ile seçilecek)
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -435,26 +437,43 @@ class UretimGirisPage(BasePage):
                   AND silindi_mi = 0
                 ORDER BY ad, soyad
             """)
-            
-            operator_combo.addItem("-- Operatör Seçin --", None)
+
+            operator_combo.addItem("🔒 Kartınızı okutun", None)
             for row in cursor.fetchall():
                 p_id, p_ad, p_sicil = row
-                
-                # Gösterim: "Ahmet Yılmaz (12345)"
                 if p_sicil:
                     display_text = f"{p_ad} ({p_sicil})"
                 else:
                     display_text = p_ad
-                
                 operator_combo.addItem(display_text, p_id)
-            
+
             conn.close()
         except Exception as e:
             print(f"Operatör yükleme hatası: {e}")
             import traceback
             traceback.print_exc()
-        
-        grid.addWidget(operator_combo, 1, 1)
+
+        operator_row.addWidget(operator_combo, 1)
+
+        # Kart sıfırla butonu
+        clear_op_btn = QPushButton("✕")
+        clear_op_btn.setFixedWidth(36)
+        clear_op_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {s['error']};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                font-size: 14px;
+            }}
+            QPushButton:hover {{ background: #dc2626; }}
+        """)
+        clear_op_btn.setToolTip("Operatör seçimini sıfırla")
+        clear_op_btn.clicked.connect(lambda: operator_combo.setCurrentIndex(0))
+        operator_row.addWidget(clear_op_btn)
+
+        grid.addLayout(operator_row, 1, 1)
         
         # Parça / Bara (Otomatik)
         lbl2 = QLabel("Parça / Bara (Otomatik):")
@@ -951,9 +970,7 @@ class UretimGirisPage(BasePage):
                 return
             
             if not operator_id:
-                QMessageBox.warning(self, "Uyarı", "Lütfen operatör seçin!")
-                if operator_combo:
-                    operator_combo.setFocus()
+                QMessageBox.warning(self, "Uyarı", "Lütfen kartınızı okutun!\n\nOperatör seçimi sadece kart okutma ile yapılabilir.")
                 return
             
             if uretilen_adet <= 0:
@@ -1252,6 +1269,21 @@ class UretimGirisPage(BasePage):
             LogManager.log_insert('uretim', 'uretim.uretim_kayitlari', is_emri_id,
                                   f'Uretim girisi: Is Emri #{data.get("is_emri_no", "")}, {uretilen_adet} adet, Lot: {lot_no or "-"}')
             conn.close()
+
+            # Bildirim: Üretim tamamlandıysa kalite ekibine haber ver
+            if yeni_durum == 'KALITE_BEKLIYOR':
+                try:
+                    from core.bildirim_tetikleyici import BildirimTetikleyici
+                    BildirimTetikleyici.onay_bekliyor(
+                        onaylayici_id=None,
+                        kayit_tipi='Final Kalite Kontrol',
+                        kayit_aciklama=f"{data['is_emri_no']} - {data.get('stok_adi', '')} uretimi tamamlandi, kalite kontrolu bekliyor.",
+                        kaynak_tablo='siparis.is_emirleri',
+                        kaynak_id=is_emri_id,
+                        sayfa_yonlendirme='kalite_final_kontrol',
+                    )
+                except Exception as bt_err:
+                    print(f"Bildirim hatasi: {bt_err}")
 
             # Formu temizle
             if vardiya_combo:

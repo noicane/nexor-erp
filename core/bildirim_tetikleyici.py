@@ -21,7 +21,7 @@ Kullanim:
 
 from typing import Optional
 from core.bildirim_service import BildirimService
-from core.database import execute_query
+from core.database import execute_query, get_db_connection
 
 
 class BildirimTetikleyici:
@@ -280,6 +280,45 @@ class BildirimTetikleyici:
             )
 
     # =========================================================================
+    # LABORATUVAR
+    # =========================================================================
+
+    @staticmethod
+    def lab_analiz_hatali(
+        analiz_id: int,
+        banyo_adi: str,
+        durum: str = 'UYARI',
+        detay: str = '',
+        lab_rol_id: int = None,
+        uretim_rol_id: int = None,
+    ):
+        """Lab analiz sonucu limit disi cikti - tum abonelere bildirim gonder"""
+        onem = 'KRITIK' if durum == 'KRITIK' else 'YUKSEK'
+        baslik = f'Lab Analiz {durum}: {banyo_adi}'
+        mesaj = f'{banyo_adi} banyo analiz sonucu {durum}. {detay}'
+
+        # Tum aktif kullanicilara gonder (kanal karari kullanici bazli yapilacak)
+        try:
+            kullanicilar = execute_query(
+                "SELECT id FROM sistem.kullanicilar WHERE aktif_mi = 1 AND silindi_mi = 0"
+            )
+            for k in kullanicilar:
+                BildirimService.gonder(
+                    kullanici_id=k['id'],
+                    baslik=baslik,
+                    mesaj=mesaj,
+                    modul='LAB',
+                    onem=onem,
+                    tip='UYARI',
+                    kaynak_tablo='uretim.banyo_analiz_sonuclari',
+                    kaynak_id=analiz_id,
+                    sayfa_yonlendirme='lab_analiz',
+                    bildirim_tanim_kod='LAB_ANALIZ_HATALI',
+                )
+        except Exception as e:
+            print(f"[BildirimTetikleyici] Lab bildirim hatasi: {e}")
+
+    # =========================================================================
     # AKSIYONLAR
     # =========================================================================
 
@@ -396,6 +435,7 @@ class BildirimTetikleyici:
             BildirimTetikleyici._kontrol_ie_terminler()
             BildirimTetikleyici._kontrol_aksiyon_hedefler()
             BildirimTetikleyici._kontrol_kalibrasyonlar()
+            BildirimTetikleyici._kalibrasyon_toplu_uyari()
             print("[BildirimTetikleyici] Zamanlanmis kontrol tamamlandi")
         except Exception as e:
             print(f"[BildirimTetikleyici] Zamanlanmis kontrol hatasi: {e}")
@@ -469,9 +509,10 @@ class BildirimTetikleyici:
         """7 gun icinde kalibrasyonu dolacak cihazlari kontrol et"""
         try:
             rows = execute_query("""
-                SELECT kp.id, kp.cihaz_adi,
+                SELECT kp.id, ISNULL(oc.cihaz_adi, CONCAT('Cihaz #', kp.cihaz_id)) AS cihaz_adi,
                        FORMAT(kp.sonraki_kalibrasyon_tarihi, 'dd.MM.yyyy') AS tarih
                 FROM kalite.kalibrasyon_planlari kp
+                LEFT JOIN kalite.olcum_cihazlari oc ON kp.cihaz_id = oc.id
                 WHERE kp.sonraki_kalibrasyon_tarihi BETWEEN CAST(GETDATE() AS DATE)
                       AND DATEADD(day, 7, CAST(GETDATE() AS DATE))
                   AND kp.aktif_mi = 1
@@ -490,3 +531,137 @@ class BildirimTetikleyici:
                 )
         except Exception as e:
             print(f"[BildirimTetikleyici] Kalibrasyon kontrol hatasi: {e}")
+
+    @staticmethod
+    def _kalibrasyon_toplu_uyari():
+        """Suresi gecmis + 30 gun icinde dolacak kalibrasyonlari WhatsApp ve E-mail ile gonder"""
+        try:
+            # Son 24 saat icinde bu uyari gonderilmis mi kontrol et
+            check = execute_query("""
+                SELECT 1 FROM sistem.bildirimler
+                WHERE kaynak_tablo = 'kalite.kalibrasyon_toplu'
+                  AND olusturma_tarihi > DATEADD(hour, -24, GETDATE())
+            """)
+            if check:
+                return  # Son 24 saatte zaten gonderilmis
+
+            rows = execute_query("""
+                SELECT c.cihaz_kodu, c.cihaz_adi, c.lokasyon,
+                       FORMAT(p.sonraki_kalibrasyon_tarihi, 'dd.MM.yyyy') AS sonraki,
+                       DATEDIFF(day, GETDATE(), p.sonraki_kalibrasyon_tarihi) AS kalan
+                FROM kalite.olcum_cihazlari c
+                JOIN kalite.kalibrasyon_planlari p ON c.id = p.cihaz_id AND p.aktif_mi = 1
+                WHERE c.aktif_mi = 1
+                  AND p.sonraki_kalibrasyon_tarihi <= DATEADD(day, 30, GETDATE())
+                ORDER BY p.sonraki_kalibrasyon_tarihi
+            """)
+
+            if not rows:
+                return
+
+            # Mesaj olustur
+            gecmis = [r for r in rows if r['kalan'] < 0]
+            yaklasan = [r for r in rows if r['kalan'] >= 0]
+
+            # WhatsApp mesaji
+            wp_mesaj = "[ONEMLI] *NEXOR - Kalibrasyon Uyarisi*\n\n"
+            if gecmis:
+                wp_mesaj += f"*SURESI GECMIS ({len(gecmis)} cihaz):*\n"
+                for r in gecmis:
+                    wp_mesaj += f"- {r['cihaz_kodu']} {r['cihaz_adi']} ({r['lokasyon'] or '-'}) | {abs(r['kalan'])} gun gecti\n"
+                wp_mesaj += "\n"
+            if yaklasan:
+                wp_mesaj += f"*30 GUN ICINDE ({len(yaklasan)} cihaz):*\n"
+                for r in yaklasan:
+                    wp_mesaj += f"- {r['cihaz_kodu']} {r['cihaz_adi']} ({r['lokasyon'] or '-'}) | {r['kalan']} gun kaldi\n"
+
+            # HTML e-mail icerigi
+            html = """<html><body style="font-family:Calibri,Arial,sans-serif;">
+            <h2 style="color:#dc2626;">NEXOR ERP - Kalibrasyon Uyarisi</h2>
+            <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+            <tr style="background:#1a1a2e;color:white;">
+                <th>Cihaz Kodu</th><th>Cihaz Adi</th><th>Lokasyon</th><th>Sonraki Tarih</th><th>Kalan Gun</th><th>Durum</th>
+            </tr>"""
+
+            for r in rows:
+                kalan = r['kalan']
+                if kalan < 0:
+                    renk = '#fee2e2'
+                    durum = f"<b style='color:red'>{abs(kalan)} gun gecti</b>"
+                else:
+                    renk = '#fef9c3' if kalan <= 7 else '#fff'
+                    durum = f"{kalan} gun"
+                html += f"""<tr style="background:{renk}">
+                    <td>{r['cihaz_kodu']}</td><td>{r['cihaz_adi']}</td><td>{r['lokasyon'] or '-'}</td>
+                    <td>{r['sonraki']}</td><td align="center">{durum}</td>
+                    <td>{'GECMIS' if kalan<0 else 'YAKIN'}</td></tr>"""
+
+            html += "</table><br><p style='color:gray;font-size:11px;'>Bu otomatik bildirim NEXOR ERP tarafindan gonderilmistir.</p></body></html>"
+
+            # WhatsApp abonelerine gonder
+            try:
+                from utils.whatsapp_service import get_whatsapp_service
+                ws = get_whatsapp_service()
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT k.id, k.telefon
+                    FROM sistem.bildirim_abonelikleri a
+                    JOIN sistem.kullanicilar k ON a.kullanici_id = k.id
+                    WHERE a.whatsapp_bildirim = 1 AND k.telefon IS NOT NULL AND k.aktif_mi = 1
+                """)
+                for tel_row in cursor.fetchall():
+                    try:
+                        ws.gonder(tel_row[1], wp_mesaj)
+                    except Exception:
+                        pass
+                conn.close()
+                print(f"[Kalibrasyon] WhatsApp uyarilari gonderildi")
+            except Exception as wp_err:
+                print(f"[Kalibrasyon] WhatsApp gonderim hatasi: {wp_err}")
+
+            # E-mail gonder
+            try:
+                from utils.email_service import get_email_service
+                es = get_email_service()
+                if es.ayarlar:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT k.id, k.email
+                        FROM sistem.bildirim_abonelikleri a
+                        JOIN sistem.kullanicilar k ON a.kullanici_id = k.id
+                        WHERE k.email IS NOT NULL AND k.email LIKE '%@%' AND k.aktif_mi = 1
+                    """)
+                    for em_row in cursor.fetchall():
+                        try:
+                            es.gonder(em_row[1], f"NEXOR Kalibrasyon Uyarisi - {len(gecmis)} gecmis, {len(yaklasan)} yaklasan", html)
+                        except Exception:
+                            pass
+                    conn.close()
+                    print(f"[Kalibrasyon] E-mail uyarilari gonderildi")
+            except Exception as em_err:
+                print(f"[Kalibrasyon] E-mail gonderim hatasi: {em_err}")
+
+            # Bildirim tablosuna isaret birak (24 saat tekrar onleme)
+            try:
+                from core.database import get_db_connection as _gc
+                conn = _gc()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT INTO sistem.bildirimler
+                    (baslik, mesaj, modul, onem_derecesi, tip, kaynak_tablo,
+                     okundu_mu, aktif_mi, olusturma_tarihi)
+                    VALUES (?, ?, 'KALITE', 'YUKSEK', 'UYARI', 'kalite.kalibrasyon_toplu',
+                            0, 1, GETDATE())
+                """, (
+                    f"Kalibrasyon Uyarisi: {len(gecmis)} gecmis, {len(yaklasan)} yaklasan",
+                    wp_mesaj[:500]
+                ))
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
+
+        except Exception as e:
+            print(f"[BildirimTetikleyici] Kalibrasyon toplu uyari hatasi: {e}")

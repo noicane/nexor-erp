@@ -338,6 +338,21 @@ class ArizaDialog(QDialog):
 
             conn.commit()
             LogManager.log_insert('bakim', 'bakim.ariza_bildirimleri', None, 'Ariza bildirimi olusturuldu')
+
+            # Bildirim: Arıza bildirimi (sadece yeni kayıt)
+            if not self.ariza_id:
+                try:
+                    from core.bildirim_tetikleyici import BildirimTetikleyici
+                    ekipman_adi = self.ekipman_combo.currentText() if hasattr(self, 'ekipman_combo') else ''
+                    ariza_aciklama = params[2] if len(params) > 2 else ''
+                    BildirimTetikleyici.ariza_bildirildi(
+                        ariza_id=0,
+                        ekipman_adi=ekipman_adi,
+                        ariza_aciklama=str(ariza_aciklama)[:100],
+                    )
+                except Exception as bt_err:
+                    print(f"Bildirim hatasi: {bt_err}")
+
             QMessageBox.information(self, "Basarili", "Ariza bildirimi kaydedildi!")
             self.accept()
         except Exception as e:

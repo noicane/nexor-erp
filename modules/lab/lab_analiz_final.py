@@ -486,11 +486,29 @@ class AnalizDialog(QDialog):
                     conn.commit()
                     print(f"✅ Lab event kaydedildi: BANYO-{banyo_id} → {durum}")
                     
-                    # 📱 WHATSAPP BİLDİRİMİ GÖNDER
+                    # NEXOR BILDIRIM SISTEMI (WhatsApp + Email otomatik)
                     try:
-                        self._gonder_whatsapp_bildirimi(cursor, banyo_id, durum, params)
-                    except Exception as wp_err:
-                        print(f"⚠️ WhatsApp gönderim hatası: {wp_err}")
+                        from core.bildirim_tetikleyici import BildirimTetikleyici
+                        cursor.execute("SELECT kod + ' - ' + ad FROM uretim.banyo_tanimlari WHERE id = ?", (banyo_id,))
+                        b_row = cursor.fetchone()
+                        b_adi = b_row[0] if b_row else f"Banyo-{banyo_id}"
+
+                        detay_parts = []
+                        if params[3]:
+                            detay_parts.append(f"Sicaklik: {params[3]:.1f}°C")
+                        if params[4]:
+                            detay_parts.append(f"pH: {params[4]:.2f}")
+                        if params[5]:
+                            detay_parts.append(f"Iletkenlik: {params[5]:.0f}")
+
+                        BildirimTetikleyici.lab_analiz_hatali(
+                            analiz_id=analiz_id if not self.analiz_id else self.analiz_id,
+                            banyo_adi=b_adi,
+                            durum=durum,
+                            detay=', '.join(detay_parts),
+                        )
+                    except Exception as bt_err:
+                        print(f"Bildirim tetikleyici hatasi: {bt_err}")
                         
             except Exception as e:
                 print(f"⚠️ Lab event hatası (önemsiz): {e}")

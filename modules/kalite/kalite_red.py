@@ -599,7 +599,19 @@ class UygunsuzlukDialog(QDialog):
             conn.commit()
             LogManager.log_insert('kalite', 'kalite.uygunsuzluklar', None, 'Uygunsuzluk kaydi olustu')
             conn.close()
-            
+
+            # Bildirim: Uygunsuzluk kaydı açıldı
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                urun_adi = self.cmb_urun.currentText() if hasattr(self, 'cmb_urun') else ''
+                BildirimTetikleyici.uygunsuzluk_acildi(
+                    kayit_id=0,
+                    kayit_no=kayit_no,
+                    urun_adi=urun_adi,
+                )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
+
             QMessageBox.information(self, "Başarılı", f"Uygunsuzluk kaydı oluşturuldu!\n\nKayıt No: {kayit_no}")
             self.accept()
             

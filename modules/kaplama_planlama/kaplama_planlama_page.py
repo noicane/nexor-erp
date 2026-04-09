@@ -1703,6 +1703,18 @@ class KaplamaPlanlamaPage(BasePage):
             conn.commit()
             conn.close()
 
+            # Bildirim: Kaplama planlamasından iş emirleri oluşturuldu
+            if olusturulan > 0:
+                try:
+                    from core.bildirim_tetikleyici import BildirimTetikleyici
+                    BildirimTetikleyici.is_emri_olusturuldu(
+                        ie_id=0,
+                        ie_no=f"{olusturulan} IE (Kaplama Planlama)",
+                        musteri_adi='',
+                    )
+                except Exception as bt_err:
+                    print(f"Bildirim hatasi: {bt_err}")
+
             msg = f"{olusturulan} iş emri oluşturuldu."
             if hatalar:
                 msg += f"\n\n{len(hatalar)} hata:\n" + "\n".join(hatalar[:5])

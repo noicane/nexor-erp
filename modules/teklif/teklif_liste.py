@@ -741,6 +741,17 @@ class TeklifListePage(BasePage):
             LogManager.log_delete('teklif', 'satislar.teklifler', None, 'Kayit silindi (soft delete)')
             conn.close()
 
+            # Bildirim: Tekliften iş emri oluşturuldu
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                BildirimTetikleyici.is_emri_olusturuldu(
+                    ie_id=0,
+                    ie_no=f"{olusturulan} IE (Teklif #{teklif_id})",
+                    musteri_adi=cari_unvani,
+                )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
+
             QMessageBox.information(
                 self, "Başarılı",
                 f"{olusturulan} adet iş emri oluşturuldu."

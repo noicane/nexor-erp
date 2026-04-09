@@ -67,30 +67,19 @@ class BildirimService:
         kaynak_id: int = None,
         sayfa_yonlendirme: str = None,
         gonderen_id: int = None,
+        bildirim_tanim_kod: str = None,
     ) -> Optional[int]:
         """
-        Tek kullanıcıya bildirim gönder.
-
-        Args:
-            kullanici_id: Hedef kullanıcı ID
-            baslik: Bildirim başlığı
-            mesaj: Bildirim mesajı
-            modul: Kaynak modül (IS_EMIRLERI, KALITE, BAKIM, URETIM, STOK, vb.)
-            onem: Önem derecesi (KRITIK, YUKSEK, NORMAL, DUSUK)
-            tip: Bildirim tipi (BILGI, UYARI, GOREV, ONAY_BEKLIYOR, HATIRLATMA)
-            kaynak_tablo: İlişkili tablo adı
-            kaynak_id: İlişkili kayıt ID
-            sayfa_yonlendirme: Tıklanınca gidilecek sayfa ID
-            gonderen_id: Gönderen kullanıcı ID (None = sistem)
-
-        Returns:
-            Oluşturulan bildirim ID veya None
+        Tek kullanıcıya bildirim gönder. Kanal kararına göre uygulama içi,
+        email ve whatsapp otomatik tetiklenir.
         """
         if not kullanici_id or not baslik:
             return None
 
-        # Kullanıcının tercihlerini kontrol et
-        if not BildirimService._tercih_kontrol(kullanici_id, modul, onem):
+        # Kanal kararı (3 katmanlı: varsayılan → tanım → tercih)
+        kanal = BildirimService._kanal_karari(kullanici_id, modul, onem, bildirim_tanim_kod)
+
+        if not kanal['uygulama_ici'] and not kanal['email'] and not kanal['whatsapp']:
             return None
 
         if not gonderen_id:
@@ -116,10 +105,28 @@ class BildirimService:
             conn.commit()
             conn.close()
 
+            # WhatsApp (arka planda)
+            if bildirim_id and kanal['whatsapp']:
+                import threading
+                threading.Thread(
+                    target=BildirimService._whatsapp_gonder,
+                    args=(kullanici_id, bildirim_id, baslik, mesaj, modul, onem),
+                    daemon=True
+                ).start()
+
+            # Email (arka planda)
+            if bildirim_id and kanal['email']:
+                import threading
+                threading.Thread(
+                    target=BildirimService._email_gonder,
+                    args=(kullanici_id, bildirim_id, baslik, mesaj, modul, onem),
+                    daemon=True
+                ).start()
+
             return bildirim_id
 
         except Exception as e:
-            print(f"[BildirimService] Gönderim hatası: {e}")
+            print(f"[BildirimService] Gonderim hatasi: {e}")
             return None
 
     @staticmethod
@@ -134,12 +141,10 @@ class BildirimService:
         kaynak_id: int = None,
         sayfa_yonlendirme: str = None,
         gonderen_id: int = None,
+        bildirim_tanim_kod: str = None,
     ) -> int:
         """
         Belirli bir roldeki tüm kullanıcılara bildirim gönder.
-
-        Returns:
-            Gönderilen bildirim sayısı
         """
         try:
             kullanicilar = execute_query(
@@ -155,6 +160,7 @@ class BildirimService:
                     kaynak_tablo=kaynak_tablo, kaynak_id=kaynak_id,
                     sayfa_yonlendirme=sayfa_yonlendirme,
                     gonderen_id=gonderen_id,
+                    bildirim_tanim_kod=bildirim_tanim_kod,
                 )
                 if result:
                     count += 1
@@ -176,14 +182,9 @@ class BildirimService:
         kaynak_id: int = None,
         sayfa_yonlendirme: str = None,
         gonderen_id: int = None,
+        bildirim_tanim_kod: str = None,
     ) -> int:
-        """
-        Belirli bir departmandaki tüm kullanıcılara bildirim gönder.
-        Personel tablosundan departman_id üzerinden kullanıcıları bulur.
-
-        Returns:
-            Gönderilen bildirim sayısı
-        """
+        """Belirli bir departmandaki tüm kullanıcılara bildirim gönder."""
         try:
             kullanicilar = execute_query("""
                 SELECT k.id
@@ -203,6 +204,7 @@ class BildirimService:
                     kaynak_tablo=kaynak_tablo, kaynak_id=kaynak_id,
                     sayfa_yonlendirme=sayfa_yonlendirme,
                     gonderen_id=gonderen_id,
+                    bildirim_tanim_kod=bildirim_tanim_kod,
                 )
                 if result:
                     count += 1
@@ -326,6 +328,7 @@ class BildirimService:
 
             # Hedef belirleme
             count = 0
+            _kod = kod  # bildirim_tanim_kod olarak aktar
             if hedef_kullanici_id:
                 result = BildirimService.gonder(
                     kullanici_id=hedef_kullanici_id,
@@ -334,6 +337,7 @@ class BildirimService:
                     kaynak_tablo=kaynak_tablo, kaynak_id=kaynak_id,
                     sayfa_yonlendirme=sayfa,
                     gonderen_id=gonderen_id,
+                    bildirim_tanim_kod=_kod,
                 )
                 count = 1 if result else 0
             elif hedef_rol_id:
@@ -344,6 +348,7 @@ class BildirimService:
                     kaynak_tablo=kaynak_tablo, kaynak_id=kaynak_id,
                     sayfa_yonlendirme=sayfa,
                     gonderen_id=gonderen_id,
+                    bildirim_tanim_kod=_kod,
                 )
             elif hedef_departman_id:
                 count = BildirimService.departman_gonder(
@@ -353,9 +358,9 @@ class BildirimService:
                     kaynak_tablo=kaynak_tablo, kaynak_id=kaynak_id,
                     sayfa_yonlendirme=sayfa,
                     gonderen_id=gonderen_id,
+                    bildirim_tanim_kod=_kod,
                 )
             elif tanim.get('hedef_rol_id'):
-                # Tanımda varsayılan hedef rol varsa onu kullan
                 count = BildirimService.role_gonder(
                     rol_id=tanim['hedef_rol_id'],
                     baslik=baslik, mesaj=mesaj, modul=modul,
@@ -363,6 +368,7 @@ class BildirimService:
                     kaynak_tablo=kaynak_tablo, kaynak_id=kaynak_id,
                     sayfa_yonlendirme=sayfa,
                     gonderen_id=gonderen_id,
+                    bildirim_tanim_kod=_kod,
                 )
 
             return count
@@ -649,37 +655,68 @@ class BildirimService:
     # =========================================================================
 
     @staticmethod
-    def _tercih_kontrol(kullanici_id: int, modul: str, onem: str) -> bool:
+    def _kanal_karari(kullanici_id: int, modul: str, onem: str, bildirim_tanim_kod: str = None) -> dict:
         """
-        Kullanıcının bu modül ve önem seviyesi için bildirim almak
-        isteyip istemediğini kontrol eder.
-        Tercih kaydı yoksa varsayılan olarak True döner.
+        3 katmanli kanal karari:
+        1. Onem derecesine gore varsayilan politika
+        2. bildirim_tanimlari tablosundaki tanim bazli override
+        3. Kullanici bildirim_tercihleri tablosundaki kisisel tercih
         """
+        # Katman 1: Varsayilan politika
+        VARSAYILAN = {
+            'KRITIK':  {'uygulama_ici': True, 'email': True, 'whatsapp': True},
+            'YUKSEK':  {'uygulama_ici': True, 'email': True, 'whatsapp': True},
+            'NORMAL':  {'uygulama_ici': True, 'email': True, 'whatsapp': False},
+            'DUSUK':   {'uygulama_ici': True, 'email': False, 'whatsapp': False},
+        }
+        karar = VARSAYILAN.get(onem, VARSAYILAN['NORMAL']).copy()
+
+        # Katman 2: Tanim bazli override
+        if bildirim_tanim_kod:
+            try:
+                tanim = execute_query(
+                    "SELECT uygulama_ici_varsayilan, email_varsayilan, whatsapp_varsayilan FROM sistem.bildirim_tanimlari WHERE kod = ? AND aktif_mi = 1",
+                    [bildirim_tanim_kod]
+                )
+                if tanim:
+                    karar['uygulama_ici'] = bool(tanim[0].get('uygulama_ici_varsayilan', 1))
+                    karar['email'] = bool(tanim[0].get('email_varsayilan', 0))
+                    karar['whatsapp'] = bool(tanim[0].get('whatsapp_varsayilan', 0))
+            except Exception:
+                pass
+
+        # Katman 3: Kullanici tercihi
         try:
-            tercihler = execute_query("""
-                SELECT uygulama_ici, minimum_onem
-                FROM sistem.bildirim_tercihleri
-                WHERE kullanici_id = ? AND modul = ? AND aktif_mi = 1
-            """, [kullanici_id, modul])
-
-            if not tercihler:
-                return True  # Tercih yoksa bildirim gönder
-
-            tercih = tercihler[0]
-
-            # Uygulama içi kapalıysa gönderme
-            if not tercih.get('uygulama_ici', True):
-                return False
-
-            # Önem filtresi kontrolü
-            min_onem = tercih.get('minimum_onem', 'DUSUK')
-            if ONEM_SIRA.get(onem, 3) > ONEM_SIRA.get(min_onem, 4):
-                return False
-
-            return True
-
+            tercih = execute_query(
+                "SELECT uygulama_ici, email, whatsapp, minimum_onem FROM sistem.bildirim_tercihleri WHERE kullanici_id = ? AND modul = ? AND aktif_mi = 1",
+                [kullanici_id, modul]
+            )
+            if tercih:
+                t = tercih[0]
+                # Minimum onem filtresi
+                min_onem = t.get('minimum_onem', 'DUSUK')
+                if ONEM_SIRA.get(onem, 3) > ONEM_SIRA.get(min_onem, 4):
+                    return {'uygulama_ici': False, 'email': False, 'whatsapp': False}
+                # Kanal tercihi override
+                karar['uygulama_ici'] = bool(t.get('uygulama_ici', True))
+                karar['email'] = bool(t.get('email', karar['email']))
+                karar['whatsapp'] = bool(t.get('whatsapp', karar['whatsapp']))
         except Exception:
-            return True  # Hata durumunda varsayılan gönder
+            pass
+
+        # WhatsApp ek kontrol: abonelik tablosu (tercih yoksa abonelik gecer)
+        if karar['whatsapp']:
+            try:
+                abone = execute_query(
+                    "SELECT whatsapp_bildirim FROM sistem.bildirim_abonelikleri WHERE kullanici_id = ?",
+                    [kullanici_id]
+                )
+                if abone and not abone[0].get('whatsapp_bildirim'):
+                    karar['whatsapp'] = False
+            except Exception:
+                pass
+
+        return karar
 
     @staticmethod
     def _get_current_user_id() -> Optional[int]:
@@ -689,6 +726,122 @@ class BildirimService:
             return YetkiManager._current_user_id
         except Exception:
             return None
+
+    @staticmethod
+    def _whatsapp_gonder(kullanici_id: int, bildirim_id: int, baslik: str, mesaj: str, modul: str, onem: str):
+        """Kullanıcının WhatsApp tercih ve aboneliğini kontrol edip mesaj gönder"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # 1. Kullanıcı tercihinden whatsapp aktif mi?
+            cursor.execute("""
+                SELECT whatsapp FROM sistem.bildirim_tercihleri
+                WHERE kullanici_id = ? AND modul = ?
+            """, (kullanici_id, modul))
+            tercih = cursor.fetchone()
+            # Tercih yoksa veya whatsapp=0 ise, abonelik tablosuna bak
+            whatsapp_aktif = False
+            if tercih and tercih[0]:
+                whatsapp_aktif = True
+            else:
+                # Abonelik tablosundan kontrol
+                cursor.execute("""
+                    SELECT whatsapp_bildirim FROM sistem.bildirim_abonelikleri
+                    WHERE kullanici_id = ? AND whatsapp_bildirim = 1
+                """, (kullanici_id,))
+                if cursor.fetchone():
+                    whatsapp_aktif = True
+
+            if not whatsapp_aktif:
+                conn.close()
+                return
+
+            # 2. Telefon numarasını al
+            cursor.execute("""
+                SELECT telefon FROM sistem.kullanicilar WHERE id = ? AND telefon IS NOT NULL
+            """, (kullanici_id,))
+            tel_row = cursor.fetchone()
+            conn.close()
+
+            if not tel_row or not tel_row[0]:
+                return
+
+            telefon = tel_row[0].strip()
+            if not telefon.startswith('+'):
+                telefon = f'+90{telefon}' if not telefon.startswith('0') else f'+9{telefon}'
+
+            # 3. WhatsApp gönder
+            from utils.whatsapp_service import gonder_whatsapp
+
+            onem_tag = {'KRITIK': '[KRITIK]', 'YUKSEK': '[ONEMLI]', 'NORMAL': '[BILGI]'}.get(onem, '')
+            wp_mesaj = f"{onem_tag} *NEXOR - {baslik}*\n\n{mesaj}"
+
+            gonder_whatsapp(telefon, wp_mesaj, bildirim_id)
+
+        except Exception as e:
+            print(f"[BildirimService] WhatsApp gönderim hatası: {e}")
+
+    @staticmethod
+    def _email_gonder(kullanici_id: int, bildirim_id: int, baslik: str, mesaj: str, modul: str, onem: str):
+        """Kullaniciya email gonder ve sonucu bildirimler tablosuna kaydet"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT email FROM sistem.kullanicilar WHERE id = ? AND email IS NOT NULL",
+                (kullanici_id,))
+            row = cursor.fetchone()
+            conn.close()
+
+            if not row or not row[0] or '@' not in str(row[0]):
+                return
+
+            email_adres = row[0].strip()
+
+            from utils.email_service import get_email_service
+            es = get_email_service()
+            if not es.ayarlar:
+                return
+
+            onem_colors = {'KRITIK': '#ef4444', 'YUKSEK': '#f97316', 'NORMAL': '#3b82f6', 'DUSUK': '#6b7280'}
+            color = onem_colors.get(onem, '#3b82f6')
+            html = f"""<html><body style="font-family:Calibri,Arial,sans-serif;">
+            <div style="border-left:4px solid {color}; padding:12px 16px; margin:8px 0; background:#fafafa;">
+                <h3 style="margin:0; color:#1a1a2e;">{baslik}</h3>
+                <p style="color:#333; margin:8px 0;">{mesaj}</p>
+                <span style="color:{color}; font-size:12px; font-weight:bold;">{onem}</span>
+                <span style="color:#666; font-size:12px;"> | {modul}</span>
+            </div>
+            <p style="color:gray; font-size:11px;">Bu otomatik bildirim NEXOR ERP tarafindan gonderilmistir.</p>
+            </body></html>"""
+
+            konu = f"NEXOR - {baslik}"
+            success, msg = es.gonder(email_adres, konu, html)
+
+            # Sonucu kaydet
+            try:
+                conn2 = get_db_connection()
+                cursor2 = conn2.cursor()
+                if success:
+                    cursor2.execute("""
+                        UPDATE sistem.bildirimler SET
+                            email_gonderildi_mi = 1, email_gonderim_tarihi = GETDATE(), email_adres = ?
+                        WHERE id = ?
+                    """, (email_adres, bildirim_id))
+                else:
+                    cursor2.execute("""
+                        UPDATE sistem.bildirimler SET
+                            email_gonderildi_mi = 0, email_adres = ?, email_hata_mesaji = ?
+                        WHERE id = ?
+                    """, (email_adres, msg[:500], bildirim_id))
+                conn2.commit()
+                conn2.close()
+            except Exception:
+                pass
+
+        except Exception as e:
+            print(f"[BildirimService] Email gonderim hatasi: {e}")
 
     @staticmethod
     def bildirim_getir(bildirim_id: int) -> Optional[dict]:

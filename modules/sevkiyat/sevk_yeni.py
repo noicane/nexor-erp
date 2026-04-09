@@ -1016,7 +1016,18 @@ class SevkYeniPage(BasePage):
             conn.commit()
             LogManager.log_update('sevkiyat', 'siparis.is_emirleri', None, 'Durum guncellendi')
             conn.close()
-            
+
+            # Bildirim: Sevkiyat planlandı
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                BildirimTetikleyici.sevkiyat_planlandi(
+                    sevk_id=0,
+                    musteri_adi=musteri_adi,
+                    sevk_tarih=datetime.now().strftime('%d.%m.%Y'),
+                )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
+
             # Bu carinin paketlerini listeden çıkar (cari_id VE musteri eşleşeni çıkar)
             self.okutulan_paketler = [p for p in self.okutulan_paketler
                                        if not (p.get('cari_id') == cari_id and p.get('musteri') == musteri_adi)]

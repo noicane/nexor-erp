@@ -546,9 +546,6 @@ class KaliteFinalKontrolPage(BasePage):
         self.saat_timer.timeout.connect(self._update_time)
         self.saat_timer.start(1000)
 
-        self.refresh_timer = QTimer()
-        self.refresh_timer.timeout.connect(self._auto_refresh)
-        self.refresh_timer.start(30000)
 
     # =========================================================================
     # UI SETUP
@@ -766,7 +763,7 @@ class KaliteFinalKontrolPage(BasePage):
             }}
             QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
         """)
-        refresh_btn.clicked.connect(self._load_products)
+        refresh_btn.clicked.connect(self._manual_refresh)
         header.addWidget(refresh_btn)
 
         cikis_btn = QPushButton("Çıkış")
@@ -1928,6 +1925,30 @@ class KaliteFinalKontrolPage(BasePage):
             LogManager.log_insert('kalite', 'kalite.uretim_redler', None, 'Yeni kayit eklendi')
             conn.close()
 
+            # Bildirim: Kalite kontrol sonucu
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                ie_no = gorev_data.get('is_emri_no', '')
+                if sonuc == 'RED' or hatali > 0:
+                    # Red veya kısmi red durumunda uygunsuzluk bildirimi
+                    BildirimTetikleyici.uygunsuzluk_acildi(
+                        kayit_id=kontrol_id or is_emri_id,
+                        kayit_no=ie_no,
+                        urun_adi=f"{stok_kodu} - Saglam:{saglam} Hatali:{hatali}",
+                    )
+                if kalan <= 0 and sonuc == 'ONAY':
+                    # Tamamı onaylandıysa sevkiyata bildirim
+                    BildirimTetikleyici.onay_bekliyor(
+                        onaylayici_id=None,
+                        kayit_tipi='Sevkiyat',
+                        kayit_aciklama=f"{ie_no} - {stok_adi} kalite onayi tamamlandi, sevkiyata hazir.",
+                        kaynak_tablo='siparis.is_emirleri',
+                        kaynak_id=is_emri_id,
+                        sayfa_yonlendirme='sevk_liste',
+                    )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
+
             # Etiket bas
             if saglam > 0:
                 self._bas_etiket(gorev_data, result)
@@ -2409,13 +2430,12 @@ class KaliteFinalKontrolPage(BasePage):
     def _update_time(self):
         self.saat_label.setText(QTime.currentTime().toString("HH:mm:ss"))
 
-    def _auto_refresh(self):
-        """Sadece ana ekrandaysa otomatik yenile"""
-        if self.stacked.currentIndex() == 1 and self.personel_data:
+    def _manual_refresh(self):
+        """Yenile butonuyla manuel yenileme"""
+        if self.personel_data:
             self._load_products()
             self._load_son_islemler()
 
     def closeEvent(self, event):
         self.saat_timer.stop()
-        self.refresh_timer.stop()
         super().closeEvent(event)

@@ -553,6 +553,32 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 logger.warning("PLC Sync servisi başlatılamadı: %s", e)
 
+        # Bildirim sistemi - Zamanlanmış kontroller (saatte bir)
+        try:
+            from PySide6.QtCore import QTimer as _QTimer
+            self._bildirim_timer = _QTimer(self)
+            self._bildirim_timer.timeout.connect(self._bildirim_zamanli_kontrol)
+            self._bildirim_timer.start(3600000)  # 1 saat = 3.600.000 ms
+            # İlk kontrolü 30 saniye sonra yap (uygulama açılışında yavaşlama olmasın)
+            _QTimer.singleShot(30000, self._bildirim_zamanli_kontrol)
+            logger.info("Bildirim zamanlayici baslatildi (1 saat aralik)")
+        except Exception as e:
+            logger.warning("Bildirim zamanlayicisi baslatılamadı: %s", e)
+
+        # Toast bildirim sistemi
+        try:
+            from components.bildirim_toast import ToastManager
+            self.toast_manager = ToastManager(self, self.theme)
+            self._son_bildirim_id = 0
+            # Toast polling - 30 saniyede bir yeni bildirim var mı kontrol et
+            self._toast_timer = _QTimer(self)
+            self._toast_timer.timeout.connect(self._toast_bildirim_kontrol)
+            self._toast_timer.start(30000)  # 30 saniye
+            logger.info("Toast bildirim sistemi baslatildi")
+        except Exception as e:
+            self.toast_manager = None
+            logger.warning("Toast sistemi baslatılamadı: %s", e)
+
     def _apply_theme(self):
         """Temayı uygula"""
         try:
@@ -1146,6 +1172,49 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.error("Sidebar toggle hatası: %s", e)
     
+    def _bildirim_zamanli_kontrol(self):
+        """Zamanlanmış bildirim kontrolleri (IE termin, aksiyon, kalibrasyon)"""
+        try:
+            from core.bildirim_tetikleyici import BildirimTetikleyici
+            BildirimTetikleyici.zamanlanmis_kontrol()
+        except Exception as e:
+            logger.warning("Bildirim zamanli kontrol hatasi: %s", e)
+
+    def _toast_bildirim_kontrol(self):
+        """Yeni bildirimleri kontrol edip toast göster"""
+        if not self.toast_manager:
+            return
+        try:
+            kullanici_id = self.user_data.get('id')
+            if not kullanici_id:
+                return
+            from core.database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            # Son gösterilen bildirimden sonrakileri al
+            cursor.execute("""
+                SELECT TOP 3 id, baslik, mesaj, onem_derecesi, modul
+                FROM sistem.bildirimler
+                WHERE hedef_kullanici_id = ?
+                  AND okundu_mu = 0
+                  AND aktif_mi = 1
+                  AND id > ?
+                ORDER BY id DESC
+            """, (kullanici_id, self._son_bildirim_id))
+            rows = cursor.fetchall()
+            conn.close()
+            if rows:
+                self._son_bildirim_id = rows[0][0]  # En büyük ID
+                for row in reversed(rows):  # Eskiden yeniye göster
+                    self.toast_manager.show_toast(
+                        baslik=row[1] or '',
+                        mesaj=row[2] or '',
+                        onem=row[3] or 'NORMAL',
+                        modul=row[4] or 'SISTEM',
+                    )
+        except Exception as e:
+            logger.debug("Toast kontrol hatasi: %s", e)
+
     def closeEvent(self, event):
         """Pencere kapanırken"""
         # Logout logla

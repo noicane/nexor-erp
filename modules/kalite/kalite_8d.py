@@ -254,7 +254,18 @@ class Yeni8DDialog(QDialog):
             
             conn.commit()
             LogManager.log_update('kalite', 'kalite.uygunsuzluklar', None, 'Durum guncellendi')
-            
+
+            # Bildirim: 8D Raporu / Uygunsuzluk açıldı
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                BildirimTetikleyici.uygunsuzluk_acildi(
+                    kayit_id=uygunsuzluk_id,
+                    kayit_no=kayit_no,
+                    urun_adi=f"8D: {problem[:50]}",
+                )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
+
             QMessageBox.information(self, "Başarılı", "8D Raporu başlatıldı!")
             self.accept()
             

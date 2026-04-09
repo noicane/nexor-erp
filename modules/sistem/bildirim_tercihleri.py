@@ -186,7 +186,7 @@ class BildirimTercihleriPage(BasePage):
         title_row.addStretch()
         header.addLayout(title_row)
 
-        subtitle = QLabel("Hangi modullerden bildirim almak istediginizi belirleyin")
+        subtitle = QLabel("Varsayilan: KRITIK/YUKSEK bildirimler WhatsApp + E-posta, NORMAL bildirimler E-posta ile gonderilir. Kisisel tercihlerinizi asagidan belirleyebilirsiniz.")
         subtitle.setStyleSheet(f"color: {s['text_secondary']}; font-size: 13px;")
         header.addWidget(subtitle)
         layout.addLayout(header)
@@ -326,6 +326,6 @@ class BildirimTercihleriPage(BasePage):
         if reply == QMessageBox.Yes:
             for kart in self._modul_kartlari:
                 kart.chk_uygulama.setChecked(True)
-                kart.chk_email.setChecked(False)
-                kart.chk_whatsapp.setChecked(False)
+                kart.chk_email.setChecked(True)    # Email varsayilan acik
+                kart.chk_whatsapp.setChecked(False)  # WhatsApp varsayilan kapali
                 kart.cmb_onem.setCurrentIndex(0)  # DUSUK

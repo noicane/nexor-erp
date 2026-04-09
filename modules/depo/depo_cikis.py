@@ -277,6 +277,19 @@ class DepoCikisPage(BasePage):
                 depo_row = cursor2.fetchone(); depo_adi = f"{depo_row[0]} - {depo_row[1]}" if depo_row else f"ID: {hedef_depo_id}"; conn2.close()
             except Exception: depo_adi = f"ID: {hedef_depo_id}"
             cikis_tipi = 'MANUEL' if manuel else 'BARKOD'
+            # Bildirim: Depo çıkışı yapıldı, üretim başlayabilir
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                BildirimTetikleyici.onay_bekliyor(
+                    onaylayici_id=None,
+                    kayit_tipi='Uretim',
+                    kayit_aciklama=f"Lot {lot_no} depo cikisi yapildi, uretim baslatilabilir. Hedef: {depo_adi}",
+                    kaynak_tablo='stok.depo_cikis_emirleri',
+                    kaynak_id=emir_id,
+                    sayfa_yonlendirme='uretim_giris',
+                )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
             QMessageBox.information(self, "✓ Çıkış Tamamlandı", f"Lot: {lot_no}\nMiktar: {miktar:,.0f}\nHedef Depo: {depo_adi}\n\nÇıkış Tipi: {cikis_tipi}")
             self._load_data()
         except Exception as e:

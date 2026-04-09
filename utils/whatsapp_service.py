@@ -17,25 +17,31 @@ class WhatsAppService:
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM sistem.whatsapp_ayarlari WHERE aktif_mi = 1")
+            cursor.execute("""
+                SELECT servis_tipi, twilio_account_sid, twilio_auth_token, twilio_whatsapp_number,
+                       pywhatkit_wait_time, pywhatkit_close_time, test_modu, test_telefon,
+                       whapi_token
+                FROM sistem.whatsapp_ayarlari WHERE aktif_mi = 1
+            """)
             row = cursor.fetchone()
             conn.close()
-            
+
             if not row:
                 return None
-            
+
             return {
-                'servis_tipi': row[1],
-                'twilio_sid': row[3],
-                'twilio_token': row[4],
-                'twilio_number': row[5],
-                'pywhatkit_wait': row[6],
-                'pywhatkit_close': row[7],
-                'test_modu': row[8],
-                'test_telefon': row[9]
+                'servis_tipi': row[0],
+                'twilio_sid': row[1],
+                'twilio_token': row[2],
+                'twilio_number': row[3],
+                'pywhatkit_wait': row[4] or 15,
+                'pywhatkit_close': row[5] or 5,
+                'test_modu': row[6],
+                'test_telefon': row[7],
+                'whapi_token': row[8] or '',
             }
         except Exception as e:
-            print(f"⚠️ WhatsApp ayarları yüklenemedi: {e}")
+            print(f"[UYARI] WhatsApp ayarlari yuklenemedi: {e}")
             return None
     
     def gonder(self, telefon: str, mesaj: str, bildirim_id: int = None):
@@ -55,18 +61,20 @@ class WhatsAppService:
         
         # Test modu kontrolü
         if self.ayarlar['test_modu'] == 1 or self.ayarlar['test_modu'] == True:
-            print(f"⚠️ TEST MODU AKTİF - Tüm mesajlar {self.ayarlar['test_telefon']} numarasına gidiyor")
+            print(f"[TEST] TEST MODU AKTIF - Tüm mesajlar {self.ayarlar['test_telefon']} numarasına gidiyor")
             telefon = self.ayarlar['test_telefon']
             mesaj = f"[TEST MODU]\n{mesaj}"
         else:
-            print(f"✅ NORMAL MOD - Mesaj {telefon} numarasına gidecek")
+            print(f"[OK] NORMAL MOD - Mesaj {telefon} numarasina gidecek")
         
         # Telefon format kontrolü
         if not telefon or not telefon.startswith('+'):
             return False, f"Geçersiz telefon formatı: {telefon}"
         
         # Servis tipine göre gönder
-        if self.ayarlar['servis_tipi'] == 'TWILIO':
+        if self.ayarlar['servis_tipi'] == 'WHAPI':
+            success, msg = self._gonder_whapi(telefon, mesaj)
+        elif self.ayarlar['servis_tipi'] == 'TWILIO':
             success, msg = self._gonder_twilio(telefon, mesaj)
         elif self.ayarlar['servis_tipi'] == 'PYWHATKIT':
             success, msg = self._gonder_pywhatkit(telefon, mesaj)
@@ -95,15 +103,53 @@ class WhatsAppService:
                 to=f"whatsapp:{telefon}"
             )
             
-            print(f"✅ Twilio mesaj gönderildi: {message.sid}")
+            print(f"[OK] Twilio mesaj gonderildi: {message.sid}")
             return True, f"Gönderildi (SID: {message.sid})"
             
         except ImportError:
             return False, "Twilio kütüphanesi yüklü değil. Terminalde çalıştırın: pip install twilio --break-system-packages"
         except Exception as e:
-            print(f"❌ Twilio hatası: {e}")
+            print(f"[HATA] Twilio hatasi: {e}")
             return False, str(e)
     
+    def _gonder_whapi(self, telefon: str, mesaj: str):
+        """whapi.cloud REST API ile gonder"""
+        try:
+            import requests
+
+            # Telefon: +905326386254 -> 905326386254
+            telefon_temiz = telefon.replace('+', '').replace(' ', '').replace('-', '')
+
+            token = self.ayarlar.get('whapi_token', '')
+            if not token:
+                return False, "WHAPI token ayarlanmamis"
+
+            url = "https://gate.whapi.cloud/messages/text"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "to": f"{telefon_temiz}@s.whatsapp.net",
+                "body": mesaj,
+            }
+
+            resp = requests.post(url, json=payload, headers=headers, timeout=15)
+
+            if resp.status_code in (200, 201):
+                print(f"[OK] WHAPI mesaj gonderildi: {telefon}")
+                return True, "Gonderildi"
+            else:
+                err = resp.text[:200]
+                print(f"[HATA] WHAPI hata ({resp.status_code}): {err}")
+                return False, f"HTTP {resp.status_code}: {err}"
+
+        except ImportError:
+            return False, "requests kutuphanesi yuklu degil: pip install requests"
+        except Exception as e:
+            print(f"[HATA] WHAPI hatasi: {e}")
+            return False, str(e)
+
     def _gonder_pywhatkit(self, telefon: str, mesaj: str):
         """pywhatkit ile gönder"""
         try:
@@ -120,7 +166,7 @@ class WhatsAppService:
                 close_time=self.ayarlar['pywhatkit_close']
             )
             
-            print(f"✅ pywhatkit mesaj gönderildi: {telefon}")
+            print(f"[OK] pywhatkit mesaj gonderildi: {telefon}")
             return True, "Gönderildi"
             
         except ImportError as e:
@@ -135,7 +181,7 @@ Terminalde çalıştır:
 Hata detayı: {str(e)}"""
             return False, error_msg
         except Exception as e:
-            print(f"❌ pywhatkit hatası: {e}")
+            print(f"[HATA] pywhatkit hatasi: {e}")
             return False, str(e)
     
     def _kaydet_sonuc(self, bildirim_id: int, telefon: str, success: bool, mesaj: str):
@@ -165,7 +211,7 @@ Hata detayı: {str(e)}"""
             conn.close()
             
         except Exception as e:
-            print(f"⚠️ Sonuç kaydetme hatası: {e}")
+            print(f"[UYARI] Sonuc kaydetme hatasi: {e}")
     
     def toplu_gonder(self, alicilar: list, mesaj: str):
         """

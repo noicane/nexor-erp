@@ -644,12 +644,37 @@ class PaletBolmeDialog(QDialog):
     def _kaydet_ve_yazdir(self):
         """Lotları veritabanına kaydet ve etiket yazdır - Hareket Motoru ile"""
         try:
+            # Mükerrer lot kontrolü - Bu satır için zaten lot ve stok girişi var mı?
+            if self.irsaliye_satir_id:
+                try:
+                    conn_chk = get_db_connection()
+                    cursor_chk = conn_chk.cursor()
+                    cursor_chk.execute("""
+                        SELECT lot_no FROM siparis.giris_irsaliye_satirlar
+                        WHERE id = ? AND lot_no IS NOT NULL AND lot_no != ''
+                    """, (self.irsaliye_satir_id,))
+                    mevcut = cursor_chk.fetchone()
+                    conn_chk.close()
+                    if mevcut:
+                        reply = QMessageBox.question(
+                            self, "Lot Mevcut",
+                            f"Bu satır için zaten lot oluşturulmuş!\n\n"
+                            f"Mevcut Lot: {mevcut[0]}\n\n"
+                            f"Tekrar yazdırmak mükerrer stok girişine neden olacaktır.\n"
+                            f"Devam etmek istediğinize emin misiniz?",
+                            QMessageBox.Yes | QMessageBox.No
+                        )
+                        if reply != QMessageBox.Yes:
+                            return
+                except Exception as e:
+                    print(f"Mükerrer kontrol hatası: {e}")
+
             etiketler = self._etiketleri_olustur()
-            
+
             if not etiketler:
                 QMessageBox.warning(self, "Uyarı", "Etiket oluşturulamadı!")
                 return
-            
+
             conn = get_db_connection()
             cursor = conn.cursor()
             
@@ -1557,27 +1582,42 @@ class IrsaliyeDetayDialog(QDialog):
         miktar_text = self.satirlar_table.item(row, 3).text()
         birim = self.satirlar_table.item(row, 4).text()
         kaplama = self.satirlar_table.item(row, 5).text()
-        
+
         try:
             miktar = float(miktar_text.replace(',', ''))
         except Exception:
             miktar = 0
-        
+
         if miktar <= 0:
             QMessageBox.warning(self, "Uyarı", "Miktar 0'dan büyük olmalı!")
             return
-        
+
         musteri = self.cari_combo.currentText()
         irsaliye_no = self.irsaliye_no_input.text()
-        
+
         # Satır ID'sini al (kayıtlıysa)
         satir_id_text = self.satirlar_table.item(row, 0).text()
         satir_id = int(satir_id_text) if satir_id_text else None
-        
+
         if not satir_id:
             QMessageBox.warning(self, "Uyarı", "Önce irsaliyeyi kaydedin!")
             return
-        
+
+        # Mükerrer lot kontrolü - Bu satır için zaten lot oluşturulmuş mu?
+        mevcut_lot = self.satirlar_table.item(row, 6)
+        if mevcut_lot and mevcut_lot.text().strip():
+            reply = QMessageBox.question(
+                self, "Lot Mevcut",
+                f"Bu satır için zaten lot oluşturulmuş!\n\n"
+                f"Lot No: {mevcut_lot.text().strip()}\n\n"
+                f"Tekrar etiket yazdırmak mevcut lota ek stok girişi yapacaktır.\n"
+                f"Sadece etiket tekrar basmak istiyorsanız 'Onaylı Ürünler' sekmesinden yapabilirsiniz.\n\n"
+                f"Yeni lot oluşturmak istediğinize emin misiniz?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
+
         # Palet bölme dialogu aç
         dialog = PaletBolmeDialog(
             stok_kodu=stok_kodu,
@@ -1857,7 +1897,22 @@ class IrsaliyeDetayDialog(QDialog):
         if not self.irsaliye_id:
             QMessageBox.warning(self, "Uyarı", "Önce irsaliyeyi kaydedin!")
             return
-        
+
+        # Mükerrer onay kontrolü - DB'den güncel durumu kontrol et
+        try:
+            conn_chk = get_db_connection()
+            cursor_chk = conn_chk.cursor()
+            cursor_chk.execute(
+                "SELECT durum FROM siparis.giris_irsaliyeleri WHERE id = ?",
+                (self.irsaliye_id,))
+            durum_row = cursor_chk.fetchone()
+            conn_chk.close()
+            if durum_row and durum_row[0] == 'ONAYLANDI':
+                QMessageBox.warning(self, "Uyarı", "Bu irsaliye zaten onaylanmış!")
+                return
+        except Exception:
+            pass
+
         # Tüm satırlarda lot var mı kontrol et
         lot_eksik = False
         for row in range(self.satirlar_table.rowCount()):
@@ -1865,10 +1920,10 @@ class IrsaliyeDetayDialog(QDialog):
             if not lot_no:
                 lot_eksik = True
                 break
-        
+
         if lot_eksik:
             reply = QMessageBox.question(
-                self, "Uyarı", 
+                self, "Uyarı",
                 "Bazı satırlarda lot numarası oluşturulmamış.\n"
                 "Etiket yazdırmadan onaylamak istiyor musunuz?\n\n"
                 "Not: Lot oluşturulmayan satırlar için stok girişi yapılmayacak.",
@@ -1876,25 +1931,46 @@ class IrsaliyeDetayDialog(QDialog):
             )
             if reply != QMessageBox.Yes:
                 return
-        
+
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # İrsaliye durumunu güncelle
+
+            # İrsaliye durumunu güncelle (sadece henüz onaylanmamışsa)
             cursor.execute("""
-                UPDATE siparis.giris_irsaliyeleri 
+                UPDATE siparis.giris_irsaliyeleri
                 SET durum = 'ONAYLANDI', guncelleme_tarihi = GETDATE()
-                WHERE id = ?
+                WHERE id = ? AND durum != 'ONAYLANDI'
             """, (self.irsaliye_id,))
-            
+
+            if cursor.rowcount == 0:
+                conn.close()
+                QMessageBox.warning(self, "Uyarı", "Bu irsaliye zaten onaylanmış!")
+                return
+
             conn.commit()
             LogManager.log_update('depo', 'siparis.giris_irsaliyeleri', None, 'Durum guncellendi')
             conn.close()
-            
+
+            # Bildirim: İrsaliye onaylandı, kalite kontrole bildir
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                irsaliye_no = self.irsaliye_no_input.text()
+                musteri = self.cari_combo.currentText()
+                BildirimTetikleyici.onay_bekliyor(
+                    onaylayici_id=None,
+                    kayit_tipi='Giris Kalite Kontrol',
+                    kayit_aciklama=f"{irsaliye_no} - {musteri} irsaliyesi onaylandi, giris kalite kontrolu bekliyor.",
+                    kaynak_tablo='siparis.giris_irsaliyeleri',
+                    kaynak_id=self.irsaliye_id,
+                    sayfa_yonlendirme='kalite_giris_kontrol',
+                )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
+
             QMessageBox.information(
-                self, 
-                "Başarılı", 
+                self,
+                "Başarılı",
                 f"İrsaliye onaylandı!\n\n"
                 f"Etiket yazdırılan satırlar için lot ve stok kayıtları oluşturuldu.\n"
                 f"Bu lotlar şimdi kalite onayı bekliyor."

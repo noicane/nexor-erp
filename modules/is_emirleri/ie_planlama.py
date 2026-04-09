@@ -1219,7 +1219,19 @@ class PlanlamaDialog(QDialog):
             
             conn.commit()
             conn.close()
-            
+
+            # Bildirim: Yeni iş emirleri planlandı
+            try:
+                from core.bildirim_tetikleyici import BildirimTetikleyici
+                for lot in basarili_lotlar[:5]:  # İlk 5 IE için bildirim
+                    BildirimTetikleyici.is_emri_olusturuldu(
+                        ie_id=lot.get('is_emri_id', 0),
+                        ie_no=lot.get('is_emri_no', ''),
+                        musteri_adi=lot.get('musteri', ''),
+                    )
+            except Exception as bt_err:
+                print(f"Bildirim hatasi: {bt_err}")
+
             # Özet mesaj - ADET göster, bara bilgi olarak
             toplam_adet = sum(l['miktar'] for l in basarili_lotlar)
             ozet = "\n".join([f"  • {l['is_emri_no']}: {l['stok_kodu']} - {l['miktar']:,.0f} adet" 
