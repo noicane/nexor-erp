@@ -595,7 +595,8 @@ class SatinalmaSiparislerPage(BasePage):
 
             rid = row[0]
             widget = self.create_action_buttons([
-                ("✏️", "Duzenle", lambda checked, rid=rid: self._duzenle_by_id(rid), "edit"),
+                ("PDF", "PDF Yazdir", lambda checked, rid=rid: self._siparis_pdf(rid), "info"),
+                ("Duzenle", "Duzenle", lambda checked, rid=rid: self._duzenle_by_id(rid), "edit"),
             ])
             self.table.setCellWidget(i, 7, widget)
             self.table.setRowHeight(i, 42)
@@ -603,10 +604,130 @@ class SatinalmaSiparislerPage(BasePage):
         self.lbl_stat.setText(f"Toplam: {len(rows)} sipariş")
 
     def _duzenle_by_id(self, siparis_id):
-        """ID ile sipariş düzenleme (satır butonundan)"""
+        """ID ile siparis duzenleme"""
         dialog = SiparisDialog(self.theme, self, siparis_id)
         if dialog.exec() == QDialog.Accepted:
             self._load_data()
+
+    def _siparis_pdf(self, siparis_id):
+        """Siparis PDF olustur ve ac"""
+        try:
+            import os, subprocess
+            from datetime import datetime
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import ParagraphStyle
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+
+            font_name = 'Helvetica'
+            for fp in ["C:/Windows/Fonts/calibri.ttf", "C:/Windows/Fonts/arial.ttf"]:
+                if os.path.exists(fp):
+                    try:
+                        fn = os.path.splitext(os.path.basename(fp))[0]
+                        pdfmetrics.registerFont(TTFont(fn, fp))
+                        font_name = fn
+                        break
+                    except Exception:
+                        continue
+
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT s.siparis_no, s.tarih, c.unvan, s.genel_toplam, s.durum
+                FROM satinalma.siparisler s
+                LEFT JOIN musteri.cariler c ON s.tedarikci_id = c.id
+                WHERE s.id = ?
+            """, (siparis_id,))
+            sip = cursor.fetchone()
+            if not sip:
+                conn.close()
+                QMessageBox.warning(self, "Hata", "Siparis bulunamadi!")
+                return
+
+            cursor.execute("""
+                SELECT satir_no, urun_kodu, urun_adi, siparis_miktar, birim,
+                       birim_fiyat, tutar, kdv_orani, toplam, aciklama
+                FROM satinalma.siparis_satirlari WHERE siparis_id = ? ORDER BY satir_no
+            """, (siparis_id,))
+            satirlar = cursor.fetchall()
+            conn.close()
+
+            siparis_no = sip[0]
+            tedarikci = sip[2] or ''
+            tarih = sip[1].strftime('%d.%m.%Y') if sip[1] else ''
+
+            output_dir = os.path.join(os.path.expanduser("~"), "Documents", "AtmoERP", "Siparisler")
+            os.makedirs(output_dir, exist_ok=True)
+            filepath = os.path.join(output_dir, f"SIPARIS_{siparis_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
+
+            doc = SimpleDocTemplate(filepath, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=15*mm)
+            cell_s = ParagraphStyle('C', fontName=font_name, fontSize=8, leading=10)
+
+            elements = []
+            elements.append(Paragraph("ATLAS KATAFOREZ", ParagraphStyle('T', fontName=font_name, fontSize=16, alignment=1, spaceAfter=2*mm)))
+            elements.append(Paragraph("SATINALMA SIPARIS FORMU", ParagraphStyle('T2', fontName=font_name, fontSize=12, alignment=1, spaceAfter=4*mm)))
+            elements.append(Spacer(1, 2*mm))
+
+            info = [
+                ['Siparis No:', siparis_no, 'Tarih:', tarih],
+                ['Tedarikci:', tedarikci, 'Durum:', sip[4] or ''],
+            ]
+            it = Table(info, colWidths=[28*mm, 70*mm, 22*mm, 40*mm])
+            it.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), font_name), ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4), ('SPAN', (1, 1), (1, 1)),
+            ]))
+            elements.append(it)
+            elements.append(Spacer(1, 4*mm))
+
+            header = ['#', 'Urun Kodu', 'Urun Adi', 'Miktar', 'Birim', 'B.Fiyat', 'Tutar', 'KDV%', 'Toplam']
+            data = [header]
+            for s in satirlar:
+                data.append([
+                    str(s[0]), s[1] or '', Paragraph(str(s[2] or ''), cell_s),
+                    f"{float(s[3]):,.0f}", s[4] or '', f"{float(s[5]):,.4f}",
+                    f"{float(s[6]):,.2f}", f"%{float(s[7]):.0f}", f"{float(s[8]):,.2f}",
+                ])
+            data.append(['', '', '', '', '', '', 'TOPLAM:', '', f"{float(sip[3] or 0):,.2f}"])
+
+            cw = [8*mm, 25*mm, 42*mm, 16*mm, 14*mm, 20*mm, 22*mm, 12*mm, 25*mm]
+            tbl = Table(data, colWidths=cw, repeatRows=1)
+            tbl.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, -1), font_name), ('FONTSIZE', (0, 0), (-1, 0), 8), ('FONTSIZE', (0, 1), (-1, -1), 7),
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'), ('ALIGN', (3, 0), (4, -1), 'CENTER'), ('ALIGN', (5, 0), (-1, -1), 'RIGHT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -2), 0.5, colors.HexColor('#cccccc')),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f8f8')]),
+                ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('FONTSIZE', (0, -1), (-1, -1), 9), ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
+            ]))
+            elements.append(tbl)
+            elements.append(Spacer(1, 10*mm))
+
+            imza = [['Hazirlayan', 'Onaylayan', 'Tedarikci'], ['', '', ''], ['Tarih / Imza', 'Tarih / Imza', 'Tarih / Imza / Kaseli']]
+            it2 = Table(imza, colWidths=[60*mm, 60*mm, 60*mm])
+            it2.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), font_name), ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('ROWHEIGHTS', (0, 1), (-1, 1), [None, 25*mm, None]), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            elements.append(it2)
+            doc.build(elements)
+
+            subprocess.Popen(['start', '', filepath], shell=True)
+
+        except ImportError:
+            QMessageBox.warning(self, "Hata", "reportlab gerekli: pip install reportlab")
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"PDF hatasi: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _filter(self):
         durum = self.cmb_durum.currentText()

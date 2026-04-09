@@ -910,17 +910,22 @@ class TalepDialog(QDialog):
             cursor.execute("""
                 SELECT t.talep_no, t.tarih, t.oncelik, t.istenen_termin, t.talep_nedeni,
                        d.ad as departman, p.ad + ' ' + p.soyad as talep_eden, t.tahmini_tutar,
-                       t.durum, t.amir_onay_durumu, t.satinalma_onay_durumu
+                       t.durum, t.amir_onay_durumu, t.satinalma_onay_durumu,
+                       t.notlar,
+                       po.ad + ' ' + po.soyad as onaylayan,
+                       t.satinalma_onay_tarihi
                 FROM satinalma.talepler t
                 LEFT JOIN ik.departmanlar d ON t.departman_id = d.id
                 LEFT JOIN ik.personeller p ON t.talep_eden_id = p.id
+                LEFT JOIN ik.personeller po ON t.satinalma_onaylayan_id = po.id
                 WHERE t.id = ?
             """, (self.talep_id,))
             talep = cursor.fetchone()
-            
-            # Satırları al
+
+            # Satirlari al - fiyat/tutar dahil
             cursor.execute("""
-                SELECT satir_no, urun_adi, urun_kodu, talep_miktar, birim, aciklama
+                SELECT satir_no, urun_adi, urun_kodu, talep_miktar, birim, aciklama,
+                       tahmini_birim_fiyat, tahmini_tutar, ISNULL(para_birimi, 'TRY')
                 FROM satinalma.talep_satirlari
                 WHERE talep_id = ?
                 ORDER BY satir_no
@@ -1049,75 +1054,88 @@ class TalepDialog(QDialog):
                     </tr>
                 </table>
                 
-                <!-- Talep Eden Bölüm -->
-                <div class="section-title">TALEP EDEN BÖLÜM:</div>
-                <div style="margin-bottom: 10px; padding: 5px; border: 1px solid #ccc;">
-                    <strong>Departman:</strong> {talep[5] or ''} &nbsp;&nbsp;&nbsp;
-                    <strong>Talep Eden:</strong> {talep[6] or ''} &nbsp;&nbsp;&nbsp;
-                    <strong>İstenen Termin:</strong> {termin_str}
-                </div>
-                
+                <!-- Talep Eden Bolum -->
+                <div class="section-title">TALEP BILGILERI:</div>
+                <table class="content-table" style="margin-bottom:10px;">
+                    <tr>
+                        <td style="width:25%"><strong>Departman:</strong> {talep[5] or ''}</td>
+                        <td style="width:25%"><strong>Talep Eden:</strong> {talep[6] or ''}</td>
+                        <td style="width:25%"><strong>Oncelik:</strong> {talep[2] or 'NORMAL'}</td>
+                        <td style="width:25%"><strong>Termin:</strong> {termin_str}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Durum:</strong> {talep[8] or ''}</td>
+                        <td><strong>Onaylayan:</strong> {talep[12] or '-'}</td>
+                        <td><strong>Onay Tarihi:</strong> {talep[13].strftime('%d/%m/%Y') if talep[13] else '-'}</td>
+                        <td><strong>Toplam:</strong> {float(talep[7]):,.2f} {satirlar[0][8] if satirlar else 'TRY'}</td>
+                    </tr>
+                </table>
+
                 <!-- Malzeme Listesi -->
                 <table class="content-table">
                     <thead>
                         <tr>
-                            <th class="sira">S/N</th>
-                            <th class="malzeme">MALZEMENİN CİNSİ</th>
-                            <th class="teknik">TEKNİK ÖZELLİK<br/>LOT/KOD NO</th>
-                            <th class="miktar">MİKTAR</th>
-                            <th class="tarih">İSTENİLEN<br/>TARİH</th>
-                            <th class="aciklama">AÇIKLAMA</th>
+                            <th style="width:30px; text-align:center;">S/N</th>
+                            <th style="width:20%">URUN KODU</th>
+                            <th>MALZEMENIN CINSI</th>
+                            <th style="width:70px; text-align:center;">MIKTAR</th>
+                            <th style="width:50px; text-align:center;">BIRIM</th>
+                            <th style="width:80px; text-align:right;">B.FIYAT</th>
+                            <th style="width:90px; text-align:right;">TUTAR</th>
+                            <th style="width:15%">ACIKLAMA</th>
                         </tr>
                     </thead>
                     <tbody>
             """
-            
-            # Satırları ekle
-            for i in range(25):  # 25 satır (formda görünen)
-                if i < len(satirlar):
-                    satir = satirlar[i]
-                    html += f"""
-                        <tr>
-                            <td class="sira">{satir[0]}</td>
-                            <td class="malzeme">{satir[1] or ''}</td>
-                            <td class="teknik">{satir[2] or ''}</td>
-                            <td class="miktar">{satir[3]} {satir[4]}</td>
-                            <td class="tarih">{termin_str}</td>
-                            <td class="aciklama">{satir[5] or ''}</td>
-                        </tr>
-                    """
-                else:
-                    html += f"""
-                        <tr>
-                            <td class="sira">{i+1}</td>
-                            <td class="malzeme">&nbsp;</td>
-                            <td class="teknik">&nbsp;</td>
-                            <td class="miktar">&nbsp;</td>
-                            <td class="tarih">&nbsp;</td>
-                            <td class="aciklama">&nbsp;</td>
-                        </tr>
-                    """
-            
-            html += """
+
+            genel_toplam = 0
+            para_birimi = 'TRY'
+            for satir in satirlar:
+                fiyat = float(satir[6]) if satir[6] else 0
+                tutar = float(satir[7]) if satir[7] else fiyat * float(satir[3] or 0)
+                genel_toplam += tutar
+                para_birimi = satir[8] or 'TRY'
+                html += f"""
+                    <tr>
+                        <td style="text-align:center;">{satir[0]}</td>
+                        <td>{satir[2] or ''}</td>
+                        <td>{satir[1] or ''}</td>
+                        <td style="text-align:center;">{float(satir[3]):,.0f}</td>
+                        <td style="text-align:center;">{satir[4] or 'ADET'}</td>
+                        <td style="text-align:right;">{fiyat:,.4f}</td>
+                        <td style="text-align:right;">{tutar:,.2f}</td>
+                        <td>{satir[5] or ''}</td>
+                    </tr>
+                """
+
+            html += f"""
+                    <tr style="font-weight:bold; background:#f0f0f0;">
+                        <td colspan="6" style="text-align:right;">GENEL TOPLAM:</td>
+                        <td style="text-align:right;">{genel_toplam:,.2f} {para_birimi}</td>
+                        <td></td>
+                    </tr>
                     </tbody>
                 </table>
-                
-                <!-- Onay Bölümü -->
-                <div class="section-title">ONAY SONUCU:</div>
+            """
+
+            # Not varsa ekle
+            if talep[11]:
+                html += f'<div style="margin:8px 0; padding:8px; border:1px solid #ccc; font-size:9pt;"><strong>Not:</strong> {talep[11]}</div>'
+
+            html += f"""
+                <!-- Onay Bolumu -->
+                <div class="section-title">ONAY:</div>
                 <table class="signature-table">
                     <tr>
-                        <td>TALEP EDEN/KİSİM AMİRİ<br/>TARİH/İMZA</td>
-                        <td>ONAY<br/>TARİH/İMZA</td>
-                        <td>SATINALMA<br/>TARİH/İMZA</td>
+                        <td>TALEP EDEN<br/>{talep[6] or ''}<br/>{tarih_str}</td>
+                        <td>SATINALMA ONAY<br/>{talep[12] or '........................'}<br/>{talep[13].strftime('%d/%m/%Y') if talep[13] else '....../....../......'}</td>
+                        <td>GENEL MUDUR<br/>........................<br/>....../....../......</td>
                     </tr>
                 </table>
-                
-                <!-- Footer -->
+
                 <div class="footer">
-                    <span>FORM NO.:</span>
-                    <span>REV.NO.:</span>
-                    <span>REV.TAR.:</span>
-                    <span>İLK YAY.TAR.:</span>
+                    <span>ATLAS KATAFOREZ - NEXOR ERP</span>
+                    <span>{talep[0]}</span>
                 </div>
             </body>
             </html>
@@ -1519,16 +1537,223 @@ class SatinalmaTaleplerPage(BasePage):
                                   f'Talep #{talep_id} siparise donusturuldu: {siparis_no}')
             conn.close()
 
+            # Siparis PDF olustur ve tedarikciye email gonder
+            try:
+                pdf_path = self._siparis_pdf_olustur(siparis_id, siparis_no, secim, satirlar)
+                if pdf_path:
+                    # Tedarikci emaili bul
+                    conn2 = get_db_connection()
+                    cursor2 = conn2.cursor()
+                    cursor2.execute("SELECT email FROM musteri.cariler WHERE id = ?", (tedarikci_id,))
+                    ted_row = cursor2.fetchone()
+                    ted_email = ted_row[0] if ted_row and ted_row[0] and '@' in str(ted_row[0]) else None
+                    conn2.close()
+
+                    email_msg = ""
+                    if ted_email:
+                        reply2 = QMessageBox.question(self, "Email Gonder",
+                            f"Siparis PDF olusturuldu.\n\n"
+                            f"Tedarikci: {secim}\n"
+                            f"Email: {ted_email}\n\n"
+                            f"Tedarikciye email olarak gondermek ister misiniz?")
+                        if reply2 == QMessageBox.Yes:
+                            try:
+                                from utils.email_service import get_email_service
+                                es = get_email_service()
+                                if es.ayarlar:
+                                    import smtplib
+                                    from email.mime.text import MIMEText
+                                    from email.mime.multipart import MIMEMultipart
+                                    from email.mime.base import MIMEBase
+                                    from email import encoders
+                                    import os
+
+                                    msg = MIMEMultipart()
+                                    msg['From'] = f"{es.ayarlar['gonderen_adi']} <{es.ayarlar['gonderen_email']}>"
+                                    msg['To'] = ted_email
+                                    msg['Subject'] = f"Siparis - {siparis_no} - ATLAS KATAFOREZ"
+
+                                    body = f"Sayın {secim},\n\n{siparis_no} numarali siparisimiz ekte gonderilmistir.\n\nSaygilarimizla,\nATLAS KATAFOREZ"
+                                    msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+                                    with open(pdf_path, 'rb') as f:
+                                        part = MIMEBase('application', 'pdf')
+                                        part.set_payload(f.read())
+                                        encoders.encode_base64(part)
+                                        part.add_header('Content-Disposition', f'attachment; filename="{os.path.basename(pdf_path)}"')
+                                        msg.attach(part)
+
+                                    if es.ayarlar['smtp_ssl'] and es.ayarlar['smtp_port'] == 465:
+                                        server = smtplib.SMTP_SSL(es.ayarlar['smtp_server'], es.ayarlar['smtp_port'], timeout=15)
+                                    else:
+                                        server = smtplib.SMTP(es.ayarlar['smtp_server'], es.ayarlar['smtp_port'], timeout=15)
+                                        if es.ayarlar['smtp_ssl']:
+                                            server.starttls()
+                                    if es.ayarlar['gonderen_sifre']:
+                                        server.login(es.ayarlar['gonderen_email'], es.ayarlar['gonderen_sifre'])
+                                    server.send_message(msg)
+                                    server.quit()
+                                    email_msg = f"\nEmail gonderildi: {ted_email}"
+                            except Exception as em_err:
+                                email_msg = f"\nEmail gonderilemedi: {em_err}"
+                    else:
+                        email_msg = "\nTedarikci email adresi bulunamadi."
+
+                    import subprocess, os
+                    subprocess.Popen(['start', '', pdf_path], shell=True)
+            except Exception as pdf_err:
+                print(f"Siparis PDF hatasi: {pdf_err}")
+                email_msg = ""
+
             QMessageBox.information(self, "Basarili",
                                     f"Siparis olusturuldu!\n\nSiparis No: {siparis_no}\n"
-                                    f"Aktarilan kalem: {len(satirlar)}\n\n"
-                                    "Satinalma Siparisleri sayfasindan duzenleyebilirsiniz.")
+                                    f"Tedarikci: {secim}\n"
+                                    f"Aktarilan kalem: {len(satirlar)}"
+                                    f"{email_msg if 'email_msg' in dir() else ''}")
             self._load_data()
 
         except Exception as e:
             import traceback
             traceback.print_exc()
             QMessageBox.critical(self, "Hata", f"Siparis olusturma hatasi: {e}")
+
+    def _siparis_pdf_olustur(self, siparis_id, siparis_no, tedarikci_adi, satirlar):
+        """Siparis formu PDF olustur"""
+        try:
+            import os
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.units import mm
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import ParagraphStyle
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+
+            font_name = 'Helvetica'
+            for fp in ["C:/Windows/Fonts/calibri.ttf", "C:/Windows/Fonts/arial.ttf"]:
+                if os.path.exists(fp):
+                    try:
+                        fn = os.path.splitext(os.path.basename(fp))[0]
+                        pdfmetrics.registerFont(TTFont(fn, fp))
+                        font_name = fn
+                        break
+                    except Exception:
+                        continue
+
+            output_dir = os.path.join(os.path.expanduser("~"), "Documents", "AtmoERP", "Siparisler")
+            os.makedirs(output_dir, exist_ok=True)
+            tarih_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filepath = os.path.join(output_dir, f"SIPARIS_{siparis_no}_{tarih_str}.pdf")
+
+            doc = SimpleDocTemplate(filepath, pagesize=A4,
+                                    leftMargin=15*mm, rightMargin=15*mm,
+                                    topMargin=15*mm, bottomMargin=15*mm)
+
+            title_s = ParagraphStyle('T', fontName=font_name, fontSize=16, leading=20, alignment=1, spaceAfter=2*mm)
+            sub_s = ParagraphStyle('S', fontName=font_name, fontSize=9, leading=12, alignment=1, textColor=colors.grey, spaceAfter=6*mm)
+            cell_s = ParagraphStyle('C', fontName=font_name, fontSize=8, leading=10)
+            h_s = ParagraphStyle('H', fontName=font_name, fontSize=10, leading=14, spaceAfter=3*mm)
+
+            elements = []
+            elements.append(Paragraph("ATLAS KATAFOREZ", title_s))
+            elements.append(Paragraph("SATINALMA SIPARIS FORMU", ParagraphStyle('T2', fontName=font_name, fontSize=12, alignment=1, spaceAfter=4*mm)))
+            elements.append(Spacer(1, 2*mm))
+
+            # Bilgi tablosu
+            info_data = [
+                ['Siparis No:', siparis_no, 'Tarih:', datetime.now().strftime('%d.%m.%Y')],
+                ['Tedarikci:', tedarikci_adi, '', ''],
+            ]
+            info_tbl = Table(info_data, colWidths=[30*mm, 65*mm, 25*mm, 40*mm])
+            info_tbl.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), font_name),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('FONTNAME', (0, 0), (0, -1), font_name),
+                ('FONTNAME', (2, 0), (2, -1), font_name),
+                ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#333333')),
+                ('TEXTCOLOR', (2, 0), (2, -1), colors.HexColor('#333333')),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('SPAN', (1, 1), (3, 1)),
+            ]))
+            elements.append(info_tbl)
+            elements.append(Spacer(1, 4*mm))
+
+            # Kalem tablosu
+            header = ['#', 'Urun Kodu', 'Urun Adi', 'Miktar', 'Birim', 'B.Fiyat', 'Tutar', 'Aciklama']
+            data = [header]
+            genel_toplam = 0
+
+            for s in satirlar:
+                fiyat = float(s[5]) if s[5] else 0
+                miktar = float(s[3]) if s[3] else 0
+                tutar = fiyat * miktar
+                genel_toplam += tutar
+                data.append([
+                    str(s[0]),
+                    s[2] or '',
+                    Paragraph(str(s[1] or ''), cell_s),
+                    f"{miktar:,.0f}",
+                    s[4] or 'ADET',
+                    f"{fiyat:,.4f}",
+                    f"{tutar:,.2f}",
+                    Paragraph(str(s[7] or ''), cell_s),
+                ])
+
+            # Toplam satiri
+            data.append(['', '', '', '', '', 'TOPLAM:', f"{genel_toplam:,.2f}", ''])
+
+            col_w = [10*mm, 28*mm, 45*mm, 18*mm, 16*mm, 22*mm, 25*mm, 26*mm]
+            tbl = Table(data, colWidths=col_w, repeatRows=1)
+            tbl.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTNAME', (0, 0), (-1, -1), font_name),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('FONTSIZE', (0, 1), (-1, -1), 7),
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+                ('ALIGN', (3, 0), (3, -1), 'CENTER'),
+                ('ALIGN', (4, 0), (4, -1), 'CENTER'),
+                ('ALIGN', (5, 0), (6, -1), 'RIGHT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -2), 0.5, colors.HexColor('#cccccc')),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f8f8')]),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('FONTNAME', (0, -1), (-1, -1), font_name),
+                ('FONTSIZE', (0, -1), (-1, -1), 9),
+                ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
+            ]))
+            elements.append(tbl)
+            elements.append(Spacer(1, 10*mm))
+
+            # Imza alani
+            imza_data = [
+                ['Hazirlayan', 'Onaylayan', 'Tedarikci'],
+                ['', '', ''],
+                ['Tarih / Imza', 'Tarih / Imza', 'Tarih / Imza / Kaseli'],
+            ]
+            imza_tbl = Table(imza_data, colWidths=[60*mm, 60*mm, 60*mm])
+            imza_tbl.setStyle(TableStyle([
+                ('FONTNAME', (0, 0), (-1, -1), font_name),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('ROWHEIGHTS', (0, 1), (-1, 1), [None, 25*mm, None]),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            elements.append(imza_tbl)
+
+            doc.build(elements)
+            return filepath
+
+        except ImportError:
+            QMessageBox.warning(self, "Hata", "PDF icin reportlab gerekli: pip install reportlab")
+            return None
+        except Exception as e:
+            print(f"Siparis PDF hatasi: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     def _reddet(self):
         """Secili talebi reddet"""
