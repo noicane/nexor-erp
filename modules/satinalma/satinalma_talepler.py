@@ -171,14 +171,16 @@ class TalepSatirDialog(QDialog):
             # Tedarikci anlasma fiyatlari
             if self.tedarikci_id:
                 cursor.execute("""
-                    SELECT urun_id, urun_adi, birim_fiyat
-                    FROM satinalma.tedarikci_fiyatlari
-                    WHERE tedarikci_id = ? AND aktif_mi = 1
-                      AND GETDATE() BETWEEN gecerlilik_baslangic AND ISNULL(gecerlilik_bitis, '2099-12-31')
+                    SELECT tf.urun_id, tf.urun_adi, tf.birim_fiyat,
+                           ISNULL(pb.kod, 'TRY') as para_birimi
+                    FROM satinalma.tedarikci_fiyatlari tf
+                    LEFT JOIN tanim.para_birimleri pb ON tf.para_birimi_id = pb.id
+                    WHERE tf.tedarikci_id = ? AND tf.aktif_mi = 1
+                      AND GETDATE() BETWEEN tf.gecerlilik_baslangic AND ISNULL(tf.gecerlilik_bitis, '2099-12-31')
                 """, (self.tedarikci_id,))
                 for r in cursor.fetchall():
                     if r[0]:
-                        self._anlasma_fiyat[r[0]] = {'fiyat': float(r[2] or 0), 'urun_adi': r[1]}
+                        self._anlasma_fiyat[r[0]] = {'fiyat': float(r[2] or 0), 'urun_adi': r[1], 'para_birimi': r[3] or 'TRY'}
 
             conn.close()
             self._filter_urunler()
@@ -204,7 +206,7 @@ class TalepSatirDialog(QDialog):
                 etiketler.append(f"Stok:{stok['miktar']:.0f}")
             anlasma = self._anlasma_fiyat.get(urun_id)
             if anlasma:
-                etiketler.append(f"TL{anlasma['fiyat']:.2f}")
+                etiketler.append(f"{anlasma.get('para_birimi', 'TRY')} {anlasma['fiyat']:.2f}")
 
             suffix = f" ({', '.join(etiketler)})" if etiketler else ""
             self.cmb_urun.addItem(f"{kod} - {ad}{suffix}", urun_id)
@@ -235,7 +237,7 @@ class TalepSatirDialog(QDialog):
         # Anlasma fiyati goster ve otomatik doldur
         anlasma = self._anlasma_fiyat.get(urun_id)
         if anlasma:
-            self.lbl_anlasma.setText(f"TL {anlasma['fiyat']:.4f} (Anlasma)")
+            self.lbl_anlasma.setText(f"{anlasma.get('para_birimi', 'TRY')} {anlasma['fiyat']:.4f} (Anlasma)")
             self.spin_fiyat.setValue(anlasma['fiyat'])
         else:
             self.lbl_anlasma.setText("Anlasma fiyati yok")
@@ -450,7 +452,7 @@ class TalepDialog(QDialog):
         toolbar.addWidget(btn_sil)
         
         toolbar.addStretch()
-        self.lbl_toplam = QLabel("Tahmini Toplam: ₺ 0.00")
+        self.lbl_toplam = QLabel("Tahmini Toplam: 0.00")
         self.lbl_toplam.setStyleSheet(f"font-weight: bold; color: {self.theme.get('text')};")
         toolbar.addWidget(self.lbl_toplam)
         kalem_layout.addLayout(toolbar)
@@ -680,7 +682,11 @@ class TalepDialog(QDialog):
                         item = QTableWidgetItem(str(val) if val else "")
                     self.table_satirlar.setItem(i, j, item)
 
-            self.lbl_toplam.setText(f"Tahmini Toplam: {toplam:,.2f}")
+            # Para birimi belirle (ilk satirdan)
+            pb_text = ''
+            if rows:
+                pb_text = f" {rows[0][6]}" if rows[0][6] else ''
+            self.lbl_toplam.setText(f"Tahmini Toplam: {toplam:,.2f}{pb_text}")
         except Exception as e:
             print(f"Satır yükleme hatası: {e}")
     
@@ -1200,8 +1206,8 @@ class SatinalmaTaleplerPage(BasePage):
         
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels(["ID", "Talep No", "Tarih", "Departman", "Öncelik", "Tahmini Tutar", "Durum", "Amir Onay", "İşlem"])
+        self.table.setColumnCount(11)
+        self.table.setHorizontalHeaderLabels(["ID", "Talep No", "Tarih", "Departman", "Talep Eden", "Oncelik", "Tahmini Tutar", "Durum", "Amir Onay", "Onaylayan", "Islem"])
         self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
@@ -1238,9 +1244,13 @@ class SatinalmaTaleplerPage(BasePage):
             # TÜM TALEPLERİ GÖSTER (test için - sonra filtre ekleriz)
             cursor.execute("""
                 SELECT t.id, t.talep_no, FORMAT(t.tarih, 'dd.MM.yyyy'),
-                       d.ad, t.oncelik, t.tahmini_tutar, t.durum, t.amir_onay_durumu
+                       d.ad, p.ad + ' ' + p.soyad as talep_eden,
+                       t.oncelik, t.tahmini_tutar, t.durum, t.amir_onay_durumu,
+                       po.ad + ' ' + po.soyad as onaylayan
                 FROM satinalma.talepler t
                 LEFT JOIN ik.departmanlar d ON t.departman_id = d.id
+                LEFT JOIN ik.personeller p ON t.talep_eden_id = p.id
+                LEFT JOIN ik.personeller po ON t.amir_onaylayan_id = po.id
                 ORDER BY t.tarih DESC, t.id DESC
             """)
             
@@ -1265,13 +1275,14 @@ class SatinalmaTaleplerPage(BasePage):
         }
         
         for i, row in enumerate(rows):
+            # row: 0=id, 1=talep_no, 2=tarih, 3=departman, 4=talep_eden, 5=oncelik, 6=tutar, 7=durum, 8=amir_onay, 9=onaylayan
             for j, val in enumerate(row):
-                if j == 5 and val:  # Tutar
-                    item = QTableWidgetItem(f"₺ {val:,.2f}")
-                elif j == 6:  # Durum
+                if j == 6 and val:  # Tutar
+                    item = QTableWidgetItem(f"{val:,.2f}")
+                elif j == 7:  # Durum
                     item = QTableWidgetItem(str(val) if val else "")
                     item.setForeground(QColor(durum_colors.get(val, self.theme.get('text'))))
-                elif j == 7:  # Amir onay
+                elif j == 8:  # Amir onay
                     item = QTableWidgetItem(str(val) if val else "-")
                     if val == "ONAYLANDI":
                         item.setForeground(QColor(self.theme.get('success')))
@@ -1283,9 +1294,9 @@ class SatinalmaTaleplerPage(BasePage):
 
             rid = row[0]
             widget = self.create_action_buttons([
-                ("✏️", "Duzenle", lambda checked, rid=rid: self._duzenle_by_id(rid), "edit"),
+                ("Duzenle", "Duzenle", lambda checked, rid=rid: self._duzenle_by_id(rid), "edit"),
             ])
-            self.table.setCellWidget(i, 8, widget)
+            self.table.setCellWidget(i, 10, widget)
             self.table.setRowHeight(i, 42)
 
         self.lbl_stat.setText(f"Toplam: {len(rows)} talep")
@@ -1381,14 +1392,37 @@ class SatinalmaTaleplerPage(BasePage):
             return
 
         talep_id = int(self.table.item(row, 0).text())
-        durum = self.table.item(row, 6).text()
+        durum = self.table.item(row, 7).text()  # Durum kolonu index 7
 
         if durum not in ("AMIR_ONAYLADI", "SATINALMA_ONAYLANDI"):
             QMessageBox.warning(self, "Uyari", "Sadece onaylanmis talepler siparise donusturulebilir!")
             return
 
+        # Tedarikci secimi - Siparis icin zorunlu
+        from PySide6.QtWidgets import QInputDialog
+        try:
+            conn_t = get_db_connection()
+            cursor_t = conn_t.cursor()
+            cursor_t.execute("SELECT id, unvan FROM musteri.cariler WHERE cari_tipi IN ('TEDARIKCI', 'TEDARIKCI_MUSTERI') AND aktif_mi = 1 ORDER BY unvan")
+            tedarikci_rows = cursor_t.fetchall()
+            conn_t.close()
+        except Exception:
+            tedarikci_rows = []
+
+        if not tedarikci_rows:
+            QMessageBox.warning(self, "Uyari", "Tanimli tedarikci bulunamadi!")
+            return
+
+        tedarikci_listesi = [f"{r[1]}" for r in tedarikci_rows]
+        secim, ok = QInputDialog.getItem(self, "Tedarikci Sec", "Siparis icin tedarikci secin:", tedarikci_listesi, 0, False)
+        if not ok:
+            return
+
+        secilen_idx = tedarikci_listesi.index(secim)
+        tedarikci_id = tedarikci_rows[secilen_idx][0]
+
         reply = QMessageBox.question(self, "Siparis Olustur",
-                                     "Bu talep satirlari siparis formuna aktarilacak. Devam edilsin mi?")
+                                     f"Tedarikci: {secim}\n\nBu talep satirlari siparis formuna aktarilacak. Devam edilsin mi?")
         if reply != QMessageBox.Yes:
             return
 
@@ -1412,13 +1446,13 @@ class SatinalmaTaleplerPage(BasePage):
             sira = cursor.fetchone()[0]
             siparis_no = f"SIP-{datetime.now().strftime('%Y%m%d')}-{sira:04d}"
 
-            # Siparis olustur
+            # Siparis olustur - tedarikci_id ile
             cursor.execute("""
                 INSERT INTO satinalma.siparisler
-                    (siparis_no, tarih, istenen_teslim_tarihi, notlar, durum)
+                    (siparis_no, tarih, tedarikci_id, istenen_teslim_tarihi, notlar, durum)
                 OUTPUT INSERTED.id
-                VALUES (?, GETDATE(), ?, ?, 'TASLAK')
-            """, (siparis_no, talep[1], talep[2] or f"Talep #{talep_id} den olusturuldu"))
+                VALUES (?, GETDATE(), ?, ?, ?, 'TASLAK')
+            """, (siparis_no, tedarikci_id, talep[1], talep[2] or f"Talep #{talep_id} den olusturuldu"))
             siparis_id = int(cursor.fetchone()[0])
 
             # Talep satirlarini siparis satirlarina aktar

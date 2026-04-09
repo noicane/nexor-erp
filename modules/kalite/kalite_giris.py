@@ -594,22 +594,33 @@ class KaliteGirisPage(BasePage):
         title.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {s['text']};")
         h.addWidget(title)
         
+        combo_style = f"QComboBox {{ background: {s['input_bg']}; border: 1px solid {s['border']}; border-radius: 4px; padding: 0 8px; color: {s['text']}; font-size: 11px; }}"
+
+        # Firma filtresi
+        self.firma_combo = QComboBox()
+        self.firma_combo.setFixedWidth(220)
+        self.firma_combo.setFixedHeight(28)
+        self.firma_combo.setStyleSheet(combo_style)
+        self.firma_combo.addItem("Tum Firmalar", None)
+        self.firma_combo.currentIndexChanged.connect(self._load_data)
+        h.addWidget(self.firma_combo)
+
         # Arama
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Ara...")
+        self.search_input.setPlaceholderText("Lot / Stok Kodu Ara...")
         self.search_input.setFixedWidth(180)
         self.search_input.setFixedHeight(28)
         self.search_input.setStyleSheet(f"background: {s['input_bg']}; border: 1px solid {s['border']}; border-radius: 4px; padding: 0 8px; color: {s['text']}; font-size: 11px;")
         self.search_input.returnPressed.connect(self._load_data)
         h.addWidget(self.search_input)
-        
+
         # Durum combo
         self.durum_combo = QComboBox()
         self.durum_combo.setFixedWidth(120)
         self.durum_combo.setFixedHeight(28)
-        self.durum_combo.setStyleSheet(f"QComboBox {{ background: {s['input_bg']}; border: 1px solid {s['border']}; border-radius: 4px; padding: 0 8px; color: {s['text']}; font-size: 11px; }}")
+        self.durum_combo.setStyleSheet(combo_style)
         self.durum_combo.addItem("Bekleyenler", "BEKLIYOR")
-        self.durum_combo.addItem("Tümü", None)
+        self.durum_combo.addItem("Tumu", None)
         self.durum_combo.addItem("Onaylananlar", "ONAYLANDI")
         self.durum_combo.currentIndexChanged.connect(self._load_data)
         h.addWidget(self.durum_combo)
@@ -682,14 +693,49 @@ class KaliteGirisPage(BasePage):
         self.table.doubleClicked.connect(self._on_double_click)
         layout.addWidget(self.table)
     
+    def _load_firmalar(self, cursor):
+        """Firma combo'sunu doldur (mevcut secimi koru)"""
+        mevcut = self.firma_combo.currentData()
+        self.firma_combo.blockSignals(True)
+        self.firma_combo.clear()
+        self.firma_combo.addItem("Tum Firmalar", None)
+        try:
+            cursor.execute("""
+                SELECT DISTINCT COALESCE(gi.cari_unvani, sb.cari_unvani) as firma
+                FROM stok.stok_bakiye sb
+                LEFT JOIN siparis.giris_irsaliye_satirlar gis ON sb.irsaliye_satir_id = gis.id
+                LEFT JOIN siparis.giris_irsaliyeleri gi ON gis.irsaliye_id = gi.id
+                WHERE sb.parent_lot_no IS NOT NULL
+                  AND sb.durum_kodu IN ('KABUL', 'GIRIS_KALITE', 'GIRIS_ONAY')
+                  AND COALESCE(gi.cari_unvani, sb.cari_unvani) IS NOT NULL
+                ORDER BY firma
+            """)
+            for row in cursor.fetchall():
+                if row[0]:
+                    kisa = row[0][:40] if len(row[0]) > 40 else row[0]
+                    self.firma_combo.addItem(kisa, row[0])
+        except Exception:
+            pass
+        # Onceki secimi geri yukle
+        if mevcut:
+            for i in range(self.firma_combo.count()):
+                if self.firma_combo.itemData(i) == mevcut:
+                    self.firma_combo.setCurrentIndex(i)
+                    break
+        self.firma_combo.blockSignals(False)
+
     def _load_data(self):
         conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
+            # Firma listesini guncelle
+            self._load_firmalar(cursor)
+
             search = self.search_input.text().strip()
             durum = self.durum_combo.currentData()
+            firma = self.firma_combo.currentData()
 
             query = """
                 SELECT sb.parent_lot_no, MAX(u.urun_kodu), COUNT(*),
@@ -707,16 +753,15 @@ class KaliteGirisPage(BasePage):
             if search:
                 query += " AND (sb.parent_lot_no LIKE ? OR u.urun_kodu LIKE ?)"
                 params.extend([f"%{search}%"] * 2)
+            if firma:
+                query += " AND COALESCE(gi.cari_unvani, sb.cari_unvani) = ?"
+                params.append(firma)
             query += " GROUP BY sb.parent_lot_no"
             if durum == 'BEKLIYOR':
                 query += " HAVING SUM(CASE WHEN sb.kalite_durumu = 'BEKLIYOR' THEN 1 ELSE 0 END) > 0"
             elif durum == 'ONAYLANDI':
                 query += " HAVING SUM(CASE WHEN sb.kalite_durumu = 'BEKLIYOR' THEN 1 ELSE 0 END) = 0"
             query += " ORDER BY sb.parent_lot_no DESC"
-
-            print(f"DEBUG - Giriş Kalite Sorgusu:")
-            print(f"Query: {query}")
-            print(f"Params: {params}")
 
             cursor.execute(query, params)
             rows = cursor.fetchall()

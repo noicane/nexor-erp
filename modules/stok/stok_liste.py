@@ -2880,6 +2880,7 @@ class YeniUrunDialog(QDialog):
                     INSERT INTO stok.urunler
                         (urun_kodu, urun_adi, cari_id, musteri_parca_no, urun_tipi, urun_tipi_id,
                          birim_id, kaplama_turu_id, yuzey_alani_m2, agirlik_kg, notlar)
+                    OUTPUT INSERTED.id
                     VALUES (?, ?, ?, ?, 'MAMUL', ?, ?, ?, ?, ?, ?)
                 """, (
                     urun_kodu, urun_adi,
@@ -2896,6 +2897,7 @@ class YeniUrunDialog(QDialog):
                     INSERT INTO stok.urunler
                         (urun_kodu, urun_adi, cari_id, musteri_parca_no, urun_tipi,
                          birim_id, kaplama_turu_id, yuzey_alani_m2, agirlik_kg, notlar)
+                    OUTPUT INSERTED.id
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     urun_kodu, urun_adi,
@@ -2908,8 +2910,8 @@ class YeniUrunDialog(QDialog):
                     self.notlar.toPlainText().strip() or None
                 ))
 
-            cursor.execute("SELECT SCOPE_IDENTITY()")
-            self.yeni_id = int(cursor.fetchone()[0])
+            row = cursor.fetchone()
+            self.yeni_id = row[0] if row else 0
 
             conn.commit()
             conn.close()

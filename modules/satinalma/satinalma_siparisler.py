@@ -74,7 +74,7 @@ class SiparisSatirDialog(QDialog):
         self.spin_fiyat = QDoubleSpinBox()
         self.spin_fiyat.setRange(0, 9999999)
         self.spin_fiyat.setDecimals(4)
-        self.spin_fiyat.setPrefix("₺ ")
+        self.spin_fiyat.setPrefix("")
         self.spin_fiyat.valueChanged.connect(self._calc_tutar)
         form.addRow("Birim Fiyat*:", self.spin_fiyat)
         
@@ -85,7 +85,7 @@ class SiparisSatirDialog(QDialog):
         self.spin_kdv.valueChanged.connect(self._calc_tutar)
         form.addRow("KDV Oranı:", self.spin_kdv)
         
-        self.lbl_tutar = QLabel("Tutar: ₺ 0.00 + KDV ₺ 0.00 = ₺ 0.00")
+        self.lbl_tutar = QLabel("Tutar: 0.00 + KDV 0.00 = 0.00")
         self.lbl_tutar.setStyleSheet(f"font-weight: bold; color: {self.theme.get('primary')};")
         form.addRow("", self.lbl_tutar)
         
@@ -125,7 +125,7 @@ class SiparisSatirDialog(QDialog):
                     AND GETDATE() BETWEEN gecerlilik_baslangic AND ISNULL(gecerlilik_bitis, '2099-12-31')
                 """, (self.tedarikci_id,))
                 for row in cursor.fetchall():
-                    self.cmb_urun.addItem(f"[ANLAŞMALI] {row[1]} - ₺{row[2]:.4f}", (row[0], row[2]))
+                    self.cmb_urun.addItem(f"[ANLASMALI] {row[1]} - {row[2]:.4f}", (row[0], row[2]))
             
             cursor.execute("SELECT id, urun_kodu, urun_adi FROM stok.urunler WHERE aktif_mi = 1 ORDER BY urun_kodu")
             for row in cursor.fetchall():
@@ -139,7 +139,7 @@ class SiparisSatirDialog(QDialog):
             text = self.cmb_urun.currentText()
             data = self.cmb_urun.currentData()
             if "[ANLAŞMALI]" in text:
-                urun_adi = text.replace("[ANLAŞMALI] ", "").split(" - ₺")[0]
+                urun_adi = text.replace("[ANLAŞMALI] ", "").split(" - ")[0]
                 self.txt_urun_adi.setText(urun_adi)
                 if data and data[1]:
                     self.spin_fiyat.setValue(float(data[1]))
@@ -154,7 +154,7 @@ class SiparisSatirDialog(QDialog):
         tutar = miktar * fiyat
         kdv = tutar * kdv_orani / 100
         toplam = tutar + kdv
-        self.lbl_tutar.setText(f"Tutar: ₺ {tutar:,.2f} + KDV ₺ {kdv:,.2f} = ₺ {toplam:,.2f}")
+        self.lbl_tutar.setText(f"Tutar: {tutar:,.2f} + KDV {kdv:,.2f} = {toplam:,.2f}")
     
     def _load_data(self):
         try:
@@ -328,7 +328,7 @@ class SiparisDialog(QDialog):
         self.table_satirlar.doubleClicked.connect(self._edit_satir)
         kalem_layout.addWidget(self.table_satirlar)
         
-        self.lbl_genel_toplam = QLabel("Genel Toplam: ₺ 0.00")
+        self.lbl_genel_toplam = QLabel("Genel Toplam: 0.00")
         self.lbl_genel_toplam.setStyleSheet(f"font-weight: bold; font-size: 16px; color: {self.theme.get('primary')};")
         kalem_layout.addWidget(self.lbl_genel_toplam)
         
@@ -418,11 +418,11 @@ class SiparisDialog(QDialog):
                 self.table_satirlar.setItem(i, 2, QTableWidgetItem(row[2] or ""))
                 self.table_satirlar.setItem(i, 3, QTableWidgetItem(f"{row[3]:,.2f}" if row[3] else ""))
                 self.table_satirlar.setItem(i, 4, QTableWidgetItem(row[4] or ""))
-                self.table_satirlar.setItem(i, 5, QTableWidgetItem(f"₺ {row[5]:,.4f}" if row[5] else ""))
-                self.table_satirlar.setItem(i, 6, QTableWidgetItem(f"₺ {row[6]:,.2f}" if row[6] else ""))
-                self.table_satirlar.setItem(i, 7, QTableWidgetItem(f"₺ {row[7]:,.2f}" if row[7] else ""))
+                self.table_satirlar.setItem(i, 5, QTableWidgetItem(f"{row[5]:,.4f}" if row[5] else ""))
+                self.table_satirlar.setItem(i, 6, QTableWidgetItem(f"{row[6]:,.2f}" if row[6] else ""))
+                self.table_satirlar.setItem(i, 7, QTableWidgetItem(f"{row[7]:,.2f}" if row[7] else ""))
                 if row[7]: genel_toplam += float(row[7])
-            self.lbl_genel_toplam.setText(f"Genel Toplam: ₺ {genel_toplam:,.2f}")
+            self.lbl_genel_toplam.setText(f"Genel Toplam: {genel_toplam:,.2f}")
         except Exception: pass
     
     def _add_satir(self):
@@ -588,7 +588,7 @@ class SatinalmaSiparislerPage(BasePage):
         for i, row in enumerate(rows):
             for j, val in enumerate(row):
                 if j == 5 and val:
-                    item = QTableWidgetItem(f"₺ {val:,.2f}")
+                    item = QTableWidgetItem(f"{val:,.2f}")
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

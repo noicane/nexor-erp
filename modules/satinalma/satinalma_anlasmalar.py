@@ -62,7 +62,7 @@ class FiyatDialog(QDialog):
         self.spin_fiyat = QDoubleSpinBox()
         self.spin_fiyat.setRange(0.0001, 9999999)
         self.spin_fiyat.setDecimals(4)
-        self.spin_fiyat.setPrefix("₺ ")
+        self.spin_fiyat.setPrefix("")
         fiyat_layout.addWidget(self.spin_fiyat)
         
         self.cmb_birim = QComboBox()
@@ -252,7 +252,7 @@ class AndasmaDialog(QDialog):
         self.spin_toplam = QDoubleSpinBox()
         self.spin_toplam.setRange(0, 999999999)
         self.spin_toplam.setDecimals(2)
-        self.spin_toplam.setPrefix("₺ ")
+        self.spin_toplam.setPrefix("")
         genel_layout.addRow("Yıllık Anlaşma Tutarı:", self.spin_toplam)
         
         self.spin_vade = QSpinBox()
@@ -393,7 +393,7 @@ class AndasmaDialog(QDialog):
             for i, row in enumerate(rows):
                 self.table_fiyatlar.setItem(i, 0, QTableWidgetItem(str(row[0])))
                 self.table_fiyatlar.setItem(i, 1, QTableWidgetItem(row[1] or ""))
-                self.table_fiyatlar.setItem(i, 2, QTableWidgetItem(f"₺ {row[2]:,.4f}" if row[2] else ""))
+                self.table_fiyatlar.setItem(i, 2, QTableWidgetItem(f"{row[2]:,.4f}" if row[2] else ""))
                 self.table_fiyatlar.setItem(i, 3, QTableWidgetItem(f"{row[3]:,.2f}" if row[3] else ""))
                 self.table_fiyatlar.setItem(i, 4, QTableWidgetItem(row[4] or ""))
                 self.table_fiyatlar.setItem(i, 5, QTableWidgetItem(row[5] or ""))
@@ -581,7 +581,7 @@ class TedarikciAnlasmalariPage(BasePage):
         for i, row in enumerate(rows):
             for j, val in enumerate(row):
                 if j == 5 and val:  # Tutar
-                    item = QTableWidgetItem(f"₺ {val:,.2f}")
+                    item = QTableWidgetItem(f"{val:,.2f}")
                 elif j == 7:  # Durum
                     item = QTableWidgetItem(str(val) if val else "")
                     if val == "AKTIF":

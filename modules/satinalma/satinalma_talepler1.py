@@ -80,7 +80,7 @@ class TalepSatirDialog(QDialog):
         self.spin_fiyat = QDoubleSpinBox()
         self.spin_fiyat.setRange(0, 9999999)
         self.spin_fiyat.setDecimals(4)
-        self.spin_fiyat.setPrefix("₺ ")
+        self.spin_fiyat.setPrefix("")
         form.addRow("Tahmini Birim Fiyat:", self.spin_fiyat)
         
         self.txt_aciklama = QTextEdit()
@@ -312,7 +312,7 @@ class TalepDialog(QDialog):
         toolbar.addWidget(btn_sil)
         
         toolbar.addStretch()
-        self.lbl_toplam = QLabel("Tahmini Toplam: ₺ 0.00")
+        self.lbl_toplam = QLabel("Tahmini Toplam: 0.00")
         self.lbl_toplam.setStyleSheet(f"font-weight: bold; color: {self.theme.get('text')};")
         toolbar.addWidget(self.lbl_toplam)
         kalem_layout.addLayout(toolbar)
@@ -516,15 +516,15 @@ class TalepDialog(QDialog):
             for i, row in enumerate(rows):
                 for j, val in enumerate(row):
                     if j == 5 and val:  # Birim fiyat
-                        item = QTableWidgetItem(f"₺ {val:,.4f}")
+                        item = QTableWidgetItem(f"{val:,.4f}")
                     elif j == 6 and val:  # Tutar
-                        item = QTableWidgetItem(f"₺ {val:,.2f}")
+                        item = QTableWidgetItem(f"{val:,.2f}")
                         toplam += val
                     else:
                         item = QTableWidgetItem(str(val) if val else "")
                     self.table_satirlar.setItem(i, j, item)
-            
-            self.lbl_toplam.setText(f"Tahmini Toplam: ₺ {toplam:,.2f}")
+
+            self.lbl_toplam.setText(f"Tahmini Toplam: {toplam:,.2f}")
         except Exception as e:
             print(f"Satır yükleme hatası: {e}")
     
@@ -1100,7 +1100,7 @@ class SatinalmaTaleplerPage(BasePage):
         for i, row in enumerate(rows):
             for j, val in enumerate(row):
                 if j == 5 and val:  # Tutar
-                    item = QTableWidgetItem(f"₺ {val:,.2f}")
+                    item = QTableWidgetItem(f"{val:,.2f}")
                 elif j == 6:  # Durum
                     item = QTableWidgetItem(str(val) if val else "")
                     item.setForeground(QColor(durum_colors.get(val, self.theme.get('text'))))
