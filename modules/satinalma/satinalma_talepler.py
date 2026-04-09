@@ -1250,7 +1250,7 @@ class SatinalmaTaleplerPage(BasePage):
                 FROM satinalma.talepler t
                 LEFT JOIN ik.departmanlar d ON t.departman_id = d.id
                 LEFT JOIN ik.personeller p ON t.talep_eden_id = p.id
-                LEFT JOIN ik.personeller po ON t.amir_onaylayan_id = po.id
+                LEFT JOIN ik.personeller po ON t.satinalma_onaylayan_id = po.id
                 ORDER BY t.tarih DESC, t.id DESC
             """)
             
@@ -1312,7 +1312,7 @@ class SatinalmaTaleplerPage(BasePage):
         if durum == "Tümü":
             self._display_data(self.all_rows)
         else:
-            filtered = [r for r in self.all_rows if r[6] == durum]
+            filtered = [r for r in self.all_rows if r[7] == durum]
             self._display_data(filtered)
     
     def _yeni(self):
@@ -1338,7 +1338,7 @@ class SatinalmaTaleplerPage(BasePage):
             return
         
         talep_id = int(self.table.item(row, 0).text())
-        durum = self.table.item(row, 6).text()
+        durum = self.table.item(row, 7).text()
         
         if durum not in ("ONAY_BEKLIYOR", "AMIR_ONAYLADI"):
             QMessageBox.warning(self, "Uyarı", "Sadece onay bekleyen talepler onaylanabilir!")
@@ -1392,11 +1392,19 @@ class SatinalmaTaleplerPage(BasePage):
             return
 
         talep_id = int(self.table.item(row, 0).text())
-        durum = self.table.item(row, 7).text()  # Durum kolonu index 7
 
-        if durum not in ("AMIR_ONAYLADI", "SATINALMA_ONAYLANDI"):
-            QMessageBox.warning(self, "Uyari", "Sadece onaylanmis talepler siparise donusturulebilir!")
-            return
+        # DB'den gercek durumu kontrol et (tablo gorunumune guvenme)
+        try:
+            conn_chk = get_db_connection()
+            cursor_chk = conn_chk.cursor()
+            cursor_chk.execute("SELECT durum FROM satinalma.talepler WHERE id = ?", (talep_id,))
+            db_durum = cursor_chk.fetchone()
+            conn_chk.close()
+            if not db_durum or db_durum[0] not in ("SATINALMA_ONAYLANDI", "AMIR_ONAYLADI", "ONAY_BEKLIYOR"):
+                QMessageBox.warning(self, "Uyari", f"Bu talep siparise donusturulemez!\nDurum: {db_durum[0] if db_durum else 'Bilinmiyor'}")
+                return
+        except Exception:
+            pass
 
         # Tedarikci secimi - Siparis icin zorunlu
         from PySide6.QtWidgets import QInputDialog
@@ -1518,7 +1526,7 @@ class SatinalmaTaleplerPage(BasePage):
             return
         
         talep_id = int(self.table.item(row, 0).text())
-        durum = self.table.item(row, 6).text()
+        durum = self.table.item(row, 7).text()
         
         if durum not in ("ONAY_BEKLIYOR", "AMIR_ONAYLADI"):
             QMessageBox.warning(self, "Uyarı", "Sadece onay bekleyen talepler reddedilebilir!")

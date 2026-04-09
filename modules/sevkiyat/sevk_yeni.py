@@ -960,36 +960,52 @@ class SevkYeniPage(BasePage):
             from core.hareket_motoru import HareketMotoru
             motor = HareketMotoru(conn)
             
-            # İrsaliye satırları
-            satir_no = 0
+            # Ayni stok kodlu paketleri topla -> tek irsaliye satiri
+            toplanan = {}
             for paket in cari_paketleri:
+                stok_kodu = paket.get('stok_kodu', '')
+                if stok_kodu in toplanan:
+                    toplanan[stok_kodu]['miktar'] += paket['miktar']
+                    toplanan[stok_kodu]['paketler'].append(paket)
+                else:
+                    toplanan[stok_kodu] = {
+                        'miktar': paket['miktar'],
+                        'stok_kodu': stok_kodu,
+                        'paketler': [paket],
+                    }
+
+            # Toplanan satirlari yaz
+            satir_no = 0
+            for stok_kodu, data in toplanan.items():
                 satir_no += 1
-                
+                ilk_paket = data['paketler'][0]
+
                 # urun_id bul
                 urun_id = None
-                if paket.get('stok_kodu'):
+                if stok_kodu:
                     cursor.execute("""
                         SELECT TOP 1 id FROM stok.urunler WHERE urun_kodu = ?
-                    """, (paket['stok_kodu'],))
+                    """, (stok_kodu,))
                     row = cursor.fetchone()
                     if row:
                         urun_id = row[0]
-                
+
                 if not urun_id:
                     cursor.execute("SELECT TOP 1 id FROM stok.urunler")
                     row = cursor.fetchone()
-                    if row:
-                        urun_id = row[0]
-                    else:
-                        urun_id = 1
-                
+                    urun_id = row[0] if row else 1
+
+                # Lot nolari birlestir
+                lot_nolar = ', '.join([p.get('lot_no', '') for p in data['paketler'] if p.get('lot_no')])
+
                 cursor.execute("""
                     INSERT INTO siparis.cikis_irsaliye_satirlar
                     (uuid, irsaliye_id, satir_no, is_emri_id, urun_id, miktar, birim_id, lot_no)
                     VALUES (NEWID(), ?, ?, ?, ?, ?, 1, ?)
-                """, (irsaliye_id, satir_no, paket.get('is_emri_id'), urun_id, paket['miktar'], paket['lot_no']))
-                
-                # Hareket motoru ile stok çıkışı
+                """, (irsaliye_id, satir_no, ilk_paket.get('is_emri_id'), urun_id, data['miktar'], lot_nolar))
+
+            # Stok cikisi ve IE durumu - her paket icin ayri (lot bazli)
+            for paket in cari_paketleri:
                 lot_no = paket.get('lot_no', '')
                 if lot_no:
                     cikis_sonuc = motor.stok_cikis(
@@ -997,14 +1013,13 @@ class SevkYeniPage(BasePage):
                         miktar=paket['miktar'],
                         kaynak="IRSALIYE",
                         kaynak_id=irsaliye_id,
-                        aciklama=f"Sevkiyat çıkışı - {irsaliye_no}"
+                        aciklama=f"Sevkiyat cikisi - {irsaliye_no}"
                     )
                     if cikis_sonuc.basarili:
-                        print(f"✓ Stok çıkışı: {lot_no}, {paket['miktar']} adet")
+                        print(f"Stok cikisi: {lot_no}, {paket['miktar']} adet")
                     else:
-                        print(f"✗ Stok çıkışı hatası: {cikis_sonuc.mesaj}")
-                
-                # İş emri durumunu SEVK_EDILDI yap
+                        print(f"Stok cikisi hatasi: {cikis_sonuc.mesaj}")
+
                 if paket.get('is_emri_id'):
                     cursor.execute("""
                         UPDATE siparis.is_emirleri

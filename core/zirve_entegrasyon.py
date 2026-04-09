@@ -106,9 +106,9 @@ def _get_zirve_cari(zirve_cursor, crk: str) -> Optional[dict]:
 
 
 def _sonraki_evrakno(zirve_cursor) -> str:
-    """Zirve'deki son EVRAKNO'dan sonraki numarayı üret"""
+    """Zirve'deki son EVRAKNO'dan sonraki numarayı üret (IRO serisi)"""
     yil = datetime.now().year
-    prefix = f'IRS{yil}'
+    prefix = f'IRO{yil}'
 
     zirve_cursor.execute("""
         SELECT MAX(EVRAKNO) FROM dbo.IRSALIYE
@@ -118,7 +118,6 @@ def _sonraki_evrakno(zirve_cursor) -> str:
     max_evrak = row[0] if row and row[0] else None
 
     if max_evrak:
-        # IRS2026000001102 -> 000001102 -> 1102
         numara_str = max_evrak[len(prefix):]
         try:
             son_no = int(numara_str)
@@ -128,7 +127,7 @@ def _sonraki_evrakno(zirve_cursor) -> str:
     else:
         yeni_no = 1
 
-    # Format: IRS + YYYY + 9 basamaklı numara = 16 karakter
+    # Format: IRO + YYYY + 9 basamaklı numara = 16 karakter
     return f"{prefix}{yeni_no:09d}"
 
 
@@ -296,13 +295,32 @@ def irsaliye_aktar(irsaliye_id: int) -> ZirveAktarimSonuc:
         zirve_cursor.execute("SELECT IDENT_CURRENT('dbo.IRSALIYE')")
         sirano = int(zirve_cursor.fetchone()[0])
 
-        # 7) IRSALIYE_ALT satırları INSERT
-        for idx, satir in enumerate(satirlar):
-            lot_no = satir[0] or ''
-            miktar = satir[1] or 0
+        # 7) IRSALIYE_ALT satırları INSERT - Aynı stok kodları toplanır
+        toplanan = {}
+        for satir in satirlar:
             stok_kodu = satir[2] or ''
-            stok_adi = satir[3] or ''
-            birim = satir[4] or 'ADET'
+            if not stok_kodu:
+                continue
+            if stok_kodu in toplanan:
+                toplanan[stok_kodu]['miktar'] += float(satir[1] or 0)
+                if satir[0]:
+                    toplanan[stok_kodu]['lot_no_list'].append(satir[0])
+            else:
+                toplanan[stok_kodu] = {
+                    'miktar': float(satir[1] or 0),
+                    'stok_kodu': stok_kodu,
+                    'stok_adi': satir[3] or '',
+                    'birim': satir[4] or 'ADET',
+                    'lot_no_list': [satir[0]] if satir[0] else [],
+                }
+
+        for idx, (stok_kodu, data) in enumerate(toplanan.items()):
+            lot_no = ', '.join(data['lot_no_list'][:3])  # Max 3 lot goster
+            if len(data['lot_no_list']) > 3:
+                lot_no += f" +{len(data['lot_no_list'])-3}"
+            miktar = data['miktar']
+            stok_adi = data['stok_adi']
+            birim = data['birim']
             siralama = (idx + 1) * 2  # Zirve 2'şer artırıyor
 
             # Zirve'de stok ref ve P_ID bul
@@ -362,7 +380,7 @@ def irsaliye_aktar(irsaliye_id: int) -> ZirveAktarimSonuc:
                     '*', '*'
                 )
             """, (
-                stok_kodu, stok_kodu, miktar,
+                stok_kodu, stok_adi, miktar,
                 evrakno, sirano, evrakno, cari['ref'],
                 tarih, ZIRVE_KDVY, stok_ref, stok_p_id,
                 p_id, siralama, lot_no, ZIRVE_KULLANICI,

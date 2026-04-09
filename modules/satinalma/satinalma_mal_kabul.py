@@ -346,7 +346,8 @@ class MalKabulDialog(QDialog):
         genel_layout.addRow("Tedarikçi*:", self.cmb_tedarikci)
         
         self.cmb_siparis = QComboBox()
-        genel_layout.addRow("Sipariş:", self.cmb_siparis)
+        self.cmb_siparis.currentIndexChanged.connect(self._on_siparis_changed)
+        genel_layout.addRow("Siparis:", self.cmb_siparis)
         
         self.txt_tedarikci_irsaliye = QLineEdit()
         self.txt_tedarikci_irsaliye.setPlaceholderText("Tedarikçi irsaliye numarası")
@@ -444,18 +445,21 @@ class MalKabulDialog(QDialog):
             cursor = conn.cursor()
             
             self.cmb_tedarikci.addItem("-- Seçiniz --", None)
-            cursor.execute("SELECT id, cari_kodu, unvan FROM musteri.cariler WHERE cari_tipi = 'TEDARIKCI' AND aktif_mi = 1 ORDER BY cari_kodu")
+            cursor.execute("SELECT id, cari_kodu, unvan FROM musteri.cariler WHERE cari_tipi IN ('TEDARIKCI', 'TEDARIKCI_MUSTERI') AND aktif_mi = 1 ORDER BY cari_kodu")
             for row in cursor.fetchall():
                 self.cmb_tedarikci.addItem(f"{row[1]} - {row[2]}", row[0])
             
-            self.cmb_siparis.addItem("-- Siparişsiz Giriş --", None)
+            self.cmb_siparis.addItem("-- Siparissiz Giris --", None)
             cursor.execute("""
-                SELECT id, siparis_no, FORMAT(tarih, 'dd.MM.yyyy')
-                FROM satinalma.siparisler WHERE durum IN ('GONDERILDI', 'KISMI_TESLIM')
-                ORDER BY tarih DESC
+                SELECT s.id, s.siparis_no, FORMAT(s.tarih, 'dd.MM.yyyy'),
+                       ISNULL(c.unvan, '') as tedarikci, s.durum
+                FROM satinalma.siparisler s
+                LEFT JOIN musteri.cariler c ON s.tedarikci_id = c.id
+                WHERE s.durum IN ('TASLAK', 'ONAYLANDI', 'GONDERILDI', 'KISMI_TESLIM')
+                ORDER BY s.tarih DESC
             """)
             for row in cursor.fetchall():
-                self.cmb_siparis.addItem(f"{row[1]} ({row[2]})", row[0])
+                self.cmb_siparis.addItem(f"{row[1]} - {row[3][:25]} ({row[2]})", row[0])
             
             self.cmb_teslim_alan.addItem("-- Seçiniz --", None)
             cursor.execute("SELECT id, sicil_no, ad + ' ' + soyad FROM ik.personeller WHERE aktif_mi = 1 ORDER BY ad")
@@ -465,7 +469,66 @@ class MalKabulDialog(QDialog):
             conn.close()
         except Exception:
             pass
-    
+
+    def _on_siparis_changed(self, index):
+        """Siparis secildiginde tedarikciyi otomatik sec ve satirlari yukle"""
+        siparis_id = self.cmb_siparis.currentData()
+        if not siparis_id:
+            return
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Siparis tedarikcisini bul ve otomatik sec
+            cursor.execute("SELECT tedarikci_id FROM satinalma.siparisler WHERE id = ?", (siparis_id,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                idx = self.cmb_tedarikci.findData(row[0])
+                if idx >= 0:
+                    self.cmb_tedarikci.setCurrentIndex(idx)
+
+            # Siparis satirlarini kontrol et
+            cursor.execute("SELECT COUNT(*) FROM satinalma.mal_kabul_satirlari WHERE kabul_id = ?", (self.kabul_id,))
+            mevcut = cursor.fetchone()[0] if self.kabul_id else 0
+
+            if mevcut == 0:
+                cursor.execute("""
+                    SELECT ss.urun_id, ss.urun_adi, ss.siparis_miktar, ss.birim,
+                           ISNULL(ss.teslim_edilen_miktar, 0) as teslim_edilen,
+                           ss.siparis_miktar - ISNULL(ss.teslim_edilen_miktar, 0) as kalan
+                    FROM satinalma.siparis_satirlari ss
+                    WHERE ss.siparis_id = ? AND ss.siparis_miktar > ISNULL(ss.teslim_edilen_miktar, 0)
+                    ORDER BY ss.satir_no
+                """, (siparis_id,))
+                satirlar = cursor.fetchall()
+
+                if satirlar:
+                    bilgi = "\n".join([f"  {r[1]}: {r[5]:,.0f} {r[3]} (kalan)" for r in satirlar])
+                    reply = QMessageBox.question(
+                        self, "Siparis Satirlari",
+                        f"Sipariste {len(satirlar)} acik kalem var:\n\n{bilgi}\n\n"
+                        f"Bu kalemleri mal kabul satirlarina aktarayim mi?",
+                        QMessageBox.Yes | QMessageBox.No
+                    )
+                    if reply == QMessageBox.Yes:
+                        for satir in satirlar:
+                            row_count = self.table_satirlar.rowCount()
+                            self.table_satirlar.setRowCount(row_count + 1)
+                            self.table_satirlar.setItem(row_count, 0, QTableWidgetItem(""))
+                            self.table_satirlar.setItem(row_count, 1, QTableWidgetItem(satir[1] or ""))
+                            self.table_satirlar.setItem(row_count, 2, QTableWidgetItem(f"{satir[5]:,.0f}"))
+                            self.table_satirlar.setItem(row_count, 3, QTableWidgetItem(satir[3] or "ADET"))
+                            self.table_satirlar.setItem(row_count, 4, QTableWidgetItem(""))
+                            self.table_satirlar.setItem(row_count, 5, QTableWidgetItem(""))
+                            self.table_satirlar.setItem(row_count, 6, QTableWidgetItem(""))
+                            self.table_satirlar.setItem(row_count, 7, QTableWidgetItem("Hayir"))
+                            self.table_satirlar.setItem(row_count, 8, QTableWidgetItem("BEKLIYOR"))
+                            self.table_satirlar.setRowHeight(row_count, 36)
+
+            conn.close()
+        except Exception as e:
+            print(f"Siparis degisim hatasi: {e}")
+
     def _load_data(self):
         try:
             conn = get_db_connection()
