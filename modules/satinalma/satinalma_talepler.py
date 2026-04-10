@@ -137,10 +137,10 @@ class TalepSatirDialog(QDialog):
         self.cmb_para_birimi.clear()
         try:
             conn = get_db_connection(); cursor = conn.cursor()
-            cursor.execute("SELECT kod, sembol FROM tanim.para_birimleri WHERE aktif_mi = 1 ORDER BY CASE WHEN varsayilan_mi = 1 THEN 0 ELSE 1 END, kod")
+            cursor.execute("SELECT kod FROM tanim.para_birimleri WHERE aktif_mi = 1 ORDER BY CASE WHEN varsayilan_mi = 1 THEN 0 ELSE 1 END, kod")
             rows = cursor.fetchall(); conn.close()
             for r in rows:
-                self.cmb_para_birimi.addItem(f"{r[0]} ({r[1]})" if r[1] else r[0], r[0])
+                self.cmb_para_birimi.addItem(r[0], r[0])
         except Exception:
             self.cmb_para_birimi.addItem("TRY", "TRY")
             self.cmb_para_birimi.addItem("USD", "USD")
@@ -1458,10 +1458,33 @@ class SatinalmaTaleplerPage(BasePage):
 
             # Talep bilgilerini al
             cursor.execute("""
-                SELECT t.departman_id, t.istenen_termin, t.notlar
-                FROM satinalma.talepler t WHERE t.id = ?
+                SELECT t.departman_id, t.istenen_termin, t.notlar, t.talep_eden_id,
+                       LTRIM(RTRIM(ISNULL(p.ad,'') + ' ' + ISNULL(p.soyad,''))) AS talep_eden_ad
+                FROM satinalma.talepler t
+                LEFT JOIN ik.personeller p ON t.talep_eden_id = p.id
+                WHERE t.id = ?
             """, (talep_id,))
             talep = cursor.fetchone()
+
+            # Kolonlari garanti et
+            for col_sql in [
+                "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparisler' AND COLUMN_NAME='hazirlayan_ad') ALTER TABLE satinalma.siparisler ADD hazirlayan_ad NVARCHAR(150) NULL",
+                "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparisler' AND COLUMN_NAME='onaylayan_ad') ALTER TABLE satinalma.siparisler ADD onaylayan_ad NVARCHAR(150) NULL",
+                "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparisler' AND COLUMN_NAME='onay_tarihi') ALTER TABLE satinalma.siparisler ADD onay_tarihi DATETIME NULL",
+                "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparis_satirlari' AND COLUMN_NAME='para_birimi') ALTER TABLE satinalma.siparis_satirlari ADD para_birimi NVARCHAR(10) NULL",
+            ]:
+                cursor.execute(col_sql)
+
+            # Siparisi onaylayan = current user ad soyad
+            from core.yetki_manager import YetkiManager
+            current_user_id = getattr(YetkiManager, '_current_user_id', None)
+            onaylayan_ad = None
+            if current_user_id:
+                cursor.execute("SELECT LTRIM(RTRIM(ISNULL(ad,'') + ' ' + ISNULL(soyad,''))) FROM sistem.kullanicilar WHERE id = ?", (current_user_id,))
+                rr = cursor.fetchone()
+                if rr and rr[0] and rr[0].strip():
+                    onaylayan_ad = rr[0].strip()
+            hazirlayan_ad = (talep[4] or '').strip() or None
 
             # Siparis no olustur
             cursor.execute("""
@@ -1479,16 +1502,18 @@ class SatinalmaTaleplerPage(BasePage):
             print(f"[SIPARIS DEBUG] no={siparis_no} ted={tedarikci_id} termin={talep[1]} notlar_len={len(str(notlar_text))}")
             cursor.execute("""
                 INSERT INTO satinalma.siparisler
-                    (siparis_no, tarih, tedarikci_id, istenen_teslim_tarihi, notlar, durum)
+                    (siparis_no, tarih, tedarikci_id, istenen_teslim_tarihi, notlar, durum,
+                     hazirlayan_ad, onaylayan_ad, onay_tarihi)
                 OUTPUT INSERTED.id
-                VALUES (?, GETDATE(), ?, ?, ?, 'TASLAK')
-            """, (siparis_no, tedarikci_id, talep[1], notlar_text))
+                VALUES (?, GETDATE(), ?, ?, ?, 'TASLAK', ?, ?, GETDATE())
+            """, (siparis_no, tedarikci_id, talep[1], notlar_text,
+                  hazirlayan_ad, onaylayan_ad))
             siparis_id = int(cursor.fetchone()[0])
 
             # Talep satirlarini siparis satirlarina aktar
             cursor.execute("""
                 SELECT satir_no, urun_id, urun_adi, talep_miktar, birim,
-                       tahmini_birim_fiyat, tahmini_tutar, aciklama
+                       tahmini_birim_fiyat, tahmini_tutar, aciklama, ISNULL(para_birimi, 'TRY')
                 FROM satinalma.talep_satirlari WHERE talep_id = ?
                 ORDER BY satir_no
             """, (talep_id,))
@@ -1504,16 +1529,17 @@ class SatinalmaTaleplerPage(BasePage):
                 urun_adi = str(s[2] or '')[:200]
                 birim = str(s[4] or 'ADET')[:20]
                 aciklama = str(s[7] or '')[:500] if s[7] else None
+                para_birimi = s[8] or 'TRY'
 
                 print(f"[SATIR DEBUG] urun_adi({len(urun_adi)})={urun_adi[:30]} birim({len(birim)})={birim} aciklama={len(str(aciklama)) if aciklama else 0}")
 
                 cursor.execute("""
                     INSERT INTO satinalma.siparis_satirlari
                         (siparis_id, satir_no, urun_id, urun_adi, siparis_miktar,
-                         birim, birim_fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         birim, birim_fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama, para_birimi)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (siparis_id, s[0], s[1], urun_adi, miktar,
-                      birim, fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama))
+                      birim, fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama, para_birimi))
 
             # Siparis toplamlarini guncelle
             cursor.execute("""

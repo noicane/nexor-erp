@@ -71,12 +71,18 @@ class SiparisSatirDialog(QDialog):
         miktar_layout.addWidget(self.cmb_birim)
         form.addRow("Miktar*:", miktar_layout)
         
+        fiyat_layout = QHBoxLayout()
         self.spin_fiyat = QDoubleSpinBox()
         self.spin_fiyat.setRange(0, 9999999)
         self.spin_fiyat.setDecimals(4)
         self.spin_fiyat.setPrefix("")
         self.spin_fiyat.valueChanged.connect(self._calc_tutar)
-        form.addRow("Birim Fiyat*:", self.spin_fiyat)
+        fiyat_layout.addWidget(self.spin_fiyat)
+
+        self.cmb_para_birimi = QComboBox()
+        self.cmb_para_birimi.setMinimumWidth(80)
+        fiyat_layout.addWidget(self.cmb_para_birimi)
+        form.addRow("Birim Fiyat*:", fiyat_layout)
         
         self.spin_kdv = QSpinBox()
         self.spin_kdv.setRange(0, 100)
@@ -115,6 +121,20 @@ class SiparisSatirDialog(QDialog):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+
+            # Para birimleri
+            self.cmb_para_birimi.clear()
+            try:
+                cursor.execute("SELECT kod FROM tanim.para_birimleri WHERE aktif_mi = 1 ORDER BY CASE WHEN kod='TRY' THEN 0 ELSE 1 END, kod")
+                for r in cursor.fetchall():
+                    self.cmb_para_birimi.addItem(r[0], r[0])
+            except Exception:
+                pass
+            if self.cmb_para_birimi.count() == 0:
+                self.cmb_para_birimi.addItem("TRY", "TRY")
+                self.cmb_para_birimi.addItem("USD", "USD")
+                self.cmb_para_birimi.addItem("EUR", "EUR")
+
             self.cmb_urun.addItem("-- Manuel Giriş --", None)
             
             # Anlaşmalı fiyatlar
@@ -160,8 +180,15 @@ class SiparisSatirDialog(QDialog):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            # para_birimi kolonu garanti
             cursor.execute("""
-                SELECT urun_id, urun_adi, siparis_miktar, birim, birim_fiyat, kdv_orani, aciklama
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparis_satirlari' AND COLUMN_NAME='para_birimi')
+                    ALTER TABLE satinalma.siparis_satirlari ADD para_birimi NVARCHAR(10) NULL
+            """)
+            cursor.execute("""
+                SELECT urun_id, urun_adi, siparis_miktar, birim, birim_fiyat, kdv_orani, aciklama,
+                       ISNULL(para_birimi, 'TRY')
                 FROM satinalma.siparis_satirlari WHERE id = ?
             """, (self.satir_id,))
             row = cursor.fetchone()
@@ -174,6 +201,9 @@ class SiparisSatirDialog(QDialog):
                 self.spin_fiyat.setValue(float(row[4]) if row[4] else 0)
                 self.spin_kdv.setValue(int(row[5]) if row[5] else 20)
                 self.txt_aciklama.setPlainText(row[6] or "")
+                pb_idx = self.cmb_para_birimi.findData(row[7])
+                if pb_idx >= 0:
+                    self.cmb_para_birimi.setCurrentIndex(pb_idx)
                 self._calc_tutar()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
@@ -190,7 +220,14 @@ class SiparisSatirDialog(QDialog):
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
+            # para_birimi kolonu garanti
+            cursor.execute("""
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparis_satirlari' AND COLUMN_NAME='para_birimi')
+                    ALTER TABLE satinalma.siparis_satirlari ADD para_birimi NVARCHAR(10) NULL
+            """)
+
             data = self.cmb_urun.currentData()
             urun_id = data[0] if data else None
             miktar = self.spin_miktar.value()
@@ -199,25 +236,27 @@ class SiparisSatirDialog(QDialog):
             tutar = miktar * fiyat
             kdv = tutar * kdv_orani / 100
             toplam = tutar + kdv
-            
+            para_birimi = self.cmb_para_birimi.currentData() or 'TRY'
+
             if self.satir_id:
                 cursor.execute("""
                     UPDATE satinalma.siparis_satirlari SET
                         urun_id = ?, urun_adi = ?, siparis_miktar = ?, birim = ?,
-                        birim_fiyat = ?, tutar = ?, kdv_orani = ?, kdv_tutari = ?, toplam = ?, aciklama = ?
+                        birim_fiyat = ?, tutar = ?, kdv_orani = ?, kdv_tutari = ?, toplam = ?,
+                        para_birimi = ?, aciklama = ?
                     WHERE id = ?
                 """, (urun_id, urun_adi, miktar, self.cmb_birim.currentText(),
-                      fiyat, tutar, kdv_orani, kdv, toplam,
+                      fiyat, tutar, kdv_orani, kdv, toplam, para_birimi,
                       self.txt_aciklama.toPlainText().strip() or None, self.satir_id))
             else:
                 cursor.execute("SELECT ISNULL(MAX(satir_no), 0) + 1 FROM satinalma.siparis_satirlari WHERE siparis_id = ?", (self.siparis_id,))
                 satir_no = cursor.fetchone()[0]
                 cursor.execute("""
                     INSERT INTO satinalma.siparis_satirlari
-                    (siparis_id, satir_no, urun_id, urun_adi, siparis_miktar, birim, birim_fiyat, tutar, kdv_orani, kdv_tutari, toplam, aciklama)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (siparis_id, satir_no, urun_id, urun_adi, siparis_miktar, birim, birim_fiyat, tutar, kdv_orani, kdv_tutari, toplam, para_birimi, aciklama)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (self.siparis_id, satir_no, urun_id, urun_adi, miktar, self.cmb_birim.currentText(),
-                      fiyat, tutar, kdv_orani, kdv, toplam, self.txt_aciklama.toPlainText().strip() or None))
+                      fiyat, tutar, kdv_orani, kdv, toplam, para_birimi, self.txt_aciklama.toPlainText().strip() or None))
             
             conn.commit()
             LogManager.log_insert('satinalma', 'satinalma.siparis_satirlari', None, 'Siparis kaydi olustu')
@@ -465,25 +504,51 @@ class SiparisDialog(QDialog):
             QMessageBox.warning(self, "Uyarı", "Tedarikçi seçimi zorunludur!")
             return
         try:
+            from core.yetki_manager import YetkiManager
+            current_user_id = getattr(YetkiManager, '_current_user_id', None)
+
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
+            # Hazirlayan/Onaylayan isim + onay tarihi kolonlarini garanti et
+            for col_sql in [
+                "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparisler' AND COLUMN_NAME='hazirlayan_ad') ALTER TABLE satinalma.siparisler ADD hazirlayan_ad NVARCHAR(150) NULL",
+                "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparisler' AND COLUMN_NAME='onaylayan_ad') ALTER TABLE satinalma.siparisler ADD onaylayan_ad NVARCHAR(150) NULL",
+                "IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='satinalma' AND TABLE_NAME='siparisler' AND COLUMN_NAME='onay_tarihi') ALTER TABLE satinalma.siparisler ADD onay_tarihi DATETIME NULL",
+            ]:
+                cursor.execute(col_sql)
+
+            # current user ad soyad
+            current_ad = None
+            if current_user_id:
+                cursor.execute("SELECT LTRIM(RTRIM(ISNULL(ad,'') + ' ' + ISNULL(soyad,''))) FROM sistem.kullanicilar WHERE id = ?", (current_user_id,))
+                r = cursor.fetchone()
+                if r and r[0] and r[0].strip():
+                    current_ad = r[0].strip()
+
             if self.siparis_id:
                 cursor.execute("""
                     UPDATE satinalma.siparisler SET tedarikci_id = ?, andasma_id = ?, istenen_teslim_tarihi = ?,
-                    odeme_vade_gun = ?, notlar = ?, guncelleme_tarihi = GETDATE() WHERE id = ?
+                        odeme_vade_gun = ?, notlar = ?,
+                        onaylayan_ad = ISNULL(?, onaylayan_ad),
+                        hazirlayan_ad = ISNULL(hazirlayan_ad, ?),
+                        onay_tarihi = GETDATE(),
+                        guncelleme_tarihi = GETDATE()
+                    WHERE id = ?
                 """, (self.cmb_tedarikci.currentData(), self.cmb_andasma.currentData(),
                       self.date_teslim.date().toPython(), self.spin_vade.value(),
-                      self.txt_notlar.toPlainText().strip() or None, self.siparis_id))
+                      self.txt_notlar.toPlainText().strip() or None,
+                      current_ad, current_ad, self.siparis_id))
             else:
                 cursor.execute("SELECT 'SIP-' + FORMAT(GETDATE(), 'yyyyMMdd') + '-' + RIGHT('000' + CAST(ISNULL((SELECT MAX(id) FROM satinalma.siparisler), 0) + 1 AS VARCHAR), 4)")
                 siparis_no = cursor.fetchone()[0]
                 cursor.execute("""
-                    INSERT INTO satinalma.siparisler (siparis_no, tarih, tedarikci_id, andasma_id, istenen_teslim_tarihi, odeme_vade_gun, notlar)
-                    OUTPUT INSERTED.id VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO satinalma.siparisler (siparis_no, tarih, tedarikci_id, andasma_id, istenen_teslim_tarihi, odeme_vade_gun, notlar, hazirlayan_ad, onaylayan_ad, onay_tarihi)
+                    OUTPUT INSERTED.id VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE())
                 """, (siparis_no, self.date_tarih.date().toPython(), self.cmb_tedarikci.currentData(),
                       self.cmb_andasma.currentData(), self.date_teslim.date().toPython(),
-                      self.spin_vade.value(), self.txt_notlar.toPlainText().strip() or None))
+                      self.spin_vade.value(), self.txt_notlar.toPlainText().strip() or None,
+                      current_ad, current_ad))
                 self.siparis_id = cursor.fetchone()[0]
                 self.txt_siparis_no.setText(siparis_no)
             
@@ -610,120 +675,10 @@ class SatinalmaSiparislerPage(BasePage):
             self._load_data()
 
     def _siparis_pdf(self, siparis_id):
-        """Siparis PDF olustur ve ac"""
+        """Siparis PDF - talep formu ile ayni stil"""
         try:
-            import os, subprocess
-            from datetime import datetime
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4
-            from reportlab.lib.units import mm
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import ParagraphStyle
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-
-            font_name = 'Helvetica'
-            for fp in ["C:/Windows/Fonts/calibri.ttf", "C:/Windows/Fonts/arial.ttf"]:
-                if os.path.exists(fp):
-                    try:
-                        fn = os.path.splitext(os.path.basename(fp))[0]
-                        pdfmetrics.registerFont(TTFont(fn, fp))
-                        font_name = fn
-                        break
-                    except Exception:
-                        continue
-
-            conn = get_db_connection()
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT s.siparis_no, s.tarih, c.unvan, s.genel_toplam, s.durum
-                FROM satinalma.siparisler s
-                LEFT JOIN musteri.cariler c ON s.tedarikci_id = c.id
-                WHERE s.id = ?
-            """, (siparis_id,))
-            sip = cursor.fetchone()
-            if not sip:
-                conn.close()
-                QMessageBox.warning(self, "Hata", "Siparis bulunamadi!")
-                return
-
-            cursor.execute("""
-                SELECT satir_no, urun_kodu, urun_adi, siparis_miktar, birim,
-                       birim_fiyat, tutar, kdv_orani, toplam, aciklama
-                FROM satinalma.siparis_satirlari WHERE siparis_id = ? ORDER BY satir_no
-            """, (siparis_id,))
-            satirlar = cursor.fetchall()
-            conn.close()
-
-            siparis_no = sip[0]
-            tedarikci = sip[2] or ''
-            tarih = sip[1].strftime('%d.%m.%Y') if sip[1] else ''
-
-            output_dir = os.path.join(os.path.expanduser("~"), "Documents", "AtmoERP", "Siparisler")
-            os.makedirs(output_dir, exist_ok=True)
-            filepath = os.path.join(output_dir, f"SIPARIS_{siparis_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf")
-
-            doc = SimpleDocTemplate(filepath, pagesize=A4, leftMargin=15*mm, rightMargin=15*mm, topMargin=15*mm, bottomMargin=15*mm)
-            cell_s = ParagraphStyle('C', fontName=font_name, fontSize=8, leading=10)
-
-            elements = []
-            elements.append(Paragraph("ATLAS KATAFOREZ", ParagraphStyle('T', fontName=font_name, fontSize=16, alignment=1, spaceAfter=2*mm)))
-            elements.append(Paragraph("SATINALMA SIPARIS FORMU", ParagraphStyle('T2', fontName=font_name, fontSize=12, alignment=1, spaceAfter=4*mm)))
-            elements.append(Spacer(1, 2*mm))
-
-            info = [
-                ['Siparis No:', siparis_no, 'Tarih:', tarih],
-                ['Tedarikci:', tedarikci, 'Durum:', sip[4] or ''],
-            ]
-            it = Table(info, colWidths=[28*mm, 70*mm, 22*mm, 40*mm])
-            it.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), font_name), ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4), ('SPAN', (1, 1), (1, 1)),
-            ]))
-            elements.append(it)
-            elements.append(Spacer(1, 4*mm))
-
-            header = ['#', 'Urun Kodu', 'Urun Adi', 'Miktar', 'Birim', 'B.Fiyat', 'Tutar', 'KDV%', 'Toplam']
-            data = [header]
-            for s in satirlar:
-                data.append([
-                    str(s[0]), s[1] or '', Paragraph(str(s[2] or ''), cell_s),
-                    f"{float(s[3]):,.0f}", s[4] or '', f"{float(s[5]):,.4f}",
-                    f"{float(s[6]):,.2f}", f"%{float(s[7]):.0f}", f"{float(s[8]):,.2f}",
-                ])
-            data.append(['', '', '', '', '', '', 'TOPLAM:', '', f"{float(sip[3] or 0):,.2f}"])
-
-            cw = [8*mm, 25*mm, 42*mm, 16*mm, 14*mm, 20*mm, 22*mm, 12*mm, 25*mm]
-            tbl = Table(data, colWidths=cw, repeatRows=1)
-            tbl.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a1a2e')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('FONTNAME', (0, 0), (-1, -1), font_name), ('FONTSIZE', (0, 0), (-1, 0), 8), ('FONTSIZE', (0, 1), (-1, -1), 7),
-                ('ALIGN', (0, 0), (0, -1), 'CENTER'), ('ALIGN', (3, 0), (4, -1), 'CENTER'), ('ALIGN', (5, 0), (-1, -1), 'RIGHT'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -2), 0.5, colors.HexColor('#cccccc')),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.HexColor('#f8f8f8')]),
-                ('TOPPADDING', (0, 0), (-1, -1), 4), ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-                ('FONTSIZE', (0, -1), (-1, -1), 9), ('LINEABOVE', (0, -1), (-1, -1), 1, colors.black),
-            ]))
-            elements.append(tbl)
-            elements.append(Spacer(1, 10*mm))
-
-            imza = [['Hazirlayan', 'Onaylayan', 'Tedarikci'], ['', '', ''], ['Tarih / Imza', 'Tarih / Imza', 'Tarih / Imza / Kaseli']]
-            it2 = Table(imza, colWidths=[60*mm, 60*mm, 60*mm])
-            it2.setStyle(TableStyle([
-                ('FONTNAME', (0, 0), (-1, -1), font_name), ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'), ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-                ('ROWHEIGHTS', (0, 1), (-1, 1), [None, 25*mm, None]), ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ]))
-            elements.append(it2)
-            doc.build(elements)
-
-            subprocess.Popen(['start', '', filepath], shell=True)
-
-        except ImportError:
-            QMessageBox.warning(self, "Hata", "reportlab gerekli: pip install reportlab")
+            from utils.satinalma_siparis_pdf import satinalma_siparis_pdf
+            satinalma_siparis_pdf(siparis_id)
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"PDF hatasi: {e}")
             import traceback

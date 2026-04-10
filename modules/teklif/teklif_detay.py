@@ -648,7 +648,7 @@ class TeklifDetayDialog(QDialog):
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, unvan FROM musteri.cariler
-                WHERE unvan IS NOT NULL AND unvan != ''
+                WHERE unvan IS NOT NULL AND unvan != '' AND aktif_mi = 1
                 ORDER BY unvan
             """)
             for row in cursor.fetchall():

@@ -587,10 +587,10 @@ class FMEADialog(QDialog):
             # Önce müşteri listesi - StokKartlari'ndan benzersiz müşteriler
             self.cmb_musteri.addItem("-- Müşteri Seçiniz --", None)
             cursor.execute("""
-                SELECT DISTINCT c.id, c.unvan 
+                SELECT DISTINCT c.id, c.unvan
                 FROM musteri.cariler c
                 INNER JOIN stok.urunler u ON c.id = u.cari_id
-                WHERE c.unvan IS NOT NULL AND c.unvan <> ''
+                WHERE c.unvan IS NOT NULL AND c.unvan <> '' AND c.aktif_mi = 1 AND u.aktif_mi = 1
                 ORDER BY c.unvan
             """)
             for row in cursor.fetchall():

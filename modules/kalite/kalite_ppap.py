@@ -188,9 +188,9 @@ class YeniPPAPDialog(QDialog):
             cursor = conn.cursor()
             # StokKartlari'ndan benzersiz müşteriler
             cursor.execute("""
-                SELECT DISTINCT cari_unvani 
-                FROM stok.urunler 
-                WHERE cari_unvani IS NOT NULL AND cari_unvani <> ''
+                SELECT DISTINCT cari_unvani
+                FROM stok.urunler
+                WHERE cari_unvani IS NOT NULL AND cari_unvani <> '' AND aktif_mi = 1
                 ORDER BY cari_unvani
             """)
             for row in cursor.fetchall():

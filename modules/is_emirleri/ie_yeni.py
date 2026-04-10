@@ -415,10 +415,10 @@ class IsEmriYeniPage(QDialog):
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT DISTINCT c.unvan 
+                SELECT DISTINCT c.unvan
                 FROM musteri.cariler c
                 INNER JOIN stok.urunler u ON c.id = u.cari_id
-                WHERE c.unvan IS NOT NULL AND c.unvan != ''
+                WHERE c.unvan IS NOT NULL AND c.unvan != '' AND c.aktif_mi = 1 AND u.aktif_mi = 1
                 ORDER BY c.unvan
             """)
             
@@ -893,7 +893,7 @@ class IsEmriYeniPage(QDialog):
             
             if self.yeni_kayit:
                 # Cari ID bul
-                cursor.execute(f"SELECT TOP 1 id FROM musteri.cariler WHERE unvan LIKE N'%{cari}%'")
+                cursor.execute(f"SELECT TOP 1 id FROM musteri.cariler WHERE unvan LIKE N'%{cari}%' AND aktif_mi = 1")
                 cari_result = cursor.fetchone()
                 cari_id = int(cari_result[0]) if cari_result else 1
                 
@@ -983,7 +983,7 @@ class IsEmriYeniPage(QDialog):
                 self.accept()
             else:
                 # Cari ID bul
-                cursor.execute(f"SELECT TOP 1 id FROM musteri.cariler WHERE unvan LIKE N'%{cari}%'")
+                cursor.execute(f"SELECT TOP 1 id FROM musteri.cariler WHERE unvan LIKE N'%{cari}%' AND aktif_mi = 1")
                 cari_result = cursor.fetchone()
                 cari_id = int(cari_result[0]) if cari_result else 1
                 

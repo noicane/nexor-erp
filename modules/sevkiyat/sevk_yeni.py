@@ -917,8 +917,8 @@ class SevkYeniPage(BasePage):
             # Cari ID yoksa bulmaya çalış
             if not cari_id:
                 cursor.execute("""
-                    SELECT TOP 1 id FROM musteri.cariler 
-                    WHERE unvan LIKE ? OR kisa_ad LIKE ?
+                    SELECT TOP 1 id FROM musteri.cariler
+                    WHERE (unvan LIKE ? OR kisa_ad LIKE ?) AND aktif_mi = 1
                 """, (f'%{musteri_adi[:20]}%', f'%{musteri_adi[:20]}%'))
                 row = cursor.fetchone()
                 if row:
@@ -984,14 +984,14 @@ class SevkYeniPage(BasePage):
                 urun_id = None
                 if stok_kodu:
                     cursor.execute("""
-                        SELECT TOP 1 id FROM stok.urunler WHERE urun_kodu = ?
+                        SELECT TOP 1 id FROM stok.urunler WHERE urun_kodu = ? AND aktif_mi = 1
                     """, (stok_kodu,))
                     row = cursor.fetchone()
                     if row:
                         urun_id = row[0]
 
                 if not urun_id:
-                    cursor.execute("SELECT TOP 1 id FROM stok.urunler")
+                    cursor.execute("SELECT TOP 1 id FROM stok.urunler WHERE aktif_mi = 1")
                     row = cursor.fetchone()
                     urun_id = row[0] if row else 1
 

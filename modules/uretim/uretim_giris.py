@@ -151,7 +151,93 @@ class UretimGirisPage(BasePage):
     
     def _update_time(self):
         self.saat_label.setText(QTime.currentTime().toString("HH:mm:ss"))
-    
+        # Her dakika başında tüm sekmelerin vardiya etiketini tazele
+        now = QTime.currentTime()
+        if now.second() == 0:
+            for i in range(self.tab_widget.count()):
+                self._refresh_vardiya_badge(self.tab_widget.widget(i))
+
+    def _get_current_vardiya(self):
+        """Şu anki saate göre aktif vardiyayı döndürür -> (id, ad, 'HH:MM-HH:MM') veya None"""
+        try:
+            from datetime import datetime
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, ad, baslangic_saati, bitis_saati
+                FROM tanim.vardiyalar
+                WHERE aktif_mi = 1
+                  AND UPPER(ISNULL(ad, '')) NOT LIKE N'%BEYAZ%'
+                  AND UPPER(ISNULL(ad, '')) NOT LIKE N'%YAKA%'
+                  AND UPPER(ISNULL(ad, '')) NOT LIKE N'%OFIS%'
+                  AND UPPER(ISNULL(ad, '')) NOT LIKE N'%OFİS%'
+                  AND UPPER(ISNULL(kod, '')) NOT LIKE N'%BEYAZ%'
+                  AND UPPER(ISNULL(kod, '')) NOT LIKE N'%YAKA%'
+                  AND UPPER(ISNULL(kod, '')) NOT LIKE N'%BY%'
+                ORDER BY baslangic_saati
+            """)
+            rows = cursor.fetchall()
+            conn.close()
+
+            now = datetime.now().time()
+            for v_id, v_ad, v_bas, v_bit in rows:
+                if not v_bas or not v_bit:
+                    continue
+                bas = v_bas if hasattr(v_bas, 'hour') else None
+                bit = v_bit if hasattr(v_bit, 'hour') else None
+                if not bas or not bit:
+                    continue
+                # Gece yarısını geçen vardiya (ör: 22:00-06:00)
+                if bas <= bit:
+                    icinde = bas <= now < bit
+                else:
+                    icinde = now >= bas or now < bit
+                if icinde:
+                    bas_str = bas.strftime("%H:%M")
+                    bit_str = bit.strftime("%H:%M")
+                    return (v_id, v_ad, f"{bas_str}-{bit_str}")
+            return None
+        except Exception as e:
+            print(f"Vardiya tespit hatasi: {e}")
+            return None
+
+    def _refresh_vardiya_badge(self, container):
+        """Container içindeki vardiya etiketini güncel saate göre yeniden çiz"""
+        if not container:
+            return
+        badge = container.findChild(QLabel, "vardiya_badge")
+        if not badge:
+            return
+        s = self.s
+        info = self._get_current_vardiya()
+        if info:
+            v_id, v_ad, v_aralik = info
+            container.setProperty("vardiya_id", v_id)
+            container.setProperty("vardiya_adi", f"{v_ad} ({v_aralik})")
+            badge.setText(f"🕐 {v_ad}  ·  {v_aralik}")
+            badge.setStyleSheet(f"""
+                color: {s['success']};
+                font-size: 15px;
+                font-weight: 700;
+                padding: 10px 16px;
+                background: rgba(16, 185, 129, 0.12);
+                border: 1px solid {s['success']};
+                border-radius: 8px;
+            """)
+        else:
+            container.setProperty("vardiya_id", None)
+            container.setProperty("vardiya_adi", "")
+            badge.setText("⚠ Aktif vardiya bulunamadi")
+            badge.setStyleSheet(f"""
+                color: {s['warning']};
+                font-size: 15px;
+                font-weight: 700;
+                padding: 10px 16px;
+                background: rgba(245, 158, 11, 0.12);
+                border: 1px solid {s['warning']};
+                border-radius: 8px;
+            """)
+
     def _load_data(self):
         """Tüm verileri yükle"""
         self._load_hatlar()
@@ -230,6 +316,14 @@ class UretimGirisPage(BasePage):
         musteri_combo.addItem("Tüm Müşteriler", "")
         musteri_combo.currentIndexChanged.connect(lambda _, ti=self.tab_widget.count(): self._load_is_emirleri(self.tab_widget.currentIndex()))
         filter_row.addWidget(musteri_combo)
+
+        search_input = QLineEdit()
+        search_input.setObjectName("search_input")
+        search_input.setPlaceholderText("🔍 Ara (iş emri no, stok kodu, stok adı, müşteri, teknik resim, reçete)...")
+        search_input.setClearButtonEnabled(True)
+        search_input.setStyleSheet(f"QLineEdit {{ background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 6px; padding: 6px 10px; min-width: 320px; }}")
+        search_input.textChanged.connect(lambda _: self._filter_table_rows(self.tab_widget.currentIndex()))
+        filter_row.addWidget(search_input, 1)
         filter_row.addStretch()
         table_layout.addLayout(filter_row)
 
@@ -302,162 +396,140 @@ class UretimGirisPage(BasePage):
         table_layout.addWidget(table)
         splitter.addWidget(table_frame)
         
-        # ===== ALT KISIM: GİRİŞ FORMU =====
+        # ===== ALT KISIM: GİRİŞ FORMU (MODERN) =====
         form_frame = QFrame()
         form_frame.setObjectName("form_frame")
         form_frame.setStyleSheet(f"""
             QFrame#form_frame {{
                 background: {s['card_bg']};
                 border: 2px solid {s['success']};
-                border-radius: 12px;
+                border-radius: 14px;
             }}
         """)
         form_layout = QVBoxLayout(form_frame)
-        form_layout.setContentsMargins(12, 10, 12, 10)
+        form_layout.setContentsMargins(12, 8, 12, 8)
         form_layout.setSpacing(6)
-        
-        # Seçim Bilgi Etiketi
-        selection_label = QLabel("⚠️ Seçim: Lütfen yukarıdan bir iş emri seçin")
+
+        # ------ 1) DURUM BANDI ------
+        selection_label = QLabel("⚠️  İş emri seçin")
         selection_label.setObjectName("selection_label")
         selection_label.setStyleSheet(f"""
-            font-size: 13px; 
-            font-weight: 600; 
+            font-size: 13px;
+            font-weight: 700;
             color: {s['warning']};
-            padding: 8px;
-            background: rgba(245, 158, 11, 0.1);
+            padding: 6px 10px;
+            background: rgba(245, 158, 11, 0.12);
             border: 1px solid {s['warning']};
             border-radius: 6px;
         """)
         form_layout.addWidget(selection_label)
-        
-        # Detay Bilgileri
-        detail_label = QLabel("Bakiye: - | Üretilen: - | Kalan: - | Parça/Bara: - | Kalan Bara: -")
+
+        # ------ 2) METRİK KUTUCUKLARI (5 kart) ------
+        metrics_row = QHBoxLayout()
+        metrics_row.setSpacing(6)
+
+        def _mk_metric(title, obj_name, color):
+            card = QFrame()
+            card.setStyleSheet(f"""
+                QFrame {{
+                    background: {s['input_bg']};
+                    border: 1px solid {s['border']};
+                    border-radius: 6px;
+                }}
+            """)
+            cl = QVBoxLayout(card)
+            cl.setContentsMargins(6, 4, 6, 4)
+            cl.setSpacing(1)
+            t = QLabel(title)
+            t.setStyleSheet(f"color: {s['text_secondary']}; font-size: 10px; font-weight: 600; text-transform: uppercase;")
+            t.setAlignment(Qt.AlignCenter)
+            v = QLabel("-")
+            v.setObjectName(obj_name)
+            v.setStyleSheet(f"color: {color}; font-size: 16px; font-weight: 800;")
+            v.setAlignment(Qt.AlignCenter)
+            cl.addWidget(t)
+            cl.addWidget(v)
+            return card
+
+        metrics_row.addWidget(_mk_metric("Bakiye", "metric_bakiye", s['text']))
+        metrics_row.addWidget(_mk_metric("Üretilen", "metric_uretilen", s['info']))
+        metrics_row.addWidget(_mk_metric("Kalan", "metric_kalan", s['warning']))
+        metrics_row.addWidget(_mk_metric("Parça / Bara", "metric_parca_bara", s['text']))
+        metrics_row.addWidget(_mk_metric("Kalan Bara", "metric_kalan_bara", s['primary']))
+        form_layout.addLayout(metrics_row)
+
+        # Gizli uyumluluk etiketi (_on_row_selected eski kod için doldurur)
+        detail_label = QLabel("")
         detail_label.setObjectName("detail_label")
-        detail_label.setStyleSheet(f"""
-            font-size: 12px; 
-            color: {s['text_secondary']};
-            padding: 4px;
-        """)
+        detail_label.setVisible(False)
         form_layout.addWidget(detail_label)
-        
-        # Reçete Bilgileri (Teknik Resim No & Reçete No)
-        recete_label = QLabel("📐 Teknik Resim No: - | 📋 Reçete No: -")
+
+        # ------ 3) TEKNİK RESİM / REÇETE ŞERİDİ ------
+        recete_label = QLabel("📐 Teknik Resim: -     📋 Reçete: -")
         recete_label.setObjectName("recete_label")
         recete_label.setStyleSheet(f"""
-            font-size: 12px; 
+            font-size: 11px;
             color: {s['info']};
-            padding: 4px;
-            font-weight: 500;
+            padding: 3px 8px;
+            font-weight: 600;
+            background: rgba(59, 130, 246, 0.08);
+            border-radius: 5px;
         """)
         form_layout.addWidget(recete_label)
-        
-        # Form Grid
-        grid = QGridLayout()
-        grid.setHorizontalSpacing(16)
-        grid.setVerticalSpacing(8)
-        
-        label_style = f"color: {s['text']}; font-size: 12px; font-weight: 600;"
-        input_style = f"""
-            QLineEdit, QSpinBox, QComboBox {{
-                background: {s['input_bg']}; 
-                color: {s['text']}; 
-                border: 1px solid {s['border']}; 
-                border-radius: 6px; 
-                padding: 6px 10px;
-                font-size: 12px;
-            }}
-            QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
-                border-color: {s['primary']};
-            }}
-            QComboBox::drop-down {{
-                border: none;
-                padding-right: 8px;
-            }}
-        """
-        
-        # ========== VARDIYA SEÇİMİ ==========
-        vardiya_lbl = QLabel("Vardiya:")
-        vardiya_lbl.setStyleSheet(label_style)
-        grid.addWidget(vardiya_lbl, 0, 0)
-        
-        vardiya_combo = QComboBox()
-        vardiya_combo.setObjectName("vardiya_combo")
-        vardiya_combo.setStyleSheet(input_style)
-        
-        # Vardiyaları yükle
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, kod, ad, baslangic_saati, bitis_saati
-                FROM tanim.vardiyalar
-                WHERE aktif_mi = 1
-                ORDER BY baslangic_saati
-            """)
-            
-            vardiya_combo.addItem("-- Vardiya Seçin --", None)
-            for row in cursor.fetchall():
-                v_id, v_kod, v_ad, v_bas, v_bit = row
-                
-                # Saat formatı
-                bas_str = v_bas.strftime("%H:%M") if v_bas else ""
-                bit_str = v_bit.strftime("%H:%M") if v_bit else ""
-                
-                # Gösterim: "1. Vardiya (08:00-16:00)"
-                display_text = f"{v_ad} ({bas_str}-{bit_str})"
-                vardiya_combo.addItem(display_text, v_id)
-            
-            conn.close()
-        except Exception as e:
-            print(f"Vardiya yükleme hatası: {e}")
-            import traceback
-            traceback.print_exc()
-        
-        grid.addWidget(vardiya_combo, 0, 1)
-        
-        # ========== OPERATÖR SEÇİMİ (SADECE KART İLE) ==========
-        operator_lbl = QLabel("Operatör (Kart Okutun):")
-        operator_lbl.setStyleSheet(label_style)
-        grid.addWidget(operator_lbl, 1, 0)
 
-        operator_row = QHBoxLayout()
+        # ------ 4) VARDIYA + OPERATÖR SATIRI ------
+        vo_row = QHBoxLayout()
+        vo_row.setSpacing(6)
+
+        vardiya_badge = QLabel("🕐 Vardiya: ...")
+        vardiya_badge.setObjectName("vardiya_badge")
+        vardiya_badge.setStyleSheet(f"""
+            color: {s['text']};
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 10px;
+            background: {s['input_bg']};
+            border: 1px solid {s['border']};
+            border-radius: 6px;
+        """)
+        vo_row.addWidget(vardiya_badge, 1)
+
+        # Gizli eski combo (backward-compat - kart dinleyicisi burayı kullanıyor olabilir)
         operator_combo = QComboBox()
         operator_combo.setObjectName("operator_combo")
-        operator_combo.setEnabled(False)
-        operator_combo.setStyleSheet(input_style)
-
-        # Operatörleri yükle (arka planda - RFID ile seçilecek)
+        operator_combo.setVisible(False)
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, ad + ' ' + soyad AS ad_soyad, sicil_no
                 FROM ik.personeller
-                WHERE aktif_mi = 1
-                  AND silindi_mi = 0
+                WHERE aktif_mi = 1 AND silindi_mi = 0
                 ORDER BY ad, soyad
             """)
-
             operator_combo.addItem("🔒 Kartınızı okutun", None)
             for row in cursor.fetchall():
                 p_id, p_ad, p_sicil = row
-                if p_sicil:
-                    display_text = f"{p_ad} ({p_sicil})"
-                else:
-                    display_text = p_ad
-                operator_combo.addItem(display_text, p_id)
-
+                operator_combo.addItem(f"{p_ad} ({p_sicil})" if p_sicil else p_ad, p_id)
             conn.close()
         except Exception as e:
             print(f"Operatör yükleme hatası: {e}")
-            import traceback
-            traceback.print_exc()
 
-        operator_row.addWidget(operator_combo, 1)
+        operator_badge = QLabel("👤 Kart Okutun")
+        operator_badge.setObjectName("operator_badge")
+        operator_badge.setStyleSheet(f"""
+            color: {s['warning']};
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 10px;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid {s['warning']};
+            border-radius: 6px;
+        """)
+        vo_row.addWidget(operator_badge, 1)
 
-        # Kart sıfırla butonu
         clear_op_btn = QPushButton("✕")
-        clear_op_btn.setFixedWidth(36)
+        clear_op_btn.setFixedSize(30, 30)
         clear_op_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {s['error']};
@@ -465,128 +537,165 @@ class UretimGirisPage(BasePage):
                 border: none;
                 border-radius: 6px;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 13px;
             }}
             QPushButton:hover {{ background: #dc2626; }}
         """)
         clear_op_btn.setToolTip("Operatör seçimini sıfırla")
-        clear_op_btn.clicked.connect(lambda: operator_combo.setCurrentIndex(0))
-        operator_row.addWidget(clear_op_btn)
+        clear_op_btn.clicked.connect(lambda: (operator_combo.setCurrentIndex(0), self._refresh_operator_badge(container)))
+        vo_row.addWidget(clear_op_btn)
 
-        grid.addLayout(operator_row, 1, 1)
-        
-        # Parça / Bara (Otomatik)
-        lbl2 = QLabel("Parça / Bara (Otomatik):")
-        lbl2.setStyleSheet(label_style)
-        grid.addWidget(lbl2, 2, 0)
-        
-        parca_bara_input = QLineEdit()
-        parca_bara_input.setObjectName("parca_bara_input")
-        parca_bara_input.setReadOnly(True)
-        parca_bara_input.setStyleSheet(input_style + f"""
-            QLineEdit {{ background: {s['border']}; }}
+        form_layout.addLayout(vo_row)
+
+        # ------ 5) GİRİŞ KARTLARI: ÜRETİLEN ADET + BASILACAK BARA ------
+        big_row = QHBoxLayout()
+        big_row.setSpacing(6)
+
+        # Üretilen Adet kartı
+        adet_card = QFrame()
+        adet_card.setStyleSheet(f"""
+            QFrame {{
+                background: {s['input_bg']};
+                border: 1px solid {s['primary']};
+                border-radius: 6px;
+            }}
         """)
-        grid.addWidget(parca_bara_input, 2, 1)
-        
-        # Üretilen Adet (kullanıcı bunu girer)
-        lbl3 = QLabel("Üretilen Adet:")
-        lbl3.setStyleSheet(label_style)
-        grid.addWidget(lbl3, 3, 0)
-        
+        adet_cl = QVBoxLayout(adet_card)
+        adet_cl.setContentsMargins(8, 4, 8, 4)
+        adet_cl.setSpacing(1)
+        adet_title = QLabel("ÜRETİLEN ADET")
+        adet_title.setStyleSheet(f"color: {s['text_secondary']}; font-size: 10px; font-weight: 700;")
+        adet_title.setAlignment(Qt.AlignCenter)
+        adet_cl.addWidget(adet_title)
+
         adet_spin = QSpinBox()
         adet_spin.setObjectName("adet_spin")
         adet_spin.setRange(0, 9999999)
         adet_spin.setButtonSymbols(QSpinBox.NoButtons)
-        adet_spin.setStyleSheet(input_style)
-        grid.addWidget(adet_spin, 3, 1)
-        
-        # Basılacak Bara (otomatik hesaplanır)
-        lbl3b = QLabel("Basılacak Bara:")
-        lbl3b.setStyleSheet(label_style)
-        grid.addWidget(lbl3b, 4, 0)
-        
+        adet_spin.setAlignment(Qt.AlignCenter)
+        adet_spin.setStyleSheet(f"""
+            QSpinBox {{
+                background: transparent;
+                color: {s['text']};
+                border: none;
+                font-size: 18px;
+                font-weight: 800;
+                padding: 2px;
+            }}
+            QSpinBox:focus {{ color: {s['primary']}; }}
+        """)
+        adet_cl.addWidget(adet_spin)
+        big_row.addWidget(adet_card, 1)
+
+        # Basılacak Bara kartı
+        bara_card = QFrame()
+        bara_card.setStyleSheet(f"""
+            QFrame {{
+                background: rgba(220, 38, 38, 0.08);
+                border: 1px solid {s['primary']};
+                border-radius: 6px;
+            }}
+        """)
+        bara_cl = QVBoxLayout(bara_card)
+        bara_cl.setContentsMargins(8, 4, 8, 4)
+        bara_cl.setSpacing(1)
+        bara_title = QLabel("BASILACAK BARA")
+        bara_title.setStyleSheet(f"color: {s['text_secondary']}; font-size: 10px; font-weight: 700;")
+        bara_title.setAlignment(Qt.AlignCenter)
+        bara_cl.addWidget(bara_title)
+
         bara_label = QLabel("0")
         bara_label.setObjectName("bara_label")
-        bara_label.setStyleSheet(f"""
-            color: {s['primary']}; 
-            font-size: 14px; 
-            font-weight: bold;
-            padding: 6px;
-            background: rgba(220, 38, 38, 0.1);
-            border-radius: 6px;
-        """)
-        grid.addWidget(bara_label, 4, 1)
-        
-        # Adet değişince bara otomatik hesaplansın
+        bara_label.setAlignment(Qt.AlignCenter)
+        bara_label.setStyleSheet(f"color: {s['primary']}; font-size: 18px; font-weight: 800;")
+        bara_cl.addWidget(bara_label)
+        big_row.addWidget(bara_card, 1)
+
+        form_layout.addLayout(big_row)
+
+        # Gizli parca_bara input (save kodu bunu bekliyor)
+        parca_bara_input = QLineEdit()
+        parca_bara_input.setObjectName("parca_bara_input")
+        parca_bara_input.setReadOnly(True)
+        parca_bara_input.setVisible(False)
+        form_layout.addWidget(parca_bara_input)
+
         adet_spin.valueChanged.connect(
             lambda val: self._update_bara_label(container, val)
         )
-        
-        # Kalite
-        lbl4 = QLabel("Kalite:")
-        lbl4.setStyleSheet(label_style)
-        grid.addWidget(lbl4, 5, 0)
-        
+
+        # ------ 6) KALİTE + AÇIKLAMA + KAYDET (TEK SATIR) ------
+        kn_row = QHBoxLayout()
+        kn_row.setSpacing(6)
+
         kalite_combo = QComboBox()
         kalite_combo.setObjectName("kalite_combo")
         kalite_combo.addItems(["OK", "NOK", "KONTROL_BEKLIYOR"])
-        kalite_combo.setStyleSheet(input_style)
-        grid.addWidget(kalite_combo, 5, 1)
-        
-        # Açıklama
-        lbl5 = QLabel("Açıklama:")
-        lbl5.setStyleSheet(label_style)
-        grid.addWidget(lbl5, 6, 0)
-        
-        aciklama_input = QTextEdit()
+        kalite_combo.setFixedHeight(32)
+        kalite_combo.setStyleSheet(f"""
+            QComboBox {{
+                background: {s['input_bg']};
+                color: {s['text']};
+                border: 1px solid {s['border']};
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 12px;
+                font-weight: 600;
+                min-width: 140px;
+            }}
+            QComboBox:focus {{ border-color: {s['primary']}; }}
+        """)
+        kn_row.addWidget(kalite_combo)
+
+        aciklama_input = QLineEdit()
         aciklama_input.setObjectName("aciklama_input")
-        aciklama_input.setMaximumHeight(50)
+        aciklama_input.setPlaceholderText("Açıklama (opsiyonel)...")
+        aciklama_input.setFixedHeight(32)
         aciklama_input.setStyleSheet(f"""
-            QTextEdit {{
-                background: {s['input_bg']}; 
-                color: {s['text']}; 
-                border: 1px solid {s['border']}; 
-                border-radius: 6px; 
-                padding: 6px;
+            QLineEdit {{
+                background: {s['input_bg']};
+                color: {s['text']};
+                border: 1px solid {s['border']};
+                border-radius: 6px;
+                padding: 4px 10px;
                 font-size: 12px;
             }}
-            QTextEdit:focus {{
-                border-color: {s['primary']};
-            }}
+            QLineEdit:focus {{ border-color: {s['primary']}; }}
         """)
-        grid.addWidget(aciklama_input, 6, 1)
-        
-        form_layout.addLayout(grid)
-        
-        # Kaydet Butonu
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        
-        save_btn = QPushButton("💾 Kaydet")
+        kn_row.addWidget(aciklama_input, 1)
+
+        save_btn = QPushButton("💾 KAYDET")
         save_btn.setObjectName("save_btn")
         save_btn.setEnabled(False)
         save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFixedHeight(32)
+        save_btn.setMinimumWidth(140)
+        save_btn.setShortcut("F9")
+        save_btn.setToolTip("F9")
         save_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {s['success']};
                 color: white;
                 border: none;
                 border-radius: 6px;
-                padding: 10px 24px;
-                font-weight: 600;
+                padding: 4px 16px;
+                font-weight: 700;
                 font-size: 13px;
             }}
             QPushButton:hover {{ background: #059669; }}
             QPushButton:disabled {{ background: {s['border']}; color: {s['text_muted']}; }}
         """)
         save_btn.clicked.connect(lambda: self._save_production(container))
-        btn_layout.addWidget(save_btn)
-        
-        form_layout.addLayout(btn_layout)
+        kn_row.addWidget(save_btn)
+
+        form_layout.addLayout(kn_row)
         splitter.addWidget(form_frame)
-        
-        # Splitter oranları (üst %75, alt %25)
-        splitter.setSizes([500, 160])
+
+        # Başlangıçta vardiyayı tespit et ve badge'e yaz
+        QTimer.singleShot(0, lambda c=container: self._refresh_vardiya_badge(c))
+
+        # Splitter oranları (üst %78, alt %22 - tablo ön planda)
+        splitter.setSizes([620, 180])
         
         layout.addWidget(splitter)
         return container
@@ -638,13 +747,76 @@ class UretimGirisPage(BasePage):
                 if operator_combo.itemData(i) == personel_id:
                     operator_combo.setCurrentIndex(i)
                     break
+            self._refresh_operator_badge(container)
         except Exception as e:
             print(f"[URETIM] Kart okuma hatası: {e}")
+
+    def _refresh_operator_badge(self, container):
+        """Operatör etiketini combo'daki mevcut seçime göre güncelle"""
+        if not container:
+            return
+        badge = container.findChild(QLabel, "operator_badge")
+        combo = container.findChild(QComboBox, "operator_combo")
+        if not badge or not combo:
+            return
+        s = self.s
+        pid = combo.currentData()
+        if pid:
+            badge.setText(f"👤  {combo.currentText()}")
+            badge.setStyleSheet(f"""
+                color: {s['success']};
+                font-size: 15px;
+                font-weight: 700;
+                padding: 10px 16px;
+                background: rgba(16, 185, 129, 0.12);
+                border: 1px solid {s['success']};
+                border-radius: 8px;
+            """)
+        else:
+            badge.setText("👤  Kart Okutun")
+            badge.setStyleSheet(f"""
+                color: {s['warning']};
+                font-size: 15px;
+                font-weight: 700;
+                padding: 10px 16px;
+                background: rgba(245, 158, 11, 0.1);
+                border: 1px solid {s['warning']};
+                border-radius: 8px;
+            """)
 
     def _on_tab_changed(self, index):
         """Sekme değiştiğinde"""
         if index >= 0:
             self._load_is_emirleri(index)
+            # Vardiya badge'ini tazele (saat değişmiş olabilir)
+            self._refresh_vardiya_badge(self.tab_widget.widget(index))
+
+    def _filter_table_rows(self, tab_index):
+        """Arama kutusuna göre tabloda satırları gizle/göster"""
+        try:
+            container = self.tab_widget.widget(tab_index)
+            if not container:
+                return
+            table = container.findChild(QTableWidget, "is_emri_table")
+            search_input = container.findChild(QLineEdit, "search_input")
+            if not table or not search_input:
+                return
+            aranan = (search_input.text() or "").strip().lower()
+            # Aranacak kolonlar: 2=İş Emri No, 3=Stok Kodu, 4=Stok Adı, 5=Müşteri, 13=Teknik Resim, 14=Reçete
+            arama_kolonlari = (2, 3, 4, 5, 13, 14)
+            for r in range(table.rowCount()):
+                if not aranan:
+                    table.setRowHidden(r, False)
+                    continue
+                eslesti = False
+                for c in arama_kolonlari:
+                    item = table.item(r, c)
+                    if item and aranan in item.text().lower():
+                        eslesti = True
+                        break
+                table.setRowHidden(r, not eslesti)
+        except Exception:
+            pass
     
     def _load_is_emirleri(self, tab_index):
         """Seçili hat için iş emirlerini yükle"""
@@ -828,11 +1000,13 @@ class UretimGirisPage(BasePage):
                     'recete_no': recete
                 })
                 
+            # Yükleme sonrası mevcut arama filtresini yeniden uygula
+            self._filter_table_rows(tab_index)
         except Exception as e:
             print(f"İş emirleri yükleme hatası: {e}")
             import traceback
             traceback.print_exc()
-    
+
     def _update_bara_label(self, container, adet_value):
         """Girilen adete göre bara sayısını hesapla ve göster"""
         bara_label = container.findChild(QLabel, "bara_label")
@@ -874,20 +1048,22 @@ class UretimGirisPage(BasePage):
             # Seçim etiketini güncelle
             if selection_label:
                 hat_kodu = self.tab_widget.tabText(self.tab_widget.currentIndex())
+                musteri = data.get('cari_unvani', '') or ''
                 selection_label.setText(
-                    f"✅ Seçim: {hat_kodu} | İşEmri: {data['is_emri_no']} | Stok: {data['stok_kodu']}"
+                    f"✅  {hat_kodu}  ·  {data['is_emri_no']}  ·  {data['stok_kodu']}"
+                    + (f"  ·  {musteri}" if musteri else "")
                 )
                 selection_label.setStyleSheet(f"""
-                    font-size: 13px; 
-                    font-weight: 600; 
+                    font-size: 17px;
+                    font-weight: 700;
                     color: {s['success']};
-                    padding: 8px;
-                    background: rgba(16, 185, 129, 0.1);
+                    padding: 12px 16px;
+                    background: rgba(16, 185, 129, 0.12);
                     border: 1px solid {s['success']};
-                    border-radius: 6px;
+                    border-radius: 10px;
                 """)
-            
-            # Detay etiketini güncelle
+
+            # Detay etiketini güncelle (backward-compat, görünmez)
             if detail_label:
                 detail_label.setText(
                     f"Bakiye: {data['bakiye_miktar']:,.0f} | "
@@ -896,6 +1072,18 @@ class UretimGirisPage(BasePage):
                     f"Parça/Bara: {data['parca_bara']:,.0f} | "
                     f"Kalan Bara: {int(data['kalan_bara'])}"
                 )
+
+            # Metrik kutucuklarını doldur
+            for obj_name, val in (
+                ("metric_bakiye", f"{data['bakiye_miktar']:,.0f}"),
+                ("metric_uretilen", f"{data['uretilen_adet']:,.0f}"),
+                ("metric_kalan", f"{data['kalan_adet']:,.0f}"),
+                ("metric_parca_bara", f"{data['parca_bara']:,.0f}"),
+                ("metric_kalan_bara", f"{int(data['kalan_bara'])}"),
+            ):
+                lbl = container.findChild(QLabel, obj_name)
+                if lbl:
+                    lbl.setText(val)
             
             # Reçete bilgilerini güncelle
             recete_label = container.findChild(QLabel, "recete_label")
@@ -945,28 +1133,30 @@ class UretimGirisPage(BasePage):
             data = self.selected_row_data
             
             # Form verilerini al
-            vardiya_combo = container.findChild(QComboBox, "vardiya_combo")
             operator_combo = container.findChild(QComboBox, "operator_combo")
             adet_spin = container.findChild(QSpinBox, "adet_spin")
             kalite_combo = container.findChild(QComboBox, "kalite_combo")
-            aciklama_input = container.findChild(QTextEdit, "aciklama_input")
-            
-            # Veri çek
-            vardiya_id = vardiya_combo.currentData() if vardiya_combo else None
-            vardiya_adi = vardiya_combo.currentText() if vardiya_combo else ""
-            
+            aciklama_input = container.findChild(QLineEdit, "aciklama_input")
+
+            # Vardiya: saate göre otomatik (container property'den)
+            vardiya_id = container.property("vardiya_id")
+            vardiya_adi = container.property("vardiya_adi") or ""
+            if not vardiya_id:
+                # Son bir kez anlik olarak tespit etmeyi dene
+                self._refresh_vardiya_badge(container)
+                vardiya_id = container.property("vardiya_id")
+                vardiya_adi = container.property("vardiya_adi") or ""
+
             operator_id = operator_combo.currentData() if operator_combo else None
             operator_adi = operator_combo.currentText() if operator_combo else ""
-            
+
             uretilen_adet = adet_spin.value() if adet_spin else 0
             kalite = kalite_combo.currentText() if kalite_combo else "OK"
-            aciklama = aciklama_input.toPlainText().strip() if aciklama_input else ""
-            
+            aciklama = aciklama_input.text().strip() if aciklama_input else ""
+
             # Validasyonlar
             if not vardiya_id:
-                QMessageBox.warning(self, "Uyarı", "Lütfen vardiya seçin!")
-                if vardiya_combo:
-                    vardiya_combo.setFocus()
+                QMessageBox.warning(self, "Uyarı", "Şu an aktif bir vardiya bulunamadı!\nVardiya tanımlarını kontrol edin.")
                 return
             
             if not operator_id:
@@ -1285,11 +1475,10 @@ class UretimGirisPage(BasePage):
                 except Exception as bt_err:
                     print(f"Bildirim hatasi: {bt_err}")
 
-            # Formu temizle
-            if vardiya_combo:
-                vardiya_combo.setCurrentIndex(0)  # "-- Vardiya Seçin --"
+            # Formu temizle (vardiya otomatik olduğu için dokunulmuyor)
             if operator_combo:
-                operator_combo.setCurrentIndex(0)  # "-- Operatör Seçin --"
+                operator_combo.setCurrentIndex(0)
+                self._refresh_operator_badge(container)
             if adet_spin:
                 adet_spin.setValue(0)
             if aciklama_input:
@@ -1309,20 +1498,26 @@ class UretimGirisPage(BasePage):
             # Seçim etiketini sıfırla
             selection_label = container.findChild(QLabel, "selection_label")
             if selection_label:
-                selection_label.setText("⚠️ Seçim: Lütfen yukarıdan bir iş emri seçin")
+                selection_label.setText("⚠️  İş emri seçin")
                 selection_label.setStyleSheet(f"""
-                    font-size: 13px; 
-                    font-weight: 600; 
+                    font-size: 17px;
+                    font-weight: 700;
                     color: {self.s['warning']};
-                    padding: 8px;
-                    background: rgba(245, 158, 11, 0.1);
+                    padding: 12px 16px;
+                    background: rgba(245, 158, 11, 0.12);
                     border: 1px solid {self.s['warning']};
-                    border-radius: 6px;
+                    border-radius: 10px;
                 """)
-            
+
             detail_label = container.findChild(QLabel, "detail_label")
             if detail_label:
-                detail_label.setText("Bakiye: - | Üretilen: - | Kalan: - | Parça/Bara: - | Kalan Bara: -")
+                detail_label.setText("")
+
+            # Metrik kutucuklarını sıfırla
+            for obj_name in ("metric_bakiye", "metric_uretilen", "metric_kalan", "metric_parca_bara", "metric_kalan_bara"):
+                lbl = container.findChild(QLabel, obj_name)
+                if lbl:
+                    lbl.setText("-")
             
             # Listeyi yenile
             self._load_is_emirleri(self.tab_widget.currentIndex())

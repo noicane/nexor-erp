@@ -1799,7 +1799,7 @@ class KaliteFinalKontrolPage(BasePage):
             # 4. urun_id bul
             urun_id = gorev_data.get('urun_id')
             if not urun_id and stok_kodu:
-                cursor.execute("SELECT id FROM stok.urunler WHERE urun_kodu = ?", (stok_kodu,))
+                cursor.execute("SELECT id FROM stok.urunler WHERE urun_kodu = ? AND aktif_mi = 1", (stok_kodu,))
                 urun_row = cursor.fetchone()
                 if urun_row:
                     urun_id = urun_row[0]

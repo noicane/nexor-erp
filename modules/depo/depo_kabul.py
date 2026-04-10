@@ -696,7 +696,7 @@ class PaletBolmeDialog(QDialog):
             
             # urun_id bul veya oluştur
             cursor.execute("""
-                SELECT id FROM stok.urunler WHERE urun_kodu = ?
+                SELECT id FROM stok.urunler WHERE urun_kodu = ? AND aktif_mi = 1
             """, (self.stok_kodu,))
             urun_row = cursor.fetchone()
             
@@ -1062,13 +1062,13 @@ class IrsaliyeDetayDialog(QDialog):
             cursor = conn.cursor()
             
             # Müşteriler - Cari tablosundan
-            cursor.execute("SELECT DISTINCT c.unvan FROM stok.urunler u INNER JOIN musteri.cariler c ON u.cari_id = c.id WHERE c.unvan IS NOT NULL AND c.unvan <> '' ORDER BY c.unvan")
+            cursor.execute("SELECT DISTINCT c.unvan FROM stok.urunler u INNER JOIN musteri.cariler c ON u.cari_id = c.id WHERE c.unvan IS NOT NULL AND c.unvan <> '' AND c.aktif_mi = 1 AND u.aktif_mi = 1 ORDER BY c.unvan")
             rows = cursor.fetchall()
             if rows:
                 self.combo_data['cariler'] = [(None, '-- Müşteri Seçin --')] + [(r[0], r[0]) for r in rows]
             
             # Kaplama türleri - Kaplama türleri tablosundan
-            cursor.execute("SELECT DISTINCT kt.id, kt.ad FROM stok.urunler u INNER JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id WHERE kt.id IS NOT NULL AND kt.ad IS NOT NULL ORDER BY kt.ad")
+            cursor.execute("SELECT DISTINCT kt.id, kt.ad FROM stok.urunler u INNER JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id WHERE kt.id IS NOT NULL AND kt.ad IS NOT NULL AND u.aktif_mi = 1 ORDER BY kt.ad")
             rows = cursor.fetchall()
             if rows:
                 self.combo_data['kaplamalar'] = [(None, '--')] + [(r[0], r[1]) for r in rows]

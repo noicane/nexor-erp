@@ -1159,7 +1159,7 @@ class KaliteFinalPage(BasePage):
             # urun_id bul veya oluştur
             urun_id = None
             if urun_kodu:
-                cursor.execute("SELECT id FROM stok.urunler WHERE urun_kodu = ?", (urun_kodu,))
+                cursor.execute("SELECT id FROM stok.urunler WHERE urun_kodu = ? AND aktif_mi = 1", (urun_kodu,))
                 urun_row = cursor.fetchone()
                 
                 if urun_row:

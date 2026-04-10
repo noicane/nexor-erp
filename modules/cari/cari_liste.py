@@ -669,9 +669,7 @@ class CariListePage(BasePage):
         toolbar.addWidget(self.sehir_combo)
         
         self.aktif_combo = QComboBox()
-        self.aktif_combo.addItem("📊 Tüm Durumlar", None)
         self.aktif_combo.addItem("✅ Aktif", True)
-        self.aktif_combo.addItem("❌ Pasif", False)
         self.aktif_combo.setStyleSheet(combo_style)
         self.aktif_combo.currentIndexChanged.connect(self._on_filter_change)
         toolbar.addWidget(self.aktif_combo)
@@ -826,7 +824,7 @@ class CariListePage(BasePage):
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            where_conditions = ["(c.silindi_mi = 0 OR c.silindi_mi IS NULL)"]
+            where_conditions = ["(c.silindi_mi = 0 OR c.silindi_mi IS NULL)", "ISNULL(c.aktif_mi, 1) = 1"]
             params = []
             
             arama = self.search_input.text().strip()
@@ -843,11 +841,6 @@ class CariListePage(BasePage):
             if sehir:
                 where_conditions.append("c.sehir_id = ?")
                 params.append(sehir)
-            
-            aktif = self.aktif_combo.currentData()
-            if aktif is not None:
-                where_conditions.append("ISNULL(c.aktif_mi, 1) = ?")
-                params.append(1 if aktif else 0)
             
             where_clause = " AND ".join(where_conditions)
             
