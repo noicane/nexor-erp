@@ -1,57 +1,96 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Verimlilik Analizi Modülü
-[MODERNIZED UI - v4.0]
-
-4 Tab: Hat Verimliligi, Cevrim Suresi Sapmasi, Darbogaz Tespiti, Bara Bazli Analiz
-Ortak kazan destekli analiz motoru
+NEXOR ERP - Verimlilik Analizi Modulu (Brand System)
+=====================================================
+4 Tab: Hat Verimliligi, Cevrim Suresi Sapmasi, Darbogaz Tespiti, Bara Bazli Analiz.
+Ortak kazan destekli analiz motoru. Tum stiller core.nexor_brand uzerinden.
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem,
     QLabel, QComboBox, QPushButton, QFrame, QTabWidget, QHeaderView,
-    QMessageBox, QSplitter, QGroupBox, QDateEdit
+    QMessageBox, QSplitter, QDateEdit,
 )
 from PySide6.QtCore import Qt, QTimer, QDate
-from PySide6.QtGui import QFont, QColor, QBrush
+from PySide6.QtGui import QFont, QColor, QBrush, QPainter, QPen
 from datetime import datetime, timedelta
 from core.database import get_db_connection, get_plc_connection
+from core.nexor_brand import brand
 from .verimlilik_helpers import (
     BANYO_GRUPLARI_SEED, get_hat_from_tank,
     build_combined_groups, build_tank_to_group_map
 )
 
 
-def get_modern_style(theme: dict = None) -> dict:
-    """Modern tema renkleri - TÜM MODÜLLERDE AYNI"""
-    if theme is None:
-        theme = {}
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
+# =============================================================================
+# BRAND ICON
+# =============================================================================
+
+class BrandIcon(QLabel):
+    def __init__(self, kind: str, color: str = None, size: int = None, parent=None):
+        super().__init__(parent)
+        self.kind = kind
+        self.color = color or brand.TEXT
+        self.size_px = size or brand.ICON_MD
+        self.setFixedSize(self.size_px, self.size_px)
+        self.setStyleSheet("background: transparent; border: none;")
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(self.color))
+        pen.setWidthF(max(1.4, self.size_px / 12))
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        s = self.size_px
+        m = s * 0.18
+        k = self.kind
+
+        if k == "chart":
+            p.drawLine(int(m), int(s - m), int(s - m), int(s - m))
+            p.drawLine(int(m), int(s - m), int(m), int(m))
+            p.drawLine(int(m * 1.8), int(s * 0.7), int(m * 1.8), int(s - m))
+            p.drawLine(int(s * 0.42), int(s * 0.55), int(s * 0.42), int(s - m))
+            p.drawLine(int(s * 0.62), int(s * 0.4), int(s * 0.62), int(s - m))
+            p.drawLine(int(s * 0.82), int(s * 0.25), int(s * 0.82), int(s - m))
+        elif k == "trending-up":
+            p.drawLine(int(m), int(s - m * 1.5), int(s * 0.42), int(s * 0.6))
+            p.drawLine(int(s * 0.42), int(s * 0.6), int(s * 0.62), int(s * 0.75))
+            p.drawLine(int(s * 0.62), int(s * 0.75), int(s - m), int(m * 1.5))
+            p.drawLine(int(s - m), int(m * 1.5), int(s * 0.7), int(m * 1.5))
+            p.drawLine(int(s - m), int(m * 1.5), int(s - m), int(s * 0.42))
+        elif k == "factory":
+            p.drawLine(int(m), int(s - m), int(m), int(s * 0.45))
+            p.drawLine(int(m), int(s * 0.45), int(s * 0.45), int(s * 0.6))
+            p.drawLine(int(s * 0.45), int(s * 0.6), int(s * 0.45), int(s * 0.3))
+            p.drawLine(int(s * 0.45), int(s * 0.3), int(s - m), int(s * 0.45))
+            p.drawLine(int(s - m), int(s * 0.45), int(s - m), int(s - m))
+            p.drawLine(int(m), int(s - m), int(s - m), int(s - m))
+        elif k == "alert":
+            p.drawLine(int(s * 0.5), int(m), int(s - m), int(s - m))
+            p.drawLine(int(s - m), int(s - m), int(m), int(s - m))
+            p.drawLine(int(m), int(s - m), int(s * 0.5), int(m))
+            p.drawLine(int(s * 0.5), int(s * 0.38), int(s * 0.5), int(s * 0.62))
+        elif k == "refresh":
+            from PySide6.QtCore import QRectF
+            rect = QRectF(m, m, s - 2 * m, s - 2 * m)
+            p.drawArc(rect, 45 * 16, 270 * 16)
+            p.drawLine(int(s - m * 1.2), int(m), int(s - m * 1.2), int(m * 2.2))
+            p.drawLine(int(s - m * 1.2), int(m * 2.2), int(s - m * 2.4), int(m * 2.2))
+        elif k == "search":
+            p.drawEllipse(int(m), int(m), int(s * 0.55), int(s * 0.55))
+            p.drawLine(int(s * 0.6), int(s * 0.6), int(s - m), int(s - m))
+        p.end()
+
+
+def _soft(color_hex: str, alpha: float = 0.12) -> str:
+    c = QColor(color_hex)
+    return f"rgba({c.red()},{c.green()},{c.blue()},{alpha})"
 
 
 class VerimlilikAnalizPage(QWidget):
-    """Verimlilik Analizi Sayfası - 4 Tab"""
+    """Verimlilik Analizi Sayfasi - 4 Tab"""
 
     def __init__(self, page_id=None, theme: dict = None):
         super().__init__()
@@ -61,22 +100,21 @@ class VerimlilikAnalizPage(QWidget):
         self.pozisyon_tanimlari = {}
         self.bara_data = []
 
-        # Modern stil sistemi
-        self.s = get_modern_style(theme)
+        # Brand alias'lari — mevcut _load_* metotlari self.error/self.success vb.
+        # ile QColor uretiyor; brand degerlerine atanir, lokal renk referansi bozulmaz.
+        self.bg         = brand.BG_MAIN
+        self.bg_card    = brand.BG_CARD
+        self.bg_input   = brand.BG_INPUT
+        self.primary    = brand.PRIMARY
+        self.success    = brand.SUCCESS
+        self.warning    = brand.WARNING
+        self.error      = brand.ERROR
+        self.info       = brand.INFO
+        self.text       = brand.TEXT
+        self.text_muted = brand.TEXT_MUTED
+        self.border     = brand.BORDER
 
-        # Tema değişkenleri
-        self.bg = self.s['card_bg']
-        self.bg_card = self.s['card_bg']
-        self.bg_input = self.s['input_bg']
-        self.primary = self.s['primary']
-        self.success = self.s['success']
-        self.warning = self.s['warning']
-        self.error = self.s['error']
-        self.text = self.s['text']
-        self.text_muted = self.s['text_muted']
-        self.border = self.s['border']
-
-        # Ortak kazan grupları (ilk yüklemede güncellenir)
+        # Ortak kazan gruplari (ilk yuklemede guncellenir)
         self.ortak_gruplar = {}
         self.tank_grup_map = {}
 
@@ -98,26 +136,70 @@ class VerimlilikAnalizPage(QWidget):
             return False
 
     def _init_ui(self):
-        """Arayüzü oluştur"""
-        self.setStyleSheet(f"background:{self.bg}; color:{self.text};")
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
+        """Arayuzu olustur"""
+        self.setStyleSheet(f"""
+            QWidget {{
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
+                font-family: {brand.FONT_FAMILY};
+                font-size: {brand.FS_BODY}px;
+            }}
+        """)
 
-        # Başlık
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
+        # Baslik
         header = QHBoxLayout()
-        title = QLabel("📊 Verimlilik Analizi")
-        title.setStyleSheet(f"font-size:24px;font-weight:bold;color:{self.text};")
-        header.addWidget(title)
+        header.setSpacing(brand.SP_3)
+
+        icon_box = QFrame()
+        icon_box.setFixedSize(brand.sp(40), brand.sp(40))
+        icon_box.setStyleSheet(
+            f"background: {_soft(brand.PRIMARY, 0.12)}; "
+            f"border: 1px solid {_soft(brand.PRIMARY, 0.35)}; "
+            f"border-radius: {brand.R_SM}px;"
+        )
+        ib = QVBoxLayout(icon_box)
+        ib.setContentsMargins(0, 0, 0, 0)
+        ib.addWidget(BrandIcon("chart", brand.PRIMARY, brand.sp(20)), 0, Qt.AlignCenter)
+        header.addWidget(icon_box)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+        title = QLabel("Verimlilik Analizi")
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; font-size: {brand.FS_TITLE}px; "
+            f"font-weight: {brand.FW_BOLD}; letter-spacing: -0.4px;"
+        )
+        title_col.addWidget(title)
+
+        subtitle = QLabel("Hat verimliligi, cevrim sapmasi, darbogaz ve bara bazli analiz")
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY}px;"
+        )
+        title_col.addWidget(subtitle)
+        header.addLayout(title_col)
+
         header.addStretch()
 
-        btn_refresh = QPushButton("🔄 Yenile")
+        btn_refresh = QPushButton("Yenile")
+        btn_refresh.setCursor(Qt.PointingHandCursor)
         btn_refresh.setStyleSheet(f"""
             QPushButton {{
-                background:{self.primary};color:white;border:none;
-                border-radius:8px;padding:10px 20px;font-weight:bold;font-size:14px;
+                background: {brand.PRIMARY};
+                color: white;
+                border: 1px solid {brand.PRIMARY};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_5}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_SM}px;
             }}
-            QPushButton:hover {{background:#3651d4;}}
+            QPushButton:hover {{
+                background: {brand.PRIMARY_HOVER};
+                border-color: {brand.PRIMARY_HOVER};
+            }}
         """)
         btn_refresh.clicked.connect(self._refresh_all)
         header.addWidget(btn_refresh)
@@ -126,14 +208,33 @@ class VerimlilikAnalizPage(QWidget):
         # Tab widget
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(f"""
-            QTabWidget::pane {{border:1px solid {self.border};border-radius:8px;background:{self.bg_card};}}
-            QTabBar::tab {{
-                background:{self.bg_input};color:{self.text_muted};
-                padding:12px 24px;margin-right:4px;border-top-left-radius:8px;border-top-right-radius:8px;
-                font-weight:bold;
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                background: {brand.BG_CARD};
+                top: -1px;
             }}
-            QTabBar::tab:selected {{background:{self.primary};color:white;}}
-            QTabBar::tab:hover:!selected {{background:{self.border};}}
+            QTabBar::tab {{
+                background: transparent;
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_6}px;
+                margin-right: {brand.SP_1}px;
+                border: 1px solid transparent;
+                border-top-left-radius: {brand.R_SM}px;
+                border-top-right-radius: {brand.R_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QTabBar::tab:selected {{
+                background: {brand.BG_CARD};
+                color: {brand.PRIMARY};
+                border: 1px solid {brand.BORDER};
+                border-bottom: 2px solid {brand.PRIMARY};
+            }}
+            QTabBar::tab:hover:!selected {{
+                color: {brand.TEXT};
+                background: {brand.BG_HOVER};
+            }}
         """)
 
         self._create_hat_verimlilik_tab()
@@ -148,32 +249,35 @@ class VerimlilikAnalizPage(QWidget):
     def _create_hat_verimlilik_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(10, 15, 10, 10)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_4)
 
         # Filtreler
         filter_layout = QHBoxLayout()
-        filter_layout.addWidget(QLabel("Dönem:", styleSheet=f"color:{self.text};font-weight:bold;"))
+        filter_layout.setSpacing(brand.SP_3)
+        filter_layout.addWidget(self._mini_label("Donem"))
         self.cmb_hat_tarih = QComboBox()
         self.cmb_hat_tarih.setStyleSheet(self._combo_style())
-        self.cmb_hat_tarih.addItem("Bugün (Vardiya)", "bugun")
-        self.cmb_hat_tarih.addItem("Dün", "dun")
-        self.cmb_hat_tarih.addItem("Son 7 Gün", "hafta")
-        self.cmb_hat_tarih.addItem("Tarih Aralığı", "aralik")
+        self.cmb_hat_tarih.addItem("Bugun (Vardiya)", "bugun")
+        self.cmb_hat_tarih.addItem("Dun", "dun")
+        self.cmb_hat_tarih.addItem("Son 7 Gun", "hafta")
+        self.cmb_hat_tarih.addItem("Tarih Araligi", "aralik")
         filter_layout.addWidget(self.cmb_hat_tarih)
 
         self.date_hat_bas, self.date_hat_bit = self._create_date_range_widgets(filter_layout, self.cmb_hat_tarih)
 
-        filter_layout.addWidget(QLabel("Hat:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:15px;"))
+        filter_layout.addWidget(self._mini_label("Hat"))
         self.cmb_hat_filtre = QComboBox()
         self.cmb_hat_filtre.setStyleSheet(self._combo_style())
-        self.cmb_hat_filtre.addItem("Tüm Hatlar", None)
+        self.cmb_hat_filtre.addItem("Tum Hatlar", None)
         self.cmb_hat_filtre.addItem("KTL", "KTL")
         self.cmb_hat_filtre.addItem("CINKO", "CINKO")
         self.cmb_hat_filtre.addItem("ORTAK", "ORTAK")
         filter_layout.addWidget(self.cmb_hat_filtre)
 
-        btn = QPushButton("📊 Hesapla")
-        btn.setStyleSheet(f"QPushButton{{background:{self.success};color:white;border:none;border-radius:6px;padding:10px 20px;font-weight:bold;}}")
+        btn = QPushButton("Hesapla")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(self._cta_button_style(brand.SUCCESS))
         btn.clicked.connect(self._load_hat_verimlilik)
         filter_layout.addWidget(btn)
         filter_layout.addStretch()
@@ -181,85 +285,87 @@ class VerimlilikAnalizPage(QWidget):
 
         # Kartlar
         cards = QHBoxLayout()
-        cards.setSpacing(15)
-        self.card_hat_kapasite = self._create_card("📦 TOPLAM KAPASİTE", "0 dk", self.primary)
-        self.card_hat_kullanim = self._create_card("⚡ KULLANIM ORANI", "%0", self.success)
-        self.card_hat_yogun = self._create_card("🔥 EN YOĞUN GRUP", "-", self.warning)
-        self.card_hat_bos = self._create_card("⚪ EN BOŞ GRUP", "-", self.error)
+        cards.setSpacing(brand.SP_3)
+        self.card_hat_kapasite = self._create_card("TOPLAM KAPASITE", "0 dk", brand.PRIMARY)
+        self.card_hat_kullanim = self._create_card("KULLANIM ORANI", "%0",   brand.SUCCESS)
+        self.card_hat_yogun    = self._create_card("EN YOGUN GRUP", "—",     brand.WARNING)
+        self.card_hat_bos      = self._create_card("EN BOS GRUP",   "—",     brand.ERROR)
         cards.addWidget(self.card_hat_kapasite)
         cards.addWidget(self.card_hat_kullanim)
         cards.addWidget(self.card_hat_yogun)
         cards.addWidget(self.card_hat_bos)
         layout.addLayout(cards)
 
-        # Splitter - üst: grup tablo, alt: kazan doluluk detay
+        # Splitter - ust: grup tablo, alt: kazan doluluk detay
         splitter = QSplitter(Qt.Vertical)
+        splitter.setHandleWidth(brand.sp(4))
+        splitter.setStyleSheet(f"""
+            QSplitter::handle {{ background: {brand.BORDER}; }}
+            QSplitter::handle:hover {{ background: {brand.BORDER_HARD}; }}
+        """)
 
-        # Üst: Grup tablosu
-        grup_group = QGroupBox("📊 Grup / Kazan Kullanım")
-        grup_group.setStyleSheet(f"QGroupBox{{color:{self.text};font-weight:bold;border:1px solid {self.border};border-radius:8px;padding-top:15px;}}")
-        grup_layout = QVBoxLayout(grup_group)
-
+        # Ust: Grup tablosu
+        grup_widget = self._section_wrapper("GRUP / KAZAN KULLANIM")
         self.tbl_hat_verimlilik = QTableWidget()
         self.tbl_hat_verimlilik.setColumnCount(8)
         self.tbl_hat_verimlilik.setHorizontalHeaderLabels([
-            "Grup/Kazan", "Hat", "Kazan Adet", "İşlem Sayısı",
-            "Dolu (dk)", "Boş (dk)", "Kullanım %", "Durum"
+            "GRUP/KAZAN", "HAT", "KAZAN ADET", "ISLEM SAYISI",
+            "DOLU (DK)", "BOS (DK)", "KULLANIM %", "DURUM"
         ])
         self._style_table(self.tbl_hat_verimlilik)
         self.tbl_hat_verimlilik.itemSelectionChanged.connect(self._on_kazan_grup_selected)
-        grup_layout.addWidget(self.tbl_hat_verimlilik)
-        splitter.addWidget(grup_group)
+        grup_widget.layout().addWidget(self.tbl_hat_verimlilik)
+        splitter.addWidget(grup_widget)
 
         # Alt: Kazan doluluk detay
-        detay_group = QGroupBox("🔍 Kazan Doluluk Detayı")
-        detay_group.setStyleSheet(f"QGroupBox{{color:{self.text};font-weight:bold;border:1px solid {self.border};border-radius:8px;padding-top:15px;}}")
-        detay_layout = QVBoxLayout(detay_group)
-
+        detay_widget = self._section_wrapper("KAZAN DOLULUK DETAYI")
         self.tbl_kazan_doluluk = QTableWidget()
         self.tbl_kazan_doluluk.setColumnCount(8)
         self.tbl_kazan_doluluk.setHorizontalHeaderLabels([
-            "Kazan", "Pozisyon Adı", "Bara No", "Reçete",
-            "Doldurma", "Boşaltma", "Kalış (dk)", "Durum"
+            "KAZAN", "POZISYON ADI", "BARA NO", "RECETE",
+            "DOLDURMA", "BOSALTMA", "KALIS (DK)", "DURUM"
         ])
         self._style_table(self.tbl_kazan_doluluk)
-        detay_layout.addWidget(self.tbl_kazan_doluluk)
-        splitter.addWidget(detay_group)
+        detay_widget.layout().addWidget(self.tbl_kazan_doluluk)
+        splitter.addWidget(detay_widget)
 
-        splitter.setSizes([300, 200])
+        splitter.setSizes([brand.sp(320), brand.sp(220)])
         layout.addWidget(splitter)
 
-        self.tabs.addTab(tab, "📊 Hat Verimliliği")
+        self.tabs.addTab(tab, "Hat Verimliligi")
 
     # ─── Tab 2: Çevrim Süresi Sapması ───
 
     def _create_cevrim_sapma_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(10, 15, 10, 10)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_4)
 
         filter_layout = QHBoxLayout()
-        filter_layout.addWidget(QLabel("Dönem:", styleSheet=f"color:{self.text};font-weight:bold;"))
+        filter_layout.setSpacing(brand.SP_3)
+        filter_layout.addWidget(self._mini_label("Donem"))
         self.cmb_sapma_tarih = QComboBox()
         self.cmb_sapma_tarih.setStyleSheet(self._combo_style())
-        self.cmb_sapma_tarih.addItem("Bugün (Vardiya)", "bugun")
-        self.cmb_sapma_tarih.addItem("Dün", "dun")
-        self.cmb_sapma_tarih.addItem("Son 7 Gün", "hafta")
-        self.cmb_sapma_tarih.addItem("Tarih Aralığı", "aralik")
+        self.cmb_sapma_tarih.addItem("Bugun (Vardiya)", "bugun")
+        self.cmb_sapma_tarih.addItem("Dun", "dun")
+        self.cmb_sapma_tarih.addItem("Son 7 Gun", "hafta")
+        self.cmb_sapma_tarih.addItem("Tarih Araligi", "aralik")
         filter_layout.addWidget(self.cmb_sapma_tarih)
 
         self.date_sapma_bas, self.date_sapma_bit = self._create_date_range_widgets(filter_layout, self.cmb_sapma_tarih)
 
-        filter_layout.addWidget(QLabel("Sapma Tipi:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:15px;"))
+        filter_layout.addWidget(self._mini_label("Sapma Tipi"))
         self.cmb_sapma_tipi = QComboBox()
         self.cmb_sapma_tipi.setStyleSheet(self._combo_style())
-        self.cmb_sapma_tipi.addItem("Tümü", None)
+        self.cmb_sapma_tipi.addItem("Tumu", None)
         self.cmb_sapma_tipi.addItem("Sadece Gecikmeler (+)", "pozitif")
-        self.cmb_sapma_tipi.addItem("Sadece Hızlılar (-)", "negatif")
+        self.cmb_sapma_tipi.addItem("Sadece Hizlilar (-)", "negatif")
         filter_layout.addWidget(self.cmb_sapma_tipi)
 
-        btn = QPushButton("📈 Analiz Et")
-        btn.setStyleSheet(f"QPushButton{{background:{self.success};color:white;border:none;border-radius:6px;padding:10px 20px;font-weight:bold;}}")
+        btn = QPushButton("Analiz Et")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(self._cta_button_style(brand.SUCCESS))
         btn.clicked.connect(self._load_cevrim_sapma)
         filter_layout.addWidget(btn)
         filter_layout.addStretch()
@@ -267,11 +373,11 @@ class VerimlilikAnalizPage(QWidget):
 
         # Kartlar
         cards = QHBoxLayout()
-        cards.setSpacing(15)
-        self.card_sapma_toplam = self._create_card("⏱️ TOPLAM SAPMA", "0 dk", self.warning)
-        self.card_sapma_ort = self._create_card("📊 ORT. SAPMA", "0 sn", self.primary)
-        self.card_sapma_geciken = self._create_card("🔴 EN GECİKEN ADIM", "-", self.error)
-        self.card_sapma_hizli = self._create_card("🟢 EN HIZLI ADIM", "-", self.success)
+        cards.setSpacing(brand.SP_3)
+        self.card_sapma_toplam  = self._create_card("TOPLAM SAPMA",      "0 dk", brand.WARNING)
+        self.card_sapma_ort     = self._create_card("ORT. SAPMA",        "0 sn", brand.PRIMARY)
+        self.card_sapma_geciken = self._create_card("EN GECIKEN ADIM",   "—",    brand.ERROR)
+        self.card_sapma_hizli   = self._create_card("EN HIZLI ADIM",     "—",    brand.SUCCESS)
         cards.addWidget(self.card_sapma_toplam)
         cards.addWidget(self.card_sapma_ort)
         cards.addWidget(self.card_sapma_geciken)
@@ -282,35 +388,38 @@ class VerimlilikAnalizPage(QWidget):
         self.tbl_cevrim_sapma = QTableWidget()
         self.tbl_cevrim_sapma.setColumnCount(9)
         self.tbl_cevrim_sapma.setHorizontalHeaderLabels([
-            "Reçete", "Adım", "Kazan(lar)", "İşlem Adı",
-            "Reçete Süre (sn)", "Gerçek Süre (sn)", "Sapma (sn)", "Sapma %", "Durum"
+            "RECETE", "ADIM", "KAZAN(LAR)", "ISLEM ADI",
+            "RECETE SURE (SN)", "GERCEK SURE (SN)", "SAPMA (SN)", "SAPMA %", "DURUM"
         ])
         self._style_table(self.tbl_cevrim_sapma)
         layout.addWidget(self.tbl_cevrim_sapma)
 
-        self.tabs.addTab(tab, "📈 Çevrim Sapması")
+        self.tabs.addTab(tab, "Cevrim Sapmasi")
 
     # ─── Tab 3: Darboğaz Tespiti ───
 
     def _create_darbogaz_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(10, 15, 10, 10)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_4)
 
         filter_layout = QHBoxLayout()
-        filter_layout.addWidget(QLabel("Dönem:", styleSheet=f"color:{self.text};font-weight:bold;"))
+        filter_layout.setSpacing(brand.SP_3)
+        filter_layout.addWidget(self._mini_label("Donem"))
         self.cmb_darbogaz_tarih = QComboBox()
         self.cmb_darbogaz_tarih.setStyleSheet(self._combo_style())
-        self.cmb_darbogaz_tarih.addItem("Bugün (Vardiya)", "bugun")
-        self.cmb_darbogaz_tarih.addItem("Dün", "dun")
-        self.cmb_darbogaz_tarih.addItem("Son 7 Gün", "hafta")
-        self.cmb_darbogaz_tarih.addItem("Tarih Aralığı", "aralik")
+        self.cmb_darbogaz_tarih.addItem("Bugun (Vardiya)", "bugun")
+        self.cmb_darbogaz_tarih.addItem("Dun", "dun")
+        self.cmb_darbogaz_tarih.addItem("Son 7 Gun", "hafta")
+        self.cmb_darbogaz_tarih.addItem("Tarih Araligi", "aralik")
         filter_layout.addWidget(self.cmb_darbogaz_tarih)
 
         self.date_darbogaz_bas, self.date_darbogaz_bit = self._create_date_range_widgets(filter_layout, self.cmb_darbogaz_tarih)
 
-        btn = QPushButton("🔍 Tespit Et")
-        btn.setStyleSheet(f"QPushButton{{background:{self.success};color:white;border:none;border-radius:6px;padding:10px 20px;font-weight:bold;}}")
+        btn = QPushButton("Tespit Et")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(self._cta_button_style(brand.SUCCESS))
         btn.clicked.connect(self._load_darbogaz)
         filter_layout.addWidget(btn)
         filter_layout.addStretch()
@@ -318,11 +427,11 @@ class VerimlilikAnalizPage(QWidget):
 
         # Kartlar
         cards = QHBoxLayout()
-        cards.setSpacing(15)
-        self.card_db_sayi = self._create_card("🚨 DARBOĞAZ SAYISI", "0", self.error)
-        self.card_db_bekleme = self._create_card("⏳ TOPLAM BEKLEME", "0 dk", self.warning)
-        self.card_db_kritik = self._create_card("🔴 EN KRİTİK GRUP", "-", self.error)
-        self.card_db_kuyruk = self._create_card("📊 ORT. KUYRUK", "0", self.primary)
+        cards.setSpacing(brand.SP_3)
+        self.card_db_sayi    = self._create_card("DARBOGAZ SAYISI", "0",    brand.ERROR)
+        self.card_db_bekleme = self._create_card("TOPLAM BEKLEME",  "0 dk", brand.WARNING)
+        self.card_db_kritik  = self._create_card("EN KRITIK GRUP",  "—",    brand.ERROR)
+        self.card_db_kuyruk  = self._create_card("ORT. KUYRUK",     "0",    brand.PRIMARY)
         cards.addWidget(self.card_db_sayi)
         cards.addWidget(self.card_db_bekleme)
         cards.addWidget(self.card_db_kritik)
@@ -333,139 +442,228 @@ class VerimlilikAnalizPage(QWidget):
         self.tbl_darbogaz = QTableWidget()
         self.tbl_darbogaz.setColumnCount(9)
         self.tbl_darbogaz.setHorizontalHeaderLabels([
-            "Grup", "Kazanlar", "Hat", "İşlem Adı",
-            "Ort. Boş Aralık (sn)", "Kullanım %", "Kuyruk Olayı", "Bekleme (dk)", "Şiddet"
+            "GRUP", "KAZANLAR", "HAT", "ISLEM ADI",
+            "ORT. BOS ARALIK (SN)", "KULLANIM %", "KUYRUK OLAYI", "BEKLEME (DK)", "SIDDET"
         ])
         self._style_table(self.tbl_darbogaz)
         layout.addWidget(self.tbl_darbogaz)
 
-        self.tabs.addTab(tab, "🚨 Darboğaz Tespiti")
+        self.tabs.addTab(tab, "Darbogaz Tespiti")
 
     # ─── Tab 4: Bara Bazlı Analiz ───
 
     def _create_bara_analiz_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(10, 15, 10, 10)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_4)
 
         filter_layout = QHBoxLayout()
-        filter_layout.addWidget(QLabel("Dönem:", styleSheet=f"color:{self.text};font-weight:bold;"))
+        filter_layout.setSpacing(brand.SP_3)
+        filter_layout.addWidget(self._mini_label("Donem"))
         self.cmb_bara_tarih = QComboBox()
         self.cmb_bara_tarih.setStyleSheet(self._combo_style())
-        self.cmb_bara_tarih.addItem("Bugün (Vardiya)", "bugun")
-        self.cmb_bara_tarih.addItem("Dün", "dun")
+        self.cmb_bara_tarih.addItem("Bugun (Vardiya)", "bugun")
+        self.cmb_bara_tarih.addItem("Dun", "dun")
         self.cmb_bara_tarih.addItem("Son 2 Saat", "2saat")
-        self.cmb_bara_tarih.addItem("Tarih Aralığı", "aralik")
+        self.cmb_bara_tarih.addItem("Tarih Araligi", "aralik")
         filter_layout.addWidget(self.cmb_bara_tarih)
 
         self.date_bara_bas, self.date_bara_bit = self._create_date_range_widgets(filter_layout, self.cmb_bara_tarih)
 
-        filter_layout.addWidget(QLabel("Hat:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:15px;"))
+        filter_layout.addWidget(self._mini_label("Hat"))
         self.cmb_bara_hat = QComboBox()
         self.cmb_bara_hat.setStyleSheet(self._combo_style())
-        self.cmb_bara_hat.addItem("KTL (118→101)", "KTL")
-        self.cmb_bara_hat.addItem("CINKO (236→201)", "CINKO")
+        self.cmb_bara_hat.addItem("KTL (118 → 101)", "KTL")
+        self.cmb_bara_hat.addItem("CINKO (236 → 201)", "CINKO")
         filter_layout.addWidget(self.cmb_bara_hat)
 
-        btn = QPushButton("🔍 Ara")
-        btn.setStyleSheet(f"QPushButton{{background:{self.success};color:white;border:none;border-radius:6px;padding:10px 20px;font-weight:bold;}}")
+        btn = QPushButton("Ara")
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(self._cta_button_style(brand.SUCCESS))
         btn.clicked.connect(self._load_bara_analiz)
         filter_layout.addWidget(btn)
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
 
-        # Splitter - üst bara listesi, alt detay
+        # Splitter - ust bara listesi, alt detay
         splitter = QSplitter(Qt.Vertical)
+        splitter.setHandleWidth(brand.sp(4))
+        splitter.setStyleSheet(f"""
+            QSplitter::handle {{ background: {brand.BORDER}; }}
+            QSplitter::handle:hover {{ background: {brand.BORDER_HARD}; }}
+        """)
 
-        # Üst: Bara listesi
-        bara_group = QGroupBox("🏭 Bara Listesi")
-        bara_group.setStyleSheet(f"QGroupBox{{color:{self.text};font-weight:bold;border:1px solid {self.border};border-radius:8px;padding-top:15px;}}")
-        bara_layout = QVBoxLayout(bara_group)
-
+        # Ust: Bara listesi
+        bara_widget = self._section_wrapper("BARA LISTESI")
         self.tbl_bara_listesi = QTableWidget()
         self.tbl_bara_listesi.setColumnCount(9)
         self.tbl_bara_listesi.setHorizontalHeaderLabels([
-            "Bara No", "Reçete", "Çevrim #", "Giriş Saati", "Çıkış Saati",
-            "Toplam (dk)", "Reçete (dk)", "Sapma (dk)", "Bekleme (dk)"
+            "BARA NO", "RECETE", "CEVRIM #", "GIRIS SAATI", "CIKIS SAATI",
+            "TOPLAM (DK)", "RECETE (DK)", "SAPMA (DK)", "BEKLEME (DK)"
         ])
         self._style_table(self.tbl_bara_listesi)
         self.tbl_bara_listesi.itemSelectionChanged.connect(self._on_bara_selected)
-        bara_layout.addWidget(self.tbl_bara_listesi)
-        splitter.addWidget(bara_group)
+        bara_widget.layout().addWidget(self.tbl_bara_listesi)
+        splitter.addWidget(bara_widget)
 
         # Alt: Bara detay
-        detay_group = QGroupBox("📋 Bara Detay (Pozisyon Geçişleri)")
-        detay_group.setStyleSheet(f"QGroupBox{{color:{self.text};font-weight:bold;border:1px solid {self.border};border-radius:8px;padding-top:15px;}}")
-        detay_layout = QVBoxLayout(detay_group)
-
+        detay_widget = self._section_wrapper("BARA DETAY (POZISYON GECISLERI)")
         self.tbl_bara_detay = QTableWidget()
         self.tbl_bara_detay.setColumnCount(10)
         self.tbl_bara_detay.setHorizontalHeaderLabels([
-            "Sıra", "Adım", "Kazan", "Pozisyon Adı", "Giriş",
-            "Çıkış", "Kalış (sn)", "Reçete (sn)", "Sapma", "Ortak?"
+            "SIRA", "ADIM", "KAZAN", "POZISYON ADI", "GIRIS",
+            "CIKIS", "KALIS (SN)", "RECETE (SN)", "SAPMA", "ORTAK?"
         ])
         self._style_table(self.tbl_bara_detay)
-        detay_layout.addWidget(self.tbl_bara_detay)
-        splitter.addWidget(detay_group)
+        detay_widget.layout().addWidget(self.tbl_bara_detay)
+        splitter.addWidget(detay_widget)
 
-        splitter.setSizes([300, 200])
+        splitter.setSizes([brand.sp(320), brand.sp(220)])
         layout.addWidget(splitter)
 
-        self.tabs.addTab(tab, "🏭 Bara Analiz")
+        self.tabs.addTab(tab, "Bara Analiz")
 
     # ─── Ortak Yardımcılar ───
 
+    def _mini_label(self, text: str) -> QLabel:
+        lbl = QLabel(text.upper())
+        lbl.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; letter-spacing: 0.6px; "
+            f"background: transparent;"
+        )
+        return lbl
+
+    def _section_wrapper(self, title: str) -> QWidget:
+        """Tablo bolumu icin baslik + container."""
+        wrapper = QWidget()
+        wl = QVBoxLayout(wrapper)
+        wl.setContentsMargins(0, 0, 0, 0)
+        wl.setSpacing(brand.SP_2)
+
+        t = QLabel(title)
+        t.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_CAPTION}px; padding: {brand.SP_1}px 0; "
+            f"letter-spacing: 0.8px;"
+        )
+        wl.addWidget(t)
+        return wrapper
+
+    def _cta_button_style(self, accent: str) -> str:
+        hover = "#059669" if accent == brand.SUCCESS else brand.PRIMARY_HOVER
+        return f"""
+            QPushButton {{
+                background: {accent};
+                color: white;
+                border: 1px solid {accent};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_5}px;
+                font-weight: {brand.FW_BOLD};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QPushButton:hover {{
+                background: {hover};
+                border-color: {hover};
+            }}
+        """
+
     def _create_card(self, title, value, color):
         card = QFrame()
-        card.setFixedHeight(90)
-        card.setMinimumWidth(200)
-        card.setStyleSheet(f"QFrame{{background:{self.bg_card};border-radius:10px;border-left:4px solid {color};}}")
+        card.setFixedHeight(brand.sp(88))
+        card.setMinimumWidth(brand.sp(200))
+        card.setStyleSheet(f"""
+            QFrame {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-left: 3px solid {color};
+                border-radius: {brand.R_MD}px;
+            }}
+        """)
 
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(15, 12, 15, 12)
-        layout.setSpacing(5)
+        layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+        layout.setSpacing(brand.SP_1)
 
-        lbl_title = QLabel(title)
-        lbl_title.setStyleSheet(f"color:{self.text_muted};font-size:11px;font-weight:bold;")
+        lbl_title = QLabel(title.upper())
+        lbl_title.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; letter-spacing: 0.6px; "
+            f"background: transparent; border: none;"
+        )
         layout.addWidget(lbl_title)
 
         lbl_value = QLabel(value)
         lbl_value.setObjectName("val")
-        lbl_value.setStyleSheet(f"color:{color};font-size:22px;font-weight:bold;")
+        lbl_value.setStyleSheet(
+            f"color: {color}; font-size: {brand.FS_HEADING_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"background: transparent; border: none;"
+        )
         layout.addWidget(lbl_value)
 
         return card
 
     def _combo_style(self):
-        return f"QComboBox{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:6px;padding:8px 12px;min-width:140px;}}"
+        return f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                min-width: {brand.sp(150)}px;
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(24)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_ELEVATED};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                selection-background-color: {brand.PRIMARY};
+                selection-color: white;
+            }}
+        """
 
     def _date_edit_style(self):
-        return f"""QDateEdit{{
-            background:{self.bg_input};color:{self.text};border:1px solid {self.border};
-            border-radius:6px;padding:8px 12px;min-width:120px;
-        }}
-        QDateEdit::drop-down{{
-            subcontrol-origin:padding;subcontrol-position:top right;width:25px;
-            border-left:1px solid {self.border};
-        }}"""
+        return f"""
+            QDateEdit {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                min-width: {brand.sp(130)}px;
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QDateEdit:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QDateEdit:focus {{ border-color: {brand.PRIMARY}; }}
+            QDateEdit::drop-down {{
+                subcontrol-origin: padding; subcontrol-position: top right;
+                width: {brand.sp(22)}px;
+                border-left: 1px solid {brand.BORDER};
+            }}
+        """
 
     def _create_date_range_widgets(self, layout, combo):
-        """Tarih aralığı seçici widget'ları oluştur ve layout'a ekle"""
-        lbl_bas = QLabel("Başlangıç:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:10px;")
+        """Tarih araligi secici widget'lari olustur ve layout'a ekle"""
+        lbl_bas = self._mini_label("Baslangic")
         date_bas = QDateEdit()
         date_bas.setCalendarPopup(True)
         date_bas.setDate(QDate.currentDate().addDays(-7))
         date_bas.setDisplayFormat("dd.MM.yyyy")
         date_bas.setStyleSheet(self._date_edit_style())
 
-        lbl_bit = QLabel("Bitiş:", styleSheet=f"color:{self.text};font-weight:bold;margin-left:5px;")
+        lbl_bit = self._mini_label("Bitis")
         date_bit = QDateEdit()
         date_bit.setCalendarPopup(True)
         date_bit.setDate(QDate.currentDate())
         date_bit.setDisplayFormat("dd.MM.yyyy")
         date_bit.setStyleSheet(self._date_edit_style())
 
-        # Başlangıçta gizle
         lbl_bas.setVisible(False)
         date_bas.setVisible(False)
         lbl_bit.setVisible(False)
@@ -476,7 +674,6 @@ class VerimlilikAnalizPage(QWidget):
         layout.addWidget(lbl_bit)
         layout.addWidget(date_bit)
 
-        # Combo değiştiğinde göster/gizle
         def on_combo_changed():
             is_aralik = combo.currentData() == "aralik"
             lbl_bas.setVisible(is_aralik)
@@ -491,28 +688,56 @@ class VerimlilikAnalizPage(QWidget):
     def _style_table(self, table):
         table.setStyleSheet(f"""
             QTableWidget {{
-                background:{self.bg_card};
-                color:{self.text};
-                border:1px solid {self.border};
-                border-radius:8px;
-                gridline-color:{self.border};
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                gridline-color: transparent;
+                font-size: {brand.FS_BODY_SM}px;
+                outline: none;
             }}
-            QTableWidget::item {{padding:8px;}}
-            QTableWidget::item:selected {{background:{self.primary};}}
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+            }}
+            QTableWidget::item:selected {{
+                background: {_soft(brand.PRIMARY, 0.18)};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:hover {{
+                background: {brand.BG_HOVER};
+            }}
             QHeaderView::section {{
-                background:{self.bg_input};
-                color:{self.text};
-                padding:10px;
-                border:none;
-                border-bottom:2px solid {self.primary};
-                font-weight:bold;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_CAPTION}px;
+                letter-spacing: 0.5px;
             }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: {brand.sp(8)}px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {brand.BORDER_HARD};
+                border-radius: {brand.sp(4)}px;
+                min-height: {brand.sp(30)}px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
         """)
-        table.setAlternatingRowColors(True)
+        table.setShowGrid(False)
+        table.setFrameShape(QFrame.NoFrame)
+        table.setAlternatingRowColors(False)
         table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setHighlightSections(False)
         table.horizontalHeader().setStretchLastSection(True)
-        table.verticalHeader().setDefaultSectionSize(40)
+        table.verticalHeader().setDefaultSectionSize(brand.sp(38))
 
     def _load_pozisyon_tanimlari(self):
         try:
@@ -703,13 +928,13 @@ class VerimlilikAnalizPage(QWidget):
                 self.tbl_hat_verimlilik.setItem(i, 6, pct_item)
 
                 if d['kullanim_pct'] > 90:
-                    durum = "🔴 Yoğun"
+                    durum = "YOGUN"
                 elif d['kullanim_pct'] >= 60:
-                    durum = "🟢 Normal"
+                    durum = "NORMAL"
                 elif d['kullanim_pct'] >= 30:
                     durum = "🟡 Düşük"
                 else:
-                    durum = "⚪ Boş"
+                    durum = "BOS"
                 self.tbl_hat_verimlilik.setItem(i, 7, QTableWidgetItem(durum))
 
         except Exception as e:
@@ -869,9 +1094,9 @@ class VerimlilikAnalizPage(QWidget):
                 self.tbl_cevrim_sapma.setItem(i, 7, pct_item)
 
                 if d['sapma'] > 60:
-                    durum = "🔴 Gecikme"
+                    durum = "GECIKME"
                 elif d['sapma'] < -30:
-                    durum = "🟢 Hızlı"
+                    durum = "HIZLI"
                 else:
                     durum = "🟡 Normal"
                 self.tbl_cevrim_sapma.setItem(i, 8, QTableWidgetItem(durum))
@@ -1020,7 +1245,7 @@ class VerimlilikAnalizPage(QWidget):
                     for col in range(9):
                         item = self.tbl_darbogaz.item(i, col)
                         if item:
-                            item.setBackground(QBrush(QColor("#2A1215")))
+                            item.setBackground(QBrush(QColor(_soft(brand.ERROR, 0.15))))
                 else:
                     siddet_item.setForeground(QBrush(QColor(self.text_muted)))
                 self.tbl_darbogaz.setItem(i, 8, siddet_item)
@@ -1279,10 +1504,10 @@ class VerimlilikAnalizPage(QWidget):
 
                 # Durum: boşaltılmamışsa hala dolu
                 if bosaltma is None:
-                    durum_item = QTableWidgetItem("🟢 Dolu")
+                    durum_item = QTableWidgetItem("DOLU")
                     durum_item.setForeground(QBrush(QColor(self.success)))
                 else:
-                    durum_item = QTableWidgetItem("⚪ Boş")
+                    durum_item = QTableWidgetItem("BOS")
                     durum_item.setForeground(QBrush(QColor(self.text_muted)))
                 self.tbl_kazan_doluluk.setItem(i, 7, durum_item)
 

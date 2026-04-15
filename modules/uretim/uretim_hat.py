@@ -1,73 +1,100 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Hat Takip Sayfası (Birleştirilmiş)
-[MODERNIZED UI - v3.0]
+NEXOR ERP - Hat Takip Sayfasi (Brand System)
+=============================================
+ERP Tanimlari + PLC Canli Veri. 10 tab: Birlesik Gorunum, Hat Semasi,
+Gunluk Istatistik, Tanimsiz Pozisyonlar, Bos Kalma, Recete Analizi,
+Vardiya Ozet, Dar Bogaz, Akim Takip, Vardiya Uretim Raporu.
 
-ERP Tanımları + PLC Canlı Veri
+DIKKAT: Bu dosya PLC recete sistemiyle sıkı entegre. Sadece gorsel stillere
+dokunuldu; PLC mantigina ve SQL sorgulara dokunulmadi.
 """
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QFrame, QTableWidget, QTableWidgetItem,
     QHeaderView, QPushButton, QComboBox, QGridLayout, QWidget, QScrollArea,
     QProgressBar, QTabWidget, QMessageBox, QSplitter, QCheckBox, QDialog,
-    QDateEdit
+    QDateEdit,
 )
 from PySide6.QtCore import Qt, QTimer, QDate
-from PySide6.QtGui import QColor, QBrush, QFont
+from PySide6.QtGui import QColor, QBrush, QFont, QPainter, QPen
 from datetime import datetime, timedelta
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
-def get_modern_style(theme: dict) -> dict:
-    """Modern tema renkleri - TÜM MODÜLLERDE AYNI"""
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
+def _soft(color_hex: str, alpha: float = 0.12) -> str:
+    c = QColor(color_hex)
+    return f"rgba({c.red()},{c.green()},{c.blue()},{alpha})"
+
+
+# =============================================================================
+# BRAND ICON - bu dosyaya ozel, header icin
+# =============================================================================
+
+class BrandIcon(QLabel):
+    def __init__(self, kind: str, color: str = None, size: int = None, parent=None):
+        super().__init__(parent)
+        self.kind = kind
+        self.color = color or brand.TEXT
+        self.size_px = size or brand.ICON_MD
+        self.setFixedSize(self.size_px, self.size_px)
+        self.setStyleSheet("background: transparent; border: none;")
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(self.color))
+        pen.setWidthF(max(1.4, self.size_px / 12))
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        s = self.size_px
+        m = s * 0.18
+        if self.kind == "factory":
+            p.drawLine(int(m), int(s - m), int(m), int(s * 0.45))
+            p.drawLine(int(m), int(s * 0.45), int(s * 0.45), int(s * 0.6))
+            p.drawLine(int(s * 0.45), int(s * 0.6), int(s * 0.45), int(s * 0.3))
+            p.drawLine(int(s * 0.45), int(s * 0.3), int(s - m), int(s * 0.45))
+            p.drawLine(int(s - m), int(s * 0.45), int(s - m), int(s - m))
+            p.drawLine(int(m), int(s - m), int(s - m), int(s - m))
+        elif self.kind == "dot":
+            from PySide6.QtGui import QBrush as _B
+            p.setBrush(_B(QColor(self.color)))
+            p.drawEllipse(int(s * 0.28), int(s * 0.28), int(s * 0.44), int(s * 0.44))
+        elif self.kind == "refresh":
+            from PySide6.QtCore import QRectF
+            rect = QRectF(m, m, s - 2 * m, s - 2 * m)
+            p.drawArc(rect, 45 * 16, 270 * 16)
+            p.drawLine(int(s - m * 1.2), int(m), int(s - m * 1.2), int(m * 2.2))
+            p.drawLine(int(s - m * 1.2), int(m * 2.2), int(s - m * 2.4), int(m * 2.2))
+        p.end()
 
 
 class UretimHatPage(BasePage):
-    """Hat Takip Sayfası - ERP Tanımları + PLC Canlı Veri"""
-    
+    """Hat Takip Sayfasi - ERP Tanimlari + PLC Canli Veri"""
+
     def __init__(self, theme: dict):
         super().__init__(theme)
-        self.s = get_modern_style(theme)
         self.erp_conn = None
         self.pozisyon_tanimlari = {}
         self.plc_data = {}
-        
-        # Tema değişkenleri (eski kod uyumluluğu için)
-        self.bg_card = self.s['card_bg']
-        self.bg_input = self.s['input_bg']
-        self.bg_main = self.s['card_bg']
-        self.text = self.s['text']
-        self.text_muted = self.s['text_muted']
-        self.border = self.s['border']
-        self.primary = self.s['primary']
-        self.success = self.s['success']
-        self.warning = self.s['warning']
-        self.error = self.s['error']
-        
+
+        # Brand alias'lari — _setup_ui ve _load_* metotlari bu isimleri
+        # bekledigi icin brand'den besleniyor.
+        self.bg_card    = brand.BG_CARD
+        self.bg_input   = brand.BG_INPUT
+        self.bg_main    = brand.BG_SURFACE
+        self.text       = brand.TEXT
+        self.text_muted = brand.TEXT_MUTED
+        self.border     = brand.BORDER
+        self.primary    = brand.PRIMARY
+        self.success    = brand.SUCCESS
+        self.warning    = brand.WARNING
+        self.error      = brand.ERROR
+
         self._setup_ui()
         QTimer.singleShot(100, self._load_initial)
         
@@ -77,62 +104,149 @@ class UretimHatPage(BasePage):
         self.refresh_timer.start(5000)
     
     def _setup_ui(self):
+        self.setStyleSheet(f"""
+            QWidget {{
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
+                font-family: {brand.FONT_FAMILY};
+                font-size: {brand.FS_BODY}px;
+            }}
+        """)
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        # Başlık
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
+        # Baslik
         header = QFrame()
-        header.setStyleSheet(f"QFrame{{background:{self.bg_card};border-radius:8px;padding:16px;}}")
+        header.setObjectName("hatHeader")
+        header.setStyleSheet(f"""
+            QFrame#hatHeader {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+            }}
+        """)
         hl = QHBoxLayout(header)
-        
-        title = QLabel("🏭 Hat Takip - Canlı Üretim Verileri")
-        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{self.text};")
-        hl.addWidget(title)
-        
+        hl.setContentsMargins(brand.SP_5, brand.SP_4, brand.SP_5, brand.SP_4)
+        hl.setSpacing(brand.SP_4)
+
+        # Ikon kutusu
+        icon_box = QFrame()
+        icon_box.setFixedSize(brand.sp(40), brand.sp(40))
+        icon_box.setStyleSheet(
+            f"background: {_soft(brand.PRIMARY, 0.12)}; "
+            f"border: 1px solid {_soft(brand.PRIMARY, 0.35)}; "
+            f"border-radius: {brand.R_SM}px;"
+        )
+        ib = QVBoxLayout(icon_box)
+        ib.setContentsMargins(0, 0, 0, 0)
+        ib.addWidget(BrandIcon("factory", brand.PRIMARY, brand.sp(20)), 0, Qt.AlignCenter)
+        hl.addWidget(icon_box)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+        title = QLabel("Hat Takip")
+        title.setStyleSheet(
+            f"font-size: {brand.FS_TITLE}px; font-weight: {brand.FW_BOLD}; "
+            f"color: {brand.TEXT}; letter-spacing: -0.4px;"
+        )
+        title_col.addWidget(title)
+
+        subtitle = QLabel("ERP tanimlari + PLC canli uretim verileri")
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY}px;"
+        )
+        title_col.addWidget(subtitle)
+        hl.addLayout(title_col)
+
         hl.addStretch()
-        
-        # Bağlantı durumları
-        self.lbl_erp_status = QLabel("⚪ ERP")
-        self.lbl_erp_status.setStyleSheet(f"color:{self.text_muted};")
+
+        # Baglanti durumlari
+        def _status_label(text):
+            lbl = QLabel(text)
+            lbl.setStyleSheet(
+                f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; "
+                f"font-weight: {brand.FW_MEDIUM}; padding: {brand.SP_1}px {brand.SP_2}px; "
+                f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; "
+                f"border-radius: {brand.R_SM}px;"
+            )
+            return lbl
+
+        self.lbl_erp_status = _status_label("ERP: —")
         hl.addWidget(self.lbl_erp_status)
-        
-        self.lbl_plc_status = QLabel("⚪ PLC")
-        self.lbl_plc_status.setStyleSheet(f"color:{self.text_muted};margin-left:10px;")
+
+        self.lbl_plc_status = _status_label("PLC: —")
         hl.addWidget(self.lbl_plc_status)
-        
-        # Son güncelleme
-        self.lbl_update = QLabel("Son: -")
-        self.lbl_update.setStyleSheet(f"color:{self.text_muted};margin-left:20px;")
+
+        self.lbl_update = _status_label("Son: —")
         hl.addWidget(self.lbl_update)
-        
-        btn_ref = QPushButton("🔄 Yenile")
+
+        btn_ref = QPushButton("Yenile")
         btn_ref.setCursor(Qt.PointingHandCursor)
         btn_ref.clicked.connect(self._refresh_plc_data)
-        btn_ref.setStyleSheet(f"QPushButton{{background:{self.primary};color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:bold;}}QPushButton:hover{{background:#06b6d4;}}")
+        btn_ref.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: 1px solid {brand.PRIMARY};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QPushButton:hover {{
+                background: {brand.PRIMARY_HOVER};
+                border-color: {brand.PRIMARY_HOVER};
+            }}
+        """)
         hl.addWidget(btn_ref)
-        
+
         layout.addWidget(header)
         
-        # Özet Kartları
+        # Ozet Kartlari
         cards = QHBoxLayout()
-        cards.setSpacing(12)
-        self.card_aktif = self._card("🟢 AKTİF POZİSYON", "0", self.success)
-        self.card_uretim = self._card("📦 GÜNLÜK ÜRETİM", "0", self.primary)
-        self.card_bara = self._card("🔲 TOPLAM BARA", "0", self.warning)
-        self.card_uyari = self._card("⚠️ UYARI", "0", self.error)
+        cards.setSpacing(brand.SP_3)
+        self.card_aktif  = self._card("AKTIF POZISYON",  "0", brand.SUCCESS)
+        self.card_uretim = self._card("GUNLUK URETIM",   "0", brand.PRIMARY)
+        self.card_bara   = self._card("TOPLAM BARA",     "0", brand.WARNING)
+        self.card_uyari  = self._card("UYARI",           "0", brand.ERROR)
         cards.addWidget(self.card_aktif)
         cards.addWidget(self.card_uretim)
         cards.addWidget(self.card_bara)
         cards.addWidget(self.card_uyari)
         layout.addLayout(cards)
-        
-        # Ana içerik - Tab
+
+        # Ana icerik - Tab
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(f"""
-            QTabWidget::pane{{border:none;background:{self.bg_card};border-radius:8px;}}
-            QTabBar::tab{{background:{self.bg_main};color:{self.text_muted};padding:10px 20px;margin-right:2px;border-radius:4px 4px 0 0;}}
-            QTabBar::tab:selected{{background:{self.bg_card};color:{self.primary};font-weight:bold;}}
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                background: {brand.BG_CARD};
+                top: -1px;
+            }}
+            QTabBar::tab {{
+                background: transparent;
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_5}px;
+                margin-right: {brand.SP_1}px;
+                border: 1px solid transparent;
+                border-top-left-radius: {brand.R_SM}px;
+                border-top-right-radius: {brand.R_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QTabBar::tab:selected {{
+                background: {brand.BG_CARD};
+                color: {brand.PRIMARY};
+                border: 1px solid {brand.BORDER};
+                border-bottom: 2px solid {brand.PRIMARY};
+            }}
+            QTabBar::tab:hover:!selected {{
+                color: {brand.TEXT};
+                background: {brand.BG_HOVER};
+            }}
         """)
         
         # Tab 1: Birleşik Görünüm
@@ -152,11 +266,11 @@ class UretimHatPage(BasePage):
         filt.addWidget(QLabel("Durum:", styleSheet=f"color:{self.text};margin-left:15px;"))
         self.cmb_durum = QComboBox()
         self.cmb_durum.setStyleSheet(f"QComboBox{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:4px;padding:6px 10px;min-width:120px;}}")
-        self.cmb_durum.addItem("Tümü", None)
-        self.cmb_durum.addItem("🟢 Aktif", "aktif")
-        self.cmb_durum.addItem("🟡 Bekliyor", "bekliyor")
-        self.cmb_durum.addItem("🔴 Durdu", "durdu")
-        self.cmb_durum.addItem("⚠️ Uyarı", "uyari")
+        self.cmb_durum.addItem("Tumu", None)
+        self.cmb_durum.addItem("Aktif", "aktif")
+        self.cmb_durum.addItem("Bekliyor", "bekliyor")
+        self.cmb_durum.addItem("Durdu", "durdu")
+        self.cmb_durum.addItem("Uyari", "uyari")
         # Signal bağlantısı _load_initial sonrasında yapılacak
         filt.addWidget(self.cmb_durum)
         
@@ -187,7 +301,7 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_main)
         tab1_layout.addWidget(self.tbl_main)
         
-        self.tabs.addTab(tab1, "📊 Birleşik Görünüm")
+        self.tabs.addTab(tab1, "Birlesik Gorunum")
         
         # Tab 2: Hat Şeması (Görsel)
         tab2 = QWidget()
@@ -214,7 +328,7 @@ class UretimHatPage(BasePage):
         scroll.setWidget(self.schema_widget)
         tab2_layout.addWidget(scroll)
         
-        self.tabs.addTab(tab2, "🗺️ Hat Şeması")
+        self.tabs.addTab(tab2, "Hat Semasi")
         
         # Tab 3: Günlük İstatistik
         tab3 = QWidget()
@@ -235,14 +349,14 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_istatistik)
         tab3_layout.addWidget(self.tbl_istatistik)
         
-        self.tabs.addTab(tab3, "📈 Günlük İstatistik")
+        self.tabs.addTab(tab3, "Gunluk Istatistik")
         
         # Tab 4: Tanımsız Pozisyonlar
         tab4 = QWidget()
         tab4_layout = QVBoxLayout(tab4)
         tab4_layout.setContentsMargins(0, 8, 0, 0)
         
-        info_label = QLabel("⚠️ PLC'de veri gönderen ancak ERP'de tanımı olmayan pozisyonlar:")
+        info_label = QLabel("PLC'de veri gonderen ancak ERP'de tanimi olmayan pozisyonlar:")
         info_label.setStyleSheet(f"color:{self.warning};font-weight:bold;padding:10px;")
         tab4_layout.addWidget(info_label)
         
@@ -259,7 +373,7 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_tanimsiz)
         tab4_layout.addWidget(self.tbl_tanimsiz)
         
-        self.tabs.addTab(tab4, "❓ Tanımsız Pozisyonlar")
+        self.tabs.addTab(tab4, "Tanimsiz Pozisyonlar")
         
         # Tab 5: Boş Kalma Analizi
         tab5 = QWidget()
@@ -306,7 +420,7 @@ class UretimHatPage(BasePage):
         self.cmb_bos_sirala.addItem("Pozisyon No", "poz")
         bos_filt.addWidget(self.cmb_bos_sirala)
         
-        btn_bos_hesapla = QPushButton("🔄 Hesapla")
+        btn_bos_hesapla = QPushButton("Hesapla")
         btn_bos_hesapla.setStyleSheet(f"QPushButton{{background:{self.primary};color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:bold;}}")
         btn_bos_hesapla.clicked.connect(self._load_bos_kalma_analizi)
         bos_filt.addWidget(btn_bos_hesapla)
@@ -327,7 +441,7 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_bos_kalma)
         tab5_layout.addWidget(self.tbl_bos_kalma)
         
-        self.tabs.addTab(tab5, "⏱️ Boş Kalma Analizi")
+        self.tabs.addTab(tab5, "Bos Kalma Analizi")
         
         # Tab 6: Reçete Analizi
         tab6 = QWidget()
@@ -374,7 +488,7 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_recete)
         tab6_layout.addWidget(self.tbl_recete)
 
-        self.tabs.addTab(tab6, "📋 Reçete Analizi")
+        self.tabs.addTab(tab6, "Recete Analizi")
         
         # Tab 7: Vardiya Özet (ERP'den)
         tab7 = QWidget()
@@ -384,10 +498,10 @@ class UretimHatPage(BasePage):
         # Vardiya kartları
         vardiya_cards = QHBoxLayout()
         vardiya_cards.setSpacing(12)
-        self.card_ktl_giren = self._card("🔵 KTL GİREN", "0", self.primary)
-        self.card_ktl_cikan = self._card("🔵 KTL ÇIKAN", "0", self.success)
-        self.card_cinko_giren = self._card("🟡 ÇİNKO GİREN", "0", self.warning)
-        self.card_cinko_cikan = self._card("🟡 ÇİNKO ÇIKAN", "0", self.success)
+        self.card_ktl_giren   = self._card("KTL GIREN",   "0", brand.INFO)
+        self.card_ktl_cikan   = self._card("KTL CIKAN",   "0", brand.SUCCESS)
+        self.card_cinko_giren = self._card("CINKO GIREN", "0", brand.WARNING)
+        self.card_cinko_cikan = self._card("CINKO CIKAN", "0", brand.SUCCESS)
         vardiya_cards.addWidget(self.card_ktl_giren)
         vardiya_cards.addWidget(self.card_ktl_cikan)
         vardiya_cards.addWidget(self.card_cinko_giren)
@@ -407,7 +521,7 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_vardiya)
         tab7_layout.addWidget(self.tbl_vardiya)
         
-        self.tabs.addTab(tab7, "📊 Vardiya Özet")
+        self.tabs.addTab(tab7, "Vardiya Ozet")
         
         # Tab 8: Dar Boğaz Analizi
         tab8 = QWidget()
@@ -432,7 +546,7 @@ class UretimHatPage(BasePage):
         self.cmb_dar_hat.addItem("CINKO (201-247)", "CINKO")
         dar_filt.addWidget(self.cmb_dar_hat)
         
-        btn_dar_hesapla = QPushButton("🔄 Analiz Et")
+        btn_dar_hesapla = QPushButton("Analiz Et")
         btn_dar_hesapla.setStyleSheet(f"QPushButton{{background:{self.primary};color:white;border:none;border-radius:6px;padding:8px 16px;font-weight:bold;}}")
         btn_dar_hesapla.clicked.connect(self._load_darbogaz_analizi)
         dar_filt.addWidget(btn_dar_hesapla)
@@ -442,10 +556,10 @@ class UretimHatPage(BasePage):
         # Özet kartları
         dar_cards = QHBoxLayout()
         dar_cards.setSpacing(12)
-        self.card_darbogaz = self._card("🚨 KRİTİK DAR BOĞAZ", "-", self.error)
-        self.card_kayip_sure = self._card("⏱️ TOPLAM KAYIP", "0 dk", self.warning)
-        self.card_verimlilik = self._card("📊 HAT VERİMLİLİĞİ", "-%", self.success)
-        self.card_oneri = self._card("💡 ÖNCELİK", "-", self.primary)
+        self.card_darbogaz    = self._card("KRITIK DAR BOGAZ", "—",    brand.ERROR)
+        self.card_kayip_sure  = self._card("TOPLAM KAYIP",     "0 dk", brand.WARNING)
+        self.card_verimlilik  = self._card("HAT VERIMLILIGI",  "—%",   brand.SUCCESS)
+        self.card_oneri       = self._card("ONCELIK",          "—",    brand.PRIMARY)
         dar_cards.addWidget(self.card_darbogaz)
         dar_cards.addWidget(self.card_kayip_sure)
         dar_cards.addWidget(self.card_verimlilik)
@@ -473,7 +587,7 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_darbogaz)
         tab8_layout.addWidget(self.tbl_darbogaz)
         
-        self.tabs.addTab(tab8, "🚨 Dar Boğaz Analizi")
+        self.tabs.addTab(tab8, "Dar Bogaz Analizi")
 
         # Tab 9: Akım Takip
         tab9 = QWidget()
@@ -528,7 +642,7 @@ class UretimHatPage(BasePage):
         self._tbl_style(self.tbl_akim)
         tab9_layout.addWidget(self.tbl_akim)
 
-        self.tabs.addTab(tab9, "⚡ Akım Takip")
+        self.tabs.addTab(tab9, "Akim Takip")
 
         # Tab 10: Vardiya Üretim Raporu
         tab10 = QWidget()
@@ -598,7 +712,7 @@ class UretimHatPage(BasePage):
         self.tbl_vr.doubleClicked.connect(self._show_bara_detay)
         tab10_layout.addWidget(self.tbl_vr)
 
-        self.tabs.addTab(tab10, "📋 Vardiya Raporu")
+        self.tabs.addTab(tab10, "Vardiya Raporu")
 
         # Tab değiştiğinde akım tabını güncelle
         self.tabs.currentChanged.connect(self._on_tab_changed)
@@ -607,28 +721,108 @@ class UretimHatPage(BasePage):
     
     def _card(self, title, val, color):
         c = QFrame()
-        c.setFixedHeight(85)
-        c.setMinimumWidth(180)
-        c.setStyleSheet(f"QFrame{{background:{self.bg_card};border-radius:10px;border-left:4px solid {color};}}")
+        c.setFixedHeight(brand.sp(88))
+        c.setMinimumWidth(brand.sp(180))
+        c.setStyleSheet(f"""
+            QFrame {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-left: 3px solid {color};
+                border-radius: {brand.R_MD}px;
+            }}
+        """)
         l = QVBoxLayout(c)
-        l.setContentsMargins(12, 10, 12, 10)
-        l.setSpacing(4)
-        l.addWidget(QLabel(title, styleSheet=f"color:{self.text_muted};font-size:11px;font-weight:bold;"))
+        l.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+        l.setSpacing(brand.SP_1)
+
+        title_lbl = QLabel(title.upper())
+        title_lbl.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; letter-spacing: 0.6px; "
+            f"background: transparent; border: none;"
+        )
+        l.addWidget(title_lbl)
+
         lv = QLabel(val)
         lv.setObjectName("val")
-        lv.setStyleSheet(f"color:{color};font-size:26px;font-weight:bold;")
+        lv.setStyleSheet(
+            f"color: {color}; font-size: {brand.FS_HEADING_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"background: transparent; border: none;"
+        )
         l.addWidget(lv)
         l.addStretch()
         return c
-    
+
     def _tbl_style(self, t):
         t.setStyleSheet(f"""
-            QTableWidget{{background:{self.bg_input};color:{self.text};border:1px solid {self.border};border-radius:4px;gridline-color:{self.border};}}
-            QTableWidget::item{{padding:6px;color:{self.text};}}
-            QTableWidget::item:selected{{background:{self.primary};color:white;}}
-            QHeaderView::section{{background:{self.bg_card};color:{self.text};padding:8px;border:none;font-weight:bold;border-bottom:2px solid {self.primary};}}
+            QTableWidget {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                gridline-color: transparent;
+                font-size: {brand.FS_BODY_SM}px;
+                outline: none;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+            }}
+            QTableWidget::item:selected {{
+                background: {_soft(brand.PRIMARY, 0.18)};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:hover {{
+                background: {brand.BG_HOVER};
+            }}
+            QHeaderView::section {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_3}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_CAPTION}px;
+                letter-spacing: 0.5px;
+            }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: {brand.sp(8)}px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {brand.BORDER_HARD};
+                border-radius: {brand.sp(4)}px;
+                min-height: {brand.sp(30)}px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+            QScrollBar:horizontal {{
+                background: transparent;
+                height: {brand.sp(8)}px;
+            }}
+            QScrollBar::handle:horizontal {{
+                background: {brand.BORDER_HARD};
+                border-radius: {brand.sp(4)}px;
+                min-width: {brand.sp(30)}px;
+            }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
         """)
-        t.verticalHeader().setDefaultSectionSize(36)
+        t.setShowGrid(False)
+        t.setFrameShape(QFrame.NoFrame)
+        t.horizontalHeader().setHighlightSections(False)
+        t.verticalHeader().setDefaultSectionSize(brand.sp(38))
+
+    def _status_style(self, color: str) -> str:
+        return (
+            f"color: {color}; font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"padding: {brand.SP_1}px {brand.SP_2}px; "
+            f"background: {_soft(color, 0.12)}; "
+            f"border: 1px solid {_soft(color, 0.35)}; "
+            f"border-radius: {brand.R_SM}px;"
+        )
     
     def _load_initial(self):
         """İlk yükleme - önce ERP tanımları, sonra PLC"""
@@ -728,13 +922,13 @@ class UretimHatPage(BasePage):
             
             conn.close()
             
-            self.lbl_erp_status.setText(f"🟢 ERP ({len(self.pozisyon_tanimlari)} poz)")
-            self.lbl_erp_status.setStyleSheet(f"color:{self.success};font-weight:bold;")
-            
+            self.lbl_erp_status.setText(f"ERP: {len(self.pozisyon_tanimlari)} poz")
+            self.lbl_erp_status.setStyleSheet(self._status_style(brand.SUCCESS))
+
         except Exception as e:
-            self.lbl_erp_status.setText("🔴 ERP Hata")
-            self.lbl_erp_status.setStyleSheet(f"color:{self.error};font-weight:bold;")
-            print(f"ERP tanım hatası: {e}")
+            self.lbl_erp_status.setText("ERP: Hata")
+            self.lbl_erp_status.setStyleSheet(self._status_style(brand.ERROR))
+            print(f"ERP tanim hatasi: {e}")
     
     def _connect_plc(self):
         """PLC cache durumunu kontrol et"""
@@ -754,22 +948,22 @@ class UretimHatPage(BasePage):
             if row:
                 durum, son_sync, gecen_sure = row
                 if durum == 'CALISIYOR' and gecen_sure and gecen_sure < 60:
-                    self.lbl_plc_status.setText("🟢 CACHE")
-                    self.lbl_plc_status.setStyleSheet(f"color:{self.success};font-weight:bold;")
+                    self.lbl_plc_status.setText("PLC: Canli")
+                    self.lbl_plc_status.setStyleSheet(self._status_style(brand.SUCCESS))
                 elif durum == 'CALISIYOR':
-                    self.lbl_plc_status.setText("🟡 CACHE")
-                    self.lbl_plc_status.setStyleSheet(f"color:{self.warning};font-weight:bold;")
+                    self.lbl_plc_status.setText("PLC: Gecikmeli")
+                    self.lbl_plc_status.setStyleSheet(self._status_style(brand.WARNING))
                 else:
-                    self.lbl_plc_status.setText("🔴 CACHE")
-                    self.lbl_plc_status.setStyleSheet(f"color:{self.error};font-weight:bold;")
+                    self.lbl_plc_status.setText("PLC: Durdu")
+                    self.lbl_plc_status.setStyleSheet(self._status_style(brand.ERROR))
             else:
-                self.lbl_plc_status.setText("⚪ CACHE")
-                self.lbl_plc_status.setStyleSheet(f"color:{self.text_muted};")
-                
+                self.lbl_plc_status.setText("PLC: —")
+                self.lbl_plc_status.setStyleSheet(self._status_style(brand.TEXT_MUTED))
+
         except Exception as e:
-            self.lbl_plc_status.setText("🔴 HATA")
-            self.lbl_plc_status.setStyleSheet(f"color:{self.error};font-weight:bold;")
-            print(f"Cache durum hatası: {e}")
+            self.lbl_plc_status.setText("PLC: Hata")
+            self.lbl_plc_status.setStyleSheet(self._status_style(brand.ERROR))
+            print(f"Cache durum hatasi: {e}")
     
     def _refresh_plc_data(self):
         """Cache'den PLC verilerini yükle ve tablolara aktar"""
@@ -833,8 +1027,8 @@ class UretimHatPage(BasePage):
             
         except Exception as e:
             print(f"Cache veri hatası: {e}")
-            self.lbl_plc_status.setText("🔴 HATA")
-            self.lbl_plc_status.setStyleSheet(f"color:{self.error};font-weight:bold;")
+            self.lbl_plc_status.setText("PLC: Hata")
+            self.lbl_plc_status.setStyleSheet(self._status_style(brand.ERROR))
     
     def _update_main_table(self):
         """Ana birleşik tabloyu güncelle"""
@@ -867,7 +1061,7 @@ class UretimHatPage(BasePage):
                 continue
             
             # Durum hesapla
-            durum = "⚪ Veri Yok"
+            durum = "VERI YOK"
             durum_key = None
             durum_color = self.text_muted
             uyari = False
@@ -877,15 +1071,15 @@ class UretimHatPage(BasePage):
                 dakika = int(delta.total_seconds() / 60)
                 
                 if dakika < 5:
-                    durum = "🟢 Aktif"
+                    durum = "AKTIF"
                     durum_key = "aktif"
                     durum_color = self.success
                 elif dakika < 30:
-                    durum = "🟡 Bekliyor"
+                    durum = "BEKLIYOR"
                     durum_key = "bekliyor"
                     durum_color = self.warning
                 else:
-                    durum = "🔴 Durdu"
+                    durum = "DURDU"
                     durum_key = "durdu"
                     durum_color = self.error
                 
@@ -927,7 +1121,7 @@ class UretimHatPage(BasePage):
             item = QTableWidgetItem(str(poz_no))
             if not tanim:
                 item.setForeground(QBrush(QColor(self.warning)))
-                item.setToolTip("⚠️ Tanımsız pozisyon")
+                item.setToolTip("Tanimsiz pozisyon")
             self.tbl_main.setItem(i, 0, item)
             
             # Hat
@@ -1069,9 +1263,9 @@ class UretimHatPage(BasePage):
         # Tab başlığını güncelle
         tanimsiz_count = len(tanimsiz)
         if tanimsiz_count > 0:
-            self.tabs.setTabText(3, f"❓ Tanımsız ({tanimsiz_count})")
+            self.tabs.setTabText(3, f"Tanimsiz Pozisyonlar ({tanimsiz_count})")
         else:
-            self.tabs.setTabText(3, "❓ Tanımsız Pozisyonlar")
+            self.tabs.setTabText(3, "Tanimsiz Pozisyonlar")
     
     def _update_schema(self):
         """Hat şeması görselini güncelle"""
@@ -1158,13 +1352,13 @@ class UretimHatPage(BasePage):
             
             if plc and plc['ort_sicaklik']:
                 sic_color = self.error if sic_uyari else self.text_muted
-                lbl_temp = QLabel(f"🌡️ {plc['ort_sicaklik']:.0f}°C")
+                lbl_temp = QLabel(f"{plc['ort_sicaklik']:.0f} °C")
                 lbl_temp.setStyleSheet(f"color:{sic_color};font-size:10px;")
                 lbl_temp.setAlignment(Qt.AlignCenter)
                 cl.addWidget(lbl_temp)
             
             if plc and plc['toplam_miktar']:
-                lbl_miktar = QLabel(f"📦 {plc['toplam_miktar']:,.0f}")
+                lbl_miktar = QLabel(f"{plc['toplam_miktar']:,.0f} adet")
                 lbl_miktar.setStyleSheet(f"color:{self.text_muted};font-size:10px;")
                 lbl_miktar.setAlignment(Qt.AlignCenter)
                 cl.addWidget(lbl_miktar)
@@ -2588,19 +2782,19 @@ class UretimHatPage(BasePage):
                 if hedef_bara > 0:
                     oran = cikan_bara / hedef_bara * 100
                     if oran >= 100:
-                        durum = "✅ Hedef Tamam"
+                        durum = "HEDEF TAMAM"
                         durum_color = self.success
                     elif oran >= 80:
-                        durum = "🟢 İyi"
+                        durum = "IYI"
                         durum_color = self.success
                     elif oran >= 50:
-                        durum = "🟡 Orta"
+                        durum = "ORTA"
                         durum_color = self.warning
                     else:
-                        durum = "🔴 Düşük"
+                        durum = "DUSUK"
                         durum_color = self.error
                 else:
-                    durum = "⚪ Hedef Yok"
+                    durum = "HEDEF YOK"
                     durum_color = self.text_muted
                 
                 durum_item = QTableWidgetItem(durum)
@@ -2806,7 +3000,7 @@ class UretimHatPage(BasePage):
                     oncelik = "DÜŞÜK"
                 self.card_oneri.findChild(QLabel, "val").setText(oncelik)
                 
-                oneri_metin = f"⚠️ En kritik: {en_kritik['pozisyon_adi']} ({en_kritik['grup_adet']} banyo) - "
+                oneri_metin = f"En kritik: {en_kritik['pozisyon_adi']} ({en_kritik['grup_adet']} banyo) - "
                 oneri_metin += f"Kapasite {en_kritik['kapasite_dk']:.0f} dk, Kullanılan {en_kritik['beklenen_dk']:.0f} dk, "
                 oneri_metin += f"Verimlilik %{en_kritik['verimlilik']:.1f}"
                 self.lbl_darbogaz_oneri.setText(oneri_metin)
@@ -2849,11 +3043,11 @@ class UretimHatPage(BasePage):
                 self.tbl_darbogaz.setItem(i, 9, verim_item)
                 
                 if data['verimlilik'] >= 70:
-                    durum, durum_color = "🟢 Verimli", self.success
+                    durum, durum_color = "VERIMLI", self.success
                 elif data['verimlilik'] >= 50:
-                    durum, durum_color = "🟡 Orta", self.warning
+                    durum, durum_color = "ORTA", self.warning
                 else:
-                    durum, durum_color = "🔴 Düşük", self.error
+                    durum, durum_color = "DUSUK", self.error
                 durum_item = QTableWidgetItem(durum)
                 durum_item.setForeground(QBrush(QColor(durum_color)))
                 self.tbl_darbogaz.setItem(i, 10, durum_item)

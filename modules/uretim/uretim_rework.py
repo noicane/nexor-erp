@@ -1,110 +1,179 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Rework (Söküm) Yönetimi
-[MODERNIZED UI - v3.0]
-
-Sökümü bekleyen ürünler için iş emri oluşturma ve giriş yönetimi
+NEXOR ERP - Rework (Sokum) Yonetimi (Brand System)
+==================================================
+Sokumu bekleyen urunler icin is emri olusturma ve giris yonetimi.
+Tum stiller core.nexor_brand uzerinden gelir.
 """
 
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit,
     QAbstractItemView, QMessageBox, QTabWidget, QWidget,
-    QComboBox, QSpinBox, QTextEdit, QDateEdit, QGroupBox, QGridLayout
+    QComboBox, QSpinBox, QTextEdit, QDateEdit, QGridLayout,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QPainter, QPen, QBrush
 from datetime import datetime
 
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
 from core.hareket_motoru import HareketMotoru
+from core.nexor_brand import brand
 from dialogs.login import ModernLoginDialog
 
 
-def get_modern_style(theme: dict) -> dict:
-    """Modern tema renkleri - TÜM MODÜLLERDE AYNI"""
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
+# =============================================================================
+# BRAND ICON
+# =============================================================================
+
+class BrandIcon(QLabel):
+    def __init__(self, kind: str, color: str = None, size: int = None, parent=None):
+        super().__init__(parent)
+        self.kind = kind
+        self.color = color or brand.TEXT
+        self.size_px = size or brand.ICON_MD
+        self.setFixedSize(self.size_px, self.size_px)
+        self.setStyleSheet("background: transparent; border: none;")
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(self.color))
+        pen.setWidthF(max(1.4, self.size_px / 12))
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        s = self.size_px
+        m = s * 0.18
+        k = self.kind
+
+        if k == "refresh":
+            from PySide6.QtCore import QRectF
+            rect = QRectF(m, m, s - 2 * m, s - 2 * m)
+            p.drawArc(rect, 45 * 16, 270 * 16)
+            p.drawLine(int(s - m * 1.2), int(m), int(s - m * 1.2), int(m * 2.2))
+            p.drawLine(int(s - m * 1.2), int(m * 2.2), int(s - m * 2.4), int(m * 2.2))
+        elif k == "file":
+            p.drawRect(int(s * 0.25), int(m), int(s * 0.5), int(s - 2 * m))
+            p.drawLine(int(s * 0.35), int(s * 0.35), int(s * 0.65), int(s * 0.35))
+            p.drawLine(int(s * 0.35), int(s * 0.5), int(s * 0.65), int(s * 0.5))
+            p.drawLine(int(s * 0.35), int(s * 0.65), int(s * 0.55), int(s * 0.65))
+        elif k == "check":
+            p.drawLine(int(s * 0.22), int(s * 0.5), int(s * 0.42), int(s * 0.7))
+            p.drawLine(int(s * 0.42), int(s * 0.7), int(s * 0.78), int(s * 0.32))
+        elif k == "box":
+            p.drawRect(int(m), int(m), int(s - 2 * m), int(s - 2 * m))
+            p.drawLine(int(m), int(s * 0.42), int(s - m), int(s * 0.42))
+        elif k == "tool":
+            p.drawLine(int(m), int(s - m), int(s * 0.5), int(s * 0.5))
+            p.drawLine(int(s * 0.5), int(s * 0.5), int(s - m), int(m))
+            p.drawLine(int(s - m), int(m), int(s - m * 1.5), int(m * 1.5))
+        elif k == "dot":
+            p.setBrush(QBrush(QColor(self.color)))
+            p.drawEllipse(int(s * 0.3), int(s * 0.3), int(s * 0.4), int(s * 0.4))
+        elif k == "recycle":
+            p.drawLine(int(m), int(s * 0.6), int(s * 0.35), int(s * 0.35))
+            p.drawLine(int(s * 0.35), int(s * 0.35), int(s * 0.7), int(s * 0.35))
+            p.drawLine(int(s * 0.7), int(s * 0.35), int(s * 0.55), int(s * 0.15))
+            p.drawLine(int(s * 0.7), int(s * 0.35), int(s * 0.58), int(s * 0.5))
+        p.end()
+
+
+def _soft(color_hex: str, alpha: float = 0.12) -> str:
+    c = QColor(color_hex)
+    return f"rgba({c.red()},{c.green()},{c.blue()},{alpha})"
 
 
 class ReworkPage(BasePage):
-    """Rework (Söküm) Yönetimi - İş Emri ve Giriş"""
-    
+    """Rework (Sokum) Yonetimi - Is Emri ve Giris"""
+
     def __init__(self, theme: dict):
         super().__init__(theme)
-        self.s = get_modern_style(theme)
-        self.setWindowTitle("🔄 Rework (Söküm) Yönetimi")
+        self.setWindowTitle("Rework (Sokum) Yonetimi")
         self._setup_ui()
         self._load_data()
-    
+
     def _setup_ui(self):
-        """Ana UI oluştur"""
+        """Ana UI olustur"""
+        self.setStyleSheet(f"""
+            QWidget {{
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
+                font-family: {brand.FONT_FAMILY};
+                font-size: {brand.FS_BODY}px;
+            }}
+        """)
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
+        layout.setContentsMargins(brand.SP_6, brand.SP_5, brand.SP_6, brand.SP_5)
+        layout.setSpacing(brand.SP_4)
+
         # Header
         header = self._create_header()
         layout.addWidget(header)
-        
+
         # Tab Widget
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet(self._get_tab_style())
-        
-        # Sekme 1: İş Emri Yönetimi
+
+        # Sekme 1: Is Emri Yonetimi
         self.tab_ie = self._create_is_emri_tab()
-        self.tab_widget.addTab(self.tab_ie, "📄 İş Emri Yönetimi")
-        
-        # Sekme 2: Söküm Girişi
+        self.tab_widget.addTab(self.tab_ie, "Is Emri Yonetimi")
+
+        # Sekme 2: Sokum Girisi
         self.tab_giris = self._create_giris_tab()
-        self.tab_widget.addTab(self.tab_giris, "✅ Söküm Girişi")
-        
+        self.tab_widget.addTab(self.tab_giris, "Sokum Girisi")
+
         # Sekme 3: Depo Takip
         self.tab_depo = self._create_depo_takip_tab()
-        self.tab_widget.addTab(self.tab_depo, "📊 Depo Takip")
-        
+        self.tab_widget.addTab(self.tab_depo, "Depo Takip")
+
         layout.addWidget(self.tab_widget)
-    
+
     def _create_header(self):
-        """Başlık oluştur"""
+        """Baslik olustur"""
         header = QHBoxLayout()
-        
-        # Başlık
-        title = QLabel("🔄 REWORK (SÖKÜM) YÖNETİMİ")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text', '#fff')};")
-        header.addWidget(title)
-        
+        header.setSpacing(brand.SP_3)
+
+        icon_box = QFrame()
+        icon_box.setFixedSize(brand.sp(40), brand.sp(40))
+        icon_box.setStyleSheet(
+            f"background: {_soft(brand.PRIMARY, 0.12)}; "
+            f"border: 1px solid {_soft(brand.PRIMARY, 0.35)}; "
+            f"border-radius: {brand.R_SM}px;"
+        )
+        ib = QVBoxLayout(icon_box)
+        ib.setContentsMargins(0, 0, 0, 0)
+        ib.addWidget(BrandIcon("recycle", brand.PRIMARY, brand.sp(20)), 0, Qt.AlignCenter)
+        header.addWidget(icon_box)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+        title = QLabel("Rework (Sokum) Yonetimi")
+        title.setStyleSheet(
+            f"font-size: {brand.FS_TITLE}px; font-weight: {brand.FW_BOLD}; "
+            f"color: {brand.TEXT}; letter-spacing: -0.4px;"
+        )
+        title_col.addWidget(title)
+
+        subtitle = QLabel("Sokum is emri olusturma, giris ve depo takip")
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY}px;"
+        )
+        title_col.addWidget(subtitle)
+        header.addLayout(title_col)
+
         header.addStretch()
-        
-        # Yenile butonu
-        refresh_btn = QPushButton("🔄 Yenile")
+
+        refresh_btn = QPushButton("Yenile")
+        refresh_btn.setCursor(Qt.PointingHandCursor)
         refresh_btn.setStyleSheet(self._button_style())
         refresh_btn.clicked.connect(self._load_data)
         header.addWidget(refresh_btn)
-        
+
         header_widget = QWidget()
         header_widget.setLayout(header)
         return header_widget
@@ -114,134 +183,145 @@ class ReworkPage(BasePage):
     # ========================================================
     
     def _create_is_emri_tab(self):
-        """İş emri yönetimi sekmesi"""
+        """Is emri yonetimi sekmesi"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        
-        # Bekleyen Sökümler
-        bekleyen_header = QLabel("📋 Bekleyen Sökümler (SOKUM deposu)")
-        bekleyen_header.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-weight: bold; font-size: 14px;")
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
+
+        section_title_style = (
+            f"color: {brand.TEXT_MUTED}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_CAPTION}px; padding: {brand.SP_1}px 0; "
+            f"letter-spacing: 0.8px;"
+        )
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_MEDIUM}; background: transparent;"
+        )
+
+        bekleyen_header = QLabel("BEKLEYEN SOKUMLER (SOKUM DEPOSU)")
+        bekleyen_header.setStyleSheet(section_title_style)
         layout.addWidget(bekleyen_header)
-        
+
         self.bekleyen_table = self._create_table([
-            "Lot No", "Ürün Kodu", "Ürün Adı", "Miktar", 
-            "Birim", "Depo", "Durum", "Tarih"
+            "LOT NO", "URUN KODU", "URUN ADI", "MIKTAR",
+            "BIRIM", "DEPO", "DURUM", "TARIH"
         ])
         self.bekleyen_table.itemSelectionChanged.connect(self._on_bekleyen_secim)
         layout.addWidget(self.bekleyen_table)
-        
-        # İş Emri Form
+
+        # Is Emri Form
         form_frame = QFrame()
-        form_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card', '#242938')}; border: 2px solid {self.theme.get('primary', '#6366f1')}; border-radius: 12px; }}")
+        form_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+            }}
+        """)
         form_layout_main = QVBoxLayout(form_frame)
-        form_layout_main.setContentsMargins(16, 16, 16, 16)
-        form_layout_main.setSpacing(12)
-        
-        form_header = QLabel("🛠️ Yeni İş Emri Oluştur")
-        form_header.setStyleSheet(f"color: {self.theme.get('primary', '#6366f1')}; font-weight: bold; font-size: 14px;")
+        form_layout_main.setContentsMargins(brand.SP_5, brand.SP_4, brand.SP_5, brand.SP_4)
+        form_layout_main.setSpacing(brand.SP_3)
+
+        form_header = QLabel("YENI IS EMRI OLUSTUR")
+        form_header.setStyleSheet(
+            f"color: {brand.PRIMARY}; font-weight: {brand.FW_BOLD}; "
+            f"font-size: {brand.FS_BODY_SM}px; letter-spacing: 0.6px; "
+            f"background: transparent; border: none;"
+        )
         form_layout_main.addWidget(form_header)
-        
+
         form_layout = QGridLayout()
-        form_layout.setSpacing(12)
-        
+        form_layout.setSpacing(brand.SP_3)
+
         row = 0
-        
-        # Lot No (Readonly)
-        lbl_lot = QLabel("Lot No:")
-        lbl_lot.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_lot = QLabel("Lot No")
+        lbl_lot.setStyleSheet(label_style)
         form_layout.addWidget(lbl_lot, row, 0)
         self.ie_lot_edit = QLineEdit()
         self.ie_lot_edit.setReadOnly(True)
         self.ie_lot_edit.setStyleSheet(self._input_style())
         form_layout.addWidget(self.ie_lot_edit, row, 1)
-        
-        # Ürün (Readonly)
-        lbl_urun = QLabel("Ürün:")
-        lbl_urun.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_urun = QLabel("Urun")
+        lbl_urun.setStyleSheet(label_style)
         form_layout.addWidget(lbl_urun, row, 2)
         self.ie_urun_edit = QLineEdit()
         self.ie_urun_edit.setReadOnly(True)
         self.ie_urun_edit.setStyleSheet(self._input_style())
         form_layout.addWidget(self.ie_urun_edit, row, 3)
-        
+
         row += 1
-        
-        # Miktar (Readonly)
-        lbl_miktar = QLabel("Miktar:")
-        lbl_miktar.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_miktar = QLabel("Miktar")
+        lbl_miktar.setStyleSheet(label_style)
         form_layout.addWidget(lbl_miktar, row, 0)
         self.ie_miktar_edit = QLineEdit()
         self.ie_miktar_edit.setReadOnly(True)
         self.ie_miktar_edit.setStyleSheet(self._input_style())
         form_layout.addWidget(self.ie_miktar_edit, row, 1)
-        
-        # Söküm Tipi (Sabit: Kimyasal)
-        lbl_tip = QLabel("Söküm Tipi:")
-        lbl_tip.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_tip = QLabel("Sokum Tipi")
+        lbl_tip.setStyleSheet(label_style)
         form_layout.addWidget(lbl_tip, row, 2)
         self.ie_tip_combo = QComboBox()
         self.ie_tip_combo.addItem("Kimyasal")
         self.ie_tip_combo.setEnabled(False)
         self.ie_tip_combo.setStyleSheet(self._input_style())
         form_layout.addWidget(self.ie_tip_combo, row, 3)
-        
+
         row += 1
-        
-        # Sorumlu
-        lbl_sorumlu = QLabel("Sorumlu:")
-        lbl_sorumlu.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_sorumlu = QLabel("Sorumlu")
+        lbl_sorumlu.setStyleSheet(label_style)
         form_layout.addWidget(lbl_sorumlu, row, 0)
         self.ie_sorumlu_combo = QComboBox()
         self.ie_sorumlu_combo.setStyleSheet(self._input_style())
         form_layout.addWidget(self.ie_sorumlu_combo, row, 1)
-        
-        # Başlangıç Tarihi
-        lbl_tarih = QLabel("Başlangıç:")
-        lbl_tarih.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_tarih = QLabel("Baslangic")
+        lbl_tarih.setStyleSheet(label_style)
         form_layout.addWidget(lbl_tarih, row, 2)
         self.ie_tarih_edit = QDateEdit()
         self.ie_tarih_edit.setDate(datetime.now().date())
         self.ie_tarih_edit.setCalendarPopup(True)
         self.ie_tarih_edit.setStyleSheet(self._input_style())
         form_layout.addWidget(self.ie_tarih_edit, row, 3)
-        
+
         row += 1
-        
-        # Not
-        lbl_not = QLabel("Not:")
-        lbl_not.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_not = QLabel("Not")
+        lbl_not.setStyleSheet(label_style)
         form_layout.addWidget(lbl_not, row, 0, Qt.AlignTop)
         self.ie_not_edit = QTextEdit()
-        self.ie_not_edit.setMaximumHeight(80)
+        self.ie_not_edit.setMaximumHeight(brand.sp(80))
         self.ie_not_edit.setStyleSheet(self._input_style())
         form_layout.addWidget(self.ie_not_edit, row, 1, 1, 3)
-        
+
         form_layout_main.addLayout(form_layout)
-        
-        row += 1
-        
+
         # Buton
-        self.ie_olustur_btn = QPushButton("📄 İş Emri Oluştur")
-        self.ie_olustur_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('success', '#22c55e')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold; }}")
+        self.ie_olustur_btn = QPushButton("IS EMRI OLUSTUR")
+        self.ie_olustur_btn.setCursor(Qt.PointingHandCursor)
+        self.ie_olustur_btn.setStyleSheet(self._cta_button_style(brand.SUCCESS))
         self.ie_olustur_btn.clicked.connect(self._is_emri_olustur)
         self.ie_olustur_btn.setEnabled(False)
         form_layout_main.addWidget(self.ie_olustur_btn)
-        
+
         layout.addWidget(form_frame)
-        
-        # Aktif İş Emirleri
-        aktif_header = QLabel("📊 Aktif İş Emirleri")
-        aktif_header.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-weight: bold; font-size: 14px;")
+
+        # Aktif Is Emirleri
+        aktif_header = QLabel("AKTIF IS EMIRLERI")
+        aktif_header.setStyleSheet(section_title_style)
         layout.addWidget(aktif_header)
-        
+
         self.aktif_ie_table = self._create_table([
-            "İş Emri No", "Lot No", "Ürün", "Miktar", 
-            "Tip", "Durum", "Sorumlu", "Başlangıç"
+            "IS EMRI NO", "LOT NO", "URUN", "MIKTAR",
+            "TIP", "DURUM", "SORUMLU", "BASLANGIC"
         ])
         layout.addWidget(self.aktif_ie_table)
-        
+
         return tab
     
     # ========================================================
@@ -249,133 +329,146 @@ class ReworkPage(BasePage):
     # ========================================================
     
     def _create_giris_tab(self):
-        """Söküm girişi sekmesi"""
+        """Sokum girisi sekmesi"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        
-        # Aktif İş Emirleri
-        ie_header = QLabel("🔧 Aktif İş Emirleri")
-        ie_header.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-weight: bold; font-size: 14px;")
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
+
+        section_title_style = (
+            f"color: {brand.TEXT_MUTED}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_CAPTION}px; padding: {brand.SP_1}px 0; "
+            f"letter-spacing: 0.8px;"
+        )
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_MEDIUM}; background: transparent;"
+        )
+
+        ie_header = QLabel("AKTIF IS EMIRLERI")
+        ie_header.setStyleSheet(section_title_style)
         layout.addWidget(ie_header)
-        
+
         self.giris_ie_table = self._create_table([
-            "İş Emri No", "Lot No", "Ürün", "Toplam Miktar",
-            "Tip", "Sorumlu", "Başlangıç"
+            "IS EMRI NO", "LOT NO", "URUN", "TOPLAM MIKTAR",
+            "TIP", "SORUMLU", "BASLANGIC"
         ])
         self.giris_ie_table.itemSelectionChanged.connect(self._on_giris_ie_secim)
         layout.addWidget(self.giris_ie_table)
-        
-        # Giriş Bilgileri
+
+        # Giris Bilgileri
         giris_frame = QFrame()
-        giris_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card', '#242938')}; border: 2px solid {self.theme.get('primary', '#6366f1')}; border-radius: 12px; }}")
+        giris_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+            }}
+        """)
         giris_layout_main = QVBoxLayout(giris_frame)
-        giris_layout_main.setContentsMargins(16, 16, 16, 16)
-        giris_layout_main.setSpacing(12)
-        
-        giris_header = QLabel("✅ Giriş Bilgileri")
-        giris_header.setStyleSheet(f"color: {self.theme.get('primary', '#6366f1')}; font-weight: bold; font-size: 14px;")
+        giris_layout_main.setContentsMargins(brand.SP_5, brand.SP_4, brand.SP_5, brand.SP_4)
+        giris_layout_main.setSpacing(brand.SP_3)
+
+        giris_header = QLabel("GIRIS BILGILERI")
+        giris_header.setStyleSheet(
+            f"color: {brand.PRIMARY}; font-weight: {brand.FW_BOLD}; "
+            f"font-size: {brand.FS_BODY_SM}px; letter-spacing: 0.6px; "
+            f"background: transparent; border: none;"
+        )
         giris_layout_main.addWidget(giris_header)
-        
+
         giris_layout = QGridLayout()
-        giris_layout.setSpacing(12)
-        
+        giris_layout.setSpacing(brand.SP_3)
+
         row = 0
-        
-        # İş Emri No (Readonly)
-        lbl_ie = QLabel("İş Emri No:")
-        lbl_ie.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_ie = QLabel("Is Emri No")
+        lbl_ie.setStyleSheet(label_style)
         giris_layout.addWidget(lbl_ie, row, 0)
         self.giris_ie_edit = QLineEdit()
         self.giris_ie_edit.setReadOnly(True)
         self.giris_ie_edit.setStyleSheet(self._input_style())
         giris_layout.addWidget(self.giris_ie_edit, row, 1)
-        
-        # Lot No (Readonly)
-        lbl_lot = QLabel("Lot No:")
-        lbl_lot.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_lot = QLabel("Lot No")
+        lbl_lot.setStyleSheet(label_style)
         giris_layout.addWidget(lbl_lot, row, 2)
         self.giris_lot_edit = QLineEdit()
         self.giris_lot_edit.setReadOnly(True)
         self.giris_lot_edit.setStyleSheet(self._input_style())
         giris_layout.addWidget(self.giris_lot_edit, row, 3)
-        
+
         row += 1
-        
-        # Toplam Miktar (Readonly)
-        lbl_toplam = QLabel("Toplam Miktar:")
-        lbl_toplam.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_toplam = QLabel("Toplam Miktar")
+        lbl_toplam.setStyleSheet(label_style)
         giris_layout.addWidget(lbl_toplam, row, 0)
         self.giris_toplam_edit = QLineEdit()
         self.giris_toplam_edit.setReadOnly(True)
         self.giris_toplam_edit.setStyleSheet(self._input_style())
         giris_layout.addWidget(self.giris_toplam_edit, row, 1)
-        
-        # Giriş Miktarı
-        lbl_giris = QLabel("Giriş Miktarı:")
-        lbl_giris.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_giris = QLabel("Giris Miktari")
+        lbl_giris.setStyleSheet(label_style)
         giris_layout.addWidget(lbl_giris, row, 2)
         self.giris_miktar_spin = QSpinBox()
         self.giris_miktar_spin.setMinimum(0)
         self.giris_miktar_spin.setMaximum(999999)
         self.giris_miktar_spin.setStyleSheet(self._input_style())
         giris_layout.addWidget(self.giris_miktar_spin, row, 3)
-        
+
         row += 1
-        
-        # Kalite Durumu
-        lbl_kalite = QLabel("Kalite Durumu:")
-        lbl_kalite.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_kalite = QLabel("Kalite Durumu")
+        lbl_kalite.setStyleSheet(label_style)
         giris_layout.addWidget(lbl_kalite, row, 0)
         self.giris_kalite_combo = QComboBox()
-        self.giris_kalite_combo.addItems(["", "İYİ", "ORTA", "KÖTÜ"])
+        self.giris_kalite_combo.addItems(["", "IYI", "ORTA", "KOTU"])
         self.giris_kalite_combo.setStyleSheet(self._input_style())
         giris_layout.addWidget(self.giris_kalite_combo, row, 1)
-        
-        # Söküm Süresi (dakika)
-        lbl_sure = QLabel("Söküm Süresi (dk):")
-        lbl_sure.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_sure = QLabel("Sokum Suresi (dk)")
+        lbl_sure.setStyleSheet(label_style)
         giris_layout.addWidget(lbl_sure, row, 2)
         self.giris_sure_spin = QSpinBox()
         self.giris_sure_spin.setMinimum(0)
         self.giris_sure_spin.setMaximum(9999)
         self.giris_sure_spin.setStyleSheet(self._input_style())
         giris_layout.addWidget(self.giris_sure_spin, row, 3)
-        
+
         row += 1
-        
-        # Not
-        lbl_not = QLabel("Not:")
-        lbl_not.setStyleSheet(f"color: {self.theme.get('text', '#fff')};")
+
+        lbl_not = QLabel("Not")
+        lbl_not.setStyleSheet(label_style)
         giris_layout.addWidget(lbl_not, row, 0, Qt.AlignTop)
         self.giris_not_edit = QTextEdit()
-        self.giris_not_edit.setMaximumHeight(80)
+        self.giris_not_edit.setMaximumHeight(brand.sp(80))
         self.giris_not_edit.setStyleSheet(self._input_style())
         giris_layout.addWidget(self.giris_not_edit, row, 1, 1, 3)
-        
+
         giris_layout_main.addLayout(giris_layout)
-        
+
         # Buton
-        self.giris_btn = QPushButton("✅ Kaydı Tamamla")
-        self.giris_btn.setStyleSheet(f"QPushButton {{ background: {self.theme.get('success', '#22c55e')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold; }}")
+        self.giris_btn = QPushButton("KAYDI TAMAMLA")
+        self.giris_btn.setCursor(Qt.PointingHandCursor)
+        self.giris_btn.setStyleSheet(self._cta_button_style(brand.SUCCESS))
         self.giris_btn.clicked.connect(self._giris_kaydet)
         self.giris_btn.setEnabled(False)
         giris_layout_main.addWidget(self.giris_btn)
-        
+
         layout.addWidget(giris_frame)
-        
-        # Geçmiş Girişler
-        gecmis_header = QLabel("📜 Geçmiş Girişler (Bugün)")
-        gecmis_header.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-weight: bold; font-size: 14px;")
+
+        # Gecmis Girisler
+        gecmis_header = QLabel("GECMIS GIRISLER (BUGUN)")
+        gecmis_header.setStyleSheet(section_title_style)
         layout.addWidget(gecmis_header)
-        
+
         self.gecmis_table = self._create_table([
-            "Tarih", "İş Emri No", "Lot No", "Giriş Miktarı",
-            "Kalan", "Kalite", "Süre (dk)", "Yapan"
+            "TARIH", "IS EMRI NO", "LOT NO", "GIRIS MIKTARI",
+            "KALAN", "KALITE", "SURE (DK)", "YAPAN"
         ])
         layout.addWidget(self.gecmis_table)
-        
+
         return tab
     
     # ========================================================
@@ -383,103 +476,132 @@ class ReworkPage(BasePage):
     # ========================================================
     
     def _create_depo_takip_tab(self):
-        """Depo takip sekmesi - Söküm sürecindeki depoları göster"""
+        """Depo takip sekmesi - Sokum surecindeki depolari goster"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(12)
-        
-        # Başlık
-        header = QLabel("📊 Söküm Süreci Depo Durumu")
-        header.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-weight: bold; font-size: 16px;")
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
+
+        header = QLabel("SOKUM SURECI DEPO DURUMU")
+        header.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_CAPTION}px; padding: {brand.SP_1}px 0; "
+            f"letter-spacing: 0.8px;"
+        )
         layout.addWidget(header)
-        
-        # Depo kartları için container
+
+        # Depo kartlari icin container
         depo_frame = QFrame()
-        depo_frame.setStyleSheet(f"background: {self.theme.get('bg_card', '#242938')}; border-radius: 12px; padding: 16px;")
+        depo_frame.setStyleSheet(
+            f"background: transparent; border: none;"
+        )
         depo_layout = QVBoxLayout(depo_frame)
-        
-        # Depo kartları grid
+        depo_layout.setContentsMargins(0, 0, 0, 0)
+
         depo_grid = QGridLayout()
-        depo_grid.setSpacing(16)
-        
-        # İlgili depolar: RED, Yi, SOKUM, KAB-01
+        depo_grid.setSpacing(brand.SP_3)
+
+        # Ilgili depolar (kod, ad, renk)
         ilgili_depolar = [
-            ('RED', 'RED Deposu', '🔴', 'danger'),
-            ('Yi', 'Söküm Bekleyen', '🟡', 'warning'),
-            ('SOKUM', 'Söküm Deposu', '🟠', 'warning'),
-            ('KAB-01', 'Kabul Alanı', '🟢', 'success')
+            ('RED',    'RED Deposu',     brand.ERROR),
+            ('Yi',     'Sokum Bekleyen', brand.WARNING),
+            ('SOKUM',  'Sokum Deposu',   brand.WARNING),
+            ('KAB-01', 'Kabul Alani',    brand.SUCCESS),
         ]
-        
+
         self.depo_widgets = {}
-        
-        for idx, (kod, ad, icon, renk) in enumerate(ilgili_depolar):
+
+        for idx, (kod, ad, kart_renk) in enumerate(ilgili_depolar):
             row = idx // 2
             col = idx % 2
-            
-            # Depo kartı
+
             kart = QFrame()
-            kart_renk = self.theme.get(renk, '#6366f1')
             kart.setStyleSheet(f"""
                 QFrame {{
-                    background: {self.theme.get('bg_main', '#1a1f2e')};
-                    border: 2px solid {kart_renk};
-                    border-radius: 10px;
-                    padding: 12px;
+                    background: {brand.BG_CARD};
+                    border: 1px solid {brand.BORDER};
+                    border-left: 3px solid {kart_renk};
+                    border-radius: {brand.R_MD}px;
                 }}
             """)
             kart_layout = QVBoxLayout(kart)
-            kart_layout.setSpacing(8)
-            
-            # Başlık
-            baslik = QLabel(f"{icon} {ad} ({kod})")
-            baslik.setStyleSheet(f"color: {kart_renk}; font-weight: bold; font-size: 14px;")
-            kart_layout.addWidget(baslik)
-            
+            kart_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+            kart_layout.setSpacing(brand.SP_2)
+
+            # Baslik satiri
+            header_row = QHBoxLayout()
+            header_row.setSpacing(brand.SP_2)
+            header_row.setContentsMargins(0, 0, 0, 0)
+            header_row.addWidget(BrandIcon("dot", kart_renk, brand.sp(12)), 0, Qt.AlignVCenter)
+
+            baslik = QLabel(f"{ad.upper()} ({kod})")
+            baslik.setStyleSheet(
+                f"color: {kart_renk}; font-weight: {brand.FW_SEMIBOLD}; "
+                f"font-size: {brand.FS_BODY_SM}px; letter-spacing: 0.4px; "
+                f"background: transparent; border: none;"
+            )
+            header_row.addWidget(baslik)
+            header_row.addStretch()
+            kart_layout.addLayout(header_row)
+
             # Miktar etiketi
             miktar_lbl = QLabel("0 adet")
             miktar_lbl.setObjectName(f"miktar_{kod}")
-            miktar_lbl.setStyleSheet(f"color: {self.theme.get('text', '#fff')}; font-size: 24px; font-weight: bold;")
+            miktar_lbl.setStyleSheet(
+                f"color: {brand.TEXT}; font-size: {brand.FS_TITLE}px; "
+                f"font-weight: {brand.FW_BOLD}; "
+                f"background: transparent; border: none;"
+            )
             kart_layout.addWidget(miktar_lbl)
-            
-            # Lot sayısı
+
+            # Lot sayisi
             lot_lbl = QLabel("0 lot")
             lot_lbl.setObjectName(f"lot_{kod}")
-            lot_lbl.setStyleSheet(f"color: {self.theme.get('text_muted', '#8a94a6')}; font-size: 12px;")
+            lot_lbl.setStyleSheet(
+                f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; "
+                f"background: transparent; border: none;"
+            )
             kart_layout.addWidget(lot_lbl)
-            
+
             # Durum listesi
             durum_lbl = QLabel("")
             durum_lbl.setObjectName(f"durum_{kod}")
-            durum_lbl.setStyleSheet(f"color: {self.theme.get('text_muted', '#8a94a6')}; font-size: 11px;")
+            durum_lbl.setStyleSheet(
+                f"color: {brand.TEXT_DIM}; font-size: {brand.FS_CAPTION}px; "
+                f"background: transparent; border: none;"
+            )
             durum_lbl.setWordWrap(True)
             kart_layout.addWidget(durum_lbl)
-            
+
             self.depo_widgets[kod] = {
                 'miktar': miktar_lbl,
                 'lot': lot_lbl,
-                'durum': durum_lbl
+                'durum': durum_lbl,
             }
-            
+
             depo_grid.addWidget(kart, row, col)
-        
+
         depo_layout.addLayout(depo_grid)
         layout.addWidget(depo_frame)
-        
+
         # Detay tablosu
-        detay_header = QLabel("📋 Detaylı Stok Listesi")
-        detay_header.setStyleSheet(f"color: {self.theme.get('primary', '#6366f1')}; font-weight: bold; font-size: 14px; margin-top: 16px;")
+        detay_header = QLabel("DETAYLI STOK LISTESI")
+        detay_header.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_CAPTION}px; padding-top: {brand.SP_3}px; "
+            f"letter-spacing: 0.8px;"
+        )
         layout.addWidget(detay_header)
-        
+
         self.depo_detay_table = self._create_table([
-            "Depo", "Lot No", "Ürün Kodu", "Ürün Adı", 
-            "Miktar", "Birim", "Durum", "Son Hareket"
+            "DEPO", "LOT NO", "URUN KODU", "URUN ADI",
+            "MIKTAR", "BIRIM", "DURUM", "SON HAREKET"
         ])
         layout.addWidget(self.depo_detay_table)
-        
-        # İlk yükleme
+
+        # Ilk yukleme
         self._load_depo_takip()
-        
+
         return tab
     
     def _load_depo_takip(self):
@@ -550,20 +672,20 @@ class ReworkPage(BasePage):
                     # Depo kodu renklendirme
                     if col == 0:
                         if value == 'RED':
-                            item.setForeground(QColor('#ef4444'))
+                            item.setForeground(QColor(brand.ERROR))
                         elif value in ('Yi', 'SOKUM'):
-                            item.setForeground(QColor('#f59e0b'))
+                            item.setForeground(QColor(brand.WARNING))
                         elif value == 'KAB-01':
-                            item.setForeground(QColor('#22c55e'))
-                    
+                            item.setForeground(QColor(brand.SUCCESS))
+
                     # Durum renklendirme
                     if col == 6:
                         if 'RED' in str(value):
-                            item.setForeground(QColor('#ef4444'))
+                            item.setForeground(QColor(brand.ERROR))
                         elif 'SOKUM' in str(value):
-                            item.setForeground(QColor('#f59e0b'))
+                            item.setForeground(QColor(brand.WARNING))
                         elif 'KABUL' in str(value):
-                            item.setForeground(QColor('#22c55e'))
+                            item.setForeground(QColor(brand.SUCCESS))
                     
                     self.depo_detay_table.setItem(row, col, item)
             
@@ -956,7 +1078,7 @@ class ReworkPage(BasePage):
 
             QMessageBox.information(
                 self,
-                "✓ Başarılı",
+                "Basarili",
                 f"İş emri oluşturuldu!\n\nİş Emri No: {is_emri_no}\nLot: {lot_no}"
             )
             
@@ -1122,14 +1244,14 @@ class ReworkPage(BasePage):
                     WHERE id = ?
                 """, (kalan_miktar, ie_id))
                 
-                mesaj = f"""✓ Kısmi giriş yapıldı!
+                mesaj = f"""Kismi giris yapildi.
 
-Giriş: {giris_miktar} adet
+Giris: {giris_miktar} adet
 Kalan: {kalan_miktar} adet
 
 Eski Lot: {eski_lot_no}
 Yeni Lot: {yeni_lot_no}
-Hedef: KAB-01 (Kabul Alanı)"""
+Hedef: KAB-01 (Kabul Alani)"""
             else:
                 # Tam giriş
                 cursor.execute("""
@@ -1140,20 +1262,20 @@ Hedef: KAB-01 (Kabul Alanı)"""
                     WHERE id = ?
                 """, (ie_id,))
                 
-                mesaj = f"""✓ İş emri tamamlandı!
+                mesaj = f"""Is emri tamamlandi.
 
-Giriş: {giris_miktar} adet
+Giris: {giris_miktar} adet
 
 Eski Lot: {eski_lot_no}
 Yeni Lot: {yeni_lot_no}
-Hedef: KAB-01 (Kabul Alanı)"""
+Hedef: KAB-01 (Kabul Alani)"""
             
             conn.commit()
             LogManager.log_update('uretim', 'uretim.rework_is_emirleri', ie_id,
                                   f'Rework giris yapildi: {giris_miktar} adet, Eski Lot: {eski_lot_no}, Yeni Lot: {yeni_lot_no}')
             conn.close()
 
-            QMessageBox.information(self, "✓ Başarılı", mesaj)
+            QMessageBox.information(self, "Basarili", mesaj)
             
             # Formu temizle
             self._clear_giris_form()
@@ -1178,82 +1300,171 @@ Hedef: KAB-01 (Kabul Alanı)"""
         self.giris_btn.setEnabled(False)
     
     # ========================================================
-    # HELPER METHODS - STİL (kalite_final.py ile aynı)
+    # HELPER METHODS - STIL
     # ========================================================
-    
+
     def _create_table(self, headers):
-        """Tablo oluştur"""
+        """Tablo olustur"""
         table = QTableWidget()
         table.setColumnCount(len(headers))
         table.setHorizontalHeaderLabels(headers)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.horizontalHeader().setHighlightSections(False)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setShowGrid(False)
+        table.setFrameShape(QFrame.NoFrame)
         table.setStyleSheet(self._table_style())
         table.verticalHeader().setVisible(False)
-        
+        table.verticalHeader().setDefaultSectionSize(brand.sp(38))
+
         return table
-    
+
     def _button_style(self):
-        """Buton stili - kalite_final.py ile aynı"""
-        return f"QPushButton {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 16px; }}"
-    
-    def _input_style(self):
-        """Input stili - kalite_final.py ile aynı"""
         return f"""
-            background: {self.theme.get('bg_input', '#2d3548')};
-            border: 1px solid {self.theme.get('border', '#3d4454')};
-            border-radius: 6px;
-            padding: 8px 12px;
-            color: {self.theme.get('text', '#fff')};
+            QPushButton {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
         """
-    
+
+    def _cta_button_style(self, accent_color: str):
+        hover = "#059669" if accent_color == brand.SUCCESS else brand.PRIMARY_HOVER
+        return f"""
+            QPushButton {{
+                background: {accent_color};
+                color: white;
+                border: 1px solid {accent_color};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_3}px {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_BOLD};
+                letter-spacing: 0.4px;
+            }}
+            QPushButton:hover {{
+                background: {hover};
+                border-color: {hover};
+            }}
+            QPushButton:disabled {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DISABLED};
+                border-color: {brand.BORDER};
+            }}
+        """
+
+    def _input_style(self):
+        return f"""
+            QLineEdit, QTextEdit, QComboBox, QDateEdit, QSpinBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QLineEdit:hover, QTextEdit:hover, QComboBox:hover, QDateEdit:hover, QSpinBox:hover {{
+                border-color: {brand.BORDER_HARD};
+            }}
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus {{
+                border-color: {brand.PRIMARY};
+            }}
+            QLineEdit[readOnly="true"] {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_MUTED};
+            }}
+            QComboBox::drop-down, QDateEdit::drop-down {{ border: none; width: {brand.sp(22)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_ELEVATED};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                selection-background-color: {brand.PRIMARY};
+                selection-color: white;
+            }}
+        """
+
     def _table_style(self):
-        """Tablo stili - kalite_final.py ile aynı"""
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card', '#242938')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
-                border-radius: 8px;
-                gridline-color: {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                gridline-color: transparent;
+                font-size: {brand.FS_BODY_SM}px;
+                outline: none;
             }}
-            QTableWidget::item {{ padding: 8px; }}
-            QHeaderView::section {{
-                background: {self.theme.get('bg_hover', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
-                padding: 10px;
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
                 border: none;
-                font-weight: bold;
+                border-bottom: 1px solid {brand.BORDER};
+            }}
+            QHeaderView::section {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_CAPTION}px;
+                letter-spacing: 0.5px;
             }}
             QTableWidget::item:selected {{
-                background: {self.theme.get('primary', '#6366f1')};
-                color: white;
+                background: {_soft(brand.PRIMARY, 0.18)};
+                color: {brand.TEXT};
             }}
+            QTableWidget::item:hover {{
+                background: {brand.BG_HOVER};
+            }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: {brand.sp(8)}px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {brand.BORDER_HARD};
+                border-radius: {brand.sp(4)}px;
+                min-height: {brand.sp(30)}px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
         """
-    
+
     def _get_tab_style(self):
         """Tab widget stili"""
         return f"""
             QTabWidget::pane {{
-                border: none;
-                background: transparent;
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                background: {brand.BG_CARD};
+                top: -1px;
             }}
             QTabBar::tab {{
-                background: {self.theme.get('bg_card', '#242938')};
-                color: {self.theme.get('text', '#fff')};
-                padding: 12px 24px;
-                margin-right: 2px;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                font-weight: 500;
+                background: transparent;
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_5}px;
+                margin-right: {brand.SP_1}px;
+                border: 1px solid transparent;
+                border-top-left-radius: {brand.R_SM}px;
+                border-top-right-radius: {brand.R_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_SM}px;
             }}
             QTabBar::tab:selected {{
-                background: {self.theme.get('primary', '#6366f1')};
-                color: white;
+                background: {brand.BG_CARD};
+                color: {brand.PRIMARY};
+                border: 1px solid {brand.BORDER};
+                border-bottom: 2px solid {brand.PRIMARY};
             }}
             QTabBar::tab:hover:!selected {{
-                background: {self.theme.get('bg_hover', '#2d3548')};
+                color: {brand.TEXT};
+                background: {brand.BG_HOVER};
             }}
         """

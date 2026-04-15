@@ -1,47 +1,77 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Duruş Kayıtları Sayfası
-Üretim hattı duruş kayıtları: ekipman seçimi, arıza girişi, bakım entegrasyonu
-[MODERNIZED UI - v2.0]
+NEXOR ERP - Durus Kayitlari Sayfasi (Brand System)
+==================================================
+Uretim hatti durus kayitlari: ekipman secimi, ariza girisi, bakim entegrasyonu.
+Tum stiller core.nexor_brand uzerinden gelir; sabit px/hex yazilmaz.
 """
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QMessageBox, QDialog, QFormLayout,
-    QTextEdit, QComboBox, QDateTimeEdit, QWidget, QGraphicsDropShadowEffect
+    QTextEdit, QComboBox, QDateTimeEdit, QWidget,
 )
 from PySide6.QtCore import Qt, QTimer, QDateTime
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPainter, QPen, QBrush
 
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
-def get_modern_style(theme: dict) -> dict:
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
+# =============================================================================
+# BRAND ICON - kompakt, bu dosyaya ozel
+# =============================================================================
+
+class BrandIcon(QLabel):
+    def __init__(self, kind: str, color: str = None, size: int = None, parent=None):
+        super().__init__(parent)
+        self.kind = kind
+        self.color = color or brand.TEXT
+        self.size_px = size or brand.ICON_MD
+        self.setFixedSize(self.size_px, self.size_px)
+        self.setStyleSheet("background: transparent; border: none;")
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(self.color))
+        pen.setWidthF(max(1.4, self.size_px / 12))
+        pen.setCapStyle(Qt.RoundCap)
+        pen.setJoinStyle(Qt.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        s = self.size_px
+        m = s * 0.18
+        k = self.kind
+
+        if k == "stop":
+            p.setBrush(QBrush(QColor(self.color)))
+            p.drawRoundedRect(int(m), int(m), int(s - 2 * m), int(s - 2 * m),
+                              int(s * 0.08), int(s * 0.08))
+        elif k == "alert":
+            p.drawLine(int(s * 0.5), int(m), int(s - m), int(s - m))
+            p.drawLine(int(s - m), int(s - m), int(m), int(s - m))
+            p.drawLine(int(m), int(s - m), int(s * 0.5), int(m))
+            p.drawLine(int(s * 0.5), int(s * 0.38), int(s * 0.5), int(s * 0.62))
+            p.setBrush(QBrush(QColor(self.color)))
+            p.drawEllipse(int(s * 0.46), int(s * 0.7), int(s * 0.08), int(s * 0.08))
+        elif k == "plus":
+            p.drawLine(int(s * 0.5), int(m), int(s * 0.5), int(s - m))
+            p.drawLine(int(m), int(s * 0.5), int(s - m), int(s * 0.5))
+        elif k == "refresh":
+            from PySide6.QtCore import QRectF
+            rect = QRectF(m, m, s - 2 * m, s - 2 * m)
+            p.drawArc(rect, 45 * 16, 270 * 16)
+            p.drawLine(int(s - m * 1.2), int(m), int(s - m * 1.2), int(m * 2.2))
+            p.drawLine(int(s - m * 1.2), int(m * 2.2), int(s - m * 2.4), int(m * 2.2))
+        p.end()
+
+
+def _soft(color_hex: str, alpha: float = 0.12) -> str:
+    c = QColor(color_hex)
+    return f"rgba({c.red()},{c.green()},{c.blue()},{alpha})"
 
 
 def _ensure_columns():
@@ -77,17 +107,16 @@ def _ensure_columns():
 
 
 class DurusDialog(QDialog):
-    """Duruş Kaydı Ekleme/Düzenleme"""
+    """Durus Kaydi Ekleme/Duzenleme"""
 
     def __init__(self, theme: dict, durus_id: int = None, parent=None):
         super().__init__(parent)
         self.theme = theme
-        self.s = get_modern_style(theme)
         self.durus_id = durus_id
         self.data = {}
 
-        self.setWindowTitle("Yeni Duruş Kaydı" if not durus_id else "Duruş Düzenle")
-        self.setMinimumSize(580, 680)
+        self.setWindowTitle("Yeni Durus Kaydi" if not durus_id else "Durus Duzenle")
+        self.setMinimumSize(brand.sp(580), brand.sp(680))
         self.setModal(True)
 
         if durus_id:
@@ -113,67 +142,89 @@ class DurusDialog(QDialog):
                     pass
 
     def _setup_ui(self):
-        s = self.s
         self.setStyleSheet(f"""
             QDialog {{
-                background: {s['card_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 12px;
+                background: {brand.BG_ELEVATED};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
             }}
             QLabel {{
-                color: {s['text']};
+                color: {brand.TEXT};
                 background: transparent;
             }}
             QLineEdit, QTextEdit, QComboBox, QDateTimeEdit {{
-                background: {s['input_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 12px;
-                color: {s['text']};
-                font-size: 13px;
-                min-height: 20px;
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                min-height: {brand.sp(20)}px;
+            }}
+            QLineEdit:hover, QTextEdit:hover, QComboBox:hover, QDateTimeEdit:hover {{
+                border-color: {brand.BORDER_HARD};
             }}
             QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QDateTimeEdit:focus {{
-                border-color: {s['primary']};
+                border-color: {brand.PRIMARY};
             }}
-            QLineEdit:disabled {{
-                background: {s['border']};
-                color: {s['text_muted']};
+            QLineEdit:disabled, QDateTimeEdit:disabled {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DISABLED};
             }}
-            QComboBox::drop-down {{ border: none; width: 30px; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(28)}px; }}
             QComboBox QAbstractItemView {{
-                background: {s['card_bg']};
-                border: 1px solid {s['border']};
-                color: {s['text']};
-                selection-background-color: {s['primary']};
+                background: {brand.BG_ELEVATED};
+                border: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+                selection-background-color: {brand.PRIMARY};
+                selection-color: white;
             }}
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
 
         # Header
         header = QHBoxLayout()
-        icon = QLabel("🛑")
-        icon.setStyleSheet("font-size: 28px;")
-        header.addWidget(icon)
+        header.setSpacing(brand.SP_3)
+
+        icon_box = QFrame()
+        icon_box.setFixedSize(brand.sp(36), brand.sp(36))
+        icon_box.setStyleSheet(
+            f"background: {_soft(brand.ERROR, 0.12)}; "
+            f"border: 1px solid {_soft(brand.ERROR, 0.35)}; "
+            f"border-radius: {brand.R_SM}px;"
+        )
+        ib = QVBoxLayout(icon_box)
+        ib.setContentsMargins(0, 0, 0, 0)
+        ib.addWidget(BrandIcon("stop", brand.ERROR, brand.sp(18)), 0, Qt.AlignCenter)
+        header.addWidget(icon_box)
+
         title = QLabel(self.windowTitle())
-        title.setStyleSheet(f"font-size: 20px; font-weight: 600; color: {s['text']};")
+        title.setStyleSheet(
+            f"font-size: {brand.FS_HEADING_LG}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"color: {brand.TEXT};"
+        )
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet(f"background: {s['border']}; max-height: 1px;")
+        sep.setStyleSheet(f"background: {brand.BORDER}; max-height: 1px;")
         layout.addWidget(sep)
 
         # Form
         form = QFormLayout()
-        form.setSpacing(16)
+        form.setSpacing(brand.SP_4)
         form.setLabelAlignment(Qt.AlignRight)
-        label_style = f"color: {s['text_secondary']}; font-size: 13px; font-weight: 500;"
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_MEDIUM};"
+        )
 
         # Hat Seçimi
         lbl = QLabel("Hat *")
@@ -221,18 +272,20 @@ class DurusDialog(QDialog):
         )
         self.bitis_check = QPushButton("Devam Ediyor")
         self.bitis_check.setCheckable(True)
+        self.bitis_check.setCursor(Qt.PointingHandCursor)
         self.bitis_check.setStyleSheet(f"""
             QPushButton {{
-                background: {s['warning']};
+                background: {brand.WARNING};
                 color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-size: 12px;
-                font-weight: 600;
+                border: 1px solid {brand.WARNING};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
             QPushButton:checked {{
-                background: {s['error']};
+                background: {brand.ERROR};
+                border-color: {brand.ERROR};
             }}
         """)
         self.bitis_check.toggled.connect(lambda c: self.bitis_zamani.setEnabled(not c))
@@ -264,41 +317,44 @@ class DurusDialog(QDialog):
 
         # Buttons
         btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(12)
+        btn_layout.setSpacing(brand.SP_3)
         btn_layout.addStretch()
 
         cancel_btn = QPushButton("Iptal")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 12px 24px;
-                font-size: 13px;
-                font-weight: 500;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_3}px {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
             QPushButton:hover {{
-                background: {s['border']};
-                border-color: {s['primary']};
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
             }}
         """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
         save_btn = QPushButton("Kaydet")
+        save_btn.setCursor(Qt.PointingHandCursor)
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {s['primary']};
+                background: {brand.PRIMARY};
                 color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 12px 28px;
-                font-size: 13px;
-                font-weight: 600;
+                border: 1px solid {brand.PRIMARY};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_3}px {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
             QPushButton:hover {{
-                background: {s['primary_hover']};
+                background: {brand.PRIMARY_HOVER};
+                border-color: {brand.PRIMARY_HOVER};
             }}
         """)
         save_btn.clicked.connect(self._save)
@@ -441,20 +497,70 @@ class DurusDialog(QDialog):
                 """, (hat_id, ekipman_id, neden_id, baslama, bitis, sure_dk, aciklama))
 
                 # Ekipman seçildiyse arıza bildirimine de düşür
+                ariza_id = None
+                ekipman_adi = ""
                 if ekipman_id:
                     cursor.execute("""
                         DECLARE @no NVARCHAR(20) = 'DRS-' + FORMAT(GETDATE(),'yyyyMMdd') + '-'
                             + RIGHT('000'+CAST((SELECT ISNULL(MAX(id),0)+1 FROM bakim.ariza_bildirimleri) AS VARCHAR),3);
                         INSERT INTO bakim.ariza_bildirimleri
                         (bildirim_no, ekipman_id, bildirim_zamani, ariza_tanimi, oncelik, durum)
+                        OUTPUT INSERTED.id
                         VALUES (@no, ?, ?, ?, 'NORMAL', 'ACIK')
                     """, (ekipman_id, baslama, f"[Uretim Durus] {aciklama}"))
+                    row = cursor.fetchone()
+                    if row:
+                        ariza_id = int(row[0])
+
+                    # Ekipman adini cek (bildirim mesaji icin)
+                    try:
+                        cursor.execute(
+                            "SELECT ekipman_adi FROM bakim.ekipmanlar WHERE id = ?",
+                            (ekipman_id,),
+                        )
+                        er = cursor.fetchone()
+                        if er:
+                            ekipman_adi = er[0] or ""
+                    except Exception:
+                        ekipman_adi = ""
 
             conn.commit()
             LogManager.log_insert('uretim', 'uretim.durus_kayitlari', None, 'Durus kaydi olusturuldu')
+
+            # Nexor kullanicilarina bildirim dus (sadece yeni kayitta)
+            bildirilen = 0
+            if ekipman_id and ariza_id and not self.durus_id:
+                try:
+                    from core.bildirim_service import BildirimService
+                    from core.database import execute_query
+                    kullanicilar = execute_query(
+                        "SELECT id FROM sistem.kullanicilar "
+                        "WHERE aktif_mi = 1 AND silindi_mi = 0"
+                    )
+                    baslik = f"Uretim Ariza: {ekipman_adi or 'Ekipman'}"
+                    mesaj = (
+                        f"Uretim durus kaydi ile ariza bildirildi.\n"
+                        f"Ekipman: {ekipman_adi or '-'}\n"
+                        f"Aciklama: {aciklama or '-'}"
+                    )
+                    for k in kullanicilar:
+                        if BildirimService.gonder(
+                            kullanici_id=k['id'],
+                            baslik=baslik, mesaj=mesaj,
+                            modul='URETIM', onem='YUKSEK', tip='UYARI',
+                            kaynak_tablo='bakim.ariza_bildirimleri',
+                            kaynak_id=ariza_id,
+                            sayfa_yonlendirme='bakim_ariza',
+                        ):
+                            bildirilen += 1
+                except Exception as bild_err:
+                    print(f"[UretimDurus] Bildirim gonderme hatasi: {bild_err}")
+
             msg = "Durus kaydi kaydedildi!"
             if ekipman_id and not self.durus_id:
                 msg += "\nAriza bildirimi de olusturuldu."
+                if bildirilen:
+                    msg += f"\n{bildirilen} Nexor kullanicisina bildirim dusuruldu."
             QMessageBox.information(self, "Basarili", msg)
             self.accept()
         except Exception as e:
@@ -468,48 +574,74 @@ class DurusDialog(QDialog):
 
 
 class UretimDurusPage(BasePage):
-    """Duruş Kayıtları Sayfası - Tam Implementasyon"""
+    """Durus Kayitlari Sayfasi"""
 
     def __init__(self, theme: dict):
         super().__init__(theme)
-        self.s = get_modern_style(theme)
         _ensure_columns()
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)
 
     def _setup_ui(self):
-        s = self.s
+        self.setStyleSheet(f"""
+            QWidget {{
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
+                font-family: {brand.FONT_FAMILY};
+                font-size: {brand.FS_BODY}px;
+            }}
+        """)
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
 
         # ===== HEADER =====
         header = QHBoxLayout()
-        title_section = QVBoxLayout()
-        title_section.setSpacing(4)
+        header.setSpacing(brand.SP_4)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_2)
 
         title_row = QHBoxLayout()
-        icon = QLabel("🛑")
-        icon.setStyleSheet("font-size: 28px;")
-        title_row.addWidget(icon)
+        title_row.setSpacing(brand.SP_3)
+        title_row.setContentsMargins(0, 0, 0, 0)
+
+        icon_box = QFrame()
+        icon_box.setFixedSize(brand.sp(40), brand.sp(40))
+        icon_box.setStyleSheet(
+            f"background: {_soft(brand.ERROR, 0.12)}; "
+            f"border: 1px solid {_soft(brand.ERROR, 0.35)}; "
+            f"border-radius: {brand.R_SM}px;"
+        )
+        ib = QVBoxLayout(icon_box)
+        ib.setContentsMargins(0, 0, 0, 0)
+        ib.addWidget(BrandIcon("stop", brand.ERROR, brand.sp(20)), 0, Qt.AlignCenter)
+        title_row.addWidget(icon_box)
+
         title = QLabel("Durus Kayitlari")
-        title.setStyleSheet(f"color: {s['text']}; font-size: 24px; font-weight: 600;")
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; font-size: {brand.FS_TITLE}px; "
+            f"font-weight: {brand.FW_BOLD}; letter-spacing: -0.4px;"
+        )
         title_row.addWidget(title)
         title_row.addStretch()
-        title_section.addLayout(title_row)
+        title_col.addLayout(title_row)
 
         subtitle = QLabel("Uretim hatti durus ve ariza kayitlarini yonetin")
-        subtitle.setStyleSheet(f"color: {s['text_secondary']}; font-size: 13px;")
-        title_section.addWidget(subtitle)
-        header.addLayout(title_section)
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY}px;"
+        )
+        title_col.addWidget(subtitle)
+        header.addLayout(title_col)
         header.addStretch()
 
         # Stat Cards
         stats_layout = QHBoxLayout()
-        stats_layout.setSpacing(12)
-        self.acik_label = self._create_stat_card("Acik", "0", s['error'])
-        self.devam_label = self._create_stat_card("Devam Eden", "0", s['warning'])
-        self.bugun_label = self._create_stat_card("Bugun", "0", s['info'])
+        stats_layout.setSpacing(brand.SP_3)
+        self.acik_label = self._create_stat_card("Acik", "0", brand.ERROR)
+        self.devam_label = self._create_stat_card("Devam Eden", "0", brand.WARNING)
+        self.bugun_label = self._create_stat_card("Bugun", "0", brand.INFO)
         stats_layout.addWidget(self.acik_label)
         stats_layout.addWidget(self.devam_label)
         stats_layout.addWidget(self.bugun_label)
@@ -519,42 +651,45 @@ class UretimDurusPage(BasePage):
 
         # ===== TOOLBAR =====
         toolbar = QHBoxLayout()
-        toolbar.setSpacing(12)
+        toolbar.setSpacing(brand.SP_3)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Ara (Hat, Ekipman, Aciklama)")
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
-                background: {s['input_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 14px;
-                color: {s['text']};
-                font-size: 13px;
-                min-width: 220px;
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY_SM}px;
+                min-width: {brand.sp(240)}px;
             }}
-            QLineEdit:focus {{ border-color: {s['primary']}; }}
+            QLineEdit:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}
         """)
         self.search_input.returnPressed.connect(self._load_data)
         toolbar.addWidget(self.search_input)
 
         combo_style = f"""
             QComboBox {{
-                background: {s['input_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 12px;
-                color: {s['text']};
-                min-width: 130px;
-                font-size: 13px;
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                min-width: {brand.sp(140)}px;
+                font-size: {brand.FS_BODY_SM}px;
             }}
-            QComboBox:hover {{ border-color: {s['border_light']}; }}
-            QComboBox::drop-down {{ border: none; width: 30px; }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(28)}px; }}
             QComboBox QAbstractItemView {{
-                background: {s['card_bg']};
-                border: 1px solid {s['border']};
-                color: {s['text']};
-                selection-background-color: {s['primary']};
+                background: {brand.BG_ELEVATED};
+                border: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+                selection-background-color: {brand.PRIMARY};
+                selection-color: white;
             }}
         """
 
@@ -564,6 +699,7 @@ class UretimDurusPage(BasePage):
         self.durum_combo.addItem("Bakimda", "BAKIMDA")
         self.durum_combo.addItem("Kapali", "KAPALI")
         self.durum_combo.setStyleSheet(combo_style)
+        self.durum_combo.setCursor(Qt.PointingHandCursor)
         self.durum_combo.currentIndexChanged.connect(self._load_data)
         toolbar.addWidget(self.durum_combo)
 
@@ -571,6 +707,7 @@ class UretimDurusPage(BasePage):
         self.hat_filter.addItem("Tum Hatlar", None)
         self._load_hat_filter()
         self.hat_filter.setStyleSheet(combo_style)
+        self.hat_filter.setCursor(Qt.PointingHandCursor)
         self.hat_filter.currentIndexChanged.connect(self._load_data)
         toolbar.addWidget(self.hat_filter)
 
@@ -579,34 +716,41 @@ class UretimDurusPage(BasePage):
         toolbar.addWidget(self.create_export_button(title="Durus Kayitlari"))
 
         refresh_btn = QPushButton("Yenile")
+        refresh_btn.setCursor(Qt.PointingHandCursor)
         refresh_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {s['input_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 14px;
-                font-size: 13px;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
             QPushButton:hover {{
-                background: {s['border']};
-                border-color: {s['primary']};
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
             }}
         """)
         refresh_btn.clicked.connect(self._load_data)
         toolbar.addWidget(refresh_btn)
 
-        add_btn = QPushButton("+ Yeni Durus")
+        add_btn = QPushButton("Yeni Durus")
+        add_btn.setCursor(Qt.PointingHandCursor)
         add_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {s['primary']};
+                background: {brand.PRIMARY};
                 color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-size: 13px;
-                font-weight: 600;
+                border: 1px solid {brand.PRIMARY};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
-            QPushButton:hover {{ background: {s['primary_hover']}; }}
+            QPushButton:hover {{
+                background: {brand.PRIMARY_HOVER};
+                border-color: {brand.PRIMARY_HOVER};
+            }}
         """)
         add_btn.clicked.connect(self._add_new)
         toolbar.addWidget(add_btn)
@@ -617,80 +761,102 @@ class UretimDurusPage(BasePage):
         self.table = QTableWidget()
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {s['card_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 10px;
-                gridline-color: {s['border']};
-                color: {s['text']};
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                gridline-color: transparent;
+                font-size: {brand.FS_BODY}px;
+                outline: none;
             }}
             QTableWidget::item {{
-                padding: 10px;
-                border-bottom: 1px solid {s['border']};
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background: {s['primary']};
+                background: {_soft(brand.PRIMARY, 0.18)};
+                color: {brand.TEXT};
             }}
             QTableWidget::item:hover {{
-                background: rgba(220, 38, 38, 0.1);
+                background: {brand.BG_HOVER};
             }}
             QHeaderView::section {{
-                background: rgba(0,0,0,0.3);
-                color: {s['text_secondary']};
-                padding: 12px 8px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_3}px;
                 border: none;
-                border-bottom: 2px solid {s['primary']};
-                font-weight: 600;
-                font-size: 12px;
-                text-transform: uppercase;
+                border-bottom: 1px solid {brand.BORDER};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_CAPTION}px;
+                letter-spacing: 0.5px;
             }}
+            QScrollBar:vertical {{
+                background: transparent;
+                width: {brand.sp(8)}px;
+                margin: 0;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {brand.BORDER_HARD};
+                border-radius: {brand.sp(4)}px;
+                min-height: {brand.sp(30)}px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
         """)
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Hat", "Ekipman", "Durus Nedeni", "Aciklama",
-            "Baslama", "Sure (dk)", "Durum", "Islem"
+            "ID", "HAT", "EKIPMAN", "DURUS NEDENI", "ACIKLAMA",
+            "BASLAMA", "SURE (DK)", "DURUM", "ISLEM"
         ])
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.table.setColumnWidth(0, 50)
-        self.table.setColumnWidth(1, 130)
-        self.table.setColumnWidth(2, 160)
-        self.table.setColumnWidth(3, 130)
-        self.table.setColumnWidth(5, 120)
-        self.table.setColumnWidth(6, 80)
-        self.table.setColumnWidth(7, 95)
-        self.table.setColumnWidth(8, 120)
+        self.table.horizontalHeader().setHighlightSections(False)
+        self.table.setColumnWidth(0, brand.sp(50))
+        self.table.setColumnWidth(1, brand.sp(140))
+        self.table.setColumnWidth(2, brand.sp(170))
+        self.table.setColumnWidth(3, brand.sp(140))
+        self.table.setColumnWidth(5, brand.sp(130))
+        self.table.setColumnWidth(6, brand.sp(90))
+        self.table.setColumnWidth(7, brand.sp(100))
+        self.table.setColumnWidth(8, brand.sp(140))
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(44))
+        self.table.setShowGrid(False)
+        self.table.setFrameShape(QFrame.NoFrame)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setAlternatingRowColors(True)
+        self.table.setAlternatingRowColors(False)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         layout.addWidget(self.table, 1)
 
     def _create_stat_card(self, title: str, value: str, color: str) -> QFrame:
         frame = QFrame()
-        frame.setFixedSize(120, 70)
+        frame.setFixedSize(brand.sp(140), brand.sp(76))
         frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.s['card_bg']};
-                border: 1px solid {self.s['border']};
-                border-left: 4px solid {color};
-                border-radius: 10px;
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-left: 3px solid {color};
+                border-radius: {brand.R_MD}px;
             }}
         """)
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(10)
-        shadow.setXOffset(0)
-        shadow.setYOffset(2)
-        shadow.setColor(QColor(0, 0, 0, 40))
-        frame.setGraphicsEffect(shadow)
 
         fl = QVBoxLayout(frame)
-        fl.setContentsMargins(12, 8, 12, 8)
-        fl.setSpacing(2)
+        fl.setContentsMargins(brand.SP_3, brand.SP_2, brand.SP_3, brand.SP_2)
+        fl.setSpacing(brand.SP_1)
 
-        t_label = QLabel(title)
-        t_label.setStyleSheet(f"color: {self.s['text_muted']}; font-size: 11px; font-weight: 500;")
+        t_label = QLabel(title.upper())
+        t_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; letter-spacing: 0.6px; "
+            f"background: transparent; border: none;"
+        )
         fl.addWidget(t_label)
 
         v_label = QLabel(value)
-        v_label.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
+        v_label.setStyleSheet(
+            f"color: {color}; font-size: {brand.FS_HEADING_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"background: transparent; border: none;"
+        )
         v_label.setObjectName("value_label")
         fl.addWidget(v_label)
 
@@ -714,7 +880,6 @@ class UretimDurusPage(BasePage):
                     pass
 
     def _load_data(self):
-        s = self.s
         conn = None
         try:
             conn = get_db_connection()
@@ -768,14 +933,14 @@ class UretimDurusPage(BasePage):
             rows = cursor.fetchall()
 
             durum_map = {"ACIK": "Acik", "BAKIMDA": "Bakimda", "KAPALI": "Kapali"}
-            durum_colors = {"ACIK": s['error'], "BAKIMDA": s['warning'], "KAPALI": s['success']}
+            durum_colors = {"ACIK": brand.ERROR, "BAKIMDA": brand.WARNING, "KAPALI": brand.SUCCESS}
 
             self.table.setRowCount(len(rows))
             for i, row in enumerate(rows):
                 # ID
                 item = QTableWidgetItem(str(row[0]))
                 item.setTextAlignment(Qt.AlignCenter)
-                item.setForeground(QColor(s['text_muted']))
+                item.setForeground(QColor(brand.TEXT_DIM))
                 self.table.setItem(i, 0, item)
 
                 # Hat
@@ -797,19 +962,19 @@ class UretimDurusPage(BasePage):
                 tarih_item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(i, 5, tarih_item)
 
-                # Süre
+                # Sure
                 sure_text = str(row[6]) if row[6] else "Devam"
                 sure_item = QTableWidgetItem(sure_text)
                 sure_item.setTextAlignment(Qt.AlignCenter)
                 if not row[6]:
-                    sure_item.setForeground(QColor(s['warning']))
+                    sure_item.setForeground(QColor(brand.WARNING))
                 self.table.setItem(i, 6, sure_item)
 
                 # Durum
                 durum_val = row[7] or 'ACIK'
                 durum_item = QTableWidgetItem(durum_map.get(durum_val, durum_val))
                 durum_item.setTextAlignment(Qt.AlignCenter)
-                durum_item.setForeground(QColor(durum_colors.get(durum_val, s['text'])))
+                durum_item.setForeground(QColor(durum_colors.get(durum_val, brand.TEXT)))
                 self.table.setItem(i, 7, durum_item)
 
                 # Action Buttons
@@ -818,7 +983,6 @@ class UretimDurusPage(BasePage):
                     ("", "Sil", lambda _, rid=row[0]: self._delete_item(rid), "delete"),
                 ])
                 self.table.setCellWidget(i, 8, btn_widget)
-                self.table.setRowHeight(i, 48)
 
         except Exception as e:
             QMessageBox.warning(self, "Hata", str(e))
