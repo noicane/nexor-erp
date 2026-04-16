@@ -23,6 +23,7 @@ from PySide6.QtPrintSupport import QPrinter, QPrintDialog
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 NAS_PERSONEL_PATH = r"\\AtlasNAS\Personel"
 ATLAS_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "Atlas.png")
@@ -40,14 +41,15 @@ class PersonelDetayDialog(QDialog):
         self.foto_pixmap = None
 
         self.setWindowTitle("Yeni Personel" if self.is_new else "Personel Detayı")
-        self.setMinimumSize(900, 700)
+        self.setMinimumSize(brand.sp(900), brand.sp(700))
         if not self.is_new:
             self._load_data()
             self._find_photo()
         self._setup_ui()
     
     def _load_data(self):
-        """Personel verilerini yükle"""
+        """Personel verilerini yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -77,39 +79,51 @@ class PersonelDetayDialog(QDialog):
             if row:
                 columns = [desc[0] for desc in cursor.description]
                 self.personel_data = dict(zip(columns, row))
-
-            conn.close()
         except Exception as e:
-            print(f"Personel yükleme hatası: {e}")
+            print(f"Personel yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}
-            QLabel {{ color: {self.theme.get('text', '#fff')}; }}
-            QTabWidget::pane {{ 
-                border: 1px solid {self.theme.get('border', '#3d4454')}; 
-                background: {self.theme.get('bg_card', '#242938')}; 
-                border-radius: 8px; 
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
             }}
-            QTabBar::tab {{ 
-                background: {self.theme.get('bg_input', '#2d3548')}; 
-                color: {self.theme.get('text', '#fff')}; 
-                padding: 10px 20px; 
-                border: 1px solid {self.theme.get('border', '#3d4454')}; 
-                border-bottom: none; 
-                border-radius: 6px 6px 0 0; 
-                margin-right: 2px; 
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                background: {brand.BG_CARD};
+                border-radius: {brand.R_LG}px;
             }}
-            QTabBar::tab:selected {{ 
-                background: {self.theme.get('bg_card', '#242938')}; 
-                border-bottom: 2px solid {self.theme.get('primary', '#6366f1')}; 
+            QTabBar::tab {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                padding: {brand.SP_3}px {brand.SP_5}px;
+                border: 1px solid {brand.BORDER};
+                border-bottom: none;
+                border-radius: {brand.R_SM}px {brand.R_SM}px 0 0;
+                margin-right: 2px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QTabBar::tab:selected {{
+                background: {brand.BG_CARD};
+                border-bottom: 2px solid {brand.PRIMARY};
             }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text', '#fff')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus {{
+                border-color: {brand.PRIMARY};
             }}
         """)
         
@@ -118,14 +132,14 @@ class PersonelDetayDialog(QDialog):
         
         # Header
         header = QFrame()
-        header.setFixedHeight(100)
-        header.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-bottom: 1px solid {self.theme.get('border')};")
+        header.setFixedHeight(brand.sp(100))
+        header.setStyleSheet(f"background: {brand.BG_CARD}; border-bottom: 1px solid {brand.BORDER};")
         h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(20, 10, 20, 10)
+        h_layout.setContentsMargins(brand.SP_5, brand.SP_3, brand.SP_5, brand.SP_3)
 
         # Foto
         self.lbl_foto = QLabel()
-        self.lbl_foto.setFixedSize(80, 80)
+        self.lbl_foto.setFixedSize(brand.sp(80), brand.sp(80))
         self.lbl_foto.setAlignment(Qt.AlignCenter)
         self.lbl_foto.setCursor(Qt.PointingHandCursor)
         self.lbl_foto.mousePressEvent = lambda e: self._select_photo()
@@ -139,45 +153,45 @@ class PersonelDetayDialog(QDialog):
         self._update_foto_label()
         h_layout.addWidget(self.lbl_foto)
 
-        # Foto butonları
+        # Foto butonlari
         foto_btn_layout = QVBoxLayout()
-        foto_btn_layout.setSpacing(4)
+        foto_btn_layout.setSpacing(brand.SP_1)
         btn_foto_sec = QPushButton("Resim Sec")
-        btn_foto_sec.setFixedWidth(80)
+        btn_foto_sec.setFixedWidth(brand.sp(80))
         btn_foto_sec.setCursor(Qt.PointingHandCursor)
         btn_foto_sec.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 4px;
-                padding: 4px;
-                font-size: 10px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_1}px;
+                font-size: {brand.FS_CAPTION}px;
             }}
-            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; }}
         """)
         btn_foto_sec.clicked.connect(self._select_photo)
         foto_btn_layout.addWidget(btn_foto_sec)
         foto_btn_layout.addStretch()
         h_layout.addLayout(foto_btn_layout)
 
-        # İsim ve bilgiler
+        # Isim ve bilgiler
         info_layout = QVBoxLayout()
-        info_layout.setSpacing(4)
+        info_layout.setSpacing(brand.SP_1)
 
         name_label = QLabel(f"{ad} {soyad}")
-        name_label.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 18px; font-weight: bold;")
+        name_label.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_HEADING}px; font-weight: {brand.FW_SEMIBOLD};")
         info_layout.addWidget(name_label)
 
         if not self.is_new:
             dept = self.personel_data.get('departman_adi', '-')
             pos = self.personel_data.get('pozisyon_adi', '-')
             sub_label = QLabel(f"{dept} - {pos}")
-            sub_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+            sub_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
             info_layout.addWidget(sub_label)
         else:
             sub_label = QLabel("Yeni kayit olusturuluyor...")
-            sub_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+            sub_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
             info_layout.addWidget(sub_label)
 
         h_layout.addLayout(info_layout, 1)
@@ -185,29 +199,33 @@ class PersonelDetayDialog(QDialog):
         # Durum badge
         if not self.is_new:
             aktif = self.personel_data.get('aktif_mi', True)
+            durum_color = brand.SUCCESS if aktif else brand.ERROR
+            durum_bg = f"rgba(34,197,94,0.2)" if aktif else f"rgba(239,68,68,0.2)"
             durum_label = QLabel("Aktif" if aktif else "Pasif")
             durum_label.setStyleSheet(f"""
-                color: {'#22c55e' if aktif else '#ef4444'};
-                background: {'rgba(34,197,94,0.2)' if aktif else 'rgba(239,68,68,0.2)'};
-                padding: 6px 12px;
-                border-radius: 12px;
-                font-weight: bold;
+                color: {durum_color};
+                background: {durum_bg};
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-radius: {brand.R_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_SM}px;
             """)
             h_layout.addWidget(durum_label)
 
         # Kapat butonu
         close_btn = QPushButton("Kapat")
-        close_btn.setFixedSize(60, 36)
+        close_btn.setFixedSize(brand.sp(60), brand.sp(38))
         close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
-                color: {self.theme.get('text_muted')};
-                border: 1px solid {self.theme.get('border', '#555')};
-                border-radius: 6px;
-                font-size: 12px;
+                color: {brand.TEXT_MUTED};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
-            QPushButton:hover {{ color: {self.theme.get('danger', '#ef4444')}; border-color: {self.theme.get('danger', '#ef4444')}; }}
+            QPushButton:hover {{ color: {brand.ERROR}; border-color: {brand.ERROR}; }}
         """)
         close_btn.clicked.connect(self.close)
         h_layout.addWidget(close_btn)
@@ -216,9 +234,9 @@ class PersonelDetayDialog(QDialog):
         
         # Tab Widget
         tabs = QTabWidget()
-        tabs.addTab(self._create_genel_tab(), "📋 Genel Bilgiler")
-        tabs.addTab(self._create_iletisim_tab(), "📞 İletişim")
-        tabs.addTab(self._create_calisma_tab(), "💼 Çalışma Bilgileri")
+        tabs.addTab(self._create_genel_tab(), "Genel Bilgiler")
+        tabs.addTab(self._create_iletisim_tab(), "Iletisim")
+        tabs.addTab(self._create_calisma_tab(), "Calisma Bilgileri")
         
         # Diğer sekmeler sadece var olan kayıtlar için
         if not self.is_new:
@@ -231,19 +249,22 @@ class PersonelDetayDialog(QDialog):
         
         # Alt butonlar
         btn_layout = QHBoxLayout()
-        btn_layout.setContentsMargins(20, 10, 20, 10)
+        btn_layout.setContentsMargins(brand.SP_5, brand.SP_3, brand.SP_5, brand.SP_3)
 
         # Kart Bas butonu (sadece mevcut kayitlar icin)
         if not self.is_new:
             card_btn = QPushButton("Kart Bas")
+            card_btn.setCursor(Qt.PointingHandCursor)
+            card_btn.setFixedHeight(brand.sp(38))
             card_btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: #dc2626;
+                    background: {brand.ERROR};
                     color: white;
                     border: none;
-                    border-radius: 6px;
-                    padding: 10px 24px;
-                    font-weight: bold;
+                    border-radius: {brand.R_SM}px;
+                    padding: 0 {brand.SP_6}px;
+                    font-size: {brand.FS_BODY}px;
+                    font-weight: {brand.FW_SEMIBOLD};
                 }}
                 QPushButton:hover {{ background: #b91c1c; }}
             """)
@@ -253,16 +274,19 @@ class PersonelDetayDialog(QDialog):
         btn_layout.addStretch()
 
         save_btn = QPushButton("Kaydet")
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFixedHeight(brand.sp(38))
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#6366f1')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 24px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
-            QPushButton:hover {{ background: {self.theme.get('primary_hover', '#5558e3')}; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
@@ -273,8 +297,8 @@ class PersonelDetayDialog(QDialog):
         """Genel bilgiler sekmesi"""
         widget = QWidget()
         layout = QFormLayout(widget)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_3)
         
         sicil_val = self.personel_data.get('sicil_no', '')
         if self.is_new and not sicil_val:
@@ -346,8 +370,8 @@ class PersonelDetayDialog(QDialog):
         """İletişim bilgileri sekmesi"""
         widget = QWidget()
         layout = QFormLayout(widget)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_3)
         
         self.txt_telefon = QLineEdit(str(self.personel_data.get('telefon', '') or ''))
         layout.addRow("Telefon:", self.txt_telefon)
@@ -366,8 +390,8 @@ class PersonelDetayDialog(QDialog):
         """Çalışma bilgileri sekmesi"""
         widget = QWidget()
         layout = QFormLayout(widget)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_3)
         
         # Departman
         self.cmb_dept = QComboBox()
@@ -412,9 +436,9 @@ class PersonelDetayDialog(QDialog):
         
         # İzin özeti
         ozet_frame = QFrame()
-        ozet_frame.setStyleSheet(f"background: {self.theme.get('bg_main')}; border-radius: 8px;")
+        ozet_frame.setStyleSheet(f"background: {brand.BG_MAIN}; border-radius: {brand.R_LG}px;")
         ozet_layout = QHBoxLayout(ozet_frame)
-        ozet_layout.setContentsMargins(16, 16, 16, 16)
+        ozet_layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
         
         # Yıllık izin kartı
         yillik_kart = self._create_izin_kart("Yıllık İzin", "14", "3", "#22c55e")
@@ -427,9 +451,11 @@ class PersonelDetayDialog(QDialog):
         ozet_layout.addWidget(rapor_kart)
         
         layout.addWidget(ozet_frame)
-        
-        # İzin geçmişi tablosu
-        layout.addWidget(QLabel("📋 İzin Geçmişi"))
+
+        # Izin gecmisi tablosu
+        lbl_izin = QLabel("Izin Gecmisi")
+        lbl_izin.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_SEMIBOLD};")
+        layout.addWidget(lbl_izin)
         
         self.izin_table = QTableWidget()
         self.izin_table.setColumnCount(5)
@@ -450,18 +476,25 @@ class PersonelDetayDialog(QDialog):
         
         # Toolbar
         toolbar = QHBoxLayout()
-        toolbar.addWidget(QLabel("📦 Teslim Edilen Zimmetler"))
+        lbl_zimmet = QLabel("Teslim Edilen Zimmetler")
+        lbl_zimmet.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_SEMIBOLD};")
+        toolbar.addWidget(lbl_zimmet)
         toolbar.addStretch()
         
-        add_btn = QPushButton("➕ Yeni Zimmet")
+        add_btn = QPushButton("Yeni Zimmet")
+        add_btn.setCursor(Qt.PointingHandCursor)
+        add_btn.setFixedHeight(brand.sp(38))
         add_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
+            QPushButton:hover {{ background: #059669; }}
         """)
         add_btn.clicked.connect(self._add_zimmet)
         toolbar.addWidget(add_btn)
@@ -472,7 +505,7 @@ class PersonelDetayDialog(QDialog):
         self.zimmet_table = QTableWidget()
         self.zimmet_table.setColumnCount(6)
         self.zimmet_table.setHorizontalHeaderLabels(["Teslim Tarihi", "Zimmet Türü", "Miktar", "Beden", "Durum", "İşlem"])
-        self.zimmet_table.setColumnWidth(5, 120)
+        self.zimmet_table.setColumnWidth(5, brand.sp(120))
         self.zimmet_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.zimmet_table.setStyleSheet(self._table_style())
         self._load_zimmetler()
@@ -489,11 +522,13 @@ class PersonelDetayDialog(QDialog):
         
         # Başlık ve özet
         header = QHBoxLayout()
-        header.addWidget(QLabel("📊 Personel Yetkinlikleri"))
+        lbl_yetkinlik = QLabel("Personel Yetkinlikleri")
+        lbl_yetkinlik.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_SEMIBOLD};")
+        header.addWidget(lbl_yetkinlik)
         header.addStretch()
         
         self.lbl_yetkinlik_ozet = QLabel()
-        self.lbl_yetkinlik_ozet.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.lbl_yetkinlik_ozet.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
         header.addWidget(self.lbl_yetkinlik_ozet)
         
         layout.addLayout(header)
@@ -509,10 +544,10 @@ class PersonelDetayDialog(QDialog):
         ]
         for kod, ad, renk in seviye_bilgileri:
             box = QLabel(f" {kod} ")
-            box.setStyleSheet(f"background: {renk}; color: white; border-radius: 4px; padding: 2px 6px; font-weight: bold; font-size: 10px;")
+            box.setStyleSheet(f"background: {renk}; color: white; border-radius: {brand.R_SM}px; padding: {brand.SP_1}px {brand.SP_2}px; font-weight: {brand.FW_BOLD}; font-size: {brand.FS_CAPTION}px;")
             legend.addWidget(box)
             txt = QLabel(ad)
-            txt.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 10px;")
+            txt.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px;")
             legend.addWidget(txt)
         legend.addStretch()
         layout.addLayout(legend)
@@ -523,11 +558,11 @@ class PersonelDetayDialog(QDialog):
         self.yetkinlik_table.setHorizontalHeaderLabels(["Departman", "Kod", "Yetkinlik", "Seviye", "Hedef"])
         self.yetkinlik_table.setStyleSheet(self._table_style())
         self.yetkinlik_table.verticalHeader().setVisible(False)
-        self.yetkinlik_table.setColumnWidth(0, 120)
-        self.yetkinlik_table.setColumnWidth(1, 80)
+        self.yetkinlik_table.setColumnWidth(0, brand.sp(120))
+        self.yetkinlik_table.setColumnWidth(1, brand.sp(80))
         self.yetkinlik_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.yetkinlik_table.setColumnWidth(3, 60)
-        self.yetkinlik_table.setColumnWidth(4, 60)
+        self.yetkinlik_table.setColumnWidth(3, brand.sp(60))
+        self.yetkinlik_table.setColumnWidth(4, brand.sp(60))
         
         self._load_yetkinlikler()
         
@@ -536,14 +571,15 @@ class PersonelDetayDialog(QDialog):
         return widget
     
     def _load_yetkinlikler(self):
-        """Personel yetkinliklerini yükle"""
+        """Personel yetkinliklerini yukle"""
         if self.is_new:
             return
-        
+
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 SELECT y.kategori, y.kod, y.ad, ISNULL(py.seviye, 0), ISNULL(py.hedef_seviye, 0)
                 FROM ik.yetkinlikler y
@@ -551,11 +587,8 @@ class PersonelDetayDialog(QDialog):
                 WHERE y.aktif_mi = 1
                 ORDER BY y.kategori, y.kod
             """, (self.personel_id,))
-            
+
             rows = cursor.fetchall()
-            conn.close()
-            
-            print(f"Yetkinlik kayıtları: {len(rows)} kayıt bulundu")
             
             self.yetkinlik_table.setRowCount(len(rows))
             toplam, sayi, eksik = 0, 0, 0
@@ -588,40 +621,41 @@ class PersonelDetayDialog(QDialog):
             
             ort = toplam / sayi if sayi > 0 else 0
             self.lbl_yetkinlik_ozet.setText(f"Toplam: {sayi} | Ortalama: {ort:.1f} | Eksik: {eksik}")
-            
-            if len(rows) == 0:
-                print("Yetkinlik tanımı bulunamadı")
-            
         except Exception as e:
-            print(f"Yetkinlik yükleme hatası: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Yetkinlik yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _create_izin_kart(self, baslik: str, hak: str, kullanilan: str, renk: str) -> QFrame:
         """İzin özet kartı"""
         frame = QFrame()
         frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_card')};
+                background: {brand.BG_CARD};
                 border: 1px solid {renk};
-                border-radius: 8px;
+                border-radius: {brand.R_LG}px;
             }}
         """)
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(16, 12, 16, 12)
-        
+        layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+
         title = QLabel(baslik)
-        title.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        title.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px;")
         layout.addWidget(title)
-        
-        value = QLabel(f"{kullanilan} / {hak} gün")
-        value.setStyleSheet(f"color: {renk}; font-size: 18px; font-weight: bold;")
+
+        value = QLabel(f"{kullanilan} / {hak} gun")
+        value.setStyleSheet(f"color: {renk}; font-size: {brand.FS_HEADING}px; font-weight: {brand.FW_BOLD};")
         layout.addWidget(value)
         
         return frame
     
     def _generate_sicil_no(self) -> str:
         """Otomatik sicil numarasi uret: ATL + siradaki numara"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -632,14 +666,20 @@ class PersonelDetayDialog(QDialog):
                   AND ISNUMERIC(REPLACE(sicil_no, 'ATL', '')) = 1
             """)
             row = cursor.fetchone()
-            conn.close()
             son = row[0] if row[0] else 0
             return f"ATL{son + 1}"
         except Exception:
             return ""
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _load_departmanlar_kart(self):
-        """Kart sekmesindeki departman combo'sunu yükle"""
+        """Kart sekmesindeki departman combo'sunu yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -652,12 +692,18 @@ class PersonelDetayDialog(QDialog):
                     idx = i
             if not self.is_new:
                 self.cmb_dept_kart.setCurrentIndex(idx)
-            conn.close()
         except Exception as e:
-            print(f"Departman (kart) yükleme hatası: {e}")
+            print(f"Departman (kart) yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _load_pozisyonlar_kart(self):
-        """Kart sekmesindeki pozisyon combo'sunu yükle"""
+        """Kart sekmesindeki pozisyon combo'sunu yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -670,12 +716,18 @@ class PersonelDetayDialog(QDialog):
                     idx = i
             if not self.is_new:
                 self.cmb_poz_kart.setCurrentIndex(idx)
-            conn.close()
         except Exception as e:
-            print(f"Pozisyon (kart) yükleme hatası: {e}")
+            print(f"Pozisyon (kart) yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _load_departmanlar(self):
-        """Departmanları yükle"""
+        """Departmanlari yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -688,16 +740,20 @@ class PersonelDetayDialog(QDialog):
                 if row[0] == current_id:
                     idx = i
 
-            # Sadece var olan kayıtta seçili index'i ayarla
             if not self.is_new:
                 self.cmb_dept.setCurrentIndex(idx)
-
-            conn.close()
         except Exception as e:
-            print(f"Departman yükleme hatası: {e}")
+            print(f"Departman yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _load_pozisyonlar(self):
-        """Pozisyonları yükle"""
+        """Pozisyonlari yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -710,24 +766,27 @@ class PersonelDetayDialog(QDialog):
                 if row[0] == current_id:
                     idx = i
 
-            # Sadece var olan kayıtta seçili index'i ayarla
             if not self.is_new:
                 self.cmb_poz.setCurrentIndex(idx)
-            
-            conn.close()
         except Exception as e:
-            print(f"Pozisyon yükleme hatası: {e}")
+            print(f"Pozisyon yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _load_izin_gecmisi(self):
-        """İzin geçmişini yükle"""
+        """Izin gecmisini yukle"""
         if self.is_new:
             return
-        
+
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # İzin verilerini çek
+
             cursor.execute("""
                 SELECT it.baslangic_tarihi, iz.ad, it.gun_sayisi, it.durum, it.aciklama
                 FROM ik.izin_talepleri it
@@ -735,51 +794,48 @@ class PersonelDetayDialog(QDialog):
                 WHERE it.personel_id = ?
                 ORDER BY it.baslangic_tarihi DESC
             """, (self.personel_id,))
-            
+
             rows = cursor.fetchall()
-            print(f"İzin geçmişi: {len(rows)} kayıt bulundu")
-            
+
             self.izin_table.setRowCount(0)
             for row in rows:
                 row_idx = self.izin_table.rowCount()
                 self.izin_table.insertRow(row_idx)
-                
+
                 tarih = row[0].strftime('%d.%m.%Y') if row[0] else '-'
                 self.izin_table.setItem(row_idx, 0, QTableWidgetItem(tarih))
                 self.izin_table.setItem(row_idx, 1, QTableWidgetItem(row[1] or ''))
                 self.izin_table.setItem(row_idx, 2, QTableWidgetItem(str(row[2] or '')))
-                
+
                 durum_item = QTableWidgetItem(row[3] or '')
                 if row[3] == 'ONAYLANDI':
-                    durum_item.setForeground(QColor('#22c55e'))
+                    durum_item.setForeground(QColor(brand.SUCCESS))
                 elif row[3] == 'REDDEDILDI':
-                    durum_item.setForeground(QColor('#ef4444'))
+                    durum_item.setForeground(QColor(brand.ERROR))
                 else:
-                    durum_item.setForeground(QColor('#f59e0b'))
+                    durum_item.setForeground(QColor(brand.WARNING))
                 self.izin_table.setItem(row_idx, 3, durum_item)
-                
+
                 self.izin_table.setItem(row_idx, 4, QTableWidgetItem(row[4] or ''))
-            
-            conn.close()
-            
-            # Eğer kayıt yoksa bilgi mesajı
-            if len(rows) == 0:
-                print("Bu personel için izin kaydı bulunamadı")
-                
         except Exception as e:
-            print(f"İzin geçmişi yükleme hatası: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Izin gecmisi yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _load_zimmetler(self):
-        """Zimmetleri yükle"""
+        """Zimmetleri yukle"""
         if self.is_new:
             return
-        
+
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 SELECT z.teslim_tarihi, zt.ad, z.miktar, z.beden, z.durum, z.id
                 FROM ik.zimmetler z
@@ -787,9 +843,8 @@ class PersonelDetayDialog(QDialog):
                 WHERE z.personel_id = ? AND z.durum = 'TESLIM'
                 ORDER BY z.teslim_tarihi DESC
             """, (self.personel_id,))
-            
+
             rows = cursor.fetchall()
-            print(f"Zimmet kayıtları: {len(rows)} kayıt bulundu")
             
             self.zimmet_table.setRowCount(0)
             for row in rows:
@@ -804,12 +859,13 @@ class PersonelDetayDialog(QDialog):
                 self.zimmet_table.setItem(row_idx, 4, QTableWidgetItem(row[4] or ''))
                 
                 # İade butonu
-                btn = QPushButton("İade")
-                btn.setFixedSize(70, 30)
+                btn = QPushButton("Iade")
+                btn.setFixedSize(brand.sp(70), brand.sp(30))
+                btn.setCursor(Qt.PointingHandCursor)
                 btn.setStyleSheet(f"""
                     QPushButton {{
-                        background: #EF4444; color: white; border: none;
-                        border-radius: 4px; font-weight: bold; font-size: 12px;
+                        background: {brand.ERROR}; color: white; border: none;
+                        border-radius: {brand.R_SM}px; font-weight: {brand.FW_SEMIBOLD}; font-size: {brand.FS_BODY_SM}px;
                     }}
                     QPushButton:hover {{ background: #DC2626; }}
                 """)
@@ -818,41 +874,45 @@ class PersonelDetayDialog(QDialog):
                 btn_layout = QHBoxLayout(btn_widget)
                 btn_layout.addWidget(btn)
                 btn_layout.setAlignment(Qt.AlignCenter)
-                btn_layout.setContentsMargins(4, 4, 4, 4)
+                btn_layout.setContentsMargins(brand.SP_1, brand.SP_1, brand.SP_1, brand.SP_1)
                 self.zimmet_table.setCellWidget(row_idx, 5, btn_widget)
-                self.zimmet_table.setRowHeight(row_idx, 42)
-            
-            conn.close()
-            
-            if len(rows) == 0:
-                print("Bu personel için zimmet kaydı bulunamadı")
-                
+                self.zimmet_table.setRowHeight(row_idx, brand.sp(42))
         except Exception as e:
-            print(f"Zimmet yükleme hatası: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Zimmet yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_main')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                color: {brand.TEXT};
+                outline: none;
             }}
             QTableWidget::item {{
-                padding: 8px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
             }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                padding: 10px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
                 border: none;
-                font-weight: bold;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """
-    
+
     def _add_zimmet(self):
         """Yeni zimmet ekle"""
         QMessageBox.information(self, "Bilgi", "Zimmet ekleme dialog'u açılacak...")
@@ -861,22 +921,27 @@ class PersonelDetayDialog(QDialog):
         """Zimmet iade et"""
         reply = QMessageBox.question(self, "Onay", "Bu zimmet iade edilecek. Devam edilsin mi?")
         if reply == QMessageBox.Yes:
+            conn = None
             try:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute("""
-                    UPDATE ik.zimmetler 
+                    UPDATE ik.zimmetler
                     SET durum = 'IADE', iade_tarihi = GETDATE(), guncelleme_tarihi = GETDATE()
                     WHERE id = ?
                 """, (zimmet_id,))
                 conn.commit()
                 LogManager.log_update('ik', 'ik.zimmetler', zimmet_id, 'Zimmet iade edildi (personel detay)')
-                conn.close()
-
                 self._load_zimmetler()
-                QMessageBox.information(self, "Başarılı", "Zimmet iade edildi.")
+                QMessageBox.information(self, "Basarili", "Zimmet iade edildi.")
             except Exception as e:
-                QMessageBox.critical(self, "Hata", f"İade hatası: {e}")
+                QMessageBox.critical(self, "Hata", f"Iade hatasi: {e}")
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
     
     def _save(self):
         """Personel bilgilerini kaydet"""
@@ -916,112 +981,116 @@ class PersonelDetayDialog(QDialog):
                 QMessageBox.warning(self, "Uyarı", "Departman ve pozisyon seçimi zorunludur!")
                 return
             
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            if self.is_new:
-                # YENİ KAYIT - INSERT
-                calisma_durumu = self.cmb_durum.currentText()
-                aktif_mi = 0 if calisma_durumu == "İşten Ayrıldı" else 1
+            conn = None
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
 
-                kan_grubu = self.cmb_kan.currentText() or None
+                if self.is_new:
+                    calisma_durumu = self.cmb_durum.currentText()
+                    aktif_mi = 0 if calisma_durumu == "Isten Ayrildi" else 1
 
-                cursor.execute("""
-                    INSERT INTO ik.personeller (
-                        sicil_no, ad, soyad, tc_kimlik_no, dogum_tarihi, cinsiyet, kart_no, kart_id,
-                        telefon, email, adres, departman_id, pozisyon_id, ise_giris_tarihi,
-                        calisma_durumu, aktif_mi, kan_grubu, olusturma_tarihi, guncelleme_tarihi
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE())
-                """, (
-                    self.txt_sicil.text().strip() or None,
-                    ad,
-                    soyad,
-                    tc or None,
-                    self.dt_dogum.date().toPython(),
-                    self.cmb_cinsiyet.currentText(),
-                    self.txt_kart.text().strip() or None,
-                    self.txt_kart_id.text().strip() or None,
-                    self.txt_telefon.text().strip() or None,
-                    self.txt_email.text().strip() or None,
-                    self.txt_adres.toPlainText().strip() or None,
-                    dept_id,
-                    poz_id,
-                    self.dt_giris.date().toPython(),
-                    calisma_durumu,
-                    aktif_mi,
-                    kan_grubu
-                ))
-                
-                conn.commit()
-                LogManager.log_insert('ik', 'ik.personeller', None,
-                                      f'Yeni personel eklendi: {ad} {soyad}')
-                conn.close()
+                    kan_grubu = self.cmb_kan.currentText() or None
 
-                QMessageBox.information(self, "Başarılı",
-                    f"{ad} {soyad} başarıyla sisteme eklendi.\n\n"
-                    "Personelin izin hakları, zimmetleri ve yetkinlikleri "
-                    "personel detayından yönetilebilir.")
-                self.accept()
-                
-            else:
-                # VAR OLAN KAYIT - UPDATE
-                calisma_durumu = self.cmb_durum.currentText()
-                aktif_mi = 0 if calisma_durumu == "İşten Ayrıldı" else 1
+                    cursor.execute("""
+                        INSERT INTO ik.personeller (
+                            sicil_no, ad, soyad, tc_kimlik_no, dogum_tarihi, cinsiyet, kart_no, kart_id,
+                            telefon, email, adres, departman_id, pozisyon_id, ise_giris_tarihi,
+                            calisma_durumu, aktif_mi, kan_grubu, olusturma_tarihi, guncelleme_tarihi
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, GETDATE(), GETDATE())
+                    """, (
+                        self.txt_sicil.text().strip() or None,
+                        ad,
+                        soyad,
+                        tc or None,
+                        self.dt_dogum.date().toPython(),
+                        self.cmb_cinsiyet.currentText(),
+                        self.txt_kart.text().strip() or None,
+                        self.txt_kart_id.text().strip() or None,
+                        self.txt_telefon.text().strip() or None,
+                        self.txt_email.text().strip() or None,
+                        self.txt_adres.toPlainText().strip() or None,
+                        dept_id,
+                        poz_id,
+                        self.dt_giris.date().toPython(),
+                        calisma_durumu,
+                        aktif_mi,
+                        kan_grubu
+                    ))
 
-                kan_grubu = self.cmb_kan.currentText() or None
+                    conn.commit()
+                    LogManager.log_insert('ik', 'ik.personeller', None,
+                                          f'Yeni personel eklendi: {ad} {soyad}')
 
-                cursor.execute("""
-                    UPDATE ik.personeller SET
-                        sicil_no = ?,
-                        ad = ?,
-                        soyad = ?,
-                        tc_kimlik_no = ?,
-                        dogum_tarihi = ?,
-                        cinsiyet = ?,
-                        kart_no = ?,
-                        kart_id = ?,
-                        telefon = ?,
-                        email = ?,
-                        adres = ?,
-                        departman_id = ?,
-                        pozisyon_id = ?,
-                        ise_giris_tarihi = ?,
-                        calisma_durumu = ?,
-                        aktif_mi = ?,
-                        kan_grubu = ?,
-                        guncelleme_tarihi = GETDATE()
-                    WHERE id = ?
-                """, (
-                    self.txt_sicil.text().strip() or None,
-                    ad,
-                    soyad,
-                    tc or None,
-                    self.dt_dogum.date().toPython(),
-                    self.cmb_cinsiyet.currentText(),
-                    self.txt_kart.text().strip() or None,
-                    self.txt_kart_id.text().strip() or None,
-                    self.txt_telefon.text().strip() or None,
-                    self.txt_email.text().strip() or None,
-                    self.txt_adres.toPlainText().strip() or None,
-                    dept_id,
-                    poz_id,
-                    self.dt_giris.date().toPython(),
-                    calisma_durumu,
-                    aktif_mi,
-                    kan_grubu,
-                    self.personel_id
-                ))
-                
-                conn.commit()
-                LogManager.log_update('ik', 'ik.personeller', self.personel_id,
-                                      f'Personel guncellendi: {ad} {soyad}')
-                conn.close()
+                    QMessageBox.information(self, "Basarili",
+                        f"{ad} {soyad} basariyla sisteme eklendi.\n\n"
+                        "Personelin izin haklari, zimmetleri ve yetkinlikleri "
+                        "personel detayindan yonetilebilir.")
+                    self.accept()
 
-                QMessageBox.information(self, "Başarılı", "Personel bilgileri güncellendi.")
-                self.accept()
-            
+                else:
+                    calisma_durumu = self.cmb_durum.currentText()
+                    aktif_mi = 0 if calisma_durumu == "Isten Ayrildi" else 1
+
+                    kan_grubu = self.cmb_kan.currentText() or None
+
+                    cursor.execute("""
+                        UPDATE ik.personeller SET
+                            sicil_no = ?,
+                            ad = ?,
+                            soyad = ?,
+                            tc_kimlik_no = ?,
+                            dogum_tarihi = ?,
+                            cinsiyet = ?,
+                            kart_no = ?,
+                            kart_id = ?,
+                            telefon = ?,
+                            email = ?,
+                            adres = ?,
+                            departman_id = ?,
+                            pozisyon_id = ?,
+                            ise_giris_tarihi = ?,
+                            calisma_durumu = ?,
+                            aktif_mi = ?,
+                            kan_grubu = ?,
+                            guncelleme_tarihi = GETDATE()
+                        WHERE id = ?
+                    """, (
+                        self.txt_sicil.text().strip() or None,
+                        ad,
+                        soyad,
+                        tc or None,
+                        self.dt_dogum.date().toPython(),
+                        self.cmb_cinsiyet.currentText(),
+                        self.txt_kart.text().strip() or None,
+                        self.txt_kart_id.text().strip() or None,
+                        self.txt_telefon.text().strip() or None,
+                        self.txt_email.text().strip() or None,
+                        self.txt_adres.toPlainText().strip() or None,
+                        dept_id,
+                        poz_id,
+                        self.dt_giris.date().toPython(),
+                        calisma_durumu,
+                        aktif_mi,
+                        kan_grubu,
+                        self.personel_id
+                    ))
+
+                    conn.commit()
+                    LogManager.log_update('ik', 'ik.personeller', self.personel_id,
+                                          f'Personel guncellendi: {ad} {soyad}')
+
+                    QMessageBox.information(self, "Basarili", "Personel bilgileri guncellendi.")
+                    self.accept()
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Kayıt hatası: {e}")
+            QMessageBox.critical(self, "Hata", f"Kayit hatasi: {e}")
 
 
     # ── Ozluk Dosyalari ──
@@ -1031,40 +1100,49 @@ class PersonelDetayDialog(QDialog):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
+        layout.setSpacing(brand.SP_3)
 
         # Toolbar
         toolbar = QHBoxLayout()
-        toolbar.addWidget(QLabel("Personel Ozluk Dosyalari"))
+        lbl_ozluk = QLabel("Personel Ozluk Dosyalari")
+        lbl_ozluk.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_SEMIBOLD};")
+        toolbar.addWidget(lbl_ozluk)
         toolbar.addStretch()
 
         self.lbl_ozluk_path = QLabel()
-        self.lbl_ozluk_path.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        self.lbl_ozluk_path.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px;")
         toolbar.addWidget(self.lbl_ozluk_path)
 
         btn_refresh = QPushButton("Yenile")
+        btn_refresh.setCursor(Qt.PointingHandCursor)
+        btn_refresh.setFixedHeight(brand.sp(38))
         btn_refresh.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 6px 14px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
-            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; }}
         """)
         btn_refresh.clicked.connect(self._load_ozluk_dosyalari)
         toolbar.addWidget(btn_refresh)
 
         btn_upload = QPushButton("Dosya Yukle")
+        btn_upload.setCursor(Qt.PointingHandCursor)
+        btn_upload.setFixedHeight(brand.sp(38))
         btn_upload.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 6px 14px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
             QPushButton:hover {{ background: #16a34a; }}
         """)
@@ -1072,15 +1150,19 @@ class PersonelDetayDialog(QDialog):
         toolbar.addWidget(btn_upload)
 
         btn_open_folder = QPushButton("Klasoru Ac")
+        btn_open_folder.setCursor(Qt.PointingHandCursor)
+        btn_open_folder.setFixedHeight(brand.sp(38))
         btn_open_folder.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 6px 14px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
-            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; }}
         """)
         btn_open_folder.clicked.connect(self._open_ozluk_folder)
         toolbar.addWidget(btn_open_folder)
@@ -1092,9 +1174,9 @@ class PersonelDetayDialog(QDialog):
         self.ozluk_table.setColumnCount(4)
         self.ozluk_table.setHorizontalHeaderLabels(["Dosya Adi", "Tur", "Boyut", "Degistirilme"])
         self.ozluk_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.ozluk_table.setColumnWidth(1, 80)
-        self.ozluk_table.setColumnWidth(2, 90)
-        self.ozluk_table.setColumnWidth(3, 140)
+        self.ozluk_table.setColumnWidth(1, brand.sp(80))
+        self.ozluk_table.setColumnWidth(2, brand.sp(90))
+        self.ozluk_table.setColumnWidth(3, brand.sp(140))
         self.ozluk_table.verticalHeader().setVisible(False)
         self.ozluk_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.ozluk_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -1104,7 +1186,7 @@ class PersonelDetayDialog(QDialog):
 
         # Bilgi notu
         note = QLabel("Dosyayi acmak icin cift tiklayin. Dosyalar NAS uzerinde saklanir.")
-        note.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 10px;")
+        note.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px;")
         layout.addWidget(note)
 
         # Dosyalari yukle
@@ -1175,7 +1257,7 @@ class PersonelDetayDialog(QDialog):
                     'XLS': '#22c55e', 'XLSX': '#22c55e', 'JPG': '#f59e0b',
                     'JPEG': '#f59e0b', 'PNG': '#f59e0b', 'BMP': '#f59e0b',
                 }
-                color = tur_colors.get(ext, self.theme.get('text_muted'))
+                color = tur_colors.get(ext, brand.TEXT_MUTED)
                 tur_item.setForeground(QColor(color))
                 self.ozluk_table.setItem(i, 1, tur_item)
 
@@ -1193,7 +1275,7 @@ class PersonelDetayDialog(QDialog):
                 tarih = dt.fromtimestamp(mtime).strftime("%d.%m.%Y %H:%M")
                 self.ozluk_table.setItem(i, 3, QTableWidgetItem(tarih))
 
-                self.ozluk_table.setRowHeight(i, 36)
+                self.ozluk_table.setRowHeight(i, brand.sp(42))
 
         except Exception as e:
             print(f"Ozluk dosya listeleme hatasi: {e}")
@@ -1305,10 +1387,10 @@ class PersonelDetayDialog(QDialog):
             initials = f"{ad[:1]}{soyad[:1]}".upper() if ad and soyad else "+"
             self.lbl_foto.setText(initials)
             self.lbl_foto.setStyleSheet(f"""
-                background: {self.theme.get('primary', '#6366f1')};
-                border-radius: 40px;
-                font-size: 24px;
-                font-weight: bold;
+                background: {brand.PRIMARY};
+                border-radius: {brand.sp(40)}px;
+                font-size: {brand.FS_TITLE}px;
+                font-weight: {brand.FW_BOLD};
                 color: white;
             """)
 
@@ -1627,21 +1709,21 @@ class PersonelDetayDialog(QDialog):
         """Kart onizleme ve yazdirma dialog'u (on + arka yuz)"""
         dlg = QDialog(self)
         dlg.setWindowTitle("Personel Karti Onizleme")
-        dlg.setMinimumSize(750, 650)
-        dlg.setStyleSheet(f"background: {self.theme.get('bg_main')};")
+        dlg.setMinimumSize(brand.sp(750), brand.sp(650))
+        dlg.setStyleSheet(f"background: {brand.BG_MAIN};")
 
         layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 15, 20, 15)
-        layout.setSpacing(8)
+        layout.setContentsMargins(brand.SP_6, brand.SP_4, brand.SP_6, brand.SP_4)
+        layout.setSpacing(brand.SP_2)
 
         # Kartlar yan yana
         cards_layout = QHBoxLayout()
-        cards_layout.setSpacing(20)
+        cards_layout.setSpacing(brand.SP_5)
 
         # On yuz
         on_frame = QVBoxLayout()
         lbl_on_title = QLabel("On Yuz")
-        lbl_on_title.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 13px; font-weight: bold;")
+        lbl_on_title.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY}px; font-weight: {brand.FW_SEMIBOLD};")
         lbl_on_title.setAlignment(Qt.AlignCenter)
         on_frame.addWidget(lbl_on_title)
 
@@ -1656,7 +1738,7 @@ class PersonelDetayDialog(QDialog):
         if arka_yuz:
             arka_frame = QVBoxLayout()
             lbl_arka_title = QLabel("Arka Yuz")
-            lbl_arka_title.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 13px; font-weight: bold;")
+            lbl_arka_title.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY}px; font-weight: {brand.FW_SEMIBOLD};")
             lbl_arka_title.setAlignment(Qt.AlignCenter)
             arka_frame.addWidget(lbl_arka_title)
 
@@ -1675,13 +1757,16 @@ class PersonelDetayDialog(QDialog):
 
         btn_style = f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 10px 20px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
+                min-height: {brand.sp(38)}px;
             }}
-            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; }}
         """
 
         btn_save = QPushButton("Resim Olarak Kaydet")
@@ -1700,14 +1785,17 @@ class PersonelDetayDialog(QDialog):
         btn_row.addWidget(btn_save)
 
         btn_print = QPushButton("Yazdir")
+        btn_print.setCursor(Qt.PointingHandCursor)
+        btn_print.setFixedHeight(brand.sp(38))
         btn_print.setStyleSheet(f"""
             QPushButton {{
-                background: #dc2626;
+                background: {brand.ERROR};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 24px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
             QPushButton:hover {{ background: #b91c1c; }}
         """)
@@ -1753,47 +1841,46 @@ class IKPersonelPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
+        layout.setContentsMargins(brand.SP_10, brand.SP_6, brand.SP_10, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
         # Header
-        header = QHBoxLayout()
-        
-        title = QLabel("👥 Personel Listesi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
-        header.addWidget(title)
-        
-        header.addStretch()
-        
+        header = self.create_page_header("Personel Listesi", "Tum personel yonetimi")
+        layout.addLayout(header)
+
         # Yeni personel butonu
-        new_btn = QPushButton("➕ Yeni Personel")
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        new_btn = QPushButton("Yeni Personel")
+        new_btn.setCursor(Qt.PointingHandCursor)
+        new_btn.setFixedHeight(brand.sp(38))
         new_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
-            QPushButton:hover {{ background: #16a34a; }}
+            QPushButton:hover {{ background: #059669; }}
         """)
         new_btn.clicked.connect(self._new_personel)
-        header.addWidget(new_btn)
-        
-        layout.addLayout(header)
+        btn_row.addWidget(new_btn)
+        layout.addLayout(btn_row)
         
         # Filtreler
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_LG}px;")
         filter_layout = QHBoxLayout(filter_frame)
-        filter_layout.setContentsMargins(16, 12, 16, 12)
-        
+        filter_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+
         # Arama
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Ad, soyad, sicil no ara...")
+        self.search_input.setPlaceholderText("Ad, soyad, sicil no ara...")
         self.search_input.setStyleSheet(self._input_style())
-        self.search_input.setMinimumWidth(250)
+        self.search_input.setMinimumWidth(brand.sp(250))
         self.search_input.returnPressed.connect(self._load_data)
         filter_layout.addWidget(self.search_input)
         
@@ -1801,8 +1888,8 @@ class IKPersonelPage(BasePage):
         filter_layout.addWidget(QLabel("Departman:"))
         self.dept_combo = QComboBox()
         self.dept_combo.setStyleSheet(self._combo_style())
-        self.dept_combo.setMinimumWidth(150)
-        self.dept_combo.addItem("Tümü", None)
+        self.dept_combo.setMinimumWidth(brand.sp(150))
+        self.dept_combo.addItem("Tumu", None)
         self.dept_combo.currentIndexChanged.connect(self._load_data)
         filter_layout.addWidget(self.dept_combo)
         
@@ -1810,7 +1897,7 @@ class IKPersonelPage(BasePage):
         filter_layout.addWidget(QLabel("Durum:"))
         self.status_combo = QComboBox()
         self.status_combo.setStyleSheet(self._combo_style())
-        self.status_combo.addItem("Tümü", None)
+        self.status_combo.addItem("Tumu", None)
         self.status_combo.addItem("Aktif", 1)
         self.status_combo.addItem("Pasif", 0)
         self.status_combo.currentIndexChanged.connect(self._load_data)
@@ -1823,7 +1910,7 @@ class IKPersonelPage(BasePage):
 
         # İstatistik
         self.stat_label = QLabel()
-        self.stat_label.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.stat_label.setStyleSheet(f"color: {brand.TEXT_MUTED};")
         filter_layout.addWidget(self.stat_label)
 
         layout.addWidget(filter_frame)
@@ -1836,14 +1923,16 @@ class IKPersonelPage(BasePage):
             "Telefon", "İşe Giriş", "Durum", "İşlem"
         ])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.setColumnWidth(0, 90)
-        self.table.setColumnWidth(2, 110)
-        self.table.setColumnWidth(3, 120)
-        self.table.setColumnWidth(4, 160)
-        self.table.setColumnWidth(5, 120)
-        self.table.setColumnWidth(6, 100)
-        self.table.setColumnWidth(7, 80)
-        self.table.setColumnWidth(8, 80)
+        self.table.setColumnWidth(0, brand.sp(90))
+        self.table.setColumnWidth(2, brand.sp(110))
+        self.table.setColumnWidth(3, brand.sp(120))
+        self.table.setColumnWidth(4, brand.sp(160))
+        self.table.setColumnWidth(5, brand.sp(120))
+        self.table.setColumnWidth(6, brand.sp(100))
+        self.table.setColumnWidth(7, brand.sp(80))
+        self.table.setColumnWidth(8, brand.sp(80))
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
         self.table.setStyleSheet(self._table_style())
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -1862,7 +1951,7 @@ class IKPersonelPage(BasePage):
         paging.addWidget(self.prev_btn)
         
         self.page_label = QLabel("Sayfa 1 / 1")
-        self.page_label.setStyleSheet(f"color: {self.theme.get('text')}; margin: 0 16px;")
+        self.page_label.setStyleSheet(f"color: {brand.TEXT}; margin: 0 {brand.SP_4}px;")
         paging.addWidget(self.page_label)
         
         self.next_btn = QPushButton("Sonraki ▶")
@@ -1878,78 +1967,92 @@ class IKPersonelPage(BasePage):
     def _input_style(self):
         return f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 12px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}
         """
-    
+
     def _combo_style(self):
         return f"""
             QComboBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
         """
     
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 16px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                min-height: {brand.sp(38)}px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
-            QPushButton:disabled {{ color: {self.theme.get('text_muted')}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
+            QPushButton:disabled {{ color: {brand.TEXT_MUTED}; }}
         """
-    
+
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                color: {brand.TEXT};
+                outline: none;
             }}
             QTableWidget::item {{
-                padding: 8px;
-                border-bottom: 1px solid {self.theme.get('border')};
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
             }}
-            QTableWidget::item:selected {{
-                background: {self.theme.get('primary')};
-            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                padding: 10px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
-                font-weight: bold;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """
     
     def _load_departmanlar(self):
         """Departman filtresini doldur"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad FROM ik.departmanlar WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall():
                 self.dept_combo.addItem(row[1], row[0])
-            conn.close()
         except Exception as e:
-            print(f"Departman yükleme hatası: {e}")
-    
+            print(f"Departman yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _load_data(self):
-        """Personel listesini yükle"""
+        """Personel listesini yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -2036,19 +2139,23 @@ class IKPersonelPage(BasePage):
 
                 # İşlem butonu
                 widget = self.create_action_buttons([
-                    ("👁️", "Detay", lambda checked, pid=row[0]: self._show_detail(pid), "view"),
+                    ("Detay", "Detay goruntule", lambda checked, pid=row[0]: self._show_detail(pid), "view"),
                 ])
                 self.table.setCellWidget(row_idx, 8, widget)
-                self.table.setRowHeight(row_idx, 42)
+                self.table.setRowHeight(row_idx, brand.sp(42))
             
-            conn.close()
-            
-            # İstatistik güncelle
+            # Istatistik guncelle
             self.stat_label.setText(f"Toplam: {self.total_items} personel")
             self._update_paging()
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Veri yüklenemedi: {e}")
+            QMessageBox.critical(self, "Hata", f"Veri yuklenemedi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _update_paging(self):
         self.page_label.setText(f"Sayfa {self.current_page} / {self.total_pages}")

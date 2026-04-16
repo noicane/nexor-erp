@@ -23,6 +23,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class StokHavuzuPage(BasePage):
@@ -33,15 +34,15 @@ class StokHavuzuPage(BasePage):
         self.selected_lots = []  # Seçilen lotlar
         
         # Güvenli theme erişimi
-        self.bg_card = self.theme.get('bg_card', '#242938')
-        self.bg_input = self.theme.get('bg_input', '#1e2330')
-        self.bg_main = self.theme.get('bg_main', '#1a1f2e')
-        self.text = self.theme.get('text', '#ffffff')
-        self.text_muted = self.theme.get('text_muted', '#8a94a6')
-        self.border = self.theme.get('border', '#3d4454')
-        self.primary = self.theme.get('primary', '#6366f1')
-        self.success = self.theme.get('success', '#22c55e')
-        self.warning = self.theme.get('warning', '#f59e0b')
+        self.bg_card = brand.BG_CARD
+        self.bg_input = brand.BG_INPUT
+        self.bg_main = brand.BG_MAIN
+        self.text = brand.TEXT
+        self.text_muted = brand.TEXT_MUTED
+        self.border = brand.BORDER
+        self.primary = brand.PRIMARY
+        self.success = brand.SUCCESS
+        self.warning = brand.WARNING
         
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)

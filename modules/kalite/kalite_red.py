@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Red Kayıtları / Uygunsuzluk Yönetimi Sayfası
-Müşteri şikayeti, iç red, tedarikçi red kayıtları
+NEXOR ERP - Red Kayitlari / Uygunsuzluk Yonetimi Sayfasi
+=========================================================
+El Kitabi v3 uyumlu: brand token, emoji-free, responsive
 """
 from datetime import datetime, date
 from PySide6.QtWidgets import (
@@ -10,7 +11,8 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QMessageBox, QDialog, QComboBox,
     QTextEdit, QGridLayout, QGroupBox, QFormLayout,
     QDoubleSpinBox, QDateEdit, QTabWidget, QWidget, QSplitter,
-    QInputDialog, QRadioButton, QButtonGroup, QSpinBox
+    QInputDialog, QRadioButton, QButtonGroup, QSpinBox,
+    QSizePolicy
 )
 from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor
@@ -19,230 +21,327 @@ from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
 from core.hareket_motoru import HareketMotoru
+from core.nexor_brand import brand
 from dialogs.login import ModernLoginDialog
 
 
-# ============================================================================
+# ── Ortak stil yardimcilari ──────────────────────────────────────────
+
+def _dialog_base_css():
+    """Tum dialog'lar icin ortak stylesheet"""
+    return f"""
+        QDialog {{
+            background: {brand.BG_MAIN};
+            font-family: {brand.FONT_FAMILY};
+        }}
+        QLabel {{ color: {brand.TEXT}; background: transparent; }}
+        QGroupBox {{
+            color: {brand.TEXT};
+            font-size: {brand.FS_BODY}px;
+            font-weight: {brand.FW_SEMIBOLD};
+            border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_LG}px;
+            margin-top: {brand.SP_5}px;
+            padding: {brand.SP_5}px;
+            padding-top: {brand.SP_8}px;
+        }}
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            left: {brand.SP_4}px;
+            top: {brand.SP_2}px;
+            padding: 0 {brand.SP_2}px;
+            color: {brand.TEXT_MUTED};
+            background: {brand.BG_MAIN};
+        }}
+    """
+
+
+def _input_css():
+    """Ortak input stileri"""
+    return f"""
+        QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit, QLineEdit {{
+            background: {brand.BG_INPUT};
+            color: {brand.TEXT};
+            border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_SM}px;
+            padding: {brand.SP_2}px {brand.SP_3}px;
+            font-size: {brand.FS_BODY}px;
+        }}
+        QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus,
+        QDateEdit:focus, QLineEdit:focus {{
+            border-color: {brand.PRIMARY};
+        }}
+    """
+
+
+def _table_css():
+    """El kitabi uyumlu tablo stilesi"""
+    return f"""
+        QTableWidget {{
+            background: {brand.BG_CARD};
+            border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_LG}px;
+            outline: none;
+        }}
+        QTableWidget::item {{
+            padding: {brand.SP_3}px {brand.SP_4}px;
+            border-bottom: 1px solid {brand.BORDER};
+            color: {brand.TEXT};
+        }}
+        QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+        QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
+        QHeaderView::section {{
+            background: {brand.BG_SURFACE};
+            color: {brand.TEXT_MUTED};
+            padding: {brand.SP_3}px {brand.SP_4}px;
+            border: none;
+            border-bottom: 2px solid {brand.PRIMARY};
+            font-size: {brand.FS_BODY_SM}px;
+            font-weight: {brand.FW_SEMIBOLD};
+        }}
+    """
+
+
+def _brand_btn(bg, hover_bg, fg="white"):
+    """Brand-aware buton stili"""
+    return f"""
+        QPushButton {{
+            background: {bg};
+            color: {fg};
+            border: none;
+            border-radius: {brand.R_SM}px;
+            padding: 0 {brand.SP_5}px;
+            font-size: {brand.FS_BODY}px;
+            font-weight: {brand.FW_SEMIBOLD};
+            min-height: {brand.sp(38)}px;
+        }}
+        QPushButton:hover {{ background: {hover_bg}; }}
+    """
+
+
+def _ghost_btn():
+    """Iptal / ghost buton stili"""
+    return f"""
+        QPushButton {{
+            background: {brand.BG_CARD};
+            color: {brand.TEXT};
+            border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_SM}px;
+            padding: 0 {brand.SP_5}px;
+            font-size: {brand.FS_BODY}px;
+            font-weight: {brand.FW_MEDIUM};
+            min-height: {brand.sp(38)}px;
+        }}
+        QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
+    """
+
+
+def _dialog_header(title_text, subtitle_text=None):
+    """Dialog ust baslik blogu"""
+    header = QHBoxLayout()
+    header.setSpacing(brand.SP_3)
+
+    accent = QFrame()
+    accent.setFixedSize(brand.SP_1, brand.sp(32))
+    accent.setStyleSheet(f"background: {brand.PRIMARY}; border-radius: 2px;")
+    header.addWidget(accent)
+
+    title_col = QVBoxLayout()
+    title_col.setSpacing(brand.SP_1)
+    title = QLabel(title_text)
+    title.setStyleSheet(
+        f"color: {brand.TEXT}; "
+        f"font-size: {brand.FS_HEADING}px; "
+        f"font-weight: {brand.FW_SEMIBOLD};"
+    )
+    title_col.addWidget(title)
+    if subtitle_text:
+        sub = QLabel(subtitle_text)
+        sub.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY_SM}px;")
+        title_col.addWidget(sub)
+    header.addLayout(title_col)
+    header.addStretch()
+    return header
+
+
+# =====================================================================
 # RED DEPOT KARAR DIALOG
-# ============================================================================
+# =====================================================================
 
 class RedKararDialog(QDialog):
-    """Red depot kararı dialog'u - Tablo bazlı, satıra tıkla karar ver"""
-    
+    """Red depot karari dialog'u — el kitabi uyumlu"""
+
     def __init__(self, theme: dict, red_kayit: dict, parent=None):
         super().__init__(parent)
         self.theme = theme
         self.red_kayit = red_kayit
         self.max_miktar = int(red_kayit.get('red_miktar', 0) or 0)
-        self.setWindowTitle("🔴 Red Depot Karar")
-        self.setMinimumSize(600, 450)
+        self.setWindowTitle("Red Depot Karar")
+        self.setMinimumSize(brand.sp(600), brand.sp(450))
         self.karar_data = None
         self._setup_ui()
-    
+
     def _setup_ui(self):
-        self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}
-            QLabel {{ color: {self.theme.get('text', '#fff')}; }}
-            QGroupBox {{ 
-                color: {self.theme.get('primary', '#6366f1')}; 
-                font-weight: bold; 
-                border: 1px solid {self.theme.get('border', '#3d4454')}; 
-                border-radius: 8px; 
-                margin-top: 12px; 
-                padding-top: 8px;
-            }}
-            QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 8px; }}
-            QComboBox, QSpinBox {{ 
-                background: {self.theme.get('bg_input', '#1e293b')}; 
-                color: {self.theme.get('text', '#fff')}; 
-                border: 1px solid {self.theme.get('border', '#3d4454')}; 
-                border-radius: 4px; 
-                padding: 4px 8px;
-                min-width: 100px;
-            }}
-        """)
-        
+        self.setStyleSheet(_dialog_base_css() + _input_css())
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
-        
-        # Başlık
-        header = QHBoxLayout()
-        title = QLabel("🔴 Red Depot Karar Verme")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary', '#6366f1')};")
-        header.addWidget(title)
-        header.addStretch()
-        
-        # Lot ve Ürün bilgisi
-        lot_info = QLabel(f"📦 {self.red_kayit.get('lot_no', '-')} | {(self.red_kayit.get('urun_adi') or '-')[:30]}")
-        lot_info.setStyleSheet(f"color: {self.theme.get('text_secondary', '#94a3b8')};")
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
+        # ── Header ──
+        header = _dialog_header("Red Depot Karar Verme")
+
+        # Lot ve Urun bilgisi
+        lot_info = QLabel(f"{self.red_kayit.get('lot_no', '-')} | {(self.red_kayit.get('urun_adi') or '-')[:30]}")
+        lot_info.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
         header.addWidget(lot_info)
         layout.addLayout(header)
-        
-        # Bilgi satırı
+
+        # Bilgi satiri
         info_layout = QHBoxLayout()
-        
+        info_layout.setSpacing(brand.SP_4)
+
         musteri = self.red_kayit.get('musteri') or '-'
-        musteri_lbl = QLabel(f"👤 {musteri[:25]}")
+        musteri_lbl = QLabel(f"Musteri: {musteri[:25]}")
+        musteri_lbl.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY}px;")
         info_layout.addWidget(musteri_lbl)
-        
+
         hata_turu = self.red_kayit.get('hata_turu_adi') or '-'
-        hata_lbl = QLabel(f"⚠️ Hata: {hata_turu}")
-        hata_lbl.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-weight: bold;")
+        hata_lbl = QLabel(f"Hata: {hata_turu}")
+        hata_lbl.setStyleSheet(
+            f"color: {brand.WARNING}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_BODY}px;"
+        )
         info_layout.addWidget(hata_lbl)
-        
+
         info_layout.addStretch()
-        
-        miktar_lbl = QLabel(f"🔢 Toplam: {self.max_miktar} adet")
-        miktar_lbl.setStyleSheet(f"color: {self.theme.get('danger', '#ef4444')}; font-weight: bold;")
+
+        miktar_lbl = QLabel(f"Toplam: {self.max_miktar} adet")
+        miktar_lbl.setStyleSheet(
+            f"color: {brand.ERROR}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_BODY}px;"
+        )
         info_layout.addWidget(miktar_lbl)
-        
+
         layout.addLayout(info_layout)
-        
+
         # Karar Tablosu
-        karar_group = QGroupBox("⚖️ Karar Ver")
+        karar_group = QGroupBox("Karar Ver")
         karar_layout = QVBoxLayout(karar_group)
-        
-        # Tablo - Miktar ve Karar seçimi
+
         self.karar_table = QTableWidget()
         self.karar_table.setColumnCount(4)
-        self.karar_table.setHorizontalHeaderLabels(["Hata Türü", "Miktar", "Karar", "Açıklama"])
+        self.karar_table.setHorizontalHeaderLabels(["Hata Turu", "Miktar", "Karar", "Aciklama"])
         self.karar_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.karar_table.setColumnWidth(1, 120)
-        self.karar_table.setColumnWidth(2, 150)
-        self.karar_table.setColumnWidth(3, 150)
+        self.karar_table.setColumnWidth(1, brand.sp(120))
+        self.karar_table.setColumnWidth(2, brand.sp(150))
+        self.karar_table.setColumnWidth(3, brand.sp(150))
         self.karar_table.verticalHeader().setVisible(False)
         self.karar_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.karar_table.setStyleSheet(f"""
-            QTableWidget {{ 
-                background: {self.theme.get('bg_card', '#1e293b')}; 
-                color: {self.theme.get('text', '#fff')}; 
-                gridline-color: {self.theme.get('border', '#3d4454')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
-                border-radius: 6px;
-            }}
-            QTableWidget::item {{ padding: 8px; }}
-            QHeaderView::section {{ 
-                background: {self.theme.get('bg_input', '#1e293b')}; 
-                color: {self.theme.get('text', '#fff')}; 
-                padding: 8px;
-                border: none;
-                font-weight: bold;
-            }}
-        """)
-        
-        # Tek satır ekle (mevcut red kaydı için)
+        self.karar_table.setShowGrid(False)
+        self.karar_table.setAlternatingRowColors(True)
+        self.karar_table.setStyleSheet(_table_css())
+
+        # Tek satir ekle
         self.karar_table.setRowCount(1)
-        self.karar_table.setRowHeight(0, 45)
-        
-        # Hata Türü
+        self.karar_table.setRowHeight(0, brand.sp(42))
+
+        # Hata Turu
         hata_item = QTableWidgetItem(hata_turu)
         hata_item.setFlags(hata_item.flags() & ~Qt.ItemIsEditable)
         self.karar_table.setItem(0, 0, hata_item)
-        
+
         # Miktar (SpinBox)
         self.spn_miktar = QSpinBox()
         self.spn_miktar.setRange(1, self.max_miktar)
         self.spn_miktar.setValue(self.max_miktar)
         self.spn_miktar.valueChanged.connect(self._miktar_degisti)
         self.karar_table.setCellWidget(0, 1, self.spn_miktar)
-        
+
         # Karar (ComboBox)
         self.cmb_karar = QComboBox()
-        self.cmb_karar.addItem("🔧 SÖKÜM", "SOKUM")
-        self.cmb_karar.addItem("✅ KABUL", "KABUL")
-        self.cmb_karar.addItem("⏳ MÜŞTERİ ONAYI", "MUSTERI_ONAY")
+        self.cmb_karar.addItem("SOKUM", "SOKUM")
+        self.cmb_karar.addItem("KABUL", "KABUL")
+        self.cmb_karar.addItem("MUSTERI ONAYI", "MUSTERI_ONAY")
         self.karar_table.setCellWidget(0, 2, self.cmb_karar)
-        
-        # Açıklama
+
+        # Aciklama
         self.txt_aciklama = QLineEdit()
         self.txt_aciklama.setPlaceholderText("Not...")
-        self.txt_aciklama.setStyleSheet(f"""
-            background: {self.theme.get('bg_input', '#1e293b')}; 
-            color: {self.theme.get('text', '#fff')}; 
-            border: 1px solid {self.theme.get('border', '#3d4454')}; 
-            border-radius: 4px; 
-            padding: 4px 8px;
-        """)
         self.karar_table.setCellWidget(0, 3, self.txt_aciklama)
-        
+
         karar_layout.addWidget(self.karar_table)
-        
+
         # Kalan miktar bilgisi
         self.lbl_kalan = QLabel("")
-        self.lbl_kalan.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-size: 12px;")
+        self.lbl_kalan.setStyleSheet(
+            f"color: {brand.WARNING}; font-size: {brand.FS_BODY_SM}px;"
+        )
         karar_layout.addWidget(self.lbl_kalan)
-        
+
         layout.addWidget(karar_group)
-        
-        # Karar açıklamaları
+
+        # Karar aciklamalari
         aciklama_frame = QFrame()
-        aciklama_frame.setStyleSheet(f"background: {self.theme.get('bg_card', '#1e293b')}; border-radius: 6px; padding: 8px;")
+        aciklama_frame.setStyleSheet(
+            f"background: {brand.BG_CARD}; "
+            f"border-radius: {brand.R_LG}px; "
+            f"padding: {brand.SP_3}px;"
+        )
         aciklama_layout = QVBoxLayout(aciklama_frame)
-        aciklama_layout.setSpacing(4)
-        
-        lbl1 = QLabel("🔧 SÖKÜM → XI deposuna gönderilir, kaplama sökülür")
-        lbl1.setStyleSheet(f"color: {self.theme.get('text_secondary', '#94a3b8')}; font-size: 11px;")
-        aciklama_layout.addWidget(lbl1)
-        
-        lbl2 = QLabel("✅ KABUL → FKK'ya geri döner, tekrar kontrol edilir")
-        lbl2.setStyleSheet(f"color: {self.theme.get('text_secondary', '#94a3b8')}; font-size: 11px;")
-        aciklama_layout.addWidget(lbl2)
-        
-        lbl3 = QLabel("⏳ MÜŞTERİ ONAYI → Karantinaya alınır, müşteri kararı beklenir")
-        lbl3.setStyleSheet(f"color: {self.theme.get('text_secondary', '#94a3b8')}; font-size: 11px;")
-        aciklama_layout.addWidget(lbl3)
-        
+        aciklama_layout.setSpacing(brand.SP_1)
+
+        for txt in [
+            "SOKUM - XI deposuna gonderilir, kaplama sokulur",
+            "KABUL - FKK'ya geri doner, tekrar kontrol edilir",
+            "MUSTERI ONAYI - Karantinaya alinir, musteri karari beklenir",
+        ]:
+            lbl = QLabel(txt)
+            lbl.setStyleSheet(
+                f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px;"
+            )
+            aciklama_layout.addWidget(lbl)
+
         layout.addWidget(aciklama_frame)
-        
+
         # Butonlar
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(brand.SP_3)
         btn_layout.addStretch()
-        
-        btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"""
-            background: {self.theme.get('bg_input', '#1e293b')}; 
-            color: {self.theme.get('text', '#fff')}; 
-            border: 1px solid {self.theme.get('border', '#3d4454')}; 
-            border-radius: 6px; 
-            padding: 10px 24px;
-            font-weight: bold;
-        """)
+
+        btn_iptal = QPushButton("Iptal")
+        btn_iptal.setCursor(Qt.PointingHandCursor)
+        btn_iptal.setFixedHeight(brand.sp(38))
+        btn_iptal.setStyleSheet(_ghost_btn())
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
-        
-        btn_onayla = QPushButton("✓ Kararı Uygula")
-        btn_onayla.setStyleSheet(f"""
-            background: {self.theme.get('success', '#22c55e')}; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            padding: 10px 24px;
-            font-weight: bold;
-            font-size: 14px;
-        """)
+
+        btn_onayla = QPushButton("Karari Uygula")
+        btn_onayla.setCursor(Qt.PointingHandCursor)
+        btn_onayla.setFixedHeight(brand.sp(38))
+        btn_onayla.setStyleSheet(_brand_btn(brand.SUCCESS, "#059669"))
         btn_onayla.clicked.connect(self._onayla)
         btn_layout.addWidget(btn_onayla)
-        
+
         layout.addLayout(btn_layout)
-    
+
     def _miktar_degisti(self, value):
-        """Miktar değiştiğinde kalan bilgisini güncelle"""
+        """Miktar degistiginde kalan bilgisini guncelle"""
         kalan = self.max_miktar - value
         if kalan > 0:
-            self.lbl_kalan.setText(f"⚠️ {kalan} adet RED deposunda kalacak")
+            self.lbl_kalan.setText(f"{kalan} adet RED deposunda kalacak")
         else:
             self.lbl_kalan.setText("")
-    
+
     def _onayla(self):
-        """Kararı onayla"""
+        """Karari onayla"""
         karar_tip = self.cmb_karar.currentData()
         islem_miktar = self.spn_miktar.value()
-        
+
         if islem_miktar <= 0:
-            QMessageBox.warning(self, "Uyarı", "İşlem miktarı 0'dan büyük olmalı!")
+            QMessageBox.warning(self, "Uyari", "Islem miktari 0'dan buyuk olmali!")
             return
-        
+
         self.karar_data = {
             'tip': karar_tip,
             'miktar': islem_miktar,
@@ -250,56 +349,45 @@ class RedKararDialog(QDialog):
             'not': self.txt_aciklama.text().strip(),
             'red_kayit': self.red_kayit
         }
-        
+
         self.accept()
-    
+
     def get_karar(self):
         """Karar verisini al"""
         return self.karar_data
 
 
-# ============================================================================
-# UYGUNSUZLUK DIALOG (MEVCUT)
-# ============================================================================
+# =====================================================================
+# UYGUNSUZLUK DIALOG
+# =====================================================================
 
 class UygunsuzlukDialog(QDialog):
-    """Yeni uygunsuzluk kaydı dialog'u"""
-    
+    """Yeni uygunsuzluk kaydi dialog'u — el kitabi uyumlu"""
+
     def __init__(self, theme: dict, kayit_tipi: str = None, parent=None):
         super().__init__(parent)
         self.theme = theme
         self.kayit_tipi = kayit_tipi
-        self.setWindowTitle("Yeni Uygunsuzluk Kaydı")
-        self.setMinimumSize(700, 650)
+        self.setWindowTitle("Yeni Uygunsuzluk Kaydi")
+        self.setMinimumSize(brand.sp(700), brand.sp(650))
         self._setup_ui()
-    
+
     def _setup_ui(self):
-        self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#0f172a')}; }}
-            QLabel {{ color: {self.theme.get('text', '#ffffff')}; }}
-            QGroupBox {{ 
-                color: {self.theme.get('primary', '#3b82f6')}; 
-                font-weight: bold; 
-                border: 1px solid {self.theme.get('border')}; 
-                border-radius: 8px; 
-                margin-top: 12px; 
-                padding-top: 12px;
-            }}
-        """)
-        
+        self.setStyleSheet(_dialog_base_css() + _input_css())
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        # Başlık
-        title = QLabel("📋 Yeni Uygunsuzluk Kaydı")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
-        layout.addWidget(title)
-        
-        # Kayıt Tipi
-        tip_group = QGroupBox("Kayıt Tipi")
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
+        # Baslik
+        header = _dialog_header("Yeni Uygunsuzluk Kaydi")
+        layout.addLayout(header)
+
+        # Kayit Tipi
+        tip_group = QGroupBox("Kayit Tipi")
         tip_layout = QHBoxLayout()
-        
+        tip_layout.setSpacing(brand.SP_3)
+
         self.cmb_kayit_tipi = QComboBox()
         self.cmb_kayit_tipi.addItems([
             'MÜŞTERİ_ŞİKAYETİ',
@@ -312,160 +400,193 @@ class UygunsuzlukDialog(QDialog):
             idx = self.cmb_kayit_tipi.findText(self.kayit_tipi)
             if idx >= 0:
                 self.cmb_kayit_tipi.setCurrentIndex(idx)
-        self.cmb_kayit_tipi.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
         tip_layout.addWidget(self.cmb_kayit_tipi)
-        
+
         self.cmb_oncelik = QComboBox()
         self.cmb_oncelik.addItems(['DÜŞÜK', 'NORMAL', 'YÜKSEK', 'KRİTİK'])
         self.cmb_oncelik.setCurrentText('NORMAL')
-        self.cmb_oncelik.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
-        tip_layout.addWidget(QLabel("Öncelik:"))
+        lbl_oncelik = QLabel("Oncelik:")
+        lbl_oncelik.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        tip_layout.addWidget(lbl_oncelik)
         tip_layout.addWidget(self.cmb_oncelik)
-        
+
         tip_group.setLayout(tip_layout)
         layout.addWidget(tip_group)
-        
+
         # Temel Bilgiler
         bilgi_group = QGroupBox("Temel Bilgiler")
         bilgi_form = QFormLayout()
-        bilgi_form.setSpacing(10)
-        
+        bilgi_form.setSpacing(brand.SP_3)
+        bilgi_form.setLabelAlignment(Qt.AlignRight)
+
         # Bildiren
         self.cmb_bildiren = QComboBox()
-        self.cmb_bildiren.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
         self._load_personel()
         bilgi_form.addRow("Bildiren:", self.cmb_bildiren)
-        
-        # Müşteri/Tedarikçi
+
+        # Musteri/Tedarikci
         self.cmb_cari = QComboBox()
-        self.cmb_cari.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
         self._load_cariler()
         self.cmb_cari.currentIndexChanged.connect(self._on_cari_changed)
-        bilgi_form.addRow("Müşteri/Tedarikçi:", self.cmb_cari)
-        
-        # Ürün
+        bilgi_form.addRow("Musteri/Tedarikci:", self.cmb_cari)
+
+        # Urun
         self.cmb_urun = QComboBox()
-        self.cmb_urun.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
-        bilgi_form.addRow("Ürün:", self.cmb_urun)
-        
+        bilgi_form.addRow("Urun:", self.cmb_urun)
+
         # Lot No
         self.txt_lot = QLineEdit()
-        self.txt_lot.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
-        self.txt_lot.setPlaceholderText("Lot numarası")
+        self.txt_lot.setPlaceholderText("Lot numarasi")
         bilgi_form.addRow("Lot No:", self.txt_lot)
-        
+
         # Etkilenen Miktar
         miktar_layout = QHBoxLayout()
         self.txt_miktar = QDoubleSpinBox()
         self.txt_miktar.setRange(0, 9999999)
         self.txt_miktar.setDecimals(2)
-        self.txt_miktar.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
         miktar_layout.addWidget(self.txt_miktar)
-        miktar_layout.addWidget(QLabel("Adet"))
+        lbl_adet = QLabel("Adet")
+        lbl_adet.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        miktar_layout.addWidget(lbl_adet)
         bilgi_form.addRow("Etkilenen Miktar:", miktar_layout)
-        
+
         # Tespit Yeri
         self.txt_tespit_yeri = QLineEdit()
-        self.txt_tespit_yeri.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
-        self.txt_tespit_yeri.setPlaceholderText("Ör: Final Kontrol, Müşteri Sahası, Giriş Kalite")
+        self.txt_tespit_yeri.setPlaceholderText("Orn: Final Kontrol, Musteri Sahasi, Giris Kalite")
         bilgi_form.addRow("Tespit Yeri:", self.txt_tespit_yeri)
-        
+
         bilgi_group.setLayout(bilgi_form)
         layout.addWidget(bilgi_group)
-        
-        # Hata Tanımı
-        hata_group = QGroupBox("Hata Detayları")
+
+        # Hata Tanimi
+        hata_group = QGroupBox("Hata Detaylari")
         hata_layout = QVBoxLayout()
-        
-        # Hata Türü
+        hata_layout.setSpacing(brand.SP_3)
+
         hata_tur_layout = QHBoxLayout()
-        hata_tur_layout.addWidget(QLabel("Hata Türü:"))
+        lbl_ht = QLabel("Hata Turu:")
+        lbl_ht.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        hata_tur_layout.addWidget(lbl_ht)
         self.cmb_hata_turu = QComboBox()
-        self.cmb_hata_turu.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
         self._load_hata_turleri()
         hata_tur_layout.addWidget(self.cmb_hata_turu, 1)
         hata_layout.addLayout(hata_tur_layout)
-        
-        hata_layout.addWidget(QLabel("Hata Tanımı:"))
+
+        lbl_tanim = QLabel("Hata Tanimi:")
+        lbl_tanim.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
+        hata_layout.addWidget(lbl_tanim)
         self.txt_hata_tanimi = QTextEdit()
-        self.txt_hata_tanimi.setMaximumHeight(100)
-        self.txt_hata_tanimi.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
-        self.txt_hata_tanimi.setPlaceholderText("Hatanın detaylı açıklaması...")
+        self.txt_hata_tanimi.setMaximumHeight(brand.sp(100))
+        self.txt_hata_tanimi.setStyleSheet(f"""
+            QTextEdit {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QTextEdit:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
+        self.txt_hata_tanimi.setPlaceholderText("Hatanin detayli aciklamasi...")
         hata_layout.addWidget(self.txt_hata_tanimi)
-        
+
         hata_group.setLayout(hata_layout)
         layout.addWidget(hata_group)
-        
+
         # Sorumlu ve Tarih
         sorumluluk_layout = QHBoxLayout()
-        
-        sorumluluk_layout.addWidget(QLabel("Sorumlu:"))
+        sorumluluk_layout.setSpacing(brand.SP_3)
+
+        lbl_sor = QLabel("Sorumlu:")
+        lbl_sor.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        sorumluluk_layout.addWidget(lbl_sor)
         self.cmb_sorumlu = QComboBox()
-        self.cmb_sorumlu.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
         self._load_personel_sorumlu()
         sorumluluk_layout.addWidget(self.cmb_sorumlu)
-        
-        sorumluluk_layout.addWidget(QLabel("Hedef Kapanış:"))
+
+        lbl_hedef = QLabel("Hedef Kapanis:")
+        lbl_hedef.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        sorumluluk_layout.addWidget(lbl_hedef)
         self.date_hedef = QDateEdit()
         self.date_hedef.setDate(QDate.currentDate().addDays(7))
         self.date_hedef.setCalendarPopup(True)
-        self.date_hedef.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
         sorumluluk_layout.addWidget(self.date_hedef)
-        
+
         layout.addLayout(sorumluluk_layout)
-        
+
         # Butonlar
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(brand.SP_3)
         btn_layout.addStretch()
-        
-        btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 24px;")
+
+        btn_iptal = QPushButton("Iptal")
+        btn_iptal.setCursor(Qt.PointingHandCursor)
+        btn_iptal.setFixedHeight(brand.sp(38))
+        btn_iptal.setStyleSheet(_ghost_btn())
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
-        
-        btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;")
+
+        btn_kaydet = QPushButton("Kaydet")
+        btn_kaydet.setCursor(Qt.PointingHandCursor)
+        btn_kaydet.setFixedHeight(brand.sp(38))
+        btn_kaydet.setStyleSheet(_brand_btn(brand.PRIMARY, brand.PRIMARY_HOVER))
         btn_kaydet.clicked.connect(self._kaydet)
         btn_layout.addWidget(btn_kaydet)
-        
+
         layout.addLayout(btn_layout)
-    
+
     def _load_personel(self):
         """Personel listesi"""
         self.cmb_bildiren.clear()
-        self.cmb_bildiren.addItem("-- Seçin --", None)
+        self.cmb_bildiren.addItem("-- Secin --", None)
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad + ' ' + soyad FROM ik.personeller WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall():
                 self.cmb_bildiren.addItem(row[1], row[0])
-            conn.close()
         except Exception as e:
-            print(f"Personel yükleme hatası: {e}")
-    
+            print(f"Personel yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _load_personel_sorumlu(self):
         """Sorumlu personel listesi"""
         self.cmb_sorumlu.clear()
-        self.cmb_sorumlu.addItem("-- Seçin --", None)
+        self.cmb_sorumlu.addItem("-- Secin --", None)
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad + ' ' + soyad FROM ik.personeller WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall():
                 self.cmb_sorumlu.addItem(row[1], row[0])
-            conn.close()
         except Exception as e:
-            print(f"Personel yükleme hatası: {e}")
-    
+            print(f"Personel yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _load_cariler(self):
-        """Cari listesi - StokKartlari'nda ürünü olan müşteriler"""
+        """Cari listesi"""
         self.cmb_cari.clear()
-        self.cmb_cari.addItem("-- Müşteri/Tedarikçi Seçin --", None)
+        self.cmb_cari.addItem("-- Musteri/Tedarikci Secin --", None)
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            # StokKartlari'ndan benzersiz müşteri listesi (unvan olarak)
             cursor.execute("""
                 SELECT DISTINCT cari_unvani
                 FROM stok.urunler
@@ -473,92 +594,105 @@ class UygunsuzlukDialog(QDialog):
                 ORDER BY cari_unvani
             """)
             for row in cursor.fetchall():
-                # Data olarak unvanı tut (ürün filtrelemede kullanılacak)
                 self.cmb_cari.addItem(row[0], row[0])
-            conn.close()
         except Exception as e:
-            print(f"Cari yükleme hatası: {e}")
-    
+            print(f"Cari yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _on_cari_changed(self):
-        """Cari değiştiğinde ürünleri güncelle"""
+        """Cari degistiginde urunleri guncelle"""
         cari_id = self.cmb_cari.currentData()
         self._load_urunler(cari_id)
-    
+
     def _load_urunler(self, cari_unvani=None):
-        """Ürün listesi - seçilen müşteriye ait ürünler"""
+        """Urun listesi"""
         self.cmb_urun.clear()
-        self.cmb_urun.addItem("-- Ürün Seçin --", None)
+        self.cmb_urun.addItem("-- Urun Secin --", None)
         if not cari_unvani:
             return
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            # StokKartlari'ndan stok_kodu al, stok.urunler'den id'yi bul
             cursor.execute("""
-                SELECT u.id, ISNULL(s.urun_kodu, '') + ' - ' + ISNULL(s.urun_adi, '') 
+                SELECT u.id, ISNULL(s.urun_kodu, '') + ' - ' + ISNULL(s.urun_adi, '')
                 FROM stok.urunler s
                 LEFT JOIN stok.urunler u ON u.urun_kodu = s.stok_kodu
                 WHERE s.cari_unvani = ? AND ISNULL(s.aktif, 1) = 1
                 ORDER BY s.stok_kodu
             """, (cari_unvani,))
             rows = cursor.fetchall()
-            print(f"Müşteriye ait ürün sayısı: {len(rows)}")
             for row in rows:
-                # u.id NULL olabilir, o zaman stok.urunler'de yok demektir
                 if row[0]:
                     self.cmb_urun.addItem(row[1], row[0])
                 else:
-                    # stok.urunler'de yoksa stok_kodu'nu data olarak kullan (sonra handle edilir)
                     self.cmb_urun.addItem(row[1], None)
-            conn.close()
         except Exception as e:
-            print(f"Ürün yükleme hatası: {e}")
-    
+            print(f"Urun yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _load_hata_turleri(self):
-        """Hata türleri"""
+        """Hata turleri"""
         self.cmb_hata_turu.clear()
-        self.cmb_hata_turu.addItem("-- Seçin --", None)
+        self.cmb_hata_turu.addItem("-- Secin --", None)
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, kod + ' - ' + ad FROM tanim.hata_turleri WHERE aktif_mi = 1 ORDER BY kod")
             for row in cursor.fetchall():
                 self.cmb_hata_turu.addItem(row[1], row[0])
-            conn.close()
         except Exception as e:
-            print(f"Hata türleri yükleme hatası: {e}")
-    
+            print(f"Hata turleri yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _kaydet(self):
-        """Kaydı kaydet"""
+        """Kaydi kaydet"""
         bildiren_id = self.cmb_bildiren.currentData()
         if not bildiren_id:
-            QMessageBox.warning(self, "Uyarı", "Bildiren kişi seçilmelidir!")
+            QMessageBox.warning(self, "Uyari", "Bildiren kisi secilmelidir!")
             return
-        
+
         hata_tanimi = self.txt_hata_tanimi.toPlainText().strip()
         if not hata_tanimi:
-            QMessageBox.warning(self, "Uyarı", "Hata tanımı girilmelidir!")
+            QMessageBox.warning(self, "Uyari", "Hata tanimi girilmelidir!")
             return
-        
+
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             # cari_unvani'den cari_id bul
             cari_unvani = self.cmb_cari.currentData()
             cari_id = None
             if cari_unvani:
                 cursor.execute("""
-                    SELECT TOP 1 id FROM musteri.cariler 
+                    SELECT TOP 1 id FROM musteri.cariler
                     WHERE unvan = ? AND aktif_mi = 1 AND silindi_mi = 0
                 """, (cari_unvani,))
                 row = cursor.fetchone()
                 if row:
                     cari_id = row[0]
-            
-            # Kayıt no oluştur
+
+            # Kayit no olustur
             cursor.execute("""
-                SELECT TOP 1 kayit_no FROM kalite.uygunsuzluklar 
+                SELECT TOP 1 kayit_no FROM kalite.uygunsuzluklar
                 WHERE kayit_no LIKE ? ORDER BY kayit_no DESC
             """, (f"NCR-{datetime.now().strftime('%Y%m')}%",))
             row = cursor.fetchone()
@@ -567,7 +701,7 @@ class UygunsuzlukDialog(QDialog):
                 kayit_no = f"NCR-{datetime.now().strftime('%Y%m')}-{last_no + 1:04d}"
             else:
                 kayit_no = f"NCR-{datetime.now().strftime('%Y%m')}-0001"
-            
+
             cursor.execute("""
                 INSERT INTO kalite.uygunsuzluklar (
                     uuid, kayit_no, kayit_tipi, kayit_tarihi, bildiren_id, cari_id, urun_id,
@@ -595,12 +729,11 @@ class UygunsuzlukDialog(QDialog):
                 self.cmb_sorumlu.currentData(),
                 self.date_hedef.date().toPython()
             ))
-            
+
             conn.commit()
             LogManager.log_insert('kalite', 'kalite.uygunsuzluklar', None, 'Uygunsuzluk kaydi olustu')
-            conn.close()
 
-            # Bildirim: Uygunsuzluk kaydı açıldı
+            # Bildirim: Uygunsuzluk kaydi acildi
             try:
                 from core.bildirim_tetikleyici import BildirimTetikleyici
                 urun_adi = self.cmb_urun.currentText() if hasattr(self, 'cmb_urun') else ''
@@ -612,35 +745,46 @@ class UygunsuzlukDialog(QDialog):
             except Exception as bt_err:
                 print(f"Bildirim hatasi: {bt_err}")
 
-            QMessageBox.information(self, "Başarılı", f"Uygunsuzluk kaydı oluşturuldu!\n\nKayıt No: {kayit_no}")
+            QMessageBox.information(self, "Basarili", f"Uygunsuzluk kaydi olusturuldu!\n\nKayit No: {kayit_no}")
             self.accept()
-            
-        except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Kayıt başarısız: {e}")
 
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Kayit basarisiz: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+
+# =====================================================================
+# UYGUNSUZLUK DETAY DIALOG
+# =====================================================================
 
 class UygunsuzlukDetayDialog(QDialog):
-    """Uygunsuzluk detay ve aksiyon yönetimi dialog'u"""
-    
+    """Uygunsuzluk detay ve aksiyon yonetimi dialog'u — el kitabi uyumlu"""
+
     def __init__(self, theme: dict, kayit_id: int, parent=None):
         super().__init__(parent)
         self.theme = theme
         self.kayit_id = kayit_id
-        self.setWindowTitle("Uygunsuzluk Detayı")
-        self.setMinimumSize(900, 700)
+        self.setWindowTitle("Uygunsuzluk Detayi")
+        self.setMinimumSize(brand.sp(900), brand.sp(700))
         self._load_kayit()
         self._setup_ui()
-    
+
     def _load_kayit(self):
-        """Kayıt bilgilerini yükle"""
+        """Kayit bilgilerini yukle"""
         self.kayit = {}
         self.aksiyonlar = []
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
-                SELECT u.id, u.kayit_no, u.kayit_tipi, u.kayit_tarihi, 
+                SELECT u.id, u.kayit_no, u.kayit_tipi, u.kayit_tarihi,
                        p1.ad + ' ' + p1.soyad as bildiren,
                        c.unvan, s.urun_kodu + ' - ' + s.urun_adi as urun,
                        u.lot_no, u.etkilenen_miktar, u.hata_tanimi, u.tespit_yeri,
@@ -655,7 +799,7 @@ class UygunsuzlukDetayDialog(QDialog):
                 LEFT JOIN tanim.hata_turleri ht ON u.hata_turu_id = ht.id
                 WHERE u.id = ?
             """, (self.kayit_id,))
-            
+
             row = cursor.fetchone()
             if row:
                 self.kayit = {
@@ -666,10 +810,10 @@ class UygunsuzlukDetayDialog(QDialog):
                     'durum': row[12], 'sorumlu': row[13], 'hedef_kapanis': row[14],
                     'kapanis_tarihi': row[15], 'maliyet': row[16], 'hata_turu': row[17]
                 }
-            
-            # Aksiyonları yükle
+
+            # Aksiyonlari yukle
             cursor.execute("""
-                SELECT a.id, a.aksiyon_tipi, a.d_adimi, a.aciklama, 
+                SELECT a.id, a.aksiyon_tipi, a.d_adimi, a.aciklama,
                        p.ad + ' ' + p.soyad as sorumlu, a.hedef_tarih,
                        a.tamamlanma_tarihi, a.durum
                 FROM kalite.uygunsuzluk_aksiyonlar a
@@ -677,493 +821,578 @@ class UygunsuzlukDetayDialog(QDialog):
                 WHERE a.uygunsuzluk_id = ?
                 ORDER BY a.d_adimi, a.olusturma_tarihi
             """, (self.kayit_id,))
-            
+
             for row in cursor.fetchall():
                 self.aksiyonlar.append({
                     'id': row[0], 'tip': row[1], 'd_adimi': row[2],
                     'aciklama': row[3], 'sorumlu': row[4], 'hedef': row[5],
                     'tamamlanma': row[6], 'durum': row[7]
                 })
-            
-            conn.close()
+
         except Exception as e:
-            print(f"Kayıt yükleme hatası: {e}")
-    
+            print(f"Kayit yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _setup_ui(self):
-        self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#0f172a')}; }}
-            QLabel {{ color: {self.theme.get('text', '#ffffff')}; }}
-            QGroupBox {{ 
-                color: {self.theme.get('primary', '#3b82f6')}; 
-                font-weight: bold; 
-                border: 1px solid {self.theme.get('border')}; 
-                border-radius: 8px; 
-                margin-top: 12px; 
-                padding-top: 12px;
-            }}
-        """)
-        
+        self.setStyleSheet(_dialog_base_css() + _input_css())
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        # Başlık
-        header = QHBoxLayout()
-        title = QLabel(f"📋 {self.kayit.get('kayit_no', '')}")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
-        header.addWidget(title)
-        
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
+        # Baslik
+        header = _dialog_header(self.kayit.get('kayit_no', ''))
+
         durum = self.kayit.get('durum', '')
         durum_colors = {
-            'AÇIK': self.theme.get('warning', '#f59e0b'),
-            'İŞLEMDE': self.theme.get('info', '#06b6d4'),
-            'KAPATILDI': self.theme.get('success', '#22c55e'),
-            'İPTAL': self.theme.get('text_secondary', '#94a3b8')
+            'AÇIK': brand.WARNING,
+            'İŞLEMDE': brand.INFO,
+            'KAPATILDI': brand.SUCCESS,
+            'İPTAL': brand.TEXT_MUTED
         }
         durum_lbl = QLabel(durum)
-        durum_lbl.setStyleSheet(f"background: {durum_colors.get(durum, '#666')}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;")
+        durum_lbl.setStyleSheet(
+            f"background: {durum_colors.get(durum, brand.TEXT_MUTED)}; "
+            f"color: white; "
+            f"padding: {brand.SP_1}px {brand.SP_3}px; "
+            f"border-radius: {brand.R_SM}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_BODY_SM}px;"
+        )
         header.addWidget(durum_lbl)
-        header.addStretch()
         layout.addLayout(header)
-        
+
         # Tabs
         tabs = QTabWidget()
         tabs.setStyleSheet(f"""
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; border-radius: 8px; }}
-            QTabBar::tab {{ 
-                background: {self.theme.get('bg_card')}; 
-                color: {self.theme.get('text')}; 
-                padding: 10px 20px; 
-                border: 1px solid {self.theme.get('border')}; 
-                border-bottom: none;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                background: {brand.BG_CARD};
             }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabBar::tab {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                padding: {brand.SP_3}px {brand.SP_5}px;
+                margin-right: {brand.SP_1}px;
+                border-top-left-radius: {brand.R_SM}px;
+                border-top-right-radius: {brand.R_SM}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QTabBar::tab:selected {{
+                background: {brand.PRIMARY};
+                color: white;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
         """)
-        
+
         # Tab 1 - Detay
         detay_widget = QWidget()
         detay_layout = QVBoxLayout(detay_widget)
-        
+        detay_layout.setSpacing(brand.SP_4)
+        detay_layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+
         # Bilgi grid
         info_grid = QGridLayout()
-        info_grid.setSpacing(10)
-        
+        info_grid.setSpacing(brand.SP_3)
+
         labels = [
-            ("Kayıt Tipi:", self.kayit.get('kayit_tipi', '')),
+            ("Kayit Tipi:", self.kayit.get('kayit_tipi', '')),
             ("Tarih:", str(self.kayit.get('kayit_tarihi', ''))),
             ("Bildiren:", self.kayit.get('bildiren', '')),
-            ("Müşteri/Tedarikçi:", self.kayit.get('cari', '') or '-'),
-            ("Ürün:", self.kayit.get('urun', '') or '-'),
+            ("Musteri/Tedarikci:", self.kayit.get('cari', '') or '-'),
+            ("Urun:", self.kayit.get('urun', '') or '-'),
             ("Lot No:", self.kayit.get('lot_no', '') or '-'),
             ("Etkilenen Miktar:", str(self.kayit.get('miktar', 0) or 0)),
             ("Tespit Yeri:", self.kayit.get('tespit_yeri', '') or '-'),
-            ("Hata Türü:", self.kayit.get('hata_turu', '') or '-'),
-            ("Öncelik:", self.kayit.get('oncelik', '')),
+            ("Hata Turu:", self.kayit.get('hata_turu', '') or '-'),
+            ("Oncelik:", self.kayit.get('oncelik', '')),
             ("Sorumlu:", self.kayit.get('sorumlu', '') or '-'),
-            ("Hedef Kapanış:", str(self.kayit.get('hedef_kapanis', '') or '-'))
+            ("Hedef Kapanis:", str(self.kayit.get('hedef_kapanis', '') or '-'))
         ]
-        
+
         row = 0
         col = 0
         for label, value in labels:
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {self.theme.get('text_secondary')}; font-weight: bold;")
+            lbl.setStyleSheet(
+                f"color: {brand.TEXT_MUTED}; "
+                f"font-weight: {brand.FW_SEMIBOLD}; "
+                f"font-size: {brand.FS_BODY}px;"
+            )
             info_grid.addWidget(lbl, row, col)
-            
+
             val = QLabel(str(value))
-            val.setStyleSheet(f"color: {self.theme.get('text')};")
+            val.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY}px;")
             info_grid.addWidget(val, row, col + 1)
-            
+
             col += 2
             if col >= 4:
                 col = 0
                 row += 1
-        
+
         detay_layout.addLayout(info_grid)
-        
-        # Hata tanımı
-        detay_layout.addWidget(QLabel("Hata Tanımı:"))
+
+        # Hata tanimi
+        ht_lbl = QLabel("Hata Tanimi:")
+        ht_lbl.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
+        detay_layout.addWidget(ht_lbl)
         hata_text = QTextEdit()
         hata_text.setPlainText(self.kayit.get('hata_tanimi', ''))
         hata_text.setReadOnly(True)
-        hata_text.setMaximumHeight(100)
-        hata_text.setStyleSheet(f"background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        hata_text.setMaximumHeight(brand.sp(100))
+        hata_text.setStyleSheet(f"""
+            QTextEdit {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+        """)
         detay_layout.addWidget(hata_text)
-        
+
         detay_layout.addStretch()
-        tabs.addTab(detay_widget, "📄 Detay")
-        
+        tabs.addTab(detay_widget, "Detay")
+
         # Tab 2 - Aksiyonlar
         aksiyon_widget = QWidget()
         aksiyon_layout = QVBoxLayout(aksiyon_widget)
-        
+        aksiyon_layout.setSpacing(brand.SP_4)
+        aksiyon_layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+
         # Aksiyon ekle butonu
-        btn_aksiyon = QPushButton("➕ Aksiyon Ekle")
-        btn_aksiyon.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;")
+        btn_aksiyon = QPushButton("Aksiyon Ekle")
+        btn_aksiyon.setCursor(Qt.PointingHandCursor)
+        btn_aksiyon.setFixedHeight(brand.sp(38))
+        btn_aksiyon.setStyleSheet(_brand_btn(brand.PRIMARY, brand.PRIMARY_HOVER))
         btn_aksiyon.clicked.connect(self._aksiyon_ekle)
         aksiyon_layout.addWidget(btn_aksiyon, alignment=Qt.AlignLeft)
-        
+
         # Aksiyon tablosu
         self.aksiyon_table = QTableWidget()
         self.aksiyon_table.setColumnCount(6)
         self.aksiyon_table.setHorizontalHeaderLabels([
-            "Tip", "D Adımı", "Açıklama", "Sorumlu", "Hedef", "Durum"
+            "Tip", "D Adimi", "Aciklama", "Sorumlu", "Hedef", "Durum"
         ])
         self.aksiyon_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.aksiyon_table.setStyleSheet(f"""
-            QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-            }}
-            QHeaderView::section {{
-                background: {self.theme.get('bg_sidebar')};
-                color: {self.theme.get('text')};
-                padding: 8px;
-                border: none;
-            }}
-        """)
-        
+        self.aksiyon_table.verticalHeader().setVisible(False)
+        self.aksiyon_table.setShowGrid(False)
+        self.aksiyon_table.setAlternatingRowColors(True)
+        self.aksiyon_table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.aksiyon_table.setStyleSheet(_table_css())
+
         self._refresh_aksiyonlar()
         aksiyon_layout.addWidget(self.aksiyon_table)
-        
-        tabs.addTab(aksiyon_widget, "⚡ Aksiyonlar")
-        
+
+        tabs.addTab(aksiyon_widget, "Aksiyonlar")
+
         layout.addWidget(tabs, 1)
-        
+
         # Alt butonlar
         btn_layout = QHBoxLayout()
-        
+        btn_layout.setSpacing(brand.SP_3)
+
         if self.kayit.get('durum') != 'KAPATILDI':
-            btn_kapat = QPushButton("✓ Kaydı Kapat")
-            btn_kapat.setStyleSheet(f"background: {self.theme.get('success')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
+            btn_kapat = QPushButton("Kaydi Kapat")
+            btn_kapat.setCursor(Qt.PointingHandCursor)
+            btn_kapat.setFixedHeight(brand.sp(38))
+            btn_kapat.setStyleSheet(_brand_btn(brand.SUCCESS, "#059669"))
             btn_kapat.clicked.connect(self._kaydi_kapat)
             btn_layout.addWidget(btn_kapat)
-        
+
         btn_layout.addStretch()
-        
+
         btn_kapat_dlg = QPushButton("Kapat")
-        btn_kapat_dlg.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 24px;")
+        btn_kapat_dlg.setCursor(Qt.PointingHandCursor)
+        btn_kapat_dlg.setFixedHeight(brand.sp(38))
+        btn_kapat_dlg.setStyleSheet(_ghost_btn())
         btn_kapat_dlg.clicked.connect(self.accept)
         btn_layout.addWidget(btn_kapat_dlg)
-        
+
         layout.addLayout(btn_layout)
-    
+
     def _refresh_aksiyonlar(self):
-        """Aksiyon tablosunu güncelle"""
+        """Aksiyon tablosunu guncelle"""
         self.aksiyon_table.setRowCount(len(self.aksiyonlar))
         for i, a in enumerate(self.aksiyonlar):
             self.aksiyon_table.setItem(i, 0, QTableWidgetItem(a.get('tip', '')))
-            
+
             d_adimi = a.get('d_adimi')
             self.aksiyon_table.setItem(i, 1, QTableWidgetItem(f"D{d_adimi}" if d_adimi else "-"))
-            
+
             self.aksiyon_table.setItem(i, 2, QTableWidgetItem((a.get('aciklama', '') or '')[:50]))
             self.aksiyon_table.setItem(i, 3, QTableWidgetItem(a.get('sorumlu', '') or ''))
-            
+
             hedef = a.get('hedef')
             self.aksiyon_table.setItem(i, 4, QTableWidgetItem(str(hedef) if hedef else '-'))
-            
+
             durum = a.get('durum', '')
             durum_item = QTableWidgetItem(durum)
             if durum == 'TAMAMLANDI':
-                durum_item.setForeground(QColor(self.theme.get('success')))
+                durum_item.setForeground(QColor(brand.SUCCESS))
             elif durum == 'AÇIK':
-                durum_item.setForeground(QColor(self.theme.get('warning')))
+                durum_item.setForeground(QColor(brand.WARNING))
             self.aksiyon_table.setItem(i, 5, durum_item)
-    
+
     def _aksiyon_ekle(self):
         """Yeni aksiyon ekle"""
-        QMessageBox.information(self, "Bilgi", "Aksiyon ekleme özelliği yakında eklenecek.")
-    
+        QMessageBox.information(self, "Bilgi", "Aksiyon ekleme ozelligi yakinda eklenecek.")
+
     def _kaydi_kapat(self):
-        """Kaydı kapat"""
+        """Kaydi kapat"""
         reply = QMessageBox.question(
-            self, "Onay", 
-            "Bu uygunsuzluk kaydını kapatmak istediğinize emin misiniz?",
+            self, "Onay",
+            "Bu uygunsuzluk kaydini kapatmak istediginize emin misiniz?",
             QMessageBox.Yes | QMessageBox.No
         )
-        
+
         if reply == QMessageBox.Yes:
+            conn = None
             try:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute("""
-                    UPDATE kalite.uygunsuzluklar 
+                    UPDATE kalite.uygunsuzluklar
                     SET durum = 'KAPATILDI', kapanis_tarihi = CAST(GETDATE() AS DATE),
                         guncelleme_tarihi = GETDATE()
                     WHERE id = ?
                 """, (self.kayit_id,))
                 conn.commit()
                 LogManager.log_update('kalite', 'kalite.uygunsuzluklar', None, 'Durum guncellendi')
-                conn.close()
-                
-                QMessageBox.information(self, "Başarılı", "Kayıt kapatıldı.")
+
+                QMessageBox.information(self, "Basarili", "Kayit kapatildi.")
                 self.accept()
             except Exception as e:
-                QMessageBox.critical(self, "Hata", f"Kayıt kapatılamadı: {e}")
+                QMessageBox.critical(self, "Hata", f"Kayit kapatilamadi: {e}")
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
 
+
+# =====================================================================
+# ANA SAYFA
+# =====================================================================
 
 class KaliteRedPage(BasePage):
-    """Red Kayıtları / Uygunsuzluk Yönetimi Sayfası - Üretim Redler sekmesi ile"""
-    
+    """Red Kayitlari / Uygunsuzluk Yonetimi Sayfasi — el kitabi uyumlu"""
+
     def __init__(self, theme: dict):
         super().__init__(theme)
         self._setup_ui()
         QTimer.singleShot(100, self._load_all_data)
-    
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
-        # Header
-        header = QHBoxLayout()
-        title = QLabel("❌ Red Kayıtları / Uygunsuzluk Yönetimi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text', '#fff')};")
-        header.addWidget(title)
-        header.addStretch()
-        
-        # Yenile butonu
-        btn_yenile = QPushButton("🔄 Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 16px;")
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
+
+        # ── 1. Header ──
+        header = self.create_page_header(
+            "Red Kayitlari / Uygunsuzluk Yonetimi",
+            "Uretim redleri, musteri sikayetleri ve uygunsuzluk takibi"
+        )
+
+        btn_yenile = self.create_primary_button("Yenile")
         btn_yenile.clicked.connect(self._load_all_data)
         header.addWidget(btn_yenile)
-        
+
         layout.addLayout(header)
-        
-        # TAB WIDGET - Ana yapı
+
+        # ── TAB WIDGET ──
         self.tab_widget = QTabWidget()
         self.tab_widget.setStyleSheet(f"""
             QTabWidget::pane {{
-                background: {self.theme.get('bg_card', '#1e293b')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
             }}
             QTabBar::tab {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                padding: 10px 20px;
-                margin-right: 4px;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                padding: {brand.SP_3}px {brand.SP_5}px;
+                margin-right: {brand.SP_1}px;
+                border-top-left-radius: {brand.R_SM}px;
+                border-top-right-radius: {brand.R_SM}px;
+                font-size: {brand.FS_BODY}px;
             }}
             QTabBar::tab:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
-                font-weight: bold;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """)
-        
-        # TAB 1: Üretim Redleri (Yeni)
+
+        # TAB 1: Uretim Redleri
         self.uretim_tab = QWidget()
         self._setup_uretim_redler_tab()
-        self.tab_widget.addTab(self.uretim_tab, "🏭 Üretim Redleri")
-        
-        # TAB 2: Uygunsuzluklar (Mevcut)
+        self.tab_widget.addTab(self.uretim_tab, "Uretim Redleri")
+
+        # TAB 2: Uygunsuzluklar
         self.uygunsuzluk_tab = QWidget()
         self._setup_uygunsuzluk_tab()
-        self.tab_widget.addTab(self.uygunsuzluk_tab, "📋 Uygunsuzluklar")
-        
-        # TAB 3: Event Log (YENİ)
+        self.tab_widget.addTab(self.uygunsuzluk_tab, "Uygunsuzluklar")
+
+        # TAB 3: Event Log
         self.event_log_tab = QWidget()
         self._setup_event_log_tab()
-        self.tab_widget.addTab(self.event_log_tab, "📋 Event Log")
-        
+        self.tab_widget.addTab(self.event_log_tab, "Event Log")
+
         layout.addWidget(self.tab_widget)
-    
+
+    # -----------------------------------------------------------------
+    # TAB 1: Uretim Redleri
+    # -----------------------------------------------------------------
     def _setup_uretim_redler_tab(self):
-        """Üretim Redleri sekmesi - Kalite kontrolden gelen redler"""
+        """Uretim Redleri sekmesi"""
         layout = QVBoxLayout(self.uretim_tab)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
-        
-        # Üst bilgi
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_4)
+
+        # Ust bilgi
         info_layout = QHBoxLayout()
-        info_lbl = QLabel("🏭 Üretimden gelen kalite kontrol red kayıtları")
-        info_lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 13px;")
+        info_lbl = QLabel("Uretimden gelen kalite kontrol red kayitlari")
+        info_lbl.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;"
+        )
         info_layout.addWidget(info_lbl)
         info_layout.addStretch()
-        
-        # İstatistik kartları
-        self.uretim_stat_bekleyen = self._create_stat_card("⏳ Bekleyen", "0", self.theme.get('warning', '#f59e0b'))
-        info_layout.addWidget(self.uretim_stat_bekleyen)
-        
-        self.uretim_stat_islenen = self._create_stat_card("✅ İşlenen", "0", self.theme.get('success', '#22c55e'))
-        info_layout.addWidget(self.uretim_stat_islenen)
-        
-        self.uretim_stat_toplam = self._create_stat_card("📊 Toplam", "0", self.theme.get('primary', '#3b82f6'))
-        info_layout.addWidget(self.uretim_stat_toplam)
-        
         layout.addLayout(info_layout)
-        
+
+        # KPI kartlari
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(brand.SP_4)
+
+        self.uretim_stat_bekleyen = self.create_stat_card("BEKLEYEN", "0", color=brand.WARNING)
+        kpi_row.addWidget(self.uretim_stat_bekleyen)
+
+        self.uretim_stat_islenen = self.create_stat_card("ISLENEN", "0", color=brand.SUCCESS)
+        kpi_row.addWidget(self.uretim_stat_islenen)
+
+        self.uretim_stat_toplam = self.create_stat_card("TOPLAM", "0", color=brand.PRIMARY)
+        kpi_row.addWidget(self.uretim_stat_toplam)
+
+        kpi_row.addStretch()
+        layout.addLayout(kpi_row)
+
         # Filtreler
         filtre_layout = QHBoxLayout()
-        
-        filtre_layout.addWidget(QLabel("Durum:"))
+        filtre_layout.setSpacing(brand.SP_3)
+
+        lbl_durum = QLabel("Durum:")
+        lbl_durum.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        filtre_layout.addWidget(lbl_durum)
         self.uretim_durum_combo = QComboBox()
-        self.uretim_durum_combo.addItems(['Tümü', 'BEKLIYOR', 'İŞLENDİ', 'İADE', 'HURDA'])
-        self.uretim_durum_combo.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 6px 12px;")
+        self.uretim_durum_combo.addItems(['Tumu', 'BEKLIYOR', 'ISLENDI', 'IADE', 'HURDA'])
+        self.uretim_durum_combo.setStyleSheet(f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
         self.uretim_durum_combo.currentIndexChanged.connect(self._load_uretim_redler)
         filtre_layout.addWidget(self.uretim_durum_combo)
-        
+
         filtre_layout.addStretch()
         layout.addLayout(filtre_layout)
-        
+
         # Tablo
         self.uretim_table = QTableWidget()
         self.uretim_table.setColumnCount(9)
         self.uretim_table.setHorizontalHeaderLabels([
-            "ID", "Tarih", "İş Emri", "Lot No", "Ürün", "Red Adet", "Kontrol Eden", "Durum", "İşlem"
+            "ID", "Tarih", "Is Emri", "Lot No", "Urun", "Red Adet", "Kontrol Eden", "Durum", "Islem"
         ])
         self.uretim_table.setColumnHidden(0, True)
-        self.uretim_table.setColumnWidth(1, 120)
-        self.uretim_table.setColumnWidth(2, 100)
-        self.uretim_table.setColumnWidth(3, 120)
+        self.uretim_table.setColumnWidth(1, brand.sp(120))
+        self.uretim_table.setColumnWidth(2, brand.sp(100))
+        self.uretim_table.setColumnWidth(3, brand.sp(120))
         self.uretim_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
-        self.uretim_table.setColumnWidth(5, 80)
-        self.uretim_table.setColumnWidth(6, 100)
-        self.uretim_table.setColumnWidth(7, 80)
-        self.uretim_table.setColumnWidth(8, 100)
+        self.uretim_table.setColumnWidth(5, brand.sp(80))
+        self.uretim_table.setColumnWidth(6, brand.sp(100))
+        self.uretim_table.setColumnWidth(7, brand.sp(80))
+        self.uretim_table.setColumnWidth(8, brand.sp(100))
         self.uretim_table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.uretim_table.setStyleSheet(f"""
-            QTableWidget {{
-                background: {self.theme.get('bg_card', '#1e293b')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-            }}
-            QTableWidget::item {{ padding: 8px; }}
-            QHeaderView::section {{
-                background: {self.theme.get('bg_sidebar')};
-                color: {self.theme.get('text')};
-                padding: 10px;
-                border: none;
-                font-weight: bold;
-            }}
-        """)
+        self.uretim_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.uretim_table.verticalHeader().setVisible(False)
+        self.uretim_table.setShowGrid(False)
+        self.uretim_table.setAlternatingRowColors(True)
+        self.uretim_table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.uretim_table.setStyleSheet(_table_css())
         self.uretim_table.doubleClicked.connect(self._uretim_red_detay)
         layout.addWidget(self.uretim_table)
-    
+
+    # -----------------------------------------------------------------
+    # TAB 2: Uygunsuzluklar
+    # -----------------------------------------------------------------
     def _setup_uygunsuzluk_tab(self):
-        """Uygunsuzluklar sekmesi - Mevcut yapı"""
+        """Uygunsuzluklar sekmesi"""
         layout = QVBoxLayout(self.uygunsuzluk_tab)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(12)
-        
-        # Yeni kayıt butonları
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_4)
+
+        # Yeni kayit butonlari
         btn_layout = QHBoxLayout()
-        
-        btn_musteri = QPushButton("🏢 Müşteri Şikayeti")
-        btn_musteri.setStyleSheet(f"background: {self.theme.get('danger', '#ef4444')}; color: white; border: none; border-radius: 6px; padding: 10px 16px; font-weight: bold;")
+        btn_layout.setSpacing(brand.SP_3)
+
+        btn_musteri = QPushButton("Musteri Sikayeti")
+        btn_musteri.setCursor(Qt.PointingHandCursor)
+        btn_musteri.setFixedHeight(brand.sp(38))
+        btn_musteri.setStyleSheet(_brand_btn(brand.ERROR, "#DC2626"))
         btn_musteri.clicked.connect(lambda: self._yeni_kayit('MÜŞTERİ_ŞİKAYETİ'))
         btn_layout.addWidget(btn_musteri)
-        
-        btn_ic = QPushButton("🏭 İç Red")
-        btn_ic.setStyleSheet(f"background: {self.theme.get('warning', '#f59e0b')}; color: white; border: none; border-radius: 6px; padding: 10px 16px; font-weight: bold;")
+
+        btn_ic = QPushButton("Ic Red")
+        btn_ic.setCursor(Qt.PointingHandCursor)
+        btn_ic.setFixedHeight(brand.sp(38))
+        btn_ic.setStyleSheet(_brand_btn(brand.WARNING, "#D97706"))
         btn_ic.clicked.connect(lambda: self._yeni_kayit('İÇ_RED'))
         btn_layout.addWidget(btn_ic)
-        
-        btn_tedarikci = QPushButton("📦 Tedarikçi Red")
-        btn_tedarikci.setStyleSheet(f"background: {self.theme.get('info', '#06b6d4')}; color: white; border: none; border-radius: 6px; padding: 10px 16px; font-weight: bold;")
+
+        btn_tedarikci = QPushButton("Tedarikci Red")
+        btn_tedarikci.setCursor(Qt.PointingHandCursor)
+        btn_tedarikci.setFixedHeight(brand.sp(38))
+        btn_tedarikci.setStyleSheet(_brand_btn(brand.INFO, "#2563EB"))
         btn_tedarikci.clicked.connect(lambda: self._yeni_kayit('TEDARİKÇİ_RED'))
         btn_layout.addWidget(btn_tedarikci)
-        
+
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
-        
-        # İstatistik kartları
-        stat_layout = QHBoxLayout()
-        
-        self.stat_acik = self._create_stat_card("📋 Açık", "0", self.theme.get('warning', '#f59e0b'))
-        stat_layout.addWidget(self.stat_acik)
-        
-        self.stat_islemde = self._create_stat_card("⚡ İşlemde", "0", self.theme.get('info', '#06b6d4'))
-        stat_layout.addWidget(self.stat_islemde)
-        
-        self.stat_kapatilan = self._create_stat_card("✅ Kapatılan (Bu Ay)", "0", self.theme.get('success', '#22c55e'))
-        stat_layout.addWidget(self.stat_kapatilan)
-        
-        self.stat_toplam = self._create_stat_card("📊 Toplam (Bu Ay)", "0", self.theme.get('primary', '#3b82f6'))
-        stat_layout.addWidget(self.stat_toplam)
-        
-        stat_layout.addStretch()
-        layout.addLayout(stat_layout)
-        
+
+        # KPI kartlari
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(brand.SP_4)
+
+        self.stat_acik = self.create_stat_card("ACIK", "0", color=brand.WARNING)
+        kpi_row.addWidget(self.stat_acik)
+
+        self.stat_islemde = self.create_stat_card("ISLEMDE", "0", color=brand.INFO)
+        kpi_row.addWidget(self.stat_islemde)
+
+        self.stat_kapatilan = self.create_stat_card("KAPATILAN (BU AY)", "0", color=brand.SUCCESS)
+        kpi_row.addWidget(self.stat_kapatilan)
+
+        self.stat_toplam = self.create_stat_card("TOPLAM (BU AY)", "0", color=brand.PRIMARY)
+        kpi_row.addWidget(self.stat_toplam)
+
+        kpi_row.addStretch()
+        layout.addLayout(kpi_row)
+
         # Filtre
         filtre_layout = QHBoxLayout()
-        
-        filtre_layout.addWidget(QLabel("Durum:"))
+        filtre_layout.setSpacing(brand.SP_3)
+
+        lbl_d = QLabel("Durum:")
+        lbl_d.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        filtre_layout.addWidget(lbl_d)
         self.cmb_durum = QComboBox()
-        self.cmb_durum.addItems(['Tümü', 'AÇIK', 'İŞLEMDE', 'KAPATILDI'])
-        self.cmb_durum.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 6px 12px;")
+        self.cmb_durum.addItems(['Tumu', 'AÇIK', 'İŞLEMDE', 'KAPATILDI'])
+        self.cmb_durum.setStyleSheet(f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
         self.cmb_durum.currentIndexChanged.connect(self._load_data)
         filtre_layout.addWidget(self.cmb_durum)
-        
-        filtre_layout.addWidget(QLabel("Tip:"))
+
+        lbl_t = QLabel("Tip:")
+        lbl_t.setStyleSheet(f"font-size: {brand.FS_BODY}px;")
+        filtre_layout.addWidget(lbl_t)
         self.cmb_tip = QComboBox()
-        self.cmb_tip.addItems(['Tümü', 'MÜŞTERİ_ŞİKAYETİ', 'İÇ_RED', 'TEDARİKÇİ_RED', 'PROSES_RED', 'DENETİM_BULGUSU'])
-        self.cmb_tip.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 6px 12px;")
+        self.cmb_tip.addItems(['Tumu', 'MÜŞTERİ_ŞİKAYETİ', 'İÇ_RED', 'TEDARİKÇİ_RED', 'PROSES_RED', 'DENETİM_BULGUSU'])
+        self.cmb_tip.setStyleSheet(f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
         self.cmb_tip.currentIndexChanged.connect(self._load_data)
         filtre_layout.addWidget(self.cmb_tip)
-        
+
         filtre_layout.addStretch()
         layout.addLayout(filtre_layout)
-        
+
         # Tablo
         self.table = QTableWidget()
         self.table.setColumnCount(9)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Kayıt No", "Tip", "Tarih", "Müşteri/Tedarikçi", "Ürün", "Öncelik", "Durum", "İşlem"
+            "ID", "Kayit No", "Tip", "Tarih", "Musteri/Tedarikci", "Urun", "Oncelik", "Durum", "Islem"
         ])
         self.table.setColumnHidden(0, True)
-        self.table.setColumnWidth(8, 120)
+        self.table.setColumnWidth(8, brand.sp(120))
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setStyleSheet(f"""
-            QTableWidget {{
-                background: {self.theme.get('bg_card', '#1e293b')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-            }}
-            QTableWidget::item {{ padding: 8px; }}
-            QHeaderView::section {{
-                background: {self.theme.get('bg_sidebar')};
-                color: {self.theme.get('text')};
-                padding: 10px;
-                border: none;
-                font-weight: bold;
-            }}
-        """)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.table.setStyleSheet(_table_css())
         self.table.doubleClicked.connect(self._on_double_click)
         layout.addWidget(self.table)
-    
+
+    # -----------------------------------------------------------------
+    # TAB 3: Event Log
+    # -----------------------------------------------------------------
+    def _setup_event_log_tab(self):
+        """Event Log sekmesi"""
+        from .kalite_event_log import EventLogPage
+
+        layout = QVBoxLayout(self.event_log_tab)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        event_log_widget = EventLogPage(self.theme)
+        layout.addWidget(event_log_widget)
+
+    # -----------------------------------------------------------------
+    # DATA LOADING
+    # -----------------------------------------------------------------
     def _load_all_data(self):
-        """Tüm sekmelerin verilerini yükle"""
+        """Tum sekmelerin verilerini yukle"""
         self._load_uretim_redler()
         self._load_data()
-    
+
     def _load_uretim_redler(self):
-        """Üretim redleri verilerini yükle"""
+        """Uretim redleri verilerini yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             durum_filtre = self.uretim_durum_combo.currentText()
-            
-            # Önce tablo var mı kontrol et, yoksa oluştur
+
+            # Tablo var mi kontrol et, yoksa olustur
             cursor.execute("""
-                IF NOT EXISTS (SELECT * FROM sys.tables t 
-                              JOIN sys.schemas s ON t.schema_id = s.schema_id 
+                IF NOT EXISTS (SELECT * FROM sys.tables t
+                              JOIN sys.schemas s ON t.schema_id = s.schema_id
                               WHERE s.name = 'kalite' AND t.name = 'uretim_redler')
                 BEGIN
                     CREATE TABLE kalite.uretim_redler (
@@ -1183,14 +1412,14 @@ class KaliteRedPage(BasePage):
                 END
             """)
             conn.commit()
-            
-            # Veri çek
+
+            # Veri cek
             where_clause = ""
             params = []
-            if durum_filtre != 'Tümü':
+            if durum_filtre != 'Tumu':
                 where_clause = "WHERE ur.durum = ?"
                 params.append(durum_filtre)
-            
+
             cursor.execute(f"""
                 SELECT ur.id, ur.red_tarihi, ie.is_emri_no, ur.lot_no, ie.stok_adi,
                        ur.red_miktar, p.ad + ' ' + p.soyad as kontrolcu, ur.durum
@@ -1200,79 +1429,83 @@ class KaliteRedPage(BasePage):
                 {where_clause}
                 ORDER BY ur.red_tarihi DESC
             """, params)
-            
+
             rows = cursor.fetchall()
             self.uretim_table.setRowCount(len(rows))
-            
+
             bekleyen = 0
             islenen = 0
-            
+
             for i, row in enumerate(rows):
                 self.uretim_table.setItem(i, 0, QTableWidgetItem(str(row[0])))
-                
+
                 # Tarih
                 tarih = row[1]
                 tarih_str = tarih.strftime('%d.%m.%Y') if tarih else '-'
                 self.uretim_table.setItem(i, 1, QTableWidgetItem(tarih_str))
-                
-                # İş emri
+
+                # Is emri
                 ie_item = QTableWidgetItem(row[2] or '-')
-                ie_item.setForeground(QColor(self.theme.get('primary', '#6366f1')))
+                ie_item.setForeground(QColor(brand.PRIMARY))
                 self.uretim_table.setItem(i, 2, ie_item)
-                
+
                 # Lot no
                 self.uretim_table.setItem(i, 3, QTableWidgetItem(row[3] or '-'))
-                
-                # Ürün
+
+                # Urun
                 self.uretim_table.setItem(i, 4, QTableWidgetItem((row[4] or '')[:30]))
-                
+
                 # Red adet
                 adet_item = QTableWidgetItem(f"{row[5] or 0:,}")
                 adet_item.setTextAlignment(Qt.AlignCenter)
-                adet_item.setForeground(QColor(self.theme.get('danger', '#ef4444')))
+                adet_item.setForeground(QColor(brand.ERROR))
                 self.uretim_table.setItem(i, 5, adet_item)
-                
+
                 # Kontrol eden
                 self.uretim_table.setItem(i, 6, QTableWidgetItem(row[6] or '-'))
-                
+
                 # Durum
                 durum = row[7] or 'BEKLIYOR'
                 durum_item = QTableWidgetItem(durum)
                 if durum == 'BEKLIYOR':
-                    durum_item.setForeground(QColor(self.theme.get('warning', '#f59e0b')))
+                    durum_item.setForeground(QColor(brand.WARNING))
                     bekleyen += 1
                 elif durum in ('İŞLENDİ', 'İADE', 'HURDA'):
-                    durum_item.setForeground(QColor(self.theme.get('success', '#22c55e')))
+                    durum_item.setForeground(QColor(brand.SUCCESS))
                     islenen += 1
                 self.uretim_table.setItem(i, 7, durum_item)
-                
-                # İşlem butonu
+
+                # Islem butonu
                 widget = self.create_action_buttons([
-                    ("⚙️", "İşle", lambda checked, rid=row[0]: self._isle_uretim_red(rid), "edit"),
+                    ("Isle", "Isle", lambda checked, rid=row[0]: self._isle_uretim_red(rid), "edit"),
                 ])
                 self.uretim_table.setCellWidget(i, 8, widget)
-                self.uretim_table.setRowHeight(i, 42)
 
-            # İstatistikleri güncelle
+            # Istatistikleri guncelle
             self.uretim_stat_bekleyen.findChild(QLabel, "stat_value").setText(str(bekleyen))
             self.uretim_stat_islenen.findChild(QLabel, "stat_value").setText(str(islenen))
             self.uretim_stat_toplam.findChild(QLabel, "stat_value").setText(str(len(rows)))
-            
-            conn.close()
-            
+
         except Exception as e:
-            print(f"Üretim redleri yükleme hatası: {e}")
+            print(f"Uretim redleri yukleme hatasi: {e}")
             import traceback
             traceback.print_exc()
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _isle_uretim_red(self, red_id: int):
-        """Üretim red kaydını işle - YENİ VERSİYON"""
+        """Uretim red kaydini isle"""
+        conn = None
         try:
-            # Red kaydını al
+            # Red kaydini al
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT 
+                SELECT
                     ur.id, ur.lot_no, ur.red_miktar, ur.is_emri_id,
                     ur.kontrol_eden_id, ur.durum, ur.aciklama,
                     ie.stok_adi, ie.stok_kodu, ie.urun_id, ie.cari_unvani,
@@ -1282,14 +1515,13 @@ class KaliteRedPage(BasePage):
                 LEFT JOIN tanim.hata_turleri ht ON ur.hata_turu_id = ht.id
                 WHERE ur.id = ?
             """, (red_id,))
-            
+
             row = cursor.fetchone()
             if not row:
-                QMessageBox.warning(self, "Uyarı", "Red kaydı bulunamadı!")
-                conn.close()
+                QMessageBox.warning(self, "Uyari", "Red kaydi bulunamadi!")
                 return
-            
-            # Red kayıt verisi
+
+            # Red kayit verisi
             red_kayit = {
                 'id': row[0],
                 'lot_no': row[1],
@@ -1305,66 +1537,79 @@ class KaliteRedPage(BasePage):
                 'red_tarihi': row[11],
                 'hata_turu_adi': row[12]
             }
-            
-            # Durum kontrolü
+
+            # Durum kontrolu
             if red_kayit['durum'] not in ['BEKLIYOR', 'MUSTERI_ONAY', None]:
-                QMessageBox.information(self, "Bilgi", 
-                    f"Bu kayıt zaten işlenmiş. Durum: {red_kayit['durum']}")
-                conn.close()
+                QMessageBox.information(self, "Bilgi",
+                    f"Bu kayit zaten islenmis. Durum: {red_kayit['durum']}")
                 return
-            
+
             conn.close()
-            
-            # Karar dialog'unu aç
+            conn = None
+
+            # Karar dialog'unu ac
             dlg = RedKararDialog(self.theme, red_kayit, self)
             if dlg.exec() != QDialog.Accepted:
-                return  # İptal
-            
+                return
+
             karar = dlg.get_karar()
             if not karar:
                 return
-            
-            # Kararı işle
+
+            # Karari isle
             self._isle_karar(karar)
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"İşlem hatası: {e}")
+            QMessageBox.critical(self, "Hata", f"Islem hatasi: {e}")
             import traceback
             traceback.print_exc()
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _get_depo_id(self, kod: str) -> int:
         """Depo kodundan ID al"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM tanim.depolar WHERE kod = ?", (kod,))
             row = cursor.fetchone()
-            conn.close()
             return row[0] if row else None
         except Exception as e:
-            print(f"Depo ID alma hatası: {e}")
+            print(f"Depo ID alma hatasi: {e}")
             return None
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _isle_karar(self, karar: dict):
-        """Kararı işle ve stok hareketini yap"""
+        """Karari isle ve stok hareketini yap"""
+        conn = None
         try:
             karar_tip = karar['tip']
             karar_not = karar['not']
             red_kayit = karar['red_kayit']
             islem_miktar = karar.get('miktar', red_kayit['red_miktar'])
             kalan_miktar = karar.get('kalan_miktar', 0)
-            
+
             conn = get_db_connection()
             cursor = conn.cursor()
             motor = HareketMotoru(conn)
-            
-            # Depo ID'leri - dinamik al
+
+            # Depo ID'leri
             RED_DEPO_ID = self._get_depo_id('RED') or 12
             FKK_DEPO_ID = self._get_depo_id('FKK') or 10
             SOKUM_DEPO_ID = self._get_depo_id('SOKUM') or self._get_depo_id('XI') or 13
-            KAR_DEPO_ID = self._get_depo_id('KAR')  # Karantina Deposu
-            
-            # Akış şablonu ID'lerini al
+            KAR_DEPO_ID = self._get_depo_id('KAR')
+
+            # Akis sablonu ID'lerini al
             sablon_id = None
             if karar_tip == 'KABUL':
                 sablon_id = self._get_akis_sablon_id(cursor, 'RED-KABUL') or self._get_akis_sablon_id(cursor, 'RED KABUL')
@@ -1372,30 +1617,26 @@ class KaliteRedPage(BasePage):
                 sablon_id = self._get_akis_sablon_id(cursor, 'söküm') or self._get_akis_sablon_id(cursor, 'SOKUM')
             elif karar_tip == 'MUSTERI_ONAY':
                 sablon_id = self._get_akis_sablon_id(cursor, 'RED-KARANTINA') or self._get_akis_sablon_id(cursor, 'RED KARANTINA')
-            
-            print(f"DEBUG: Karar tip={karar_tip}, Akış şablonu ID={sablon_id}")
-            
-            # Kullanıcı ID
+
+            print(f"DEBUG: Karar tip={karar_tip}, Akis sablonu ID={sablon_id}")
+
+            # Kullanici ID
             user_id = ModernLoginDialog.current_user_id or 1
-            
+
             if karar_tip == 'KABUL':
-                # KABUL - RED -> FKK (Final Kalite)
-                self._isle_kabul(red_kayit, karar_not, motor, cursor, user_id, 
+                self._isle_kabul(red_kayit, karar_not, motor, cursor, user_id,
                                 RED_DEPO_ID, FKK_DEPO_ID, islem_miktar, sablon_id)
-            
+
             elif karar_tip == 'SOKUM':
-                # SÖKÜM - RED -> XI (Söküm İstasyonu)
-                self._isle_sokum(red_kayit, karar_not, motor, cursor, user_id, 
+                self._isle_sokum(red_kayit, karar_not, motor, cursor, user_id,
                                 RED_DEPO_ID, SOKUM_DEPO_ID, islem_miktar, sablon_id)
-            
+
             elif karar_tip == 'MUSTERI_ONAY':
-                # MÜŞTERİ ONAYI - RED -> KAR (Karantina Deposu)
-                self._isle_musteri_onay(red_kayit, karar_not, motor, cursor, user_id, 
+                self._isle_musteri_onay(red_kayit, karar_not, motor, cursor, user_id,
                                        RED_DEPO_ID, KAR_DEPO_ID, islem_miktar, sablon_id)
-            
-            # Kalan miktar varsa red kaydını güncelle, yoksa işlenmiş olarak işaretle
+
+            # Kalan miktar varsa red kaydini guncelle
             if kalan_miktar > 0:
-                # Kısmi işlem - kalan miktar RED'de kalacak, durum BEKLIYOR kalmalı
                 cursor.execute("""
                     UPDATE kalite.uretim_redler
                     SET red_miktar = ?,
@@ -1403,14 +1644,13 @@ class KaliteRedPage(BasePage):
                         guncelleme_tarihi = GETDATE()
                     WHERE id = ?
                 """, (kalan_miktar, red_kayit['id']))
-                print(f"DEBUG: Kalan miktar güncellendi: {kalan_miktar}, durum=BEKLIYOR")
-            
-            # ✅ OBSERVER - EVENT KAYDI
+                print(f"DEBUG: Kalan miktar guncellendi: {kalan_miktar}, durum=BEKLIYOR")
+
+            # OBSERVER - EVENT KAYDI
             try:
                 from utils.hareket_observer import HareketObserver
                 observer = HareketObserver(conn)
-                
-                # Hedef depo belirle
+
                 hedef_depo = None
                 if karar_tip == 'KABUL':
                     hedef_depo = FKK_DEPO_ID
@@ -1418,8 +1658,7 @@ class KaliteRedPage(BasePage):
                     hedef_depo = SOKUM_DEPO_ID
                 elif karar_tip == 'MUSTERI_ONAY':
                     hedef_depo = KAR_DEPO_ID
-                
-                # Event kaydı oluştur
+
                 if hedef_depo:
                     observer.on_hareket_completed(
                         lot_no=red_kayit['lot_no'],
@@ -1427,129 +1666,123 @@ class KaliteRedPage(BasePage):
                         miktar=islem_miktar
                     )
             except Exception as e:
-                print(f"⚠️ Observer hatası (önemsiz): {e}")
-            # ✅ OBSERVER BİTTİ
-            
+                print(f"Observer hatasi (onemsiz): {e}")
+
             conn.commit()
-            conn.close()
-            
+
             karar_mesajlari = {
-                'KABUL': f'{islem_miktar} adet Final Kalite deposuna gönderildi.',
-                'SOKUM': f'{islem_miktar} adet Söküm İstasyonuna gönderildi.',
-                'MUSTERI_ONAY': f'{islem_miktar} adet Karantina deposuna gönderildi.'
+                'KABUL': f'{islem_miktar} adet Final Kalite deposuna gonderildi.',
+                'SOKUM': f'{islem_miktar} adet Sokum Istasyonuna gonderildi.',
+                'MUSTERI_ONAY': f'{islem_miktar} adet Karantina deposuna gonderildi.'
             }
-            
+
             kalan_msg = f"\n\nKalan: {kalan_miktar} adet RED'de bekliyor." if kalan_miktar > 0 else ""
-            
-            QMessageBox.information(self, "✓ Başarılı", 
+
+            QMessageBox.information(self, "Basarili",
                 f"Karar: {karar_tip}\n\n{karar_mesajlari.get(karar_tip, '')}{kalan_msg}")
-            
+
             self._load_uretim_redler()
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Karar işleme hatası: {e}")
+            QMessageBox.critical(self, "Hata", f"Karar isleme hatasi: {e}")
             import traceback
             traceback.print_exc()
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _get_akis_sablon_id(self, cursor, kod: str):
-        """Akış şablonu ID'sini al"""
+        """Akis sablonu ID'sini al"""
         try:
             cursor.execute("""
-                SELECT id FROM tanim.akis_sablon 
+                SELECT id FROM tanim.akis_sablon
                 WHERE kod = ? AND aktif_mi = 1
             """, (kod,))
             row = cursor.fetchone()
             return row[0] if row else None
         except Exception:
             return None
-    
-    def _isle_kabul(self, red_kayit: dict, karar_not: str, motor, cursor, 
+
+    def _isle_kabul(self, red_kayit: dict, karar_not: str, motor, cursor,
                     user_id: int, red_depo_id: int, fkk_depo_id: int,
                     islem_miktar: int = None, sablon_id: int = None):
-        """KABUL kararını işle - RED -> FKK transfer"""
+        """KABUL kararini isle - RED -> FKK transfer"""
         orijinal_lot = red_kayit['lot_no']
         miktar = islem_miktar if islem_miktar else red_kayit['red_miktar']
-        
-        # RED lot'unu bul - önce RED deposunda, sonra tüm depolarda ara
-        # LOT-2601-0001-02 -> LOT-2601-0001-RED veya LOT-2601-0001-02-RED formatında olabilir
-        lot_prefix = '-'.join(orijinal_lot.split('-')[:3])  # LOT-2601-0001
-        
+
+        lot_prefix = '-'.join(orijinal_lot.split('-')[:3])
+
         cursor.execute("""
-            SELECT lot_no, depo_id, miktar FROM stok.stok_bakiye 
+            SELECT lot_no, depo_id, miktar FROM stok.stok_bakiye
             WHERE miktar > 0 AND (
-                lot_no = ? OR 
-                lot_no LIKE ? OR 
+                lot_no = ? OR
+                lot_no LIKE ? OR
                 lot_no = ?
             )
-            ORDER BY 
+            ORDER BY
                 CASE WHEN depo_id = ? THEN 0 ELSE 1 END,
                 CASE WHEN lot_no LIKE '%-RED' AND lot_no NOT LIKE '%-RED-S' THEN 0 ELSE 1 END
         """, (orijinal_lot, f"{lot_prefix}%-RED", f"{orijinal_lot}-RED", red_depo_id))
-        
-        red_lot_rows = cursor.fetchall()  # Tüm sonuçları al - cursor'ı temizle
+
+        red_lot_rows = cursor.fetchall()
         if red_lot_rows:
             red_lot_no = red_lot_rows[0][0]
             kaynak_depo_id = red_lot_rows[0][1]
             mevcut_miktar = red_lot_rows[0][2]
             print(f"DEBUG: Bulunan lot: {red_lot_no}, depo={kaynak_depo_id}, miktar={mevcut_miktar}")
         else:
-            raise Exception(f"RED deposunda stok bulunamadı! Lot: {orijinal_lot}")
-        
-        # Miktar kontrolü
+            raise Exception(f"RED deposunda stok bulunamadi! Lot: {orijinal_lot}")
+
         if miktar > mevcut_miktar:
-            raise Exception(f"Yetersiz stok! İstenen: {miktar}, Mevcut: {mevcut_miktar}")
-        
-        # FKK deposunda aynı lot var mı kontrol et
+            raise Exception(f"Yetersiz stok! Istenen: {miktar}, Mevcut: {mevcut_miktar}")
+
         cursor.execute("""
-            SELECT id, miktar FROM stok.stok_bakiye 
+            SELECT id, miktar FROM stok.stok_bakiye
             WHERE lot_no = ? AND depo_id = ?
         """, (red_lot_no, fkk_depo_id))
         mevcut_fkk = cursor.fetchall()
-        
+
         if mevcut_fkk:
-            # Mevcut FKK lot'una miktar ekle
             yeni_miktar = mevcut_fkk[0][1] + miktar
-            
-            # Kaynak lot'tan düş
+
             cursor.execute("""
-                UPDATE stok.stok_bakiye 
+                UPDATE stok.stok_bakiye
                 SET miktar = miktar - ?
                 WHERE lot_no = ? AND depo_id = ? AND miktar >= ?
             """, (miktar, red_lot_no, kaynak_depo_id, miktar))
-            
-            # Hedef lot'a ekle
+
             cursor.execute("""
-                UPDATE stok.stok_bakiye 
-                SET miktar = ?, 
+                UPDATE stok.stok_bakiye
+                SET miktar = ?,
                     kalite_durumu = 'BEKLIYOR',
                     durum_kodu = 'FKK_BEKLIYOR'
                 WHERE lot_no = ? AND depo_id = ?
             """, (yeni_miktar, red_lot_no, fkk_depo_id))
-            
+
             print(f"DEBUG: Mevcut FKK lot'una eklendi: {red_lot_no}, yeni miktar={yeni_miktar}")
         else:
-            # Yeni kayıt - transfer yap
             sonuc = motor.transfer(
                 lot_no=red_lot_no,
                 hedef_depo_id=fkk_depo_id,
                 miktar=miktar,
                 kaynak="KALITE_RED",
                 kaynak_id=red_kayit['id'],
-                aciklama=f"Red depot kabulü - {karar_not}" if karar_not else "Red depot kabulü"
+                aciklama=f"Red depot kabulu - {karar_not}" if karar_not else "Red depot kabulu"
             )
-            
+
             if not sonuc.basarili:
-                raise Exception(f"Stok hareketi başarısız: {sonuc.mesaj}")
-            
-            # Hedef lot kalite durumunu güncelle
+                raise Exception(f"Stok hareketi basarisiz: {sonuc.mesaj}")
+
             cursor.execute("""
                 UPDATE stok.stok_bakiye
                 SET kalite_durumu = 'BEKLIYOR',
                     durum_kodu = 'FKK_BEKLIYOR'
                 WHERE lot_no = ? AND depo_id = ?
             """, (red_lot_no, fkk_depo_id))
-        
-        # kalite.uretim_redler tablosunu güncelle
+
         cursor.execute("""
             UPDATE kalite.uretim_redler
             SET durum = 'KABUL',
@@ -1560,89 +1793,80 @@ class KaliteRedPage(BasePage):
                 guncelleme_tarihi = GETDATE()
             WHERE id = ?
         """, (user_id, karar_not, red_kayit['id']))
-        
-        print(f"✓ KABUL işlemi tamamlandı: {red_lot_no} -> FKK ({miktar} adet)")
-    
+
+        print(f"KABUL islemi tamamlandi: {red_lot_no} -> FKK ({miktar} adet)")
+
     def _isle_sokum(self, red_kayit: dict, karar_not: str, motor, cursor,
                     user_id: int, red_depo_id: int, sokum_depo_id: int,
                     islem_miktar: int = None, sablon_id: int = None):
-        """SÖKÜM kararını işle - RED -> XI, lot'a -S eki"""
+        """SOKUM kararini isle - RED -> XI, lot'a -S eki"""
         orijinal_lot = red_kayit['lot_no']
         miktar = islem_miktar if islem_miktar else red_kayit['red_miktar']
-        
-        # RED lot'unu bul - önce RED deposunda, sonra tüm depolarda ara
-        lot_prefix = '-'.join(orijinal_lot.split('-')[:3])  # LOT-2601-0001
-        
+
+        lot_prefix = '-'.join(orijinal_lot.split('-')[:3])
+
         cursor.execute("""
-            SELECT lot_no, depo_id, miktar FROM stok.stok_bakiye 
+            SELECT lot_no, depo_id, miktar FROM stok.stok_bakiye
             WHERE miktar > 0 AND (
-                lot_no = ? OR 
-                lot_no LIKE ? OR 
+                lot_no = ? OR
+                lot_no LIKE ? OR
                 lot_no = ?
             ) AND lot_no NOT LIKE '%-RED-S'
-            ORDER BY 
+            ORDER BY
                 CASE WHEN depo_id = ? THEN 0 ELSE 1 END,
                 CASE WHEN lot_no LIKE '%-RED' THEN 0 ELSE 1 END
         """, (orijinal_lot, f"{lot_prefix}%-RED", f"{orijinal_lot}-RED", red_depo_id))
-        
-        red_lot_rows = cursor.fetchall()  # Tüm sonuçları al - cursor'ı temizle
+
+        red_lot_rows = cursor.fetchall()
         if red_lot_rows:
             red_lot_no = red_lot_rows[0][0]
             kaynak_depo_id = red_lot_rows[0][1]
             mevcut_miktar = red_lot_rows[0][2]
             print(f"DEBUG: Bulunan lot: {red_lot_no}, depo={kaynak_depo_id}, miktar={mevcut_miktar}")
         else:
-            raise Exception(f"RED deposunda stok bulunamadı! Lot: {orijinal_lot}")
-        
-        # Miktar kontrolü
+            raise Exception(f"RED deposunda stok bulunamadi! Lot: {orijinal_lot}")
+
         if miktar > mevcut_miktar:
-            raise Exception(f"Yetersiz stok! İstenen: {miktar}, Mevcut: {mevcut_miktar}")
-        
-        # Yeni lot numarası: -S eki ekle
+            raise Exception(f"Yetersiz stok! Istenen: {miktar}, Mevcut: {mevcut_miktar}")
+
         sokum_lot = f"{red_lot_no}-S"
-        
-        # XI deposunda -S lot'u zaten var mı kontrol et
+
         cursor.execute("""
-            SELECT id, miktar FROM stok.stok_bakiye 
+            SELECT id, miktar FROM stok.stok_bakiye
             WHERE lot_no = ? AND depo_id = ?
         """, (sokum_lot, sokum_depo_id))
         mevcut_sokum = cursor.fetchall()
-        
+
         if mevcut_sokum:
-            # Mevcut -S lot'una miktar ekle (transfer yerine direkt güncelle)
             yeni_miktar = mevcut_sokum[0][1] + miktar
-            
-            # Kaynak lot'tan düş
+
             cursor.execute("""
-                UPDATE stok.stok_bakiye 
+                UPDATE stok.stok_bakiye
                 SET miktar = miktar - ?
                 WHERE lot_no = ? AND depo_id = ? AND miktar >= ?
             """, (miktar, red_lot_no, kaynak_depo_id, miktar))
-            
-            # Hedef lot'a ekle
+
             cursor.execute("""
-                UPDATE stok.stok_bakiye 
+                UPDATE stok.stok_bakiye
                 SET miktar = ?,
                     durum_kodu = 'SOKUM'
                 WHERE lot_no = ? AND depo_id = ?
             """, (yeni_miktar, sokum_lot, sokum_depo_id))
-            
-            print(f"DEBUG: Mevcut söküm lot'una eklendi: {sokum_lot}, yeni miktar={yeni_miktar}")
+
+            print(f"DEBUG: Mevcut sokum lot'una eklendi: {sokum_lot}, yeni miktar={yeni_miktar}")
         else:
-            # Yeni -S lot'u oluştur - transfer yap
             sonuc = motor.transfer(
                 lot_no=red_lot_no,
                 hedef_depo_id=sokum_depo_id,
                 miktar=miktar,
                 kaynak="KALITE_RED",
                 kaynak_id=red_kayit['id'],
-                aciklama=f"Söküm için transfer - {karar_not}" if karar_not else "Söküm için transfer"
+                aciklama=f"Sokum icin transfer - {karar_not}" if karar_not else "Sokum icin transfer"
             )
-            
+
             if not sonuc.basarili:
-                raise Exception(f"Stok transferi başarısız: {sonuc.mesaj}")
-            
-            # Hedef depodaki kaydın lot adını -S ekli yap
+                raise Exception(f"Stok transferi basarisiz: {sonuc.mesaj}")
+
             cursor.execute("""
                 UPDATE stok.stok_bakiye
                 SET lot_no = ?,
@@ -1650,8 +1874,7 @@ class KaliteRedPage(BasePage):
                     durum_kodu = 'SOKUM'
                 WHERE lot_no = ? AND depo_id = ?
             """, (sokum_lot, red_lot_no, sokum_depo_id))
-        
-        # kalite.uretim_redler tablosunu güncelle
+
         cursor.execute("""
             UPDATE kalite.uretim_redler
             SET durum = 'SOKUM_BEKLIYOR',
@@ -1662,68 +1885,62 @@ class KaliteRedPage(BasePage):
                 guncelleme_tarihi = GETDATE()
             WHERE id = ?
         """, (user_id, karar_not, red_kayit['id']))
-        
-        print(f"✓ Söküm işlemi tamamlandı: {red_lot_no} -> {sokum_lot} (XI deposu, {miktar} adet)")
-    
-    def _isle_musteri_onay(self, red_kayit: dict, karar_not: str, motor, cursor, 
+
+        print(f"Sokum islemi tamamlandi: {red_lot_no} -> {sokum_lot} (XI deposu, {miktar} adet)")
+
+    def _isle_musteri_onay(self, red_kayit: dict, karar_not: str, motor, cursor,
                            user_id: int, red_depo_id: int, kar_depo_id: int,
                            islem_miktar: int = None, sablon_id: int = None):
-        """MÜŞTERİ ONAYI kararını işle - RED -> KAR (Karantina) transfer"""
+        """MUSTERI ONAYI kararini isle - RED -> KAR (Karantina) transfer"""
         orijinal_lot = red_kayit['lot_no']
         miktar = islem_miktar if islem_miktar else red_kayit['red_miktar']
-        
-        # RED lot'unu bul - önce RED deposunda, sonra tüm depolarda ara
-        lot_prefix = '-'.join(orijinal_lot.split('-')[:3])  # LOT-2601-0001
-        
+
+        lot_prefix = '-'.join(orijinal_lot.split('-')[:3])
+
         cursor.execute("""
-            SELECT lot_no, depo_id, miktar FROM stok.stok_bakiye 
+            SELECT lot_no, depo_id, miktar FROM stok.stok_bakiye
             WHERE miktar > 0 AND (
-                lot_no = ? OR 
-                lot_no LIKE ? OR 
+                lot_no = ? OR
+                lot_no LIKE ? OR
                 lot_no = ?
             ) AND lot_no NOT LIKE '%-RED-S'
-            ORDER BY 
+            ORDER BY
                 CASE WHEN depo_id = ? THEN 0 ELSE 1 END,
                 CASE WHEN lot_no LIKE '%-RED' THEN 0 ELSE 1 END
         """, (orijinal_lot, f"{lot_prefix}%-RED", f"{orijinal_lot}-RED", red_depo_id))
-        
-        red_lot_rows = cursor.fetchall()  # Tüm sonuçları al - cursor'ı temizle
+
+        red_lot_rows = cursor.fetchall()
         if red_lot_rows:
             red_lot_no = red_lot_rows[0][0]
             kaynak_depo_id = red_lot_rows[0][1]
             mevcut_miktar = red_lot_rows[0][2]
             print(f"DEBUG: Bulunan lot: {red_lot_no}, depo={kaynak_depo_id}, miktar={mevcut_miktar}")
         else:
-            raise Exception(f"RED deposunda stok bulunamadı! Lot: {orijinal_lot}")
-        
-        # Miktar kontrolü
+            raise Exception(f"RED deposunda stok bulunamadi! Lot: {orijinal_lot}")
+
         if miktar > mevcut_miktar:
-            raise Exception(f"Yetersiz stok! İstenen: {miktar}, Mevcut: {mevcut_miktar}")
-        
-        # Karantina deposu tanımlı mı kontrol et
+            raise Exception(f"Yetersiz stok! Istenen: {miktar}, Mevcut: {mevcut_miktar}")
+
         if kar_depo_id:
-            # Stok hareketi: kaynak depo -> KAR transfer
             sonuc = motor.transfer(
                 lot_no=red_lot_no,
                 hedef_depo_id=kar_depo_id,
                 miktar=miktar,
                 kaynak="KALITE_RED",
                 kaynak_id=red_kayit['id'],
-                aciklama=f"Müşteri onayı için karantinaya - {karar_not}" if karar_not else "Müşteri onayı için karantinaya"
+                aciklama=f"Musteri onayi icin karantinaya - {karar_not}" if karar_not else "Musteri onayi icin karantinaya"
             )
-            
+
             if not sonuc.basarili:
-                raise Exception(f"Stok hareketi başarısız: {sonuc.mesaj}")
-            
-            # stok_bakiye kalite durumunu güncelle
+                raise Exception(f"Stok hareketi basarisiz: {sonuc.mesaj}")
+
             cursor.execute("""
                 UPDATE stok.stok_bakiye
                 SET kalite_durumu = 'MUSTERI_ONAY_BEKLIYOR',
                     durum_kodu = 'KARANTINA'
                 WHERE lot_no = ? AND depo_id = ?
             """, (red_lot_no, kar_depo_id))
-        
-        # kalite.uretim_redler tablosunu güncelle
+
         cursor.execute("""
             UPDATE kalite.uretim_redler
             SET durum = 'MUSTERI_ONAY',
@@ -1734,80 +1951,59 @@ class KaliteRedPage(BasePage):
                 guncelleme_tarihi = GETDATE()
             WHERE id = ?
         """, (user_id, karar_not, red_kayit['id']))
-        
-        print(f"✓ Müşteri onayı için karantinaya alındı: {red_lot_no} ({miktar} adet)")
-    
+
+        print(f"Musteri onayi icin karantinaya alindi: {red_lot_no} ({miktar} adet)")
+
     def _uretim_red_detay(self, index):
-        """Üretim red detayı göster"""
+        """Uretim red detayi goster"""
         row = index.row()
         red_id = int(self.uretim_table.item(row, 0).text())
-        # TODO: Detay dialog'u
-        QMessageBox.information(self, "Detay", f"Red ID: {red_id} detayları yakında eklenecek.")
-    
-    def _create_stat_card(self, title: str, value: str, color: str) -> QFrame:
-        """İstatistik kartı"""
-        card = QFrame()
-        card.setFixedSize(160, 70)
-        card.setStyleSheet(f"background: {self.theme.get('bg_card')}; border: 1px solid {color}; border-radius: 8px;")
-        
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(12, 8, 12, 8)
-        
-        lbl_title = QLabel(title)
-        lbl_title.setStyleSheet(f"color: {self.theme.get('text_secondary')}; font-size: 11px;")
-        layout.addWidget(lbl_title)
-        
-        lbl_value = QLabel(value)
-        lbl_value.setObjectName("stat_value")
-        lbl_value.setStyleSheet(f"color: {color}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(lbl_value)
-        
-        return card
-    
+        QMessageBox.information(self, "Detay", f"Red ID: {red_id} detaylari yakinda eklenecek.")
+
     def _yeni_kayit(self, tip: str):
-        """Yeni uygunsuzluk kaydı"""
+        """Yeni uygunsuzluk kaydi"""
         dlg = UygunsuzlukDialog(self.theme, tip, self)
         if dlg.exec() == QDialog.Accepted:
             self._load_data()
-    
+
     def _on_double_click(self, index):
-        """Satıra çift tıklama"""
+        """Satira cift tiklama"""
         row = index.row()
         kayit_id = int(self.table.item(row, 0).text())
         dlg = UygunsuzlukDetayDialog(self.theme, kayit_id, self)
         if dlg.exec() == QDialog.Accepted:
             self._load_data()
-    
+
     def _detay_goster(self, kayit_id: int):
-        """Detay dialog'unu göster"""
+        """Detay dialog'unu goster"""
         dlg = UygunsuzlukDetayDialog(self.theme, kayit_id, self)
         if dlg.exec() == QDialog.Accepted:
             self._load_data()
-    
+
     def _load_data(self):
-        """Verileri yükle"""
+        """Verileri yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             # Filtreler
             durum_filtre = self.cmb_durum.currentText()
             tip_filtre = self.cmb_tip.currentText()
-            
+
             where_clauses = []
             params = []
-            
-            if durum_filtre != 'Tümü':
+
+            if durum_filtre != 'Tumu':
                 where_clauses.append("u.durum = ?")
                 params.append(durum_filtre)
-            
-            if tip_filtre != 'Tümü':
+
+            if tip_filtre != 'Tumu':
                 where_clauses.append("u.kayit_tipi = ?")
                 params.append(tip_filtre)
-            
+
             where_sql = " AND " + " AND ".join(where_clauses) if where_clauses else ""
-            
-            # Ana sorgu
+
             cursor.execute(f"""
                 SELECT TOP 200 u.id, u.kayit_no, u.kayit_tipi, u.kayit_tarihi,
                        c.unvan, s.urun_adi, u.oncelik, u.durum
@@ -1817,92 +2013,83 @@ class KaliteRedPage(BasePage):
                 WHERE 1=1 {where_sql}
                 ORDER BY u.kayit_tarihi DESC, u.id DESC
             """, params)
-            
+
             rows = cursor.fetchall()
             self.table.setRowCount(len(rows))
-            
+
             for i, row in enumerate(rows):
                 self.table.setItem(i, 0, QTableWidgetItem(str(row[0])))
                 self.table.setItem(i, 1, QTableWidgetItem(row[1] or ''))
-                
+
                 # Tip
                 tip = row[2] or ''
                 tip_item = QTableWidgetItem(tip.replace('_', ' '))
                 self.table.setItem(i, 2, tip_item)
-                
+
                 # Tarih
                 tarih = row[3]
                 tarih_str = tarih.strftime('%d.%m.%Y') if tarih else '-'
                 self.table.setItem(i, 3, QTableWidgetItem(tarih_str))
-                
+
                 self.table.setItem(i, 4, QTableWidgetItem((row[4] or '')[:30]))
                 self.table.setItem(i, 5, QTableWidgetItem((row[5] or '')[:30]))
-                
-                # Öncelik
+
+                # Oncelik
                 oncelik = row[6] or ''
                 oncelik_item = QTableWidgetItem(oncelik)
                 oncelik_colors = {
-                    'KRİTİK': self.theme.get('danger'),
-                    'YÜKSEK': self.theme.get('warning'),
-                    'NORMAL': self.theme.get('info'),
-                    'DÜŞÜK': self.theme.get('text_secondary')
+                    'KRİTİK': brand.ERROR,
+                    'YÜKSEK': brand.WARNING,
+                    'NORMAL': brand.INFO,
+                    'DÜŞÜK': brand.TEXT_MUTED
                 }
                 if oncelik in oncelik_colors:
                     oncelik_item.setForeground(QColor(oncelik_colors[oncelik]))
                 self.table.setItem(i, 6, oncelik_item)
-                
+
                 # Durum
                 durum = row[7] or ''
                 durum_item = QTableWidgetItem(durum)
                 durum_colors = {
-                    'AÇIK': self.theme.get('warning'),
-                    'İŞLEMDE': self.theme.get('info'),
-                    'KAPATILDI': self.theme.get('success'),
-                    'İPTAL': self.theme.get('text_secondary')
+                    'AÇIK': brand.WARNING,
+                    'İŞLEMDE': brand.INFO,
+                    'KAPATILDI': brand.SUCCESS,
+                    'İPTAL': brand.TEXT_MUTED
                 }
                 if durum in durum_colors:
                     durum_item.setForeground(QColor(durum_colors[durum]))
                 self.table.setItem(i, 7, durum_item)
-                
-                # İşlem butonu
+
+                # Islem butonu
                 widget = self.create_action_buttons([
-                    ("📋", "Detay", lambda checked, kid=row[0]: self._detay_goster(kid), "info"),
+                    ("Detay", "Detay", lambda checked, kid=row[0]: self._detay_goster(kid), "info"),
                 ])
                 self.table.setCellWidget(i, 8, widget)
-                self.table.setRowHeight(i, 42)
 
-            # İstatistikler
+            # Istatistikler
             cursor.execute("SELECT COUNT(*) FROM kalite.uygunsuzluklar WHERE durum = 'AÇIK'")
             self.stat_acik.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
-            
+
             cursor.execute("SELECT COUNT(*) FROM kalite.uygunsuzluklar WHERE durum = 'İŞLEMDE'")
             self.stat_islemde.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
-            
+
             cursor.execute("""
-                SELECT COUNT(*) FROM kalite.uygunsuzluklar 
+                SELECT COUNT(*) FROM kalite.uygunsuzluklar
                 WHERE durum = 'KAPATILDI' AND MONTH(kapanis_tarihi) = MONTH(GETDATE()) AND YEAR(kapanis_tarihi) = YEAR(GETDATE())
             """)
             self.stat_kapatilan.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
-            
+
             cursor.execute("""
-                SELECT COUNT(*) FROM kalite.uygunsuzluklar 
+                SELECT COUNT(*) FROM kalite.uygunsuzluklar
                 WHERE MONTH(kayit_tarihi) = MONTH(GETDATE()) AND YEAR(kayit_tarihi) = YEAR(GETDATE())
             """)
             self.stat_toplam.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
-            
-            conn.close()
-            
+
         except Exception as e:
-            print(f"Veri yükleme hatası: {e}")
-    
-    def _setup_event_log_tab(self):
-        """Event Log sekmesi - kalite_event_log.py içeriğini buraya embed ediyoruz"""
-        from .kalite_event_log import EventLogPage
-        
-        # Event log sayfasını bu tab içine embed et
-        layout = QVBoxLayout(self.event_log_tab)
-        layout.setContentsMargins(0, 0, 0, 0)
-        
-        # EventLogPage widget'ını oluştur
-        event_log_widget = EventLogPage(self.theme)
-        layout.addWidget(event_log_widget)
+            print(f"Veri yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass

@@ -1,38 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Birleşik İş Emri + Depo Çıkış PDF
-Birden fazla iş emri ve ilgili depo çıkış emirlerini tek kağıtta listeler.
+NEXOR ERP - Birlesik Is Emri + Depo Cikis PDF
+PDFTemplate motoru uzerinden calisir.
 """
 import os
 import subprocess
-import tempfile
 from datetime import datetime, date
 
-from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.lib.colors import HexColor, black, white
-from reportlab.pdfgen import canvas
 
 from core.database import get_db_connection
-from core.firma_bilgileri import get_firma_bilgileri
-from utils.etiket_yazdir import _register_dejavu_fonts
-
-PRIMARY = HexColor('#DC2626')
-GRAY_300 = HexColor('#D1D5DB')
-GRAY_100 = HexColor('#F3F4F6')
-GRAY_700 = HexColor('#374151')
-PAGE_W, PAGE_H = A4
-MARGIN = 15 * mm
-
-
-def _fmt_tarih(val):
-    if val is None:
-        return "-"
-    if isinstance(val, datetime):
-        return val.strftime("%d.%m.%Y")
-    if isinstance(val, date):
-        return val.strftime("%d.%m.%Y")
-    return str(val)[:10]
+from utils.pdf_template import PDFTemplate, format_tarih
 
 
 def _fmt_miktar(val):
@@ -46,55 +24,59 @@ def _fmt_miktar(val):
 
 def birlesik_pdf_olustur(is_emri_ids: list) -> str:
     """
-    Birden fazla iş emri + ilgili depo çıkış emirlerini tek PDF'te listeler.
+    Birden fazla is emri + ilgili depo cikis emirlerini tek PDF'te listeler.
 
     Args:
-        is_emri_ids: İş emri ID listesi
+        is_emri_ids: Is emri ID listesi
 
     Returns:
-        str: Oluşturulan PDF dosya yolu
+        str: Olusturulan PDF dosya yolu
     """
     if not is_emri_ids:
-        raise ValueError("En az bir iş emri ID gerekli")
+        raise ValueError("En az bir is emri ID gerekli")
 
-    _register_dejavu_fonts()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        # Is emirlerini cek
+        placeholders = ','.join(['?' for _ in is_emri_ids])
+        cursor.execute(f"""
+            SELECT
+                ie.id, ie.is_emri_no, ie.tarih, ie.termin_tarihi,
+                ie.cari_unvani, ie.stok_kodu, ie.stok_adi, ie.kaplama_tipi,
+                ISNULL(ie.toplam_miktar, ie.planlanan_miktar) as miktar,
+                ie.birim, ie.lot_no, ie.durum,
+                h.ad as hat_adi
+            FROM siparis.is_emirleri ie
+            LEFT JOIN tanim.uretim_hatlari h ON ie.hat_id = h.id
+            WHERE ie.id IN ({placeholders}) AND ie.silindi_mi = 0
+            ORDER BY ie.is_emri_no
+        """, is_emri_ids)
+        is_emirleri = cursor.fetchall()
 
-    # İş emirlerini çek
-    placeholders = ','.join(['?' for _ in is_emri_ids])
-    cursor.execute(f"""
-        SELECT
-            ie.id, ie.is_emri_no, ie.tarih, ie.termin_tarihi,
-            ie.cari_unvani, ie.stok_kodu, ie.stok_adi, ie.kaplama_tipi,
-            ISNULL(ie.toplam_miktar, ie.planlanan_miktar) as miktar,
-            ie.birim, ie.lot_no, ie.durum,
-            h.ad as hat_adi
-        FROM siparis.is_emirleri ie
-        LEFT JOIN tanim.uretim_hatlari h ON ie.hat_id = h.id
-        WHERE ie.id IN ({placeholders}) AND ie.silindi_mi = 0
-        ORDER BY ie.is_emri_no
-    """, is_emri_ids)
-    is_emirleri = cursor.fetchall()
+        # Ilgili depo cikis emirlerini cek
+        cursor.execute(f"""
+            SELECT
+                dce.is_emri_id, dce.emir_no, dce.stok_kodu, dce.stok_adi,
+                dce.talep_miktar, dce.durum,
+                kd.ad as kaynak_depo, hd.ad as hedef_depo
+            FROM stok.depo_cikis_emirleri dce
+            LEFT JOIN tanim.depolar kd ON dce.kaynak_depo_id = kd.id
+            LEFT JOIN tanim.depolar hd ON dce.hedef_depo_id = hd.id
+            WHERE dce.is_emri_id IN ({placeholders})
+            ORDER BY dce.is_emri_id, dce.emir_no
+        """, is_emri_ids)
+        depo_cikislar = cursor.fetchall()
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
-    # İlgili depo çıkış emirlerini çek
-    cursor.execute(f"""
-        SELECT
-            dce.is_emri_id, dce.emir_no, dce.stok_kodu, dce.stok_adi,
-            dce.talep_miktar, dce.durum,
-            kd.ad as kaynak_depo, hd.ad as hedef_depo
-        FROM stok.depo_cikis_emirleri dce
-        LEFT JOIN tanim.depolar kd ON dce.kaynak_depo_id = kd.id
-        LEFT JOIN tanim.depolar hd ON dce.hedef_depo_id = hd.id
-        WHERE dce.is_emri_id IN ({placeholders})
-        ORDER BY dce.is_emri_id, dce.emir_no
-    """, is_emri_ids)
-    depo_cikislar = cursor.fetchall()
-
-    conn.close()
-
-    # Depo çıkışlarını iş emrine göre grupla
+    # Depo cikislarini is emrine gore grupla
     cikis_map = {}
     for row in depo_cikislar:
         ie_id = row[0]
@@ -102,129 +84,75 @@ def birlesik_pdf_olustur(is_emri_ids: list) -> str:
             cikis_map[ie_id] = []
         cikis_map[ie_id].append(row)
 
-    # Firma bilgileri
-    firma = get_firma_bilgileri() or {}
-    firma_adi = firma.get('firma_adi', 'ATMO MANUFACTURING')
+    # PDF olustur
+    dosya_adi = f"birlesik_is_emri_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
 
-    # PDF oluştur
-    output_path = os.path.join(
-        tempfile.gettempdir(),
-        f"birlesik_is_emri_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    tpl = PDFTemplate(
+        title="BIRLESIK IS EMRI + DEPO CIKIS LISTESI",
+        form_no=f"{len(is_emirleri)} adet",
+        filename=dosya_adi,
     )
-    c = canvas.Canvas(output_path, pagesize=A4)
+    c = tpl.canvas
+    y = tpl.content_top
 
-    # Başlık
-    y = PAGE_H - MARGIN
-    c.setFont("DejaVuSans-Bold", 14)
-    c.setFillColor(PRIMARY)
-    c.drawString(MARGIN, y, firma_adi)
-    c.setFont("DejaVuSans", 10)
-    c.setFillColor(GRAY_700)
-    c.drawRightString(PAGE_W - MARGIN, y, f"Tarih: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    # ── IS EMIRLERI TABLOSU ──
+    y = tpl.section("IS EMIRLERI", y)
 
-    y -= 8 * mm
-    c.setFont("DejaVuSans-Bold", 12)
-    c.setFillColor(black)
-    c.drawString(MARGIN, y, f"Birlesik Is Emri + Depo Cikis Listesi ({len(is_emirleri)} adet)")
-
-    y -= 3 * mm
-    c.setStrokeColor(PRIMARY)
-    c.setLineWidth(1.5)
-    c.line(MARGIN, y, PAGE_W - MARGIN, y)
-    y -= 5 * mm
-
-    # İş emirleri tablosu
-    col_widths = [75, 55, 45, 100, 80, 50, 50, 45, 60]
     headers = ["Is Emri No", "Tarih", "Termin", "Musteri", "Urun", "Kaplama", "Miktar", "Durum", "Hat"]
+    col_widths = [22 * mm, 18 * mm, 18 * mm, 30 * mm, 24 * mm, 16 * mm, 16 * mm, 14 * mm, 18 * mm]
 
-    # Header
-    c.setFillColor(GRAY_100)
-    c.rect(MARGIN, y - 5 * mm, PAGE_W - 2 * MARGIN, 6 * mm, fill=1, stroke=0)
-    c.setFillColor(GRAY_700)
-    c.setFont("DejaVuSans-Bold", 7)
-    x = MARGIN + 2
-    for i, h in enumerate(headers):
-        c.drawString(x, y - 3.5 * mm, h)
-        x += col_widths[i]
-    y -= 7 * mm
-
-    c.setFont("DejaVuSans", 7)
-    c.setFillColor(black)
-
+    rows = []
     for ie in is_emirleri:
-        if y < 40 * mm:
-            c.showPage()
-            y = PAGE_H - MARGIN
-
-        x = MARGIN + 2
-        vals = [
+        rows.append([
             str(ie[1] or ''),
-            _fmt_tarih(ie[2]),
-            _fmt_tarih(ie[3]),
+            format_tarih(ie[2]),
+            format_tarih(ie[3]),
             str(ie[4] or '')[:18],
             str(ie[5] or '')[:12],
             str(ie[7] or '')[:8],
             _fmt_miktar(ie[8]),
             str(ie[11] or '')[:10],
-            str(ie[12] or '')[:10]
-        ]
-        for i, v in enumerate(vals):
-            c.drawString(x, y, v)
-            x += col_widths[i]
+            str(ie[12] or '')[:10],
+        ])
 
-        # Satır altı çizgi
-        y -= 1 * mm
-        c.setStrokeColor(GRAY_300)
-        c.setLineWidth(0.3)
-        c.line(MARGIN, y, PAGE_W - MARGIN, y)
-        y -= 4 * mm
+    y = tpl.table(y, headers, rows, col_widths)
 
-        # İlgili depo çıkışları
-        cikislar = cikis_map.get(ie[0], [])
-        if cikislar:
-            c.setFont("DejaVuSans", 6)
-            c.setFillColor(GRAY_700)
+    # ── DEPO CIKIS DETAYLARI ──
+    has_cikis = any(cikis_map.get(ie[0]) for ie in is_emirleri)
+    if has_cikis:
+        y -= 2 * mm
+        y = tpl.section("DEPO CIKIS EMIRLERI", y)
+
+        dc_headers = ["Is Emri", "Emir No", "Stok Kodu", "Stok Adi", "Miktar", "Kaynak", "Hedef", "Durum"]
+        dc_widths = [22 * mm, 18 * mm, 22 * mm, 36 * mm, 16 * mm, 22 * mm, 22 * mm, 18 * mm]
+
+        dc_rows = []
+        for ie in is_emirleri:
+            cikislar = cikis_map.get(ie[0], [])
             for dc in cikislar:
-                if y < 30 * mm:
-                    c.showPage()
-                    y = PAGE_H - MARGIN
-                c.drawString(MARGIN + 10, y,
-                    f"  Depo Cikis: {dc[1] or ''} | {dc[2] or ''} - {str(dc[3] or '')[:20]} | "
-                    f"Miktar: {_fmt_miktar(dc[4])} | {dc[6] or ''} -> {dc[7] or ''} | {dc[5] or ''}")
-                y -= 3.5 * mm
+                dc_rows.append([
+                    str(ie[1] or '')[:12],
+                    str(dc[1] or ''),
+                    str(dc[2] or '')[:12],
+                    str(dc[3] or '')[:20],
+                    _fmt_miktar(dc[4]),
+                    str(dc[6] or '')[:12],
+                    str(dc[7] or '')[:12],
+                    str(dc[5] or '')[:10],
+                ])
 
-            c.setFillColor(black)
-            c.setFont("DejaVuSans", 7)
-            y -= 2 * mm
+        if dc_rows:
+            y = tpl.table(y, dc_headers, dc_rows, dc_widths)
 
-    # İmza alanları
-    if y > 50 * mm:
-        y -= 15 * mm
-    else:
-        c.showPage()
-        y = PAGE_H - MARGIN - 20 * mm
+    # ── IMZA ALANI ──
+    y -= 6 * mm
+    tpl.signature_row(y, ["Hazirlayan", "Depo Sorumlusu", "Uretim Sorumlusu"])
 
-    c.setStrokeColor(GRAY_300)
-    c.setFont("DejaVuSans", 8)
-    c.setFillColor(GRAY_700)
-    imza_y = y
-    for i, label in enumerate(["Hazirlayan", "Depo Sorumlusu", "Uretim Sorumlusu"]):
-        ix = MARGIN + i * 60 * mm
-        c.line(ix, imza_y, ix + 50 * mm, imza_y)
-        c.drawCentredString(ix + 25 * mm, imza_y - 4 * mm, label)
-
-    # Footer
-    c.setFont("DejaVuSans", 6)
-    c.setFillColor(GRAY_700)
-    c.drawCentredString(PAGE_W / 2, 10 * mm,
-        f"REDLINE NEXOR ERP | {datetime.now().strftime('%d.%m.%Y %H:%M')}")
-
-    c.save()
-    return output_path
+    return tpl.finish(open_file=False)
 
 
 def birlesik_pdf_olustur_ve_ac(is_emri_ids: list):
-    """PDF oluştur ve aç"""
+    """PDF olustur ve ac"""
     path = birlesik_pdf_olustur(is_emri_ids)
     subprocess.Popen(['start', '', path], shell=True)
     return path

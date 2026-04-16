@@ -20,18 +20,14 @@ MENU_STRUCTURE = [
         {"id": "stok_liste", "label": "Stok Listesi"},
         {"id": "stok_fiyat", "label": "Fiyat Listesi"},
         {"id": "stok_maliyet", "label": "Maliyet Tanımları"},
-        {"id": "stok_kimyasal", "label": "Kimyasal Tüketim"},
-        {"id": "stok_havuzu", "label": "Stok Havuzu"},
     ]},
 
     {"id": "teklifler", "icon": "📝", "label": "Teklifler", "children": [
         {"id": "teklif_liste", "label": "Teklif Listesi"},
-        {"id": "teklif_sablonlar", "label": "Teklif Şablonları"},
     ]},
 
     {"id": "is_emirleri", "icon": "📋", "label": "İş Emirleri", "children": [
         {"id": "ie_liste", "label": "İş Emri Listesi"},
-        {"id": "ie_yeni", "label": "Yeni İş Emri"},
         {"id": "ie_planlama", "label": "Planlama"},
         {"id": "ie_termin", "label": "Termin Takip"},
     ]},

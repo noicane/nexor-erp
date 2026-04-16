@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor, QBrush
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 def get_risk_color(skor):
@@ -63,13 +64,13 @@ class RiskSatirDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QSpinBox, QTextEdit, QDateEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """)
         
@@ -100,7 +101,7 @@ class RiskSatirDialog(QDialog):
         
         # 5x5 Matris - Mevcut Durum
         lbl_mevcut = QLabel("📊 MEVCUT DURUM (5x5 MATRİS)")
-        lbl_mevcut.setStyleSheet(f"font-weight: bold; color: {self.theme.get('primary')}; margin-top: 10px;")
+        lbl_mevcut.setStyleSheet(f"font-weight: bold; color: {brand.PRIMARY}; margin-top: 10px;")
         layout.addWidget(lbl_mevcut)
         
         matris_layout = QHBoxLayout()
@@ -142,7 +143,7 @@ class RiskSatirDialog(QDialog):
         
         # Alınacak önlemler
         lbl_onlem = QLabel("🛡️ ALINACAK ÖNLEMLER")
-        lbl_onlem.setStyleSheet(f"font-weight: bold; color: {self.theme.get('primary')}; margin-top: 10px;")
+        lbl_onlem.setStyleSheet(f"font-weight: bold; color: {brand.PRIMARY}; margin-top: 10px;")
         layout.addWidget(lbl_onlem)
         
         form2 = QFormLayout()
@@ -164,7 +165,7 @@ class RiskSatirDialog(QDialog):
         
         # Artık risk (önlem sonrası)
         lbl_artik = QLabel("📉 ARTIK RİSK (Önlem Sonrası)")
-        lbl_artik.setStyleSheet(f"font-weight: bold; color: {self.theme.get('success')}; margin-top: 10px;")
+        lbl_artik.setStyleSheet(f"font-weight: bold; color: {brand.SUCCESS}; margin-top: 10px;")
         layout.addWidget(lbl_artik)
         
         artik_layout = QHBoxLayout()
@@ -183,7 +184,7 @@ class RiskSatirDialog(QDialog):
         artik_layout.addWidget(self.spin_artik_siddet)
         
         self.lbl_artik_skor = QLabel("= 1 (KABUL EDİLEBİLİR)")
-        self.lbl_artik_skor.setStyleSheet(f"font-weight: bold; color: {self.theme.get('success')};")
+        self.lbl_artik_skor.setStyleSheet(f"font-weight: bold; color: {brand.SUCCESS};")
         artik_layout.addWidget(self.lbl_artik_skor)
         artik_layout.addStretch()
         
@@ -195,12 +196,12 @@ class RiskSatirDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; border-radius: 6px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 20px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 20px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -364,17 +365,17 @@ class RiskDegerlendirmeDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -421,17 +422,17 @@ class RiskDegerlendirmeDialog(QDialog):
         
         toolbar = QHBoxLayout()
         btn_ekle = QPushButton("➕ Risk Ekle")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_ekle.clicked.connect(self._add_satir)
         toolbar.addWidget(btn_ekle)
         
         btn_duzenle = QPushButton("✏️ Düzenle")
-        btn_duzenle.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 16px; border-radius: 6px;")
+        btn_duzenle.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 8px 16px; border-radius: 6px;")
         btn_duzenle.clicked.connect(self._edit_satir)
         toolbar.addWidget(btn_duzenle)
         
         btn_sil = QPushButton("🗑️ Sil")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_sil.clicked.connect(self._delete_satir)
         toolbar.addWidget(btn_sil)
         toolbar.addStretch()
@@ -442,7 +443,7 @@ class RiskDegerlendirmeDialog(QDialog):
         self.table_satirlar.setHorizontalHeaderLabels(["ID", "Tehlike", "O", "Ş", "Skor", "Seviye", "Artık", "Durum"])
         self.table_satirlar.setColumnHidden(0, True)
         self.table_satirlar.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table_satirlar.setStyleSheet(f"QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; }}")
+        self.table_satirlar.setStyleSheet(f"QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; }}")
         header = self.table_satirlar.horizontalHeader()
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         self.table_satirlar.setColumnWidth(2, 60)
@@ -456,7 +457,7 @@ class RiskDegerlendirmeDialog(QDialog):
         
         # İstatistik
         self.lbl_stat = QLabel()
-        self.lbl_stat.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_stat.setStyleSheet(f"color: {brand.TEXT_DIM};")
         risk_layout.addWidget(self.lbl_stat)
         
         tabs.addTab(tab_riskler, "⚠️ Risk Kalemleri")
@@ -467,12 +468,12 @@ class RiskDegerlendirmeDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 24px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 24px; border-radius: 6px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -661,23 +662,23 @@ class ISGRiskDegerlendirmePage(BasePage):
         layout.setSpacing(12)
         
         header = QLabel("⚠️ Risk Değerlendirme (5x5 Matris)")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("➕ Yeni Değerlendirme")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
 
         toolbar_layout.addStretch()
         
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 12px; color: {self.theme.get('text')};")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 12px; color: {brand.TEXT};")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -690,9 +691,9 @@ class ISGRiskDegerlendirmePage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px; font-weight: bold; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(3, QHeaderView.Stretch)
@@ -706,7 +707,7 @@ class ISGRiskDegerlendirmePage(BasePage):
         layout.addWidget(self.table)
         
         self.lbl_stat = QLabel()
-        self.lbl_stat.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_stat.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.lbl_stat)
     
     def _load_data(self):
@@ -730,7 +731,7 @@ class ISGRiskDegerlendirmePage(BasePage):
                     if j == 5 and val:  # Yüksek risk
                         item = QTableWidgetItem(str(val))
                         if val > 0:
-                            item.setForeground(QColor(self.theme.get('danger')))
+                            item.setForeground(QColor(brand.ERROR))
                     else:
                         item = QTableWidgetItem(str(val) if val else "")
                     self.table.setItem(i, j, item)

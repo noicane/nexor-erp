@@ -1,5 +1,5 @@
 # NEXOR
-> Otomatik birlestirildi: 2026-04-09 09:24
+> Otomatik birlestirildi: 2026-04-16 08:56
 > Redline Claude Manager tarafindan olusturuldu
 
 ## Proje Bilgileri

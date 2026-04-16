@@ -18,6 +18,7 @@ from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
 from core.rfid_reader import RFIDCardReader
+from core.nexor_brand import brand
 
 
 class KullaniciDialog(QDialog):
@@ -98,7 +99,7 @@ class KullaniciDialog(QDialog):
         self.btn_kart_okut.setCursor(Qt.PointingHandCursor)
         self.btn_kart_okut.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 padding: 6px 14px;
                 border: none;
@@ -181,7 +182,7 @@ class KullaniciDialog(QDialog):
         btn_kaydet = QPushButton("💾 Kaydet")
         btn_kaydet.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 padding: 8px 20px;
                 border: none;
@@ -499,17 +500,17 @@ class SistemKullaniciPage(BasePage):
         """PRAXIS kurumsal tema"""
         t = self.theme
         return {
-            'card_bg': t.get('bg_card', '#151B23'),
-            'input_bg': t.get('bg_input', '#232C3B'),
-            'border': t.get('border', '#1E2736'),
-            'text': t.get('text', '#E8ECF1'),
-            'text_secondary': t.get('text_secondary', '#8896A6'),
-            'text_muted': t.get('text_muted', '#5C6878'),
-            'primary': t.get('primary', '#C41E1E'),
-            'success': t.get('success', '#10B981'),
-            'warning': t.get('warning', '#F59E0B'),
-            'error': t.get('error', '#EF4444'),
-            'info': t.get('info', '#3B82F6'),
+            'card_bg': brand.BG_CARD,
+            'input_bg': brand.BG_INPUT,
+            'border': brand.BORDER,
+            'text': brand.TEXT,
+            'text_secondary': brand.TEXT_MUTED,
+            'text_muted': brand.TEXT_MUTED,
+            'primary': brand.PRIMARY,
+            'success': brand.SUCCESS,
+            'warning': brand.WARNING,
+            'error': brand.ERROR,
+            'info': brand.INFO,
         }
 
     def _setup_ui(self):

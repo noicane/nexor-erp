@@ -14,25 +14,25 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 def get_modern_style(theme: dict) -> dict:
-    t = theme or {}
     return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'danger': t.get('error', '#EF4444'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'border_light': t.get('border_light', '#2A3545'),
+        'card_bg': brand.BG_CARD,
+        'input_bg': brand.BG_INPUT,
+        'border': brand.BORDER,
+        'text': brand.TEXT,
+        'text_secondary': brand.TEXT_MUTED,
+        'text_muted': brand.TEXT_DIM,
+        'primary': brand.PRIMARY,
+        'primary_hover': brand.PRIMARY_HOVER,
+        'success': brand.SUCCESS,
+        'warning': brand.WARNING,
+        'danger': brand.ERROR,
+        'bg_main': brand.BG_MAIN,
+        'bg_hover': brand.BG_HOVER,
+        'border_light': brand.BORDER_HARD,
     }
 
 
@@ -79,7 +79,7 @@ class NumaraDialog(QDialog):
             self._load_data()
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QDialog {{ background: {self.s['bg_main']}; color: {self.s['text']}; }}")
+        self.setStyleSheet(f"QDialog {{ background: {brand.BG_MAIN}; color: {brand.TEXT}; }}")
 
         layout = QFormLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -87,11 +87,11 @@ class NumaraDialog(QDialog):
 
         input_style = f"""
             QLineEdit, QComboBox, QSpinBox {{
-                background: {self.s['input_bg']};
-                border: 1px solid {self.s['border']};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.s['text']};
+                color: {brand.TEXT};
                 font-size: 13px;
             }}
         """
@@ -130,7 +130,7 @@ class NumaraDialog(QDialog):
         # Yıl bazlı
         self.yil_bazli_check = QCheckBox("Her yıl başında sıfırla")
         self.yil_bazli_check.setChecked(True)
-        self.yil_bazli_check.setStyleSheet(f"color: {self.s['text']};")
+        self.yil_bazli_check.setStyleSheet(f"color: {brand.TEXT};")
         layout.addRow("Yıl Bazlı:", self.yil_bazli_check)
 
         # Son numara
@@ -143,11 +143,11 @@ class NumaraDialog(QDialog):
         # Önizleme
         self.onizleme_label = QLabel()
         self.onizleme_label.setStyleSheet(f"""
-            color: {self.s['success']};
+            color: {brand.SUCCESS};
             font-size: 16px;
             font-weight: bold;
             padding: 10px;
-            background: {self.s['card_bg']};
+            background: {brand.BG_CARD};
             border-radius: 6px;
         """)
         layout.addRow("Önizleme:", self.onizleme_label)
@@ -166,14 +166,14 @@ class NumaraDialog(QDialog):
         save_btn = QPushButton("💾 Kaydet")
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.s['primary']};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 10px 24px;
                 font-weight: bold;
             }}
-            QPushButton:hover {{ background: {self.s['primary_hover']}; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
@@ -181,9 +181,9 @@ class NumaraDialog(QDialog):
         cancel_btn = QPushButton("İptal")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.s['input_bg']};
-                color: {self.s['text']};
-                border: 1px solid {self.s['border']};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px 24px;
             }}
@@ -294,11 +294,11 @@ class TanimNumaraPage(BasePage):
         # Header
         header = QHBoxLayout()
         title = QLabel("🔢 Numara Tanımları")
-        title.setStyleSheet(f"color: {self.s['text']}; font-size: 20px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 20px; font-weight: bold;")
         header.addWidget(title)
 
         desc = QLabel("İrsaliye, sipariş vb. otomatik numara şablonları")
-        desc.setStyleSheet(f"color: {self.s['text_muted']}; font-size: 12px;")
+        desc.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         header.addWidget(desc)
         header.addStretch()
 
@@ -308,14 +308,14 @@ class TanimNumaraPage(BasePage):
             btn = QPushButton(text)
             btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: {self.s['input_bg']};
-                    color: {self.s['text']};
-                    border: 1px solid {self.s['border']};
+                    background: {brand.BG_INPUT};
+                    color: {brand.TEXT};
+                    border: 1px solid {brand.BORDER};
                     border-radius: 6px;
                     padding: 8px 16px;
                     font-weight: bold;
                 }}
-                QPushButton:hover {{ background: {self.s['bg_hover']}; }}
+                QPushButton:hover {{ background: {brand.BG_HOVER}; }}
             """)
             btn.clicked.connect(slot)
             header.addWidget(btn)
@@ -343,24 +343,24 @@ class TanimNumaraPage(BasePage):
         self.table.doubleClicked.connect(self._duzenle)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background-color: {self.s['card_bg']};
-                alternate-background-color: {self.s['bg_main']};
-                border: 1px solid {self.s['border']};
+                background-color: {brand.BG_CARD};
+                alternate-background-color: {brand.BG_MAIN};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.s['border']};
-                color: {self.s['text']};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{ padding: 8px; }}
             QTableWidget::item:selected {{
-                background-color: {self.s['primary']};
+                background-color: {brand.PRIMARY};
                 color: white;
             }}
             QHeaderView::section {{
-                background-color: {self.s['input_bg']};
-                color: {self.s['text']};
+                background-color: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid {self.s['primary']};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """)
@@ -368,7 +368,7 @@ class TanimNumaraPage(BasePage):
 
         # Alt bilgi
         self.info_label = QLabel()
-        self.info_label.setStyleSheet(f"color: {self.s['text_muted']};")
+        self.info_label.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.info_label)
 
     def _load_data(self):
@@ -405,7 +405,7 @@ class TanimNumaraPage(BasePage):
                 basamak = row[5] or 6
                 onizleme = f"{prefix}{ayirici}{son_no + 1:0{basamak}d}"
                 item = QTableWidgetItem(onizleme)
-                item.setForeground(QColor(self.s['success']))
+                item.setForeground(QColor(brand.SUCCESS))
                 self.table.setItem(idx, 7, item)
 
             self.info_label.setText(f"Toplam: {len(rows)} tanım")
@@ -489,6 +489,15 @@ def sonraki_numara_al(kod: str) -> str:
             WHERE id = ?
         """, (current_year, tanim_id))
 
+    # IRSALIYE icin: Nexor fiili max ile sync (counter ile fiili kayit drift'ini kapat)
+    if kod == 'IRSALIYE':
+        try:
+            nexor_max = _nexor_irsaliye_max(cursor, prefix, ayirici)
+            if nexor_max > son_no:
+                son_no = nexor_max
+        except Exception as e:
+            print(f"[NumaraSync] Nexor max okunamadi: {e}")
+
     yeni_no = son_no + 1
 
     # Numarayı güncelle
@@ -502,3 +511,19 @@ def sonraki_numara_al(kod: str) -> str:
     conn.close()
 
     return f"{prefix}{ayirici}{yeni_no:0{basamak}d}"
+
+
+def _nexor_irsaliye_max(cursor, prefix: str, ayirici: str) -> int:
+    """Nexor cikis_irsaliyeleri tablosundaki en yuksek sayisal numara."""
+    pattern = f"{prefix}{ayirici}%"
+    skip_len = len(prefix) + len(ayirici) + 1  # SUBSTRING 1-bazli
+    cursor.execute(
+        """
+        SELECT MAX(TRY_CAST(SUBSTRING(irsaliye_no, ?, 20) AS INT))
+        FROM siparis.cikis_irsaliyeleri
+        WHERE irsaliye_no LIKE ?
+        """,
+        (skip_len, pattern),
+    )
+    row = cursor.fetchone()
+    return int(row[0]) if row and row[0] else 0

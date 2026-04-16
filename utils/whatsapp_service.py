@@ -150,6 +150,84 @@ class WhatsAppService:
             print(f"[HATA] WHAPI hatasi: {e}")
             return False, str(e)
 
+    def gonder_dokuman(self, telefon: str, dosya_path: str,
+                       caption: str = "", filename: str = None):
+        """
+        WhatsApp uzerinden dokuman (PDF vs.) gonder. Sadece WHAPI destekleniyor.
+
+        Args:
+            telefon: +905321234567 formatinda numara
+            dosya_path: Gonderilecek dosyanin tam yolu
+            caption: Dosya ile birlikte gonderilecek aciklama
+            filename: Alici tarafinda gorunecek dosya adi (opsiyonel)
+
+        Returns:
+            (success: bool, mesaj: str)
+        """
+        import os
+        if not self.ayarlar:
+            return False, "WhatsApp ayarlari yapilandirilmamis"
+        if not os.path.exists(dosya_path):
+            return False, f"Dosya bulunamadi: {dosya_path}"
+
+        # Test modu
+        if self.ayarlar['test_modu']:
+            print(f"[TEST] Dokuman test modu: {self.ayarlar['test_telefon']}")
+            telefon = self.ayarlar['test_telefon']
+            caption = f"[TEST MODU]\n{caption}"
+
+        if not telefon or not telefon.startswith('+'):
+            return False, f"Gecersiz telefon: {telefon}"
+
+        servis = self.ayarlar['servis_tipi']
+        if servis == 'WHAPI':
+            return self._gonder_whapi_dokuman(telefon, dosya_path, caption, filename)
+        else:
+            return False, f"Dokuman gonderimi sadece WHAPI ile destekleniyor (aktif: {servis})"
+
+    def _gonder_whapi_dokuman(self, telefon: str, dosya_path: str,
+                              caption: str, filename: str = None):
+        """WHAPI /messages/document endpoint'i ile PDF/dokuman gonder."""
+        try:
+            import os
+            import requests
+
+            telefon_temiz = telefon.replace('+', '').replace(' ', '').replace('-', '')
+            token = self.ayarlar.get('whapi_token', '')
+            if not token:
+                return False, "WHAPI token ayarlanmamis"
+
+            url = "https://gate.whapi.cloud/messages/document"
+            headers = {"Authorization": f"Bearer {token}"}
+
+            display_name = filename or os.path.basename(dosya_path)
+            with open(dosya_path, 'rb') as f:
+                files = {
+                    'media': (display_name, f, 'application/pdf'),
+                }
+                data = {
+                    'to': f"{telefon_temiz}@s.whatsapp.net",
+                    'filename': display_name,
+                }
+                if caption:
+                    data['caption'] = caption
+                resp = requests.post(url, headers=headers, data=data,
+                                     files=files, timeout=60)
+
+            if resp.status_code in (200, 201):
+                print(f"[OK] WHAPI dokuman gonderildi: {telefon} ({display_name})")
+                return True, "Gonderildi"
+            else:
+                err = resp.text[:300]
+                print(f"[HATA] WHAPI dokuman ({resp.status_code}): {err}")
+                return False, f"HTTP {resp.status_code}: {err}"
+
+        except ImportError:
+            return False, "requests kutuphanesi yuklu degil: pip install requests"
+        except Exception as e:
+            print(f"[HATA] WHAPI dokuman hatasi: {e}")
+            return False, str(e)
+
     def _gonder_pywhatkit(self, telefon: str, mesaj: str):
         """pywhatkit ile gönder"""
         try:

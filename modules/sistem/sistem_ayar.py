@@ -14,6 +14,7 @@ from PySide6.QtCore import Signal, Qt
 from components.base_page import BasePage
 from themes import COLOR_PRESETS
 from core.external_config import config_manager
+from core.nexor_brand import brand
 
 
 class SistemAyarPage(BasePage):
@@ -40,7 +41,7 @@ class SistemAyarPage(BasePage):
         
         # Başlık
         header = QFrame()
-        header.setStyleSheet(f"background: {self.theme['bg_card']}; border: 1px solid {self.theme['border']}; border-radius: 12px;")
+        header.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 12px;")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(20, 16, 20, 16)
         
@@ -50,9 +51,9 @@ class SistemAyarPage(BasePage):
         
         title_text = QVBoxLayout()
         title = QLabel("Sistem Ayarları")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 22px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 22px; font-weight: bold;")
         subtitle = QLabel("Tema, renkler ve görünüm ayarları")
-        subtitle.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 13px;")
+        subtitle.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 13px;")
         title_text.addWidget(title)
         title_text.addWidget(subtitle)
         header_layout.addLayout(title_text)
@@ -128,7 +129,7 @@ class SistemAyarPage(BasePage):
         l_content.addWidget(self.logo_clear)
         
         self.logo_label = QLabel(self.logo.split("/")[-1] if self.logo else "Logo seçilmedi")
-        self.logo_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 12px;")
+        self.logo_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px;")
         l_content.addWidget(self.logo_label)
         l_content.addStretch()
         logo_group.layout().addLayout(l_content)
@@ -143,7 +144,7 @@ class SistemAyarPage(BasePage):
         nas_row1.setSpacing(12)
 
         nas_label = QLabel("Sunucu Adresi:")
-        nas_label.setStyleSheet(f"color: {self.theme['text']}; font-size: 13px; background: transparent;")
+        nas_label.setStyleSheet(f"color: {brand.TEXT}; font-size: 13px; background: transparent;")
         nas_label.setFixedWidth(120)
         nas_row1.addWidget(nas_label)
 
@@ -152,9 +153,9 @@ class SistemAyarPage(BasePage):
         self.nas_server_edit.setPlaceholderText("AtlasNAS veya 192.168.10.x")
         self.nas_server_edit.setFixedHeight(40)
         self.nas_server_edit.setStyleSheet(
-            f"QLineEdit {{ background: {self.theme['bg_input']}; color: {self.theme['text']}; "
-            f"border: 1px solid {self.theme['border']}; border-radius: 8px; padding: 8px 12px; font-size: 13px; }}"
-            f"QLineEdit:focus {{ border-color: {self.theme['primary']}; }}"
+            f"QLineEdit {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: 8px; padding: 8px 12px; font-size: 13px; }}"
+            f"QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}"
         )
         nas_row1.addWidget(self.nas_server_edit)
         nas_content.addLayout(nas_row1)
@@ -173,15 +174,15 @@ class SistemAyarPage(BasePage):
         self.nas_save_btn.setCursor(Qt.PointingHandCursor)
         self.nas_save_btn.setFixedHeight(40)
         self.nas_save_btn.setStyleSheet(
-            f"QPushButton {{ background: {self.theme['primary']}; color: white; "
+            f"QPushButton {{ background: {brand.PRIMARY}; color: white; "
             f"border: none; border-radius: 8px; padding: 10px 24px; font-weight: bold; font-size: 13px; }}"
-            f"QPushButton:hover {{ background: {self.theme.get('primary_dark', self.theme['primary'])}; }}"
+            f"QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}"
         )
         self.nas_save_btn.clicked.connect(self._on_nas_save)
         nas_row2.addWidget(self.nas_save_btn)
 
         self.nas_status_label = QLabel("")
-        self.nas_status_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 12px; background: transparent;")
+        self.nas_status_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px; background: transparent;")
         nas_row2.addWidget(self.nas_status_label)
         nas_row2.addStretch()
         nas_content.addLayout(nas_row2)
@@ -206,7 +207,7 @@ class SistemAyarPage(BasePage):
     
     def _create_section(self, icon: str, title: str, subtitle: str) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"background: {self.theme['bg_card']}; border: 1px solid {self.theme['border']}; border-radius: 12px;")
+        frame.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 12px;")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(16)
@@ -219,9 +220,9 @@ class SistemAyarPage(BasePage):
         title_layout = QVBoxLayout()
         title_layout.setSpacing(2)
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet(f"color: {self.theme['text']}; font-weight: bold; font-size: 15px;")
+        title_lbl.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; font-size: 15px;")
         subtitle_lbl = QLabel(subtitle)
-        subtitle_lbl.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 12px;")
+        subtitle_lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px;")
         title_layout.addWidget(title_lbl)
         title_layout.addWidget(subtitle_lbl)
         header.addLayout(title_layout)
@@ -239,16 +240,16 @@ class SistemAyarPage(BasePage):
     
     def _style_toggle_btn(self, btn: QPushButton, active: bool):
         if active:
-            btn.setStyleSheet(f"QPushButton {{ background: {self.theme['gradient_css']}; color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background: {self.theme['primary']}; }}")
+            btn.setStyleSheet(f"QPushButton {{ background: {self.theme['gradient_css']}; color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background: {brand.PRIMARY}; }}")
         else:
-            btn.setStyleSheet(f"QPushButton {{ background: {self.theme['bg_input']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 10px; padding: 10px 24px; font-size: 13px; }} QPushButton:hover {{ border-color: {self.theme['primary']}; background: {self.theme['bg_hover']}; }}")
+            btn.setStyleSheet(f"QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 10px; padding: 10px 24px; font-size: 13px; }} QPushButton:hover {{ border-color: {brand.PRIMARY}; background: {brand.BG_HOVER}; }}")
     
     def _style_color_btn(self, btn: QPushButton, preset: dict, active: bool):
         border = "3px solid white" if active else "3px solid transparent"
         btn.setStyleSheet(f"QPushButton {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {preset['start']}, stop:1 {preset['end']}); color: white; border: {border}; border-radius: 10px; padding: 10px 20px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ border: 3px solid #DDDDDD; }}")
     
     def _normal_btn_style(self) -> str:
-        return f"QPushButton {{ background: {self.theme['bg_input']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 8px; padding: 10px 16px; font-size: 13px; }} QPushButton:hover {{ border-color: {self.theme['primary']}; background: {self.theme['bg_hover']}; }}"
+        return f"QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 8px; padding: 10px 16px; font-size: 13px; }} QPushButton:hover {{ border-color: {brand.PRIMARY}; background: {brand.BG_HOVER}; }}"
     
     def _update_buttons(self):
         self._style_toggle_btn(self.dark_btn, self.current_mode == "dark")
@@ -333,7 +334,7 @@ class SistemAyarPage(BasePage):
             return
 
         self.nas_status_label.setText("Test ediliyor...")
-        self.nas_status_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 12px; background: transparent;")
+        self.nas_status_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px; background: transparent;")
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
 

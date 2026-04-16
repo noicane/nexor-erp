@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class EkipDialog(QDialog):
@@ -34,15 +35,15 @@ class EkipDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QTextEdit {{
-                background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px; color: {self.theme.get('text')};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -77,12 +78,12 @@ class EkipDialog(QDialog):
         
         toolbar = QHBoxLayout()
         btn_ekle = QPushButton("➕ Üye Ekle")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_ekle.clicked.connect(self._add_uye)
         toolbar.addWidget(btn_ekle)
         
         btn_sil = QPushButton("🗑️ Kaldır")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_sil.clicked.connect(self._remove_uye)
         toolbar.addWidget(btn_sil)
         toolbar.addStretch()
@@ -93,7 +94,7 @@ class EkipDialog(QDialog):
         self.table_uye.setHorizontalHeaderLabels(["ID", "Sicil", "Ad Soyad", "Görev"])
         self.table_uye.setColumnHidden(0, True)
         self.table_uye.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table_uye.setStyleSheet(f"QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; }}")
+        self.table_uye.setStyleSheet(f"QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; }}")
         header = self.table_uye.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
         uye_layout.addWidget(self.table_uye)
@@ -111,7 +112,7 @@ class EkipDialog(QDialog):
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         layout.addLayout(btn_layout)
@@ -280,16 +281,16 @@ class ISGAcilDurumEkipleriPage(BasePage):
         layout.setSpacing(12)
         
         header = QLabel("🚨 Acil Durum Ekipleri")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("➕ Yeni Ekip")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
         
@@ -313,9 +314,9 @@ class ISGAcilDurumEkipleriPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px; font-weight: bold; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
@@ -353,7 +354,7 @@ class ISGAcilDurumEkipleriPage(BasePage):
             for j, val in enumerate(row):
                 if j == 1:  # Tip
                     item = QTableWidgetItem(str(val) if val else "")
-                    item.setForeground(QColor(tip_colors.get(val, self.theme.get('text'))))
+                    item.setForeground(QColor(tip_colors.get(val, brand.TEXT)))
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

@@ -15,6 +15,7 @@ from typing import Optional, List, Dict, Any
 from components.base_page import BasePage
 from core.database import execute_query
 from core.yetki_manager import YetkiManager
+from core.nexor_brand import brand
 
 
 class AksiyonBanaAtanan(BasePage):
@@ -251,7 +252,7 @@ class AksiyonBanaAtanan(BasePage):
         msg_label = QLabel(message)
         msg_label.setAlignment(Qt.AlignCenter)
         msg_label.setWordWrap(True)
-        msg_label.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 14px; padding: 40px;")
+        msg_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 14px; padding: 40px;")
         self.cards_layout.insertWidget(0, msg_label)
 
     def _load_data(self):

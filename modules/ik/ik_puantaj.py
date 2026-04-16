@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor, QFont, QAction
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class IKPuantajPage(BasePage):
@@ -29,41 +30,39 @@ class IKPuantajPage(BasePage):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_10, brand.SP_6, brand.SP_10, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
 
         # Header
-        header = QHBoxLayout()
-
-        title = QLabel("📋 Puantaj Takibi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
-        header.addWidget(title)
-
-        header.addStretch()
+        header = self.create_page_header("Puantaj Takibi", "Gunluk ve aylik devam takibi")
+        layout.addLayout(header)
 
         # Excel export
-        export_btn = QPushButton("📊 Excel İndir")
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        export_btn = QPushButton("Excel Indir")
+        export_btn.setCursor(Qt.PointingHandCursor)
+        export_btn.setFixedHeight(brand.sp(38))
         export_btn.setStyleSheet(self._button_style())
         export_btn.clicked.connect(self._export_excel)
-        header.addWidget(export_btn)
-
-        layout.addLayout(header)
+        btn_row.addWidget(export_btn)
+        layout.addLayout(btn_row)
 
         # Filtreler
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_LG}px;")
         filter_layout = QHBoxLayout(filter_frame)
-        filter_layout.setContentsMargins(16, 12, 16, 12)
+        filter_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
 
-        # Tarih aralığı
-        filter_layout.addWidget(QLabel("Başlangıç:"))
+        # Tarih araligi
+        filter_layout.addWidget(QLabel("Baslangic:"))
         self.dt_start = QDateEdit()
         self.dt_start.setCalendarPopup(True)
         self.dt_start.setDate(QDate.currentDate().addDays(-QDate.currentDate().day() + 1))  # Ayın ilk günü
         self.dt_start.setStyleSheet(self._input_style())
         filter_layout.addWidget(self.dt_start)
 
-        filter_layout.addWidget(QLabel("Bitiş:"))
+        filter_layout.addWidget(QLabel("Bitis:"))
         self.dt_end = QDateEdit()
         self.dt_end.setCalendarPopup(True)
         self.dt_end.setDate(QDate.currentDate())
@@ -87,11 +86,11 @@ class IKPuantajPage(BasePage):
         filter_layout.addWidget(self.vardiya_combo)
 
         # Hesapla butonu - PDKS'den puantaj oluştur + yükle
-        calc_btn = QPushButton("🔄 Hesapla")
+        calc_btn = QPushButton("Hesapla")
         calc_btn.setToolTip("PDKS verilerinden puantaj hesapla ve göster")
         calc_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -108,23 +107,23 @@ class IKPuantajPage(BasePage):
 
         # Özet kartları
         ozet_frame = QFrame()
-        ozet_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        ozet_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         ozet_layout = QHBoxLayout(ozet_frame)
         ozet_layout.setContentsMargins(16, 16, 16, 16)
 
-        self.kart_personel = self._create_ozet_kart("👥", "Toplam Personel", "0", self.theme.get('primary'))
+        self.kart_personel = self._create_ozet_kart("", "Toplam Personel", "0", brand.PRIMARY)
         ozet_layout.addWidget(self.kart_personel)
 
-        self.kart_tam = self._create_ozet_kart("✅", "Tam Gün", "0", self.theme.get('success'))
+        self.kart_tam = self._create_ozet_kart("", "Tam Gun", "0", brand.SUCCESS)
         ozet_layout.addWidget(self.kart_tam)
 
-        self.kart_gec = self._create_ozet_kart("⏰", "Geç Gelen", "0", self.theme.get('warning'))
+        self.kart_gec = self._create_ozet_kart("", "Gec Gelen", "0", brand.WARNING)
         ozet_layout.addWidget(self.kart_gec)
 
-        self.kart_yok = self._create_ozet_kart("❌", "Gelmedi", "0", self.theme.get('error'))
+        self.kart_yok = self._create_ozet_kart("", "Gelmedi", "0", brand.ERROR)
         ozet_layout.addWidget(self.kart_yok)
 
-        self.kart_izin = self._create_ozet_kart("🏖️", "İzinli", "0", self.theme.get('info'))
+        self.kart_izin = self._create_ozet_kart("", "Izinli", "0", brand.INFO)
         ozet_layout.addWidget(self.kart_izin)
 
         layout.addWidget(ozet_frame)
@@ -133,27 +132,27 @@ class IKPuantajPage(BasePage):
         tabs = QTabWidget()
         tabs.setStyleSheet(f"""
             QTabWidget::pane {{
-                border: 1px solid {self.theme.get('border')};
-                background: {self.theme.get('bg_card')};
+                border: 1px solid {brand.BORDER};
+                background: {brand.BG_CARD};
                 border-radius: 8px;
             }}
             QTabBar::tab {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 10px 20px;
-                border: 1px solid {self.theme.get('border')};
+                border: 1px solid {brand.BORDER};
                 border-bottom: none;
                 border-radius: 6px 6px 0 0;
                 margin-right: 2px;
             }}
             QTabBar::tab:selected {{
-                background: {self.theme.get('bg_card')};
-                border-bottom: 2px solid {self.theme.get('primary')};
+                background: {brand.BG_CARD};
+                border-bottom: 2px solid {brand.PRIMARY};
             }}
         """)
 
-        tabs.addTab(self._create_gunluk_tab(), "📅 Günlük Detay")
-        tabs.addTab(self._create_aylik_tab(), "📊 Aylık Özet")
+        tabs.addTab(self._create_gunluk_tab(), "Gunluk Detay")
+        tabs.addTab(self._create_aylik_tab(), "Aylik Ozet")
 
         layout.addWidget(tabs, 1)
 
@@ -166,7 +165,7 @@ class IKPuantajPage(BasePage):
         frame = QFrame()
         frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_main')};
+                background: {brand.BG_MAIN};
                 border: 1px solid {renk};
                 border-radius: 8px;
             }}
@@ -176,7 +175,7 @@ class IKPuantajPage(BasePage):
         layout.setSpacing(4)
 
         header = QLabel(f"{icon} {baslik}")
-        header.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        header.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
         layout.addWidget(header)
 
         value = QLabel(deger)
@@ -250,59 +249,59 @@ class IKPuantajPage(BasePage):
     def _input_style(self):
         return f"""
             QDateEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """
 
     def _combo_style(self):
         return f"""
             QComboBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """
 
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
         """
 
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_main')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_MAIN};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{
                 padding: 6px;
-                border-bottom: 1px solid {self.theme.get('border')};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """
@@ -493,7 +492,7 @@ class IKPuantajPage(BasePage):
 
             conn.commit()
             if inserted > 0:
-                print(f"✓ Puantaj: {inserted} kayıt PDKS'den oluşturuldu/güncellendi")
+                print(f"[ik_puantaj] Puantaj: {inserted} kayit PDKS'den olusturuldu/guncellendi")
         except Exception as e:
             print(f"Puantaj generate hatası: {e}")
             import traceback
@@ -594,7 +593,7 @@ class IKPuantajPage(BasePage):
                 mesai_saat = row[7] or 0
                 mesai_item = QTableWidgetItem(f"{mesai_saat:.1f} saat")
                 if mesai_saat > 0:
-                    mesai_item.setForeground(QColor(self.theme.get('warning', '#f59e0b')))
+                    mesai_item.setForeground(QColor(brand.WARNING))
                 self.gunluk_table.setItem(row_idx, 7, mesai_item)
 
                 # Durum
@@ -602,13 +601,13 @@ class IKPuantajPage(BasePage):
                 durum_item = QTableWidgetItem(durum)
 
                 if durum == 'NORMAL':
-                    durum_item.setForeground(QColor(self.theme.get('success', '#10B981')))
+                    durum_item.setForeground(QColor(brand.SUCCESS))
                     toplam_tam += 1
                 elif durum == 'DEVAMSIZ':
-                    durum_item.setForeground(QColor(self.theme.get('error', '#EF4444')))
+                    durum_item.setForeground(QColor(brand.ERROR))
                     toplam_yok += 1
                 elif durum in ('IZINLI', 'RAPORLU', 'MAZERETLI'):
-                    durum_item.setForeground(QColor(self.theme.get('info', '#3B82F6')))
+                    durum_item.setForeground(QColor(brand.INFO))
                     toplam_izin += 1
 
                 self.gunluk_table.setItem(row_idx, 8, durum_item)
@@ -675,7 +674,7 @@ class IKPuantajPage(BasePage):
                 devamsiz = row[4] or 0
                 devamsiz_item = QTableWidgetItem(str(devamsiz))
                 if devamsiz > 0:
-                    devamsiz_item.setForeground(QColor(self.theme.get('error', '#EF4444')))
+                    devamsiz_item.setForeground(QColor(brand.ERROR))
                 self.aylik_table.setItem(row_idx, 4, devamsiz_item)
 
                 # Normal saat
@@ -688,9 +687,9 @@ class IKPuantajPage(BasePage):
 
                 # Durum
                 if devamsiz > 0:
-                    self.aylik_table.setItem(row_idx, 7, QTableWidgetItem("⚠️ Devamsız"))
+                    self.aylik_table.setItem(row_idx, 7, QTableWidgetItem("Devamsiz"))
                 else:
-                    self.aylik_table.setItem(row_idx, 7, QTableWidgetItem("✓ Normal"))
+                    self.aylik_table.setItem(row_idx, 7, QTableWidgetItem("Normal"))
 
         except Exception as e:
             print(f"Aylık özet hatası: {e}")
@@ -724,14 +723,14 @@ class IKPuantajPage(BasePage):
         menu = QMenu(self)
         menu.setStyleSheet(f"""
             QMenu {{
-                background: {self.theme.get('bg_card')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 4px;
             }}
             QMenu::item {{ padding: 8px 20px; }}
-            QMenu::item:selected {{ background: {self.theme.get('bg_hover')}; }}
+            QMenu::item:selected {{ background: {brand.BG_HOVER}; }}
         """)
 
         act_duzenle = menu.addAction("Giriş/Çıkış Düzelt")
@@ -746,11 +745,11 @@ class IKPuantajPage(BasePage):
 
     def _duzenle_giris_cikis(self, row: int, per_id: int, personel_ad: str, tarih_str: str):
         """Puantaj giriş/çıkış saatini manuel düzelt"""
-        bg = self.theme.get('bg_card', '#151B23')
-        txt = self.theme.get('text', '#E8ECF1')
-        border = self.theme.get('border', '#1E2736')
-        bg_input = self.theme.get('bg_input', '#232C3B')
-        primary = self.theme.get('primary', '#C41E1E')
+        bg = brand.BG_CARD
+        txt = brand.TEXT
+        border = brand.BORDER
+        bg_input = brand.BG_INPUT
+        primary = brand.PRIMARY
 
         # Mevcut değerleri al
         giris_item = self.gunluk_table.item(row, 4)
@@ -805,7 +804,7 @@ class IKPuantajPage(BasePage):
         swap_btn = QPushButton("Giriş ↔ Çıkış Yer Değiştir")
         swap_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('info', '#3b82f6')}; color: white;
+                background: {brand.INFO}; color: white;
                 border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;
             }}
         """)
@@ -923,11 +922,11 @@ class IKPuantajPage(BasePage):
             QMessageBox.warning(self, "Hata", "Tarih okunamadı.")
             return
 
-        bg = self.theme.get('bg_card', '#151B23')
-        txt = self.theme.get('text', '#E8ECF1')
-        border = self.theme.get('border', '#1E2736')
-        bg_input = self.theme.get('bg_input', '#232C3B')
-        primary = self.theme.get('primary', '#C41E1E')
+        bg = brand.BG_CARD
+        txt = brand.TEXT
+        border = brand.BORDER
+        bg_input = brand.BG_INPUT
+        primary = brand.PRIMARY
 
         try:
             conn = get_db_connection()
@@ -993,7 +992,7 @@ class IKPuantajPage(BasePage):
 
             # Mevcut durum etiketi
             durum_lbl = QLabel(f"(şu an: {h_tip})")
-            durum_lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+            durum_lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
             h_layout.addWidget(durum_lbl)
             h_layout.addStretch()
 
@@ -1125,16 +1124,16 @@ class PersonelPuantajDialog(QDialog):
 
     def _setup_ui(self):
         t = self.theme
-        bg = t.get('bg_card', '#1E1E1E')
-        inp = t.get('bg_input', '#1A1A1A')
-        txt = t.get('text', '#FFFFFF')
-        brd = t.get('border', '#2A2A2A')
-        pri = t.get('primary', '#DC2626')
-        suc = t.get('success', '#10B981')
-        wrn = t.get('warning', '#F59E0B')
-        err = t.get('error', '#EF4444')
-        inf = t.get('info', '#3B82F6')
-        muted = t.get('text_muted', '#666666')
+        bg = brand.BG_CARD
+        inp = brand.BG_INPUT
+        txt = brand.TEXT
+        brd = brand.BORDER
+        pri = brand.PRIMARY
+        suc = brand.SUCCESS
+        wrn = brand.WARNING
+        err = brand.ERROR
+        inf = brand.INFO
+        muted = brand.TEXT_MUTED
 
         self.setStyleSheet(f"QDialog {{ background: {bg}; }} QLabel {{ color: {txt}; }}")
 
@@ -1198,7 +1197,7 @@ class PersonelPuantajDialog(QDialog):
         self.detay_table.setColumnWidth(7, 110)
         self.detay_table.setStyleSheet(f"""
             QTableWidget {{
-                background: {t.get('bg_main', '#0F1419')};
+                background: {brand.BG_MAIN};
                 border: 1px solid {brd};
                 border-radius: 8px;
                 gridline-color: {brd};
@@ -1228,12 +1227,12 @@ class PersonelPuantajDialog(QDialog):
     def _mini_kart(self, baslik: str, deger: str, renk: str) -> QFrame:
         t = self.theme
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {t.get('bg_input', '#1A1A1A')}; border: 1px solid {renk}; border-radius: 8px; }}")
+        frame.setStyleSheet(f"QFrame {{ background: {brand.BG_INPUT}; border: 1px solid {renk}; border-radius: 8px; }}")
         ly = QVBoxLayout(frame)
         ly.setContentsMargins(12, 8, 12, 8)
         ly.setSpacing(2)
         lbl = QLabel(baslik)
-        lbl.setStyleSheet(f"font-size: 10px; color: {t.get('text_muted', '#666')};")
+        lbl.setStyleSheet(f"font-size: 10px; color: {brand.TEXT_MUTED};")
         ly.addWidget(lbl)
         val = QLabel(deger)
         val.setObjectName("value")
@@ -1256,7 +1255,7 @@ class PersonelPuantajDialog(QDialog):
             """, (self.personel_id,))
             per = cursor.fetchone()
             if per:
-                self.lbl_name.setText(f"👤 {per[0]}")
+                self.lbl_name.setText(per[0])
                 parts = []
                 if per[1]:
                     parts.append(per[1])
@@ -1306,12 +1305,12 @@ class PersonelPuantajDialog(QDialog):
 
             # Tüm günleri listele
             t = self.theme
-            suc = t.get('success', '#10B981')
-            wrn = t.get('warning', '#F59E0B')
-            err = t.get('error', '#EF4444')
-            inf = t.get('info', '#3B82F6')
-            muted = t.get('text_muted', '#666666')
-            txt = t.get('text', '#FFFFFF')
+            suc = brand.SUCCESS
+            wrn = brand.WARNING
+            err = brand.ERROR
+            inf = brand.INFO
+            muted = brand.TEXT_MUTED
+            txt = brand.TEXT
 
             toplam_calisma = 0
             toplam_izin_gun = 0
@@ -1362,13 +1361,13 @@ class PersonelPuantajDialog(QDialog):
 
                 # Durum metni
                 if durum == 'NORMAL':
-                    durum_text = "✓ Normal"
+                    durum_text = "Normal"
                     durum_color = suc
                 elif durum in ('IZINLI', 'RAPORLU', 'MAZERETLI'):
-                    durum_text = f"🏖️ {izin_adi or durum.capitalize()}"
+                    durum_text = izin_adi or durum.capitalize()
                     durum_color = inf
                 elif durum == 'DEVAMSIZ':
-                    durum_text = "❌ Devamsız"
+                    durum_text = "Devamsiz"
                     durum_color = err
                 elif durum == 'HAFTA_SONU':
                     durum_text = "— Hafta Sonu"

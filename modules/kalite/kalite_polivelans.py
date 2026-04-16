@@ -22,33 +22,7 @@ from PySide6.QtGui import QColor, QFont
 
 from components.base_page import BasePage, create_action_buttons
 from core.database import get_db_connection
-
-
-def get_modern_style(theme: dict) -> dict:
-    """Modern tema renkleri"""
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
+from core.nexor_brand import brand
 
 
 # Seviye tanımları
@@ -140,7 +114,6 @@ class PolivelansPage(BasePage):
     
     def __init__(self, theme: dict):
         super().__init__(theme)
-        self.s = get_modern_style(theme)
         self.selected_personel_id = None
         self.selected_personel_name = None
         self.yetkinlik_widgets = {}
@@ -152,33 +125,32 @@ class PolivelansPage(BasePage):
         self._load_personeller()
 
     def _setup_ui(self):
-        s = self.s
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_4)
 
         # ========== SOL PANEL: Personel Listesi ==========
         sol_panel = QFrame()
-        sol_panel.setFixedWidth(320)
-        sol_panel.setStyleSheet(f"QFrame {{ background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 8px; }}")
+        sol_panel.setFixedWidth(brand.sp(320))
+        sol_panel.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_LG}px; }}")
         sol_layout = QVBoxLayout(sol_panel)
-        sol_layout.setContentsMargins(12, 12, 12, 12)
-        sol_layout.setSpacing(8)
-        
-        # Başlık
-        sol_title = QLabel("👥 Personel Listesi")
-        sol_title.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {s['text']};")
+        sol_layout.setContentsMargins(brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_3)
+        sol_layout.setSpacing(brand.SP_2)
+
+        # Baslik
+        sol_title = QLabel("Personel Listesi")
+        sol_title.setStyleSheet(f"font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};")
         sol_layout.addWidget(sol_title)
-        
+
         # Departman filtresi
         dept_layout = QHBoxLayout()
-        dept_layout.addWidget(QLabel("Departman:", styleSheet=f"color: {s['text_muted']}; font-size: 11px;"))
+        dept_layout.addWidget(QLabel("Departman:", styleSheet=f"color: {brand.TEXT_DIM}; font-size: {brand.FS_CAPTION}px;"))
         self.cmb_departman = QComboBox()
         self.cmb_departman.setStyleSheet(f"""
             QComboBox {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
                 padding: 6px 10px;
                 font-size: 11px;
@@ -196,9 +168,9 @@ class PolivelansPage(BasePage):
         self.txt_arama.setPlaceholderText("🔍 Personel ara...")
         self.txt_arama.setStyleSheet(f"""
             QLineEdit {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
                 padding: 8px 10px;
                 font-size: 11px;
@@ -220,22 +192,22 @@ class PolivelansPage(BasePage):
         self.tbl_personel.itemSelectionChanged.connect(self._on_personel_selected)
         self.tbl_personel.setStyleSheet(f"""
             QTableWidget {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 font-size: 11px;
             }}
             QTableWidget::item {{
                 padding: 8px;
-                border-bottom: 1px solid {s['border']};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background: {s['primary']};
+                background: {brand.PRIMARY};
             }}
             QHeaderView::section {{
                 background: rgba(0,0,0,0.3);
-                color: {s['text_secondary']};
+                color: {brand.TEXT_MUTED};
                 padding: 8px;
                 border: none;
                 font-weight: 600;
@@ -248,15 +220,15 @@ class PolivelansPage(BasePage):
         
         # ========== SAĞ PANEL: Yetkinlikler ==========
         sag_panel = QFrame()
-        sag_panel.setStyleSheet(f"QFrame {{ background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 8px; }}")
+        sag_panel.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_LG}px; }}")
         sag_layout = QVBoxLayout(sag_panel)
-        sag_layout.setContentsMargins(12, 12, 12, 12)
-        sag_layout.setSpacing(8)
+        sag_layout.setContentsMargins(brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_3)
+        sag_layout.setSpacing(brand.SP_2)
         
         # Başlık
         sag_header = QHBoxLayout()
-        self.lbl_personel_adi = QLabel("📋 Personel Seçin")
-        self.lbl_personel_adi.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {s['text']};")
+        self.lbl_personel_adi = QLabel("Personel Secin")
+        self.lbl_personel_adi.setStyleSheet(f"font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};")
         sag_header.addWidget(self.lbl_personel_adi)
         
         # Yetkinlik Yönetimi butonu
@@ -264,7 +236,7 @@ class PolivelansPage(BasePage):
         btn_yetkinlik_yonetim.setCursor(Qt.PointingHandCursor)
         btn_yetkinlik_yonetim.setStyleSheet(f"""
             QPushButton {{
-                background: {s['info']};
+                background: {brand.INFO};
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -298,7 +270,7 @@ class PolivelansPage(BasePage):
         
         # Başlangıçta boş mesaj
         self.empty_label = QLabel("👆 Sol taraftan bir personel seçin")
-        self.empty_label.setStyleSheet(f"color: {s['text_muted']}; font-size: 14px; padding: 40px;")
+        self.empty_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 14px; padding: 40px;")
         self.empty_label.setAlignment(Qt.AlignCenter)
         self.yetkinlik_layout.addWidget(self.empty_label)
         self.yetkinlik_layout.addStretch()
@@ -371,13 +343,11 @@ class PolivelansPage(BasePage):
         self.selected_personel_id = item.data(Qt.UserRole)
         self.selected_personel_name = item.text()
         
-        self.lbl_personel_adi.setText(f"📋 {self.selected_personel_name}")
+        self.lbl_personel_adi.setText(self.selected_personel_name)
         self._load_yetkinlikler()
     
     def _load_yetkinlikler(self):
         """Seçilen personelin yetkinliklerini yükle"""
-        s = self.s
-        
         # Önceki widget'ları temizle
         while self.yetkinlik_layout.count():
             child = self.yetkinlik_layout.takeAt(0)
@@ -443,7 +413,7 @@ class PolivelansPage(BasePage):
             dept_frame.setStyleSheet(f"""
                 QFrame {{
                     background: rgba(0,0,0,0.2);
-                    border: 1px solid {s['border']};
+                    border: 1px solid {brand.BORDER};
                     border-radius: 6px;
                     margin-top: 4px;
                 }}
@@ -453,7 +423,7 @@ class PolivelansPage(BasePage):
             dept_layout.setSpacing(4)
             
             dept_title = QLabel(f"📁 {dept}")
-            dept_title.setStyleSheet(f"font-weight: 600; color: {s['primary']}; font-size: 12px;")
+            dept_title.setStyleSheet(f"font-weight: 600; color: {brand.PRIMARY}; font-size: 12px;")
             dept_layout.addWidget(dept_title)
             
             # Yetkinlikler grid
@@ -470,7 +440,7 @@ class PolivelansPage(BasePage):
                 
                 # Yetkinlik adı
                 lbl = QLabel(f"{kod}: {ad}")
-                lbl.setStyleSheet(f"color: {s['text']}; font-size: 11px;")
+                lbl.setStyleSheet(f"color: {brand.TEXT}; font-size: 11px;")
                 lbl.setFixedWidth(200)
                 grid.addWidget(lbl, row, col)
                 
@@ -499,9 +469,9 @@ class PolivelansPage(BasePage):
                 else:
                     spin.setStyleSheet(f"""
                         QSpinBox {{
-                            background: {s['input_bg']};
-                            color: {s['text']};
-                            border: 1px solid {s['border']};
+                            background: {brand.BG_INPUT};
+                            color: {brand.TEXT};
+                            border: 1px solid {brand.BORDER};
                             border-radius: 4px;
                             padding: 4px 8px;
                             font-size: 12px;
@@ -569,7 +539,6 @@ class PolivelansPage(BasePage):
             spin = self.yetkinlik_widgets.get(kod)
             if spin:
                 _, renk = SEVIYELER.get(seviye, ("", "#666"))
-                s = self.s
                 if seviye > 0:
                     spin.setStyleSheet(f"""
                         QSpinBox {{
@@ -586,9 +555,9 @@ class PolivelansPage(BasePage):
                 else:
                     spin.setStyleSheet(f"""
                         QSpinBox {{
-                            background: {s['input_bg']};
-                            color: {s['text']};
-                            border: 1px solid {s['border']};
+                            background: {brand.BG_INPUT};
+                            color: {brand.TEXT};
+                            border: 1px solid {brand.BORDER};
                             border-radius: 4px;
                             padding: 4px 8px;
                             font-size: 12px;
@@ -618,35 +587,33 @@ class YetkinlikYonetimDialog(QDialog):
     def __init__(self, theme: dict, parent=None):
         super().__init__(parent)
         self.theme = theme
-        self.s = get_modern_style(theme)
         self.setWindowTitle("⚙️ Yetkinlik Tanımları")
         self.setMinimumSize(700, 500)
         self._setup_ui()
         self._load_data()
     
     def _setup_ui(self):
-        s = self.s
-        self.setStyleSheet(f"QDialog {{ background: {s['card_bg']}; }}")
+        self.setStyleSheet(f"QDialog {{ background: {brand.BG_CARD}; }}")
         
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
+
         # Header
         header = QHBoxLayout()
-        title = QLabel("📋 Yetkinlik Tanımları")
-        title.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {s['text']};")
+        title = QLabel("Yetkinlik Tanimlari")
+        title.setStyleSheet(f"font-size: {brand.FS_HEADING_SM}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};")
         header.addWidget(title)
         header.addStretch()
         
         # Kategori filtresi
-        header.addWidget(QLabel("Kategori:", styleSheet=f"color: {s['text_muted']};"))
+        header.addWidget(QLabel("Kategori:", styleSheet=f"color: {brand.TEXT_DIM};"))
         self.cmb_kategori = QComboBox()
         self.cmb_kategori.setStyleSheet(f"""
             QComboBox {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
                 padding: 6px 10px;
                 min-width: 150px;
@@ -659,15 +626,15 @@ class YetkinlikYonetimDialog(QDialog):
         header.addWidget(self.cmb_kategori)
         
         # Yeni Ekle butonu
-        btn_ekle = QPushButton("➕ Yeni Ekle")
+        btn_ekle = QPushButton("Yeni Ekle")
         btn_ekle.setCursor(Qt.PointingHandCursor)
         btn_ekle.setStyleSheet(f"""
             QPushButton {{
-                background: {s['success']};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
-                border-radius: 4px;
-                padding: 8px 16px;
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_4}px;
                 font-weight: 600;
             }}
             QPushButton:hover {{ background: #059669; }}
@@ -691,21 +658,21 @@ class YetkinlikYonetimDialog(QDialog):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
             }}
             QTableWidget::item {{
                 padding: 8px;
-                border-bottom: 1px solid {s['border']};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background: {s['primary']};
+                background: {brand.PRIMARY};
             }}
             QHeaderView::section {{
                 background: rgba(0,0,0,0.3);
-                color: {s['text_secondary']};
+                color: {brand.TEXT_MUTED};
                 padding: 8px;
                 border: none;
                 font-weight: 600;
@@ -720,13 +687,13 @@ class YetkinlikYonetimDialog(QDialog):
         btn_kapat = QPushButton("Kapat")
         btn_kapat.setStyleSheet(f"""
             QPushButton {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
                 padding: 8px 20px;
             }}
-            QPushButton:hover {{ background: {s['border']}; }}
+            QPushButton:hover {{ background: {brand.BORDER}; }}
         """)
         btn_kapat.clicked.connect(self.accept)
         btn_layout.addWidget(btn_kapat)
@@ -760,8 +727,7 @@ class YetkinlikYonetimDialog(QDialog):
             conn.close()
             
             self.table.setRowCount(len(rows))
-            s = self.s
-            
+
             for i, row in enumerate(rows):
                 yid, kod, ad, kategori = row
                 
@@ -772,10 +738,10 @@ class YetkinlikYonetimDialog(QDialog):
                 
                 # Sil butonu
                 widget = create_action_buttons(self.theme, [
-                    ("🗑️", "Sil", lambda _, y=yid, k=kod: self._sil(y, k), "delete"),
+                    ("Sil", "Sil", lambda _, y=yid, k=kod: self._sil(y, k), "delete"),
                 ])
                 self.table.setCellWidget(i, 4, widget)
-                self.table.setRowHeight(i, 42)
+                self.table.setRowHeight(i, brand.sp(42))
                 
         except Exception as e:
             print(f"Yetkinlik yükleme hatası: {e}")
@@ -783,9 +749,7 @@ class YetkinlikYonetimDialog(QDialog):
     def _yeni_ekle(self):
         """Yeni yetkinlik ekle"""
         from PySide6.QtWidgets import QInputDialog
-        
-        s = self.s
-        
+
         # Kod al
         kod, ok1 = QInputDialog.getText(self, "Yeni Yetkinlik", "Yetkinlik Kodu (örn: EYS-014):")
         if not ok1 or not kod.strip():

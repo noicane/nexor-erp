@@ -21,6 +21,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 import uuid
 
 
@@ -40,16 +41,16 @@ class SpesifikasyonDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QTextEdit, QComboBox, QDoubleSpinBox {{
-                background: {self.theme['bg_input']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme['text']};
+                color: {brand.TEXT};
             }}
-            QCheckBox {{ color: {self.theme['text']}; }}
+            QCheckBox {{ color: {brand.TEXT}; }}
         """)
         
         layout = QFormLayout(self)
@@ -137,7 +138,7 @@ class SpesifikasyonDialog(QDialog):
         btn_iptal = QPushButton("İptal")
         btn_iptal.clicked.connect(self.reject)
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
+        btn_kaydet.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_iptal)
         btn_layout.addStretch()
@@ -186,27 +187,27 @@ class CariSpesifikasyonlarPage(BasePage):
         # Header
         header = QHBoxLayout()
         title = QLabel("📝 Cari Spesifikasyonlar")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 20px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 20px; font-weight: bold;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
         
         # Cari Seçimi
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme['bg_card_solid']}; border-radius: 8px; padding: 12px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 12px;")
         f_layout = QHBoxLayout(filter_frame)
         
         f_layout.addWidget(QLabel("Cari Seçin:"))
         self.cmb_cari = QComboBox()
         self.cmb_cari.setMinimumWidth(400)
-        self.cmb_cari.setStyleSheet(f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};")
+        self.cmb_cari.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};")
         self.cmb_cari.currentIndexChanged.connect(self._on_cari_changed)
         f_layout.addWidget(self.cmb_cari)
         f_layout.addStretch()
         
         btn_yeni = QPushButton("+ Yeni Spesifikasyon")
         btn_yeni.setCursor(Qt.PointingHandCursor)
-        btn_yeni.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni_spec)
         f_layout.addWidget(btn_yeni)
         
@@ -230,13 +231,13 @@ class CariSpesifikasyonlarPage(BasePage):
     
     def _table_style(self):
         return f"""
-            QTableWidget {{ background: {self.theme['bg_main']}; border: 1px solid {self.theme['border']}; gridline-color: {self.theme['border']}; }}
-            QTableWidget::item {{ padding: 8px; color: {self.theme['text']}; }}
-            QHeaderView::section {{ background: {self.theme['bg_card_solid']}; color: {self.theme['text']}; padding: 10px; border: none; border-bottom: 2px solid {self.theme['primary']}; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_MAIN}; border: 1px solid {brand.BORDER}; gridline-color: {brand.BORDER}; }}
+            QTableWidget::item {{ padding: 8px; color: {brand.TEXT}; }}
+            QHeaderView::section {{ background: {brand.BG_CARD}; color: {brand.TEXT}; padding: 10px; border: none; border-bottom: 2px solid {brand.PRIMARY}; font-weight: bold; }}
         """
     
     def _button_style(self):
-        return f"QPushButton {{ background: {self.theme['bg_card_solid']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px 16px; }} QPushButton:hover {{ background: {self.theme['bg_hover']}; }}"
+        return f"QPushButton {{ background: {brand.BG_CARD}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 16px; }} QPushButton:hover {{ background: {brand.BG_HOVER}; }}"
     
     def _load_cariler(self):
         self.cmb_cari.clear()

@@ -19,6 +19,7 @@ from PySide6.QtPrintSupport import QPrinter, QPrintPreviewDialog
 from components.base_page import BasePage
 from components.dialog_minimize_bar import add_minimize_button
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class IrsaliyeOnizlemeDialog(QDialog):
@@ -35,7 +36,7 @@ class IrsaliyeOnizlemeDialog(QDialog):
         add_minimize_button(self)
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}")
+        self.setStyleSheet(f"QDialog {{ background: {brand.BG_MAIN}; }}")
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -46,7 +47,7 @@ class IrsaliyeOnizlemeDialog(QDialog):
         self.preview.setStyleSheet(f"""
             QTextBrowser {{
                 background: white;
-                border: 1px solid {self.theme.get('border')};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
                 padding: 20px;
             }}
@@ -56,11 +57,11 @@ class IrsaliyeOnizlemeDialog(QDialog):
         
         # Yazdırma seçenekleri
         opts_frame = QFrame()
-        opts_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px; padding: 10px;")
+        opts_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 10px;")
         opts_layout = QHBoxLayout(opts_frame)
         
         lbl = QLabel("Kopya:")
-        lbl.setStyleSheet(f"color: {self.theme.get('text')};")
+        lbl.setStyleSheet(f"color: {brand.TEXT};")
         opts_layout.addWidget(lbl)
         
         self.kopya_sayisi = QSpinBox()
@@ -68,9 +69,9 @@ class IrsaliyeOnizlemeDialog(QDialog):
         self.kopya_sayisi.setValue(2)
         self.kopya_sayisi.setStyleSheet(f"""
             QSpinBox {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
                 padding: 4px;
             }}
@@ -85,9 +86,9 @@ class IrsaliyeOnizlemeDialog(QDialog):
         pdf_btn = QPushButton("📥 PDF Kaydet")
         pdf_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px 20px;
             }}
@@ -100,9 +101,9 @@ class IrsaliyeOnizlemeDialog(QDialog):
         kapat_btn = QPushButton("Kapat")
         kapat_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px 20px;
             }}
@@ -113,7 +114,7 @@ class IrsaliyeOnizlemeDialog(QDialog):
         yazdir_btn = QPushButton("🖨️ Yazdır")
         yazdir_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#6366f1')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -238,22 +239,40 @@ class IrsaliyeOnizlemeDialog(QDialog):
         return html
     
     def _yazdir(self):
-        printer = QPrinter(QPrinter.HighResolution)
-        printer.setPageSize(QPrinter.A4)
-        dialog = QPrintPreviewDialog(printer, self)
-        dialog.paintRequested.connect(lambda p: self.preview.print_(p))
-        dialog.exec()
-    
+        """Yeni: reportlab ile profesyonel PDF uret, sistemle ac/yazdir."""
+        try:
+            from utils.irsaliye_pdf import generate_irsaliye_pdf
+            irsaliye_id = self.irsaliye.get('id')
+            if not irsaliye_id:
+                QMessageBox.warning(self, "Uyari", "Irsaliye ID bulunamadi.")
+                return
+            pdf_path = generate_irsaliye_pdf(irsaliye_id)
+            os.startfile(pdf_path)
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Irsaliye PDF olusturulamadi:\n{e}")
+
     def _pdf_kaydet(self):
-        dosya_adi = f"Irsaliye_{self.irsaliye.get('irsaliye_no', 'IRS')}.pdf"
-        dosya_yolu, _ = QFileDialog.getSaveFileName(self, "PDF Kaydet", dosya_adi, "PDF Dosyaları (*.pdf)")
-        if dosya_yolu:
-            printer = QPrinter(QPrinter.HighResolution)
-            printer.setPageSize(QPrinter.A4)
-            printer.setOutputFormat(QPrinter.PdfFormat)
-            printer.setOutputFileName(dosya_yolu)
-            self.preview.print_(printer)
+        """Yeni: reportlab tabanli irsaliye PDF (Atlas Kataforez formati)."""
+        try:
+            from utils.irsaliye_pdf import generate_irsaliye_pdf
+            irsaliye_id = self.irsaliye.get('id')
+            if not irsaliye_id:
+                QMessageBox.warning(self, "Uyari", "Irsaliye ID bulunamadi.")
+                return
+            dosya_adi = f"Irsaliye_{self.irsaliye.get('irsaliye_no', 'IRS')}.pdf"
+            dosya_yolu, _ = QFileDialog.getSaveFileName(
+                self, "PDF Kaydet", dosya_adi, "PDF Dosyaları (*.pdf)"
+            )
+            if not dosya_yolu:
+                return
+            generate_irsaliye_pdf(irsaliye_id, dosya_yolu)
             QMessageBox.information(self, "Başarılı", f"PDF kaydedildi:\n{dosya_yolu}")
+            try:
+                os.startfile(dosya_yolu)
+            except Exception:
+                pass
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"PDF olusturulamadi:\n{e}")
 
 
 class IrsaliyeDuzenleDialog(QDialog):
@@ -272,8 +291,8 @@ class IrsaliyeDuzenleDialog(QDialog):
 
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}
-            QLabel {{ color: {self.theme.get('text', '#fff')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
         """)
 
         layout = QVBoxLayout(self)
@@ -281,22 +300,22 @@ class IrsaliyeDuzenleDialog(QDialog):
         layout.setSpacing(12)
 
         title = QLabel(f"✏️ İrsaliye Düzenle: {self.irsaliye.get('irsaliye_no', '')}")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.theme.get('primary')};")
+        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {brand.PRIMARY};")
         layout.addWidget(title)
 
         input_style = f"""
             QLineEdit, QComboBox, QTextEdit {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """
 
         # Üst form - sevk bilgileri
         form_frame = QFrame()
-        form_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px; padding: 12px;")
+        form_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 12px;")
         form = QGridLayout(form_frame)
         form.setSpacing(8)
 
@@ -338,7 +357,7 @@ class IrsaliyeDuzenleDialog(QDialog):
 
         # Alt - satır düzenleme
         sat_title = QLabel("📦 Satır Miktarları (Fazla/Eksik Düzeltme)")
-        sat_title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 13px;")
+        sat_title.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; font-size: 13px;")
         layout.addWidget(sat_title)
 
         self.satirlar_table = QTableWidget()
@@ -352,15 +371,15 @@ class IrsaliyeDuzenleDialog(QDialog):
         self.satirlar_table.verticalHeader().setVisible(False)
         self.satirlar_table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
                 font-weight: bold;
@@ -375,9 +394,9 @@ class IrsaliyeDuzenleDialog(QDialog):
         iptal_btn = QPushButton("İptal")
         iptal_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px 20px;
             }}
@@ -388,7 +407,7 @@ class IrsaliyeDuzenleDialog(QDialog):
         kaydet_btn = QPushButton("💾 Kaydet")
         kaydet_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -422,11 +441,11 @@ class IrsaliyeDuzenleDialog(QDialog):
             self.satirlar_table.setRowCount(0)
             spin_style = f"""
                 QDoubleSpinBox {{
-                    background: {self.theme.get('bg_input')};
-                    border: 1px solid {self.theme.get('border')};
+                    background: {brand.BG_INPUT};
+                    border: 1px solid {brand.BORDER};
                     border-radius: 4px;
                     padding: 4px;
-                    color: {self.theme.get('text')};
+                    color: {brand.TEXT};
                 }}
             """
             for row in rows:
@@ -508,19 +527,19 @@ class SevkIrsaliyePage(BasePage):
         header = QHBoxLayout()
         
         title = QLabel("📄 İrsaliye Yönetimi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text', '#fff')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         
         header.addStretch()
         
         self.stats_label = QLabel()
-        self.stats_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.stats_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         header.addWidget(self.stats_label)
         
         header.addSpacing(20)
         
         self.saat_label = QLabel()
-        self.saat_label.setStyleSheet(f"color: {self.theme.get('text_muted', '#8a94a6')}; font-size: 18px; font-weight: bold;")
+        self.saat_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 18px; font-weight: bold;")
         header.addWidget(self.saat_label)
         
         refresh_btn = QPushButton("🔄 Yenile")
@@ -532,12 +551,12 @@ class SevkIrsaliyePage(BasePage):
         
         # Filtre satırı
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme.get('bg_card', '#242938')}; border-radius: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         filter_layout = QHBoxLayout(filter_frame)
         filter_layout.setContentsMargins(12, 8, 12, 8)
         
         lbl1 = QLabel("Başlangıç:")
-        lbl1.setStyleSheet(f"color: {self.theme.get('text')};")
+        lbl1.setStyleSheet(f"color: {brand.TEXT};")
         filter_layout.addWidget(lbl1)
         self.tarih_bas = QDateEdit()
         self.tarih_bas.setDate(QDate.currentDate().addDays(-30))
@@ -547,7 +566,7 @@ class SevkIrsaliyePage(BasePage):
         filter_layout.addWidget(self.tarih_bas)
         
         lbl2 = QLabel("Bitiş:")
-        lbl2.setStyleSheet(f"color: {self.theme.get('text')};")
+        lbl2.setStyleSheet(f"color: {brand.TEXT};")
         filter_layout.addWidget(lbl2)
         self.tarih_bit = QDateEdit()
         self.tarih_bit.setDate(QDate.currentDate())
@@ -559,7 +578,7 @@ class SevkIrsaliyePage(BasePage):
         filter_layout.addSpacing(20)
         
         lbl3 = QLabel("Durum:")
-        lbl3.setStyleSheet(f"color: {self.theme.get('text')};")
+        lbl3.setStyleSheet(f"color: {brand.TEXT};")
         filter_layout.addWidget(lbl3)
         self.durum_filter = QComboBox()
         self.durum_filter.addItem("-- Tümü --", None)
@@ -574,7 +593,7 @@ class SevkIrsaliyePage(BasePage):
         filter_layout.addSpacing(20)
         
         lbl4 = QLabel("Ara:")
-        lbl4.setStyleSheet(f"color: {self.theme.get('text')};")
+        lbl4.setStyleSheet(f"color: {brand.TEXT};")
         filter_layout.addWidget(lbl4)
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("İrsaliye no, müşteri, plaka...")
@@ -623,16 +642,16 @@ class SevkIrsaliyePage(BasePage):
         
         # SAĞ - Detay
         sag_widget = QFrame()
-        sag_widget.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        sag_widget.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         sag_layout = QVBoxLayout(sag_widget)
         sag_layout.setContentsMargins(16, 16, 16, 16)
         
         detay_title = QLabel("📋 İRSALİYE DETAYI")
-        detay_title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 14px;")
+        detay_title.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; font-size: 14px;")
         sag_layout.addWidget(detay_title)
         
         self.detay_frame = QFrame()
-        self.detay_frame.setStyleSheet(f"background: {self.theme.get('bg_main')}; border-radius: 8px; padding: 12px;")
+        self.detay_frame.setStyleSheet(f"background: {brand.BG_MAIN}; border-radius: 8px; padding: 12px;")
         detay_grid = QGridLayout(self.detay_frame)
         detay_grid.setSpacing(8)
         
@@ -641,18 +660,18 @@ class SevkIrsaliyePage(BasePage):
         
         for i, lbl in enumerate(labels):
             label = QLabel(lbl)
-            label.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+            label.setStyleSheet(f"color: {brand.TEXT_DIM};")
             detay_grid.addWidget(label, i, 0)
             
             value = QLabel("-")
-            value.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold;")
+            value.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold;")
             detay_grid.addWidget(value, i, 1)
             self.detay_labels[lbl] = value
         
         sag_layout.addWidget(self.detay_frame)
         
         satirlar_title = QLabel("📦 SATIRLAR")
-        satirlar_title.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; margin-top: 12px;")
+        satirlar_title.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; margin-top: 12px;")
         sag_layout.addWidget(satirlar_title)
         
         self.satirlar_table = QTableWidget()
@@ -666,7 +685,7 @@ class SevkIrsaliyePage(BasePage):
         toplam_layout = QHBoxLayout()
         toplam_layout.addStretch()
         self.toplam_label = QLabel("Toplam: 0 kalem, 0 adet")
-        self.toplam_label.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold;")
+        self.toplam_label.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold;")
         toplam_layout.addWidget(self.toplam_label)
         sag_layout.addLayout(toplam_layout)
         
@@ -682,15 +701,15 @@ class SevkIrsaliyePage(BasePage):
         self.sevk_btn = QPushButton("🚚 Sevk Et")
         self.sevk_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.sevk_btn.clicked.connect(self._sevk_et)
@@ -700,15 +719,15 @@ class SevkIrsaliyePage(BasePage):
         self.teslim_btn = QPushButton("✅ Teslim")
         self.teslim_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('info', '#3b82f6')};
+                background: {brand.INFO};
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.teslim_btn.clicked.connect(self._teslim_et)
@@ -720,15 +739,15 @@ class SevkIrsaliyePage(BasePage):
         self.iptal_btn = QPushButton("❌ İptal")
         self.iptal_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('danger', '#ef4444')};
+                background: {brand.ERROR};
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.iptal_btn.clicked.connect(self._iptal_et)
@@ -739,15 +758,15 @@ class SevkIrsaliyePage(BasePage):
         self.stok_iade_btn.setToolTip("İptal edilmiş irsaliyenin stoklarını sevk deposuna geri yükle")
         self.stok_iade_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('warning', '#f59e0b')};
+                background: {brand.WARNING};
                 color: white;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.stok_iade_btn.clicked.connect(self._stok_iade_yap)
@@ -767,8 +786,8 @@ class SevkIrsaliyePage(BasePage):
             }}
             QPushButton:hover {{ background: #1d4ed8; }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.zirve_btn.clicked.connect(self._zirve_aktar)
@@ -778,29 +797,50 @@ class SevkIrsaliyePage(BasePage):
         self.fkr_btn = QPushButton("📋 Final Kalite Raporu")
         self.fkr_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover')};
-                border-color: {self.theme.get('primary')};
+                background: {brand.BG_HOVER};
+                border-color: {brand.PRIMARY};
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.fkr_btn.clicked.connect(self._final_kalite_raporu)
         self.fkr_btn.setEnabled(False)
         btn_layout.addWidget(self.fkr_btn)
 
+        self.fkr_mail_btn = QPushButton("📧 FKK Mail Gönder")
+        self.fkr_mail_btn.setToolTip("Final Kalite Raporunu cari yetkililerine e-posta olarak gönder")
+        self.fkr_mail_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.INFO};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #2563eb; }}
+            QPushButton:disabled {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
+            }}
+        """)
+        self.fkr_mail_btn.clicked.connect(self._fkk_mail_gonder)
+        self.fkr_mail_btn.setEnabled(False)
+        btn_layout.addWidget(self.fkr_mail_btn)
+
         self.yazdir_btn = QPushButton("🖨️ Yazdır")
         self.yazdir_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#6366f1')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -808,8 +848,8 @@ class SevkIrsaliyePage(BasePage):
                 font-weight: bold;
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.yazdir_btn.clicked.connect(self._yazdir)
@@ -826,53 +866,53 @@ class SevkIrsaliyePage(BasePage):
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover', '#3d4454')};
+                background: {brand.BG_HOVER};
             }}
             QPushButton:disabled {{
-                color: {self.theme.get('text_muted')};
+                color: {brand.TEXT_DIM};
             }}
         """
     
     def _input_style(self):
         return f"""
             QLineEdit, QComboBox, QDateEdit {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 6px 10px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """
     
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_card', '#242938')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background-color: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', '#3d4454')};
-                color: {self.theme.get('text', '#ffffff')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{
                 padding: 6px;
-                border-bottom: 1px solid {self.theme.get('border', '#3d4454')};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#6366f1')};
+                background-color: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary', '#6366f1')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """
@@ -968,7 +1008,7 @@ class SevkIrsaliyePage(BasePage):
             self.table.setItem(row_idx, 0, QTableWidgetItem(str(data['id'])))
             
             item = QTableWidgetItem(data['irsaliye_no'])
-            item.setForeground(QColor(self.theme.get('primary', '#6366f1')))
+            item.setForeground(QColor(brand.PRIMARY))
             font = item.font()
             font.setBold(True)
             item.setFont(font)
@@ -998,13 +1038,13 @@ class SevkIrsaliyePage(BasePage):
             
             item = QTableWidgetItem(durum_text)
             if data['durum'] == 'TESLIM_EDILDI':
-                item.setForeground(QColor(self.theme.get('success', '#22c55e')))
+                item.setForeground(QColor(brand.SUCCESS))
             elif data['durum'] == 'IPTAL':
-                item.setForeground(QColor(self.theme.get('danger', '#ef4444')))
+                item.setForeground(QColor(brand.ERROR))
             elif data['durum'] == 'HAZIRLANDI':
-                item.setForeground(QColor(self.theme.get('warning', '#f59e0b')))
+                item.setForeground(QColor(brand.WARNING))
             elif data['durum'] == 'SEVK_EDILDI':
-                item.setForeground(QColor(self.theme.get('info', '#3b82f6')))
+                item.setForeground(QColor(brand.INFO))
             self.table.setItem(row_idx, 7, item)
             
             widget = self.create_action_buttons([
@@ -1038,17 +1078,18 @@ class SevkIrsaliyePage(BasePage):
         menu = QMenu(self)
         menu.setStyleSheet(f"""
             QMenu {{
-                background: {self.theme.get('bg_card')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
             }}
             QMenu::item:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
             }}
         """)
         
         menu.addAction("🖨️ Yazdır")
         menu.addAction("📋 Final Kalite Raporu")
+        menu.addAction("📧 FKK Mail Gönder")
         menu.addAction("✏️ Düzenle")
         menu.addSeparator()
         
@@ -1071,6 +1112,8 @@ class SevkIrsaliyePage(BasePage):
                 self._yazdir()
             elif text == "📋 Final Kalite Raporu":
                 self._final_kalite_raporu()
+            elif text == "📧 FKK Mail Gönder":
+                self._fkk_mail_gonder()
             elif text == "✏️ Düzenle":
                 self._duzenle()
             elif text == "🚚 Sevk Et":
@@ -1140,6 +1183,7 @@ class SevkIrsaliyePage(BasePage):
         self.stok_iade_btn.setEnabled(False)
         self.zirve_btn.setEnabled(False)
         self.fkr_btn.setEnabled(False)
+        self.fkr_mail_btn.setEnabled(False)
         self.secili_irsaliye = None
     
     def _update_buttons(self):
@@ -1161,6 +1205,7 @@ class SevkIrsaliyePage(BasePage):
         self.zirve_btn.setEnabled(durum != 'IPTAL')
         # Final kalite raporu: satır varsa aktif
         self.fkr_btn.setEnabled(durum != 'IPTAL' and len(self.satirlar_data) > 0)
+        self.fkr_mail_btn.setEnabled(durum != 'IPTAL' and len(self.satirlar_data) > 0)
     
     def _load_satirlar(self, irsaliye_id):
         """İrsaliye satırlarını yükle"""
@@ -1486,35 +1531,64 @@ class SevkIrsaliyePage(BasePage):
             sevk_depo_id = sevk_depo_row[0] if sevk_depo_row else None
 
             for satir in self.satirlar_data:
-                lot_no = satir.get('lot_no')
-                miktar = satir.get('miktar', 0)
+                lot_no_str = satir.get('lot_no') or ''
+                toplam_miktar = satir.get('miktar', 0)
                 urun_id = satir.get('urun_id') or 1
                 is_emri_id = satir.get('is_emri_id')
 
-                if lot_no and miktar > 0:
-                    # Stok girişi yap (miktar iade)
+                if not lot_no_str or toplam_miktar <= 0:
+                    continue
+
+                # Virgullu lot listesi mi? (sevkiyatta birlestirilmis)
+                lot_list = [l.strip() for l in str(lot_no_str).split(',') if l.strip()]
+
+                if len(lot_list) == 1:
+                    # Tek lot - tum miktari ver
+                    lot_miktarlari = [(lot_list[0], toplam_miktar)]
+                else:
+                    # Coklu lot - stok hareket gecmisinden gercek miktarlari bul
+                    lot_miktarlari = []
+                    for lot in lot_list:
+                        # Bu lotun bu irsaliyeden cikan miktarini bul
+                        try:
+                            cursor.execute("""
+                                SELECT TOP 1 ABS(miktar) FROM stok.stok_hareketleri
+                                WHERE lot_no = ? AND kaynak = 'IRSALIYE' AND kaynak_id = ?
+                                ORDER BY id DESC
+                            """, (lot, self.secili_irsaliye['id']))
+                            r = cursor.fetchone()
+                            mik = float(r[0]) if r else 0
+                        except Exception:
+                            mik = 0
+                        if mik > 0:
+                            lot_miktarlari.append((lot, mik))
+                    # Eger hareket bulunamadiysa toplam miktari esit dagit
+                    if not lot_miktarlari:
+                        esit = toplam_miktar / len(lot_list)
+                        lot_miktarlari = [(lot, esit) for lot in lot_list]
+
+                # Her lot icin ayri stok_giris
+                for lot, miktar in lot_miktarlari:
                     sonuc = motor.stok_giris(
                         urun_id=urun_id,
                         miktar=miktar,
-                        lot_no=lot_no,
+                        lot_no=lot,
                         depo_id=sevk_depo_id,
                         kalite_durumu='ONAYLANDI',
-                        aciklama=f"İrsaliye iptal - stok iadesi ({self.secili_irsaliye['irsaliye_no']})"
+                        aciklama=f"Irsaliye iptal - stok iadesi ({self.secili_irsaliye['irsaliye_no']})"
                     )
 
-                    # stok_giris mevcut kayıtta kalite_durumu güncellemez,
-                    # stok_cikis SEVK_EDILDI yapmış olabilir → elle düzelt
                     cursor.execute("""
                         UPDATE stok.stok_bakiye
                         SET kalite_durumu = 'ONAYLANDI',
                             son_hareket_tarihi = GETDATE()
                         WHERE lot_no = ? AND miktar > 0
-                    """, (lot_no,))
+                    """, (lot,))
 
                     if sonuc.basarili:
-                        print(f"✓ Stok iadesi: {lot_no}, {miktar} adet → SEVK deposu (kalite=ONAYLANDI)")
+                        print(f"Stok iadesi: {lot}, {miktar} adet -> SEVK")
                     else:
-                        print(f"✗ Stok iadesi hatası: {sonuc.mesaj}")
+                        print(f"Stok iadesi hatasi: {sonuc.mesaj}")
 
                 # İş emri durumunu SEVK_EDILDI → ONAYLANDI geri al
                 if is_emri_id:
@@ -1536,36 +1610,79 @@ class SevkIrsaliyePage(BasePage):
             QMessageBox.warning(self, "Uyarı", f"Stok iadesi sırasında hata: {e}")
     
     def _yazdir(self):
-        """İrsaliye yazdır"""
+        """İrsaliye yazdır - reportlab tabanli profesyonel PDF ve sistem viewer'da ac"""
         if not self.secili_irsaliye:
             return
-        
+        irsaliye_id = self.secili_irsaliye.get('id')
+        if not irsaliye_id:
+            return
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT adres, vergi_no, vergi_dairesi
-                FROM musteri.cariler
-                WHERE id = ?
-            """, (self.secili_irsaliye.get('cari_id'),))
-            row = cursor.fetchone()
-            if row:
-                self.secili_irsaliye['adres'] = row[0] or '-'
-                self.secili_irsaliye['vergi_no'] = f"{row[2] or ''} - {row[1] or ''}"
-            conn.close()
-        except Exception:
-            pass
-        
-        dialog = IrsaliyeOnizlemeDialog(
-            self.theme,
-            self.secili_irsaliye,
-            self.satirlar_data,
-            self
-        )
-        dialog.exec()
+            from utils.irsaliye_pdf import generate_irsaliye_pdf
+            pdf_path = generate_irsaliye_pdf(irsaliye_id)
+            try:
+                os.startfile(pdf_path)
+            except Exception:
+                QMessageBox.information(self, "PDF Oluşturuldu", f"PDF: {pdf_path}")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(self, "Hata", f"Irsaliye PDF olusturulamadi:\n{e}")
+
+    def _build_fkk_pdfs(self, irsaliye_id):
+        """Irsaliye icin tum lotlarin FKK PDF'lerini uret ve birlestirilmis PDF yolunu dondur.
+
+        Returns:
+            dict: {
+                'basarili': [(lot, path), ...],
+                'hatali':   [(lot, err),  ...],
+                'birlesik': str|None,
+            }
+        """
+        from utils.final_kalite_raporu_pdf import batch_final_kalite_raporu
+        sonuclar = batch_final_kalite_raporu(irsaliye_id)
+        basarili = [(lot, path) for lot, path in sonuclar if not str(path).startswith("HATA")]
+        hatali = [(lot, path) for lot, path in sonuclar if str(path).startswith("HATA")]
+
+        birlestirilmis_path = None
+        if basarili:
+            irsaliye_no = self.secili_irsaliye.get('irsaliye_no', f'IRS-{irsaliye_id}') if self.secili_irsaliye else f'IRS-{irsaliye_id}'
+            output_dir = os.path.dirname(basarili[0][1])
+            birlestirilmis_path = os.path.join(
+                output_dir,
+                f"FKK_BIRLESIK_{irsaliye_no}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            )
+            try:
+                from pypdf import PdfWriter
+                writer = PdfWriter()
+                for lot, path in basarili:
+                    try:
+                        writer.append(path)
+                    except Exception as ek:
+                        print(f"PDF eklenemedi {lot}: {ek}")
+                with open(birlestirilmis_path, 'wb') as f:
+                    writer.write(f)
+            except ImportError:
+                try:
+                    from PyPDF2 import PdfMerger
+                    merger = PdfMerger()
+                    for lot, path in basarili:
+                        try:
+                            merger.append(path)
+                        except Exception as ek:
+                            print(f"PDF eklenemedi {lot}: {ek}")
+                    merger.write(birlestirilmis_path)
+                    merger.close()
+                except ImportError:
+                    birlestirilmis_path = None
+                    print("pypdf veya PyPDF2 yuklu degil, birlestirme atlandi")
+            except Exception as merge_err:
+                print(f"PDF birlestirme hatasi: {merge_err}")
+                birlestirilmis_path = None
+
+        return {'basarili': basarili, 'hatali': hatali, 'birlesik': birlestirilmis_path}
 
     def _final_kalite_raporu(self):
-        """Secili irsaliyedeki her lot icin Final Kalite Raporu PDF olustur."""
+        """Secili irsaliyedeki her lot icin Final Kalite Raporu PDF olustur ve tek PDF'te birlestir."""
         if not self.secili_irsaliye or not self.satirlar_data:
             QMessageBox.warning(self, "Uyari", "Once bir irsaliye secin.")
             return
@@ -1575,30 +1692,327 @@ class SevkIrsaliyePage(BasePage):
             return
 
         try:
-            from utils.final_kalite_raporu_pdf import batch_final_kalite_raporu
-            sonuclar = batch_final_kalite_raporu(irsaliye_id)
+            result = self._build_fkk_pdfs(irsaliye_id)
+            basarili = result['basarili']
+            hatali = result['hatali']
+            birlestirilmis_path = result['birlesik']
 
-            if not sonuclar:
+            if not basarili and not hatali:
                 QMessageBox.warning(self, "Uyari", "Rapor olusturulacak lot bulunamadi.")
                 return
-
-            basarili = [(lot, path) for lot, path in sonuclar if not str(path).startswith("HATA")]
-            hatali = [(lot, path) for lot, path in sonuclar if str(path).startswith("HATA")]
 
             mesaj = f"{len(basarili)} adet Final Kalite Raporu olusturuldu.\n\n"
             for lot, path in basarili:
                 mesaj += f"  {lot}\n"
 
+            if birlestirilmis_path:
+                mesaj += f"\nTum raporlar tek PDF'te birlestirildi."
+
             if hatali:
-                mesaj += f"\n{len(hatali)} lot icin rapor olusturulamadi:\n"
+                mesaj += f"\n\n{len(hatali)} lot icin rapor olusturulamadi:\n"
                 for lot, err in hatali:
                     mesaj += f"  {lot}: {err}\n"
 
             QMessageBox.information(self, "Final Kalite Raporu", mesaj)
 
-            # Ilk basarili PDF'i ac
-            if basarili:
+            if birlestirilmis_path and os.path.exists(birlestirilmis_path):
+                os.startfile(birlestirilmis_path)
+            elif basarili:
                 os.startfile(basarili[0][1])
 
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Rapor olusturulurken hata:\n{e}")
+            import traceback
+            traceback.print_exc()
+
+    def _ensure_fkk_mail_log_table(self):
+        """kalite.fkk_mail_log tablosunu gerekirse olustur."""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'fkk_mail_log' AND schema_id = SCHEMA_ID('kalite'))
+                BEGIN
+                    CREATE TABLE kalite.fkk_mail_log (
+                        id BIGINT IDENTITY(1,1) PRIMARY KEY,
+                        irsaliye_id BIGINT NOT NULL,
+                        irsaliye_no NVARCHAR(50) NULL,
+                        cari_id BIGINT NULL,
+                        alici_emails NVARCHAR(1000) NULL,
+                        konu NVARCHAR(300) NULL,
+                        dosya_adi NVARCHAR(300) NULL,
+                        lot_sayisi INT NULL,
+                        durum NVARCHAR(20) NOT NULL,
+                        hata_mesaji NVARCHAR(2000) NULL,
+                        gonderen_id BIGINT NULL,
+                        gonderim_tarihi DATETIME2 NOT NULL DEFAULT SYSDATETIME()
+                    )
+                    CREATE INDEX IX_fkk_mail_log_irsaliye ON kalite.fkk_mail_log(irsaliye_id)
+                END
+            """)
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[FKK Mail] Log tablosu olusturulamadi: {e}")
+
+    def _fkk_mail_log_yaz(self, irsaliye_id, irsaliye_no, cari_id, aliciler, konu,
+                          dosya_adi, lot_sayisi, durum, hata_mesaji=None):
+        """FKK mail gonderim sonucunu log tablosuna yaz."""
+        try:
+            from core.yetki_manager import YetkiManager
+            gonderen_id = YetkiManager._current_user_id
+        except Exception:
+            gonderen_id = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO kalite.fkk_mail_log
+                    (irsaliye_id, irsaliye_no, cari_id, alici_emails, konu,
+                     dosya_adi, lot_sayisi, durum, hata_mesaji, gonderen_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                irsaliye_id, irsaliye_no, cari_id,
+                ", ".join(aliciler) if aliciler else None,
+                konu, dosya_adi, lot_sayisi, durum,
+                (hata_mesaji[:2000] if hata_mesaji else None),
+                gonderen_id,
+            ))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"[FKK Mail] Log kaydi yazilamadi: {e}")
+
+    def _fkk_mail_alicilari_getir(self, cari_id):
+        """Cari icin fkk_mail_alacak=1 olan aktif yetkililerin e-postalarini dondur."""
+        if not cari_id:
+            return []
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT ad_soyad, email
+                FROM musteri.cari_yetkililer
+                WHERE cari_id = ?
+                  AND aktif_mi = 1
+                  AND ISNULL(silindi_mi, 0) = 0
+                  AND ISNULL(fkk_mail_alacak, 0) = 1
+                  AND email IS NOT NULL AND email LIKE '%@%'
+                ORDER BY birincil_yetkili_mi DESC, ad_soyad
+            """, (cari_id,))
+            rows = cursor.fetchall()
+            conn.close()
+            return [(r[0] or '', r[1].strip()) for r in rows if r[1]]
+        except Exception as e:
+            print(f"[FKK Mail] Yetkili listesi alinamadi: {e}")
+            return []
+
+    def _fkk_mail_gonder(self):
+        """Secili irsaliyenin FKK raporunu cari yetkililerine e-posta ile gonder."""
+        if not self.secili_irsaliye or not self.satirlar_data:
+            QMessageBox.warning(self, "Uyari", "Once bir irsaliye secin.")
+            return
+
+        irsaliye_id = self.secili_irsaliye.get('id')
+        irsaliye_no = self.secili_irsaliye.get('irsaliye_no', f'IRS-{irsaliye_id}')
+        cari_id = self.secili_irsaliye.get('cari_id')
+        musteri_adi = self.secili_irsaliye.get('musteri', '')
+        if not irsaliye_id:
+            return
+
+        self._ensure_fkk_mail_log_table()
+
+        # Aliciları topla
+        aliciler = self._fkk_mail_alicilari_getir(cari_id)
+        if not aliciler:
+            cevap = QMessageBox.question(
+                self, "Alici Bulunamadi",
+                f"'{musteri_adi}' carisi icin 'FKK Mail Alacak' isaretli yetkili bulunamadi.\n\n"
+                "Manuel e-posta adresi girerek devam etmek ister misiniz?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if cevap != QMessageBox.Yes:
+                return
+            manuel = self._fkk_mail_manuel_adres_al()
+            if not manuel:
+                return
+            aliciler = [("", manuel)]
+        else:
+            # Onay dialogu: alıcıları göster
+            liste = "\n".join([f"  • {ad} <{em}>" if ad else f"  • {em}" for ad, em in aliciler])
+            cevap = QMessageBox.question(
+                self, "FKK Mail Gonder",
+                f"Asagidaki alicilar '{musteri_adi}' icin FKK raporunu alacaktir:\n\n{liste}\n\n"
+                f"Irsaliye: {irsaliye_no}\n\nGondermek istiyor musunuz?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if cevap != QMessageBox.Yes:
+                return
+
+        # PDF'leri uret
+        try:
+            result = self._build_fkk_pdfs(irsaliye_id)
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Rapor olusturulurken hata:\n{e}")
+            self._fkk_mail_log_yaz(irsaliye_id, irsaliye_no, cari_id,
+                                   [e for _, e in aliciler], "FKK Rapor",
+                                   None, 0, "HATA", f"PDF uretimi: {e}")
+            return
+
+        basarili = result['basarili']
+        hatali = result['hatali']
+
+        if not basarili:
+            QMessageBox.warning(self, "Uyari",
+                                "Gonderilecek PDF olusturulamadi.\n" +
+                                "\n".join([f"{l}: {er}" for l, er in hatali][:10]))
+            self._fkk_mail_log_yaz(irsaliye_id, irsaliye_no, cari_id,
+                                   [em for _, em in aliciler], "FKK Rapor",
+                                   None, 0, "HATA",
+                                   "PDF uretilemedi: " +
+                                   "; ".join([f"{l}:{er}" for l, er in hatali[:5]]))
+            return
+
+        # Her lot icin ayri PDF eklenecek — birlestirilmis PDF kullanilmiyor
+        ek_dosyalar = [(lot, path) for lot, path in basarili if os.path.exists(path)]
+        dosya_adi = ", ".join([os.path.basename(p) for _, p in ek_dosyalar])
+        konu = f"Final Kalite Raporu - {irsaliye_no}"
+        alici_emails = [em for _, em in aliciler]
+        lot_sayisi = len(basarili)
+
+        # E-mail gonder (attachment ile)
+        try:
+            from utils.email_service import get_email_service
+            es = get_email_service()
+            if not es.ayarlar:
+                QMessageBox.warning(self, "E-Mail Ayarlari Yok",
+                                    "Sistem e-mail ayarlari yapilandirilmamis.\n"
+                                    "Sistem > E-Mail Ayarlari menusunden SMTP bilgilerini girin.")
+                self._fkk_mail_log_yaz(irsaliye_id, irsaliye_no, cari_id,
+                                       alici_emails, konu, dosya_adi, lot_sayisi,
+                                       "HATA", "E-mail ayarlari yapilandirilmamis")
+                return
+
+            icerik_html = self._fkk_mail_html(irsaliye_no, musteri_adi, basarili)
+
+            import smtplib
+            from email.mime.text import MIMEText
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.base import MIMEBase
+            from email import encoders
+
+            basarili_gonderim = []
+            hatali_gonderim = []
+
+            for ad, email in aliciler:
+                try:
+                    msg = MIMEMultipart()
+                    msg['From'] = f"{es.ayarlar['gonderen_adi']} <{es.ayarlar['gonderen_email']}>"
+                    if es.ayarlar.get('test_modu'):
+                        hedef = es.ayarlar.get('test_email') or email
+                        msg['Subject'] = f"[TEST] {konu}"
+                    else:
+                        hedef = email
+                        msg['Subject'] = konu
+                    msg['To'] = hedef
+
+                    msg.attach(MIMEText(icerik_html, 'html', 'utf-8'))
+
+                    # Her lot icin ayri PDF ek
+                    for _lot, _pdf in ek_dosyalar:
+                        with open(_pdf, 'rb') as f:
+                            part = MIMEBase('application', 'pdf')
+                            part.set_payload(f.read())
+                            encoders.encode_base64(part)
+                            part.add_header(
+                                'Content-Disposition',
+                                f'attachment; filename="{os.path.basename(_pdf)}"',
+                            )
+                            msg.attach(part)
+
+                    if es.ayarlar['smtp_ssl'] and es.ayarlar['smtp_port'] == 465:
+                        server = smtplib.SMTP_SSL(es.ayarlar['smtp_server'],
+                                                  es.ayarlar['smtp_port'], timeout=30)
+                    else:
+                        server = smtplib.SMTP(es.ayarlar['smtp_server'],
+                                              es.ayarlar['smtp_port'], timeout=30)
+                        if es.ayarlar['smtp_ssl']:
+                            server.starttls()
+
+                    if es.ayarlar['gonderen_sifre']:
+                        server.login(es.ayarlar['gonderen_email'],
+                                     es.ayarlar['gonderen_sifre'])
+                    server.send_message(msg)
+                    server.quit()
+                    basarili_gonderim.append(hedef)
+                except Exception as send_err:
+                    hatali_gonderim.append((email, str(send_err)))
+
+            if basarili_gonderim and not hatali_gonderim:
+                durum = "BASARILI"
+                hata_msg = None
+            elif basarili_gonderim and hatali_gonderim:
+                durum = "KISMI"
+                hata_msg = "; ".join([f"{e}: {er}" for e, er in hatali_gonderim])
+            else:
+                durum = "HATA"
+                hata_msg = "; ".join([f"{e}: {er}" for e, er in hatali_gonderim])
+
+            self._fkk_mail_log_yaz(irsaliye_id, irsaliye_no, cari_id,
+                                   alici_emails, konu, dosya_adi, lot_sayisi,
+                                   durum, hata_msg)
+
+            mesaj = f"Gonderilen: {len(basarili_gonderim)} alici, {len(ek_dosyalar)} PDF eki\n"
+            if basarili_gonderim:
+                mesaj += "\n".join([f"  ✓ {e}" for e in basarili_gonderim]) + "\n"
+            if hatali_gonderim:
+                mesaj += f"\nHatali: {len(hatali_gonderim)}\n"
+                mesaj += "\n".join([f"  ✗ {e}: {er}" for e, er in hatali_gonderim])
+            if hatali:
+                mesaj += f"\n\n{len(hatali)} lot rapora dahil edilemedi."
+
+            if durum == "BASARILI":
+                QMessageBox.information(self, "FKK Mail Gonderildi", mesaj)
+            elif durum == "KISMI":
+                QMessageBox.warning(self, "FKK Mail Kismen Gonderildi", mesaj)
+            else:
+                QMessageBox.critical(self, "FKK Mail Hatasi", mesaj)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"E-mail gonderilemedi:\n{e}")
+            self._fkk_mail_log_yaz(irsaliye_id, irsaliye_no, cari_id,
+                                   alici_emails, konu, dosya_adi, lot_sayisi,
+                                   "HATA", str(e))
+            import traceback
+            traceback.print_exc()
+
+    def _fkk_mail_manuel_adres_al(self):
+        """Manuel e-posta adresi girmek icin dialog."""
+        from PySide6.QtWidgets import QInputDialog
+        text, ok = QInputDialog.getText(self, "Manuel E-Posta", "Alici e-posta adresi:")
+        if not ok:
+            return None
+        text = (text or "").strip()
+        if not text or '@' not in text:
+            QMessageBox.warning(self, "Uyari", "Gecersiz e-posta adresi.")
+            return None
+        return text
+
+    def _fkk_mail_html(self, irsaliye_no, musteri, basarili_lotlar):
+        """FKK mail HTML govdesi. Her lot icin ayri PDF eklendigi icin ad+dosya gosterir."""
+        lot_list = "".join([
+            f"<li>{lot} &nbsp;→&nbsp; <code>{os.path.basename(path)}</code></li>"
+            for lot, path in basarili_lotlar
+        ])
+        return f"""
+        <html><body style="font-family: Arial, sans-serif; color: #333;">
+        <h3>Final Kalite Raporu</h3>
+        <p>Sayin {musteri},</p>
+        <p><b>{irsaliye_no}</b> numarali irsaliyeye ait <b>{len(basarili_lotlar)} adet</b> Final Kalite Raporu ektedir.</p>
+        <p>Her lot icin ayri bir PDF ek olarak gonderilmistir:</p>
+        <ul>{lot_list}</ul>
+        <p>Saygilarimizla,<br/>ATLAS KATAFOREZ</p>
+        <hr/>
+        <p style="font-size:11px;color:#888;">Bu e-posta NEXOR ERP tarafindan otomatik gonderilmistir.</p>
+        </body></html>
+        """

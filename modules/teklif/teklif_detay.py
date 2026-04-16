@@ -26,6 +26,7 @@ from PySide6.QtGui import QPixmap, QColor
 
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 from config import REPORT_OUTPUT_DIR
 
 
@@ -78,21 +79,9 @@ class TeklifDetayDialog(QDialog):
         self.parca_gorseli_path = None
         self.satir_gorselleri = {}  # {row_index: dosya_yolu}
 
-        t = self.theme
-        self.bg_card = t.get('bg_card', '#1E1E1E')
-        self.bg_input = t.get('bg_input', '#1A1A1A')
-        self.text_color = t.get('text', '#FFFFFF')
-        self.text_muted = t.get('text_muted', '#666666')
-        self.border = t.get('border', '#2A2A2A')
-        self.primary = t.get('primary', '#DC2626')
-        self.success = t.get('success', '#10B981')
-        self.info = t.get('info', '#3B82F6')
-        self.warning = t.get('warning', '#F59E0B')
-        self.error = t.get('error', '#EF4444')
-
         self.setWindowTitle("Yeni Teklif" if self.yeni_kayit else "Teklif Detay")
-        self.setMinimumSize(1100, 800)
-        self.resize(1200, 850)
+        self.setMinimumSize(brand.sp(1100), brand.sp(780))
+        self.resize(brand.sp(1240), brand.sp(860))
 
         if not self.yeni_kayit:
             self._load_data()
@@ -106,40 +95,65 @@ class TeklifDetayDialog(QDialog):
             self._fill_from_sablon()
 
     def _setup_ui(self):
-        t = self.theme
         self.setStyleSheet(f"""
-            QDialog {{ background-color: {self.bg_card}; }}
-            QLabel {{ color: {self.text_color}; font-size: 13px; }}
+            QDialog {{
+                background-color: {brand.BG_MAIN};
+            }}
+            QLabel {{
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                background: transparent;
+            }}
             QGroupBox {{
-                color: {self.text_color}; font-weight: bold; font-size: 14px;
-                border: 1px solid {self.border}; border-radius: 8px;
-                margin-top: 12px; padding-top: 12px;
-                background: {self.bg_card};
+                color: {brand.TEXT};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_LG}px;
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                margin-top: {brand.SP_4}px;
+                padding-top: {brand.SP_5}px;
+                background: {brand.BG_CARD};
             }}
             QGroupBox::title {{
-                subcontrol-origin: margin; left: 16px; padding: 0 8px;
-                background: {self.bg_card}; color: {self.text_color};
+                subcontrol-origin: margin;
+                left: {brand.SP_5}px;
+                padding: 0 {brand.SP_2}px;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
             }}
             QScrollBar:vertical {{
-                background: {self.bg_input}; width: 10px; border-radius: 5px;
+                background: {brand.BG_INPUT};
+                width: {brand.sp(10)}px;
+                border-radius: {brand.sp(5)}px;
             }}
             QScrollBar::handle:vertical {{
-                background: {self.border}; border-radius: 5px; min-height: 20px;
+                background: {brand.BORDER_HARD};
+                border-radius: {brand.sp(5)}px;
+                min-height: {brand.sp(20)}px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {brand.TEXT_DIM};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0;
             }}
         """)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        main_layout.setSpacing(brand.SP_4)
 
         # Scroll
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; }")
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll.setFrameShape(QFrame.NoFrame)
 
         scroll_content = QWidget()
+        scroll_content.setStyleSheet("background: transparent;")
         content_layout = QVBoxLayout(scroll_content)
-        content_layout.setSpacing(12)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(brand.SP_4)
 
         content_layout.addWidget(self._create_header())
         content_layout.addWidget(self._create_musteri_group())
@@ -149,176 +163,280 @@ class TeklifDetayDialog(QDialog):
         content_layout.addWidget(self._create_notlar_group())
 
         scroll.setWidget(scroll_content)
-        main_layout.addWidget(scroll)
+        main_layout.addWidget(scroll, 1)
 
         main_layout.addWidget(self._create_footer())
 
     # ── HEADER ──
-    def _create_header(self) -> QFrame:
-        frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.bg_card}; border-radius: 8px; padding: 16px; }}")
-
-        layout = QHBoxLayout(frame)
+    def _create_header(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(brand.SP_1, 0, brand.SP_1, 0)
+        layout.setSpacing(brand.SP_3)
 
         if self.yeni_kayit:
-            title_text = "➕ Yeni Teklif"
+            title_text = "Yeni Teklif"
+            subtitle_text = "Yeni bir kaplama teklifi oluşturun"
         else:
             teklif_no = self.teklif_data.get('teklif_no', '')
             rev = self.teklif_data.get('revizyon_no', 0)
-            title_text = f"📝 {teklif_no} - Rev.{rev:02d}"
+            title_text = f"{teklif_no} · Rev.{rev:02d}"
+            subtitle_text = "Teklif detaylarını görüntüleyin ve düzenleyin"
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
 
         title = QLabel(title_text)
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.text_color};")
-        layout.addWidget(title)
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_TITLE}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.4px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(title)
 
+        subtitle = QLabel(subtitle_text)
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY}px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(subtitle)
+
+        layout.addLayout(title_col)
         layout.addStretch()
 
         if not self.yeni_kayit:
             durum = self.teklif_data.get('durum', 'TASLAK')
-            color = DURUM_RENKLER.get(durum, '#888')
+            color = DURUM_RENKLER.get(durum, brand.TEXT_DIM)
             metin = DURUM_METINLER.get(durum, durum)
-            badge = QLabel(f"  {metin}  ")
-            badge.setStyleSheet(f"""
-                background: {color}; color: white; padding: 8px 20px;
-                border-radius: 14px; font-weight: bold; font-size: 13px;
-            """)
+            badge = QLabel(metin)
+            badge.setAlignment(Qt.AlignCenter)
+            badge.setFixedHeight(brand.sp(36))
+            badge.setStyleSheet(
+                f"background: {color}; "
+                f"color: white; "
+                f"padding: 0 {brand.SP_5}px; "
+                f"border-radius: {brand.sp(18)}px; "
+                f"font-weight: {brand.FW_SEMIBOLD}; "
+                f"font-size: {brand.FS_BODY}px;"
+            )
             layout.addWidget(badge)
 
-        return frame
+        return wrapper
 
     # ── MÜŞTERİ BİLGİLERİ ──
     def _create_musteri_group(self) -> QGroupBox:
-        group = QGroupBox("👤 Müşteri ve Teklif Bilgileri")
+        group = QGroupBox("Müşteri ve Teklif Bilgileri")
         layout = QGridLayout(group)
-        layout.setSpacing(12)
-        layout.setContentsMargins(20, 28, 20, 20)
+        layout.setSpacing(brand.SP_3)
+        layout.setContentsMargins(brand.SP_5, brand.SP_6, brand.SP_5, brand.SP_5)
+        layout.setHorizontalSpacing(brand.SP_4)
+        layout.setVerticalSpacing(brand.SP_3)
 
-        input_style = f"""
-            background: {self.bg_input}; border: 1px solid {self.border};
-            border-radius: 6px; padding: 8px 12px; color: {self.text_color}; font-size: 13px;
-        """
-        label_style = f"color: {self.text_color}; font-weight: bold; font-size: 12px;"
+        input_style = self._input_style()
+        combo_style = self._combo_style()
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
 
         row = 0
         # Cari
-        lbl = QLabel("Müşteri:")
+        lbl = QLabel("Müşteri")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 0)
         self.cari_combo = QComboBox()
         self.cari_combo.addItem("-- Müşteri Seçin --", "")
-        self.cari_combo.setStyleSheet(f"QComboBox {{ {input_style} }}")
+        self.cari_combo.setStyleSheet(combo_style)
+        self.cari_combo.setFixedHeight(brand.sp(40))
         self.cari_combo.setEditable(True)
         self.cari_combo.currentIndexChanged.connect(self._on_cari_changed)
         layout.addWidget(self.cari_combo, row, 1, 1, 3)
 
         row += 1
         # Yetkili + Telefon
-        lbl = QLabel("Yetkili:")
+        lbl = QLabel("Yetkili")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 0)
         self.yetkili_input = QLineEdit()
         self.yetkili_input.setPlaceholderText("İlgili kişi")
-        self.yetkili_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.yetkili_input.setStyleSheet(input_style)
+        self.yetkili_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.yetkili_input, row, 1)
 
-        lbl = QLabel("Telefon:")
+        lbl = QLabel("Telefon")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 2)
         self.telefon_input = QLineEdit()
         self.telefon_input.setPlaceholderText("0xxx xxx xx xx")
-        self.telefon_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.telefon_input.setStyleSheet(input_style)
+        self.telefon_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.telefon_input, row, 3)
 
         row += 1
         # Email + Referans
-        lbl = QLabel("E-posta:")
+        lbl = QLabel("E-posta")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 0)
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("email@firma.com")
-        self.email_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.email_input.setStyleSheet(input_style)
+        self.email_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.email_input, row, 1)
 
-        lbl = QLabel("Referans No:")
+        lbl = QLabel("Referans No")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 2)
         self.referans_input = QLineEdit()
         self.referans_input.setPlaceholderText("Müşteri referans no")
-        self.referans_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.referans_input.setStyleSheet(input_style)
+        self.referans_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.referans_input, row, 3)
 
         row += 1
         # Proje + Teslim
-        lbl = QLabel("Proje Adı:")
+        lbl = QLabel("Proje Adı")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 0)
         self.proje_input = QLineEdit()
         self.proje_input.setPlaceholderText("Proje/iş adı")
-        self.proje_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.proje_input.setStyleSheet(input_style)
+        self.proje_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.proje_input, row, 1)
 
-        lbl = QLabel("Teslim Süresi:")
+        lbl = QLabel("Teslim Süresi")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 2)
         self.teslim_input = QLineEdit()
         self.teslim_input.setPlaceholderText("ör: 5-7 iş günü")
-        self.teslim_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.teslim_input.setStyleSheet(input_style)
+        self.teslim_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.teslim_input, row, 3)
 
         row += 1
-        # Ödeme + Geçerlilik + Para Birimi
-        lbl = QLabel("Ödeme Koşulları:")
+        # Ödeme + Geçerlilik
+        lbl = QLabel("Ödeme Koşulları")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 0)
         self.odeme_input = QLineEdit()
         self.odeme_input.setPlaceholderText("ör: 30 gün vadeli")
-        self.odeme_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.odeme_input.setStyleSheet(input_style)
+        self.odeme_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.odeme_input, row, 1)
 
-        lbl = QLabel("Geçerlilik:")
+        lbl = QLabel("Geçerlilik")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 2)
         self.gecerlilik_input = QDateEdit()
         self.gecerlilik_input.setDate(QDate.currentDate().addDays(30))
         self.gecerlilik_input.setCalendarPopup(True)
-        self.gecerlilik_input.setStyleSheet(f"QDateEdit {{ {input_style} }}")
+        self.gecerlilik_input.setStyleSheet(input_style)
+        self.gecerlilik_input.setFixedHeight(brand.sp(40))
         layout.addWidget(self.gecerlilik_input, row, 3)
 
         row += 1
-        lbl = QLabel("Para Birimi:")
+        lbl = QLabel("Para Birimi")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, row, 0)
         self.para_combo = QComboBox()
         for kod, etiket in PARA_BIRIMLERI:
             self.para_combo.addItem(etiket, kod)
-        self.para_combo.setStyleSheet(f"QComboBox {{ {input_style} }}")
+        self.para_combo.setStyleSheet(combo_style)
+        self.para_combo.setFixedHeight(brand.sp(40))
         layout.addWidget(self.para_combo, row, 1)
 
         return group
 
+    # ── ORTAK STIL YARDIMCILARI ──
+    def _input_style(self) -> str:
+        return f"""
+            QLineEdit, QDateEdit, QTextEdit {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                selection-background-color: {brand.PRIMARY_SOFT};
+            }}
+            QLineEdit:focus, QDateEdit:focus, QTextEdit:focus {{
+                border-color: {brand.PRIMARY};
+                background: {brand.BG_HOVER};
+            }}
+            QLineEdit::placeholder, QTextEdit {{ color: {brand.TEXT_DIM}; }}
+            QTextEdit {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+            }}
+        """
+
+    def _combo_style(self) -> str:
+        return f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(28)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+                selection-background-color: {brand.PRIMARY};
+                outline: 0;
+                padding: {brand.SP_1}px;
+            }}
+        """
+
+    def _secondary_button_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
+            QPushButton:pressed {{ background: {brand.BG_SELECTED}; }}
+        """
+
     # ── TEKLİF KALEMLERİ ──
     def _create_kalemler_group(self) -> QGroupBox:
-        group = QGroupBox("📦 Teklif Kalemleri")
+        group = QGroupBox("Teklif Kalemleri")
         layout = QVBoxLayout(group)
-        layout.setContentsMargins(20, 28, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_5, brand.SP_6, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_3)
 
         # Butonlar
         btn_row = QHBoxLayout()
-        btn_style = f"""
-            QPushButton {{ background: {self.bg_input}; color: {self.text_color};
-                border: 1px solid {self.border}; border-radius: 6px;
-                padding: 8px 16px; font-size: 12px; font-weight: 600; }}
-            QPushButton:hover {{ background: {self.border}; }}
-        """
-        add_btn = QPushButton("➕ Satır Ekle")
+        btn_row.setSpacing(brand.SP_2)
+        btn_style = self._secondary_button_style()
+
+        add_btn = QPushButton("+ Satır Ekle")
         add_btn.setCursor(Qt.PointingHandCursor)
+        add_btn.setFixedHeight(brand.sp(36))
         add_btn.setStyleSheet(btn_style)
         add_btn.clicked.connect(self._add_row)
         btn_row.addWidget(add_btn)
 
-        del_btn = QPushButton("🗑️ Satır Sil")
+        del_btn = QPushButton("− Satır Sil")
         del_btn.setCursor(Qt.PointingHandCursor)
+        del_btn.setFixedHeight(brand.sp(36))
         del_btn.setStyleSheet(btn_style)
         del_btn.clicked.connect(self._delete_row)
         btn_row.addWidget(del_btn)
@@ -336,79 +454,114 @@ class TeklifDetayDialog(QDialog):
         ])
         self.kalem_table.setStyleSheet(f"""
             QTableWidget {{
-                background-color: {self.bg_input}; border: 1px solid {self.border};
-                border-radius: 6px; color: {self.text_color}; gridline-color: {self.border}; font-size: 12px;
+                background-color: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                color: {brand.TEXT};
+                gridline-color: {brand.BORDER};
+                font-size: {brand.FS_BODY_SM}px;
+                outline: 0;
             }}
             QTableWidget::item {{
-                padding: 6px; color: {self.text_color};
-                background-color: {self.bg_input};
-            }}
-            QTableWidget::item:alternate {{
-                background-color: {self.bg_card};
+                padding: {brand.SP_1}px;
+                color: {brand.TEXT};
+                background-color: transparent;
             }}
             QTableWidget::item:selected {{
-                background-color: #2A3A5C; color: {self.text_color};
+                background-color: {brand.PRIMARY_SOFT};
+                color: {brand.TEXT};
             }}
             QComboBox {{
-                background: {self.bg_input}; color: {self.text_color};
-                border: 1px solid {self.border}; border-radius: 4px;
-                padding: 4px 8px; font-size: 12px; min-height: 24px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.sp(4)}px;
+                padding: {brand.SP_1}px {brand.SP_2}px;
+                font-size: {brand.FS_BODY_SM}px;
+                min-height: {brand.sp(24)}px;
             }}
             QComboBox::drop-down {{
-                border: none; width: 20px;
+                border: none; width: {brand.sp(18)}px;
             }}
             QComboBox QAbstractItemView {{
-                background: {self.bg_card}; color: {self.text_color};
-                border: 1px solid {self.border}; selection-background-color: #2A3A5C;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                selection-background-color: {brand.PRIMARY};
             }}
             QLineEdit {{
-                background: {self.bg_input}; color: {self.text_color};
-                border: 1px solid {self.border}; border-radius: 4px;
-                padding: 4px 8px; font-size: 12px;
-                selection-background-color: #2A3A5C;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.sp(4)}px;
+                padding: {brand.SP_1}px {brand.SP_2}px;
+                font-size: {brand.FS_BODY_SM}px;
+                selection-background-color: {brand.PRIMARY_SOFT};
             }}
             QHeaderView::section {{
-                background-color: {self.bg_card}; color: {self.text_color};
-                padding: 8px; border: none; border-bottom: 2px solid {self.primary};
-                font-weight: bold; font-size: 11px;
+                background-color: {brand.BG_CARD};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_2}px;
+                border: none;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_CAPTION}px;
+                text-transform: uppercase;
             }}
         """)
 
         header = self.kalem_table.horizontalHeader()
-        self.kalem_table.setColumnWidth(0, 35)   # #
-        self.kalem_table.setColumnWidth(1, 90)   # Stok Kodu
+        self.kalem_table.setColumnWidth(0, brand.sp(40))    # #
+        self.kalem_table.setColumnWidth(1, brand.sp(100))   # Stok Kodu
         header.setSectionResizeMode(2, QHeaderView.Stretch)  # Ürün Adı
-        self.kalem_table.setColumnWidth(3, 100)  # Kaplama Tipi
-        self.kalem_table.setColumnWidth(4, 80)   # Kalınlık
-        self.kalem_table.setColumnWidth(5, 80)   # Malzeme
-        self.kalem_table.setColumnWidth(6, 80)   # Yüzey Alanı
-        self.kalem_table.setColumnWidth(7, 70)   # Birim
-        self.kalem_table.setColumnWidth(8, 70)   # Miktar
-        self.kalem_table.setColumnWidth(9, 90)   # Birim Fiyat
-        self.kalem_table.setColumnWidth(10, 70)  # Y.Adet
-        self.kalem_table.setColumnWidth(11, 90)  # Y.Ciro
-        self.kalem_table.setColumnWidth(12, 150) # Açıklama
-        self.kalem_table.setColumnWidth(13, 80)  # Görsel
+        self.kalem_table.setColumnWidth(3, brand.sp(110))   # Kaplama Tipi
+        self.kalem_table.setColumnWidth(4, brand.sp(90))    # Kalınlık
+        self.kalem_table.setColumnWidth(5, brand.sp(90))    # Malzeme
+        self.kalem_table.setColumnWidth(6, brand.sp(90))    # Yüzey Alanı
+        self.kalem_table.setColumnWidth(7, brand.sp(80))    # Birim
+        self.kalem_table.setColumnWidth(8, brand.sp(80))    # Miktar
+        self.kalem_table.setColumnWidth(9, brand.sp(100))   # Birim Fiyat
+        self.kalem_table.setColumnWidth(10, brand.sp(80))   # Y.Adet
+        self.kalem_table.setColumnWidth(11, brand.sp(100))  # Y.Ciro
+        self.kalem_table.setColumnWidth(12, brand.sp(160))  # Açıklama
+        self.kalem_table.setColumnWidth(13, brand.sp(80))   # Görsel
 
         self.kalem_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.kalem_table.verticalHeader().setVisible(False)
-        self.kalem_table.verticalHeader().setDefaultSectionSize(38)
-        self.kalem_table.setAlternatingRowColors(True)
-        self.kalem_table.setMinimumHeight(200)
+        self.kalem_table.verticalHeader().setDefaultSectionSize(brand.sp(40))
+        self.kalem_table.setAlternatingRowColors(False)
+        self.kalem_table.setShowGrid(True)
+        self.kalem_table.setMinimumHeight(brand.sp(220))
+        self.kalem_table.setFrameShape(QFrame.NoFrame)
         self.kalem_table.cellChanged.connect(self._on_cell_changed)
         layout.addWidget(self.kalem_table)
 
         # Toplam ciro etiketi
         ciro_row = QHBoxLayout()
+        ciro_row.setSpacing(brand.SP_2)
         ciro_row.addStretch()
         ciro_lbl = QLabel("Toplam Yıllık Ciro:")
-        ciro_lbl.setStyleSheet(f"color: {self.warning}; font-weight: bold; font-size: 13px;")
+        ciro_lbl.setStyleSheet(
+            f"color: {brand.WARNING}; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_BODY}px; "
+            f"background: transparent;"
+        )
         ciro_row.addWidget(ciro_lbl)
         self.toplam_ciro_label = QLabel("0,00")
-        self.toplam_ciro_label.setStyleSheet(f"color: {self.warning}; font-weight: bold; font-size: 14px;")
+        self.toplam_ciro_label.setStyleSheet(
+            f"color: {brand.WARNING}; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"font-size: {brand.FS_BODY_LG}px; "
+            f"background: transparent;"
+        )
         ciro_row.addWidget(self.toplam_ciro_label)
         info_lbl = QLabel("(PDF'de görünmez)")
-        info_lbl.setStyleSheet(f"color: {self.text_muted}; font-size: 11px;")
+        info_lbl.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"background: transparent;"
+        )
         ciro_row.addWidget(info_lbl)
         layout.addLayout(ciro_row)
 
@@ -416,30 +569,35 @@ class TeklifDetayDialog(QDialog):
 
     # ── DOSYALAR ──
     def _create_dosyalar_group(self) -> QGroupBox:
-        group = QGroupBox("📎 Kaplama Şartnamesi ve Parça Görseli")
+        group = QGroupBox("Kaplama Şartnamesi ve Parça Görseli")
         layout = QGridLayout(group)
-        layout.setSpacing(12)
-        layout.setContentsMargins(20, 28, 20, 20)
+        layout.setSpacing(brand.SP_3)
+        layout.setContentsMargins(brand.SP_5, brand.SP_6, brand.SP_5, brand.SP_5)
 
-        btn_style = f"""
-            QPushButton {{ background: {self.bg_input}; color: {self.text_color};
-                border: 1px solid {self.border}; border-radius: 6px;
-                padding: 8px 16px; font-size: 12px; font-weight: 600; }}
-            QPushButton:hover {{ background: {self.border}; }}
-        """
-        label_style = f"color: {self.text_color}; font-weight: bold; font-size: 12px;"
+        btn_style = self._secondary_button_style()
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
 
         # Kaplama Şartnamesi
-        lbl = QLabel("Kaplama Şartnamesi:")
+        lbl = QLabel("Kaplama Şartnamesi")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, 0, 0)
 
         self.sartname_label = QLabel("Dosya seçilmedi")
-        self.sartname_label.setStyleSheet(f"color: {self.text_muted}; font-size: 12px;")
+        self.sartname_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
         layout.addWidget(self.sartname_label, 0, 1)
 
-        sartname_btn = QPushButton("📄 Dosya Seç")
+        sartname_btn = QPushButton("Dosya Seç")
         sartname_btn.setCursor(Qt.PointingHandCursor)
+        sartname_btn.setFixedHeight(brand.sp(36))
         sartname_btn.setStyleSheet(btn_style)
         sartname_btn.clicked.connect(self._select_sartname)
         layout.addWidget(sartname_btn, 0, 2)
@@ -447,21 +605,26 @@ class TeklifDetayDialog(QDialog):
         sartname_clear_btn = QPushButton("✕")
         sartname_clear_btn.setCursor(Qt.PointingHandCursor)
         sartname_clear_btn.setStyleSheet(btn_style)
-        sartname_clear_btn.setFixedWidth(40)
+        sartname_clear_btn.setFixedSize(brand.sp(40), brand.sp(36))
         sartname_clear_btn.clicked.connect(self._clear_sartname)
         layout.addWidget(sartname_clear_btn, 0, 3)
 
         # Parça Görseli
-        lbl = QLabel("Parça Görseli:")
+        lbl = QLabel("Parça Görseli")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, 1, 0)
 
         self.gorsel_label = QLabel("Görsel seçilmedi")
-        self.gorsel_label.setStyleSheet(f"color: {self.text_muted}; font-size: 12px;")
+        self.gorsel_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
         layout.addWidget(self.gorsel_label, 1, 1)
 
-        gorsel_btn = QPushButton("🖼️ Görsel Seç")
+        gorsel_btn = QPushButton("Görsel Seç")
         gorsel_btn.setCursor(Qt.PointingHandCursor)
+        gorsel_btn.setFixedHeight(brand.sp(36))
         gorsel_btn.setStyleSheet(btn_style)
         gorsel_btn.clicked.connect(self._select_gorsel)
         layout.addWidget(gorsel_btn, 1, 2)
@@ -469,17 +632,20 @@ class TeklifDetayDialog(QDialog):
         gorsel_clear_btn = QPushButton("✕")
         gorsel_clear_btn.setCursor(Qt.PointingHandCursor)
         gorsel_clear_btn.setStyleSheet(btn_style)
-        gorsel_clear_btn.setFixedWidth(40)
+        gorsel_clear_btn.setFixedSize(brand.sp(40), brand.sp(36))
         gorsel_clear_btn.clicked.connect(self._clear_gorsel)
         layout.addWidget(gorsel_clear_btn, 1, 3)
 
         # Görsel Önizleme
         self.gorsel_preview = QLabel()
-        self.gorsel_preview.setFixedSize(200, 200)
-        self.gorsel_preview.setStyleSheet(f"""
-            background: {self.bg_input}; border: 1px dashed {self.border};
-            border-radius: 8px;
-        """)
+        self.gorsel_preview.setFixedSize(brand.sp(220), brand.sp(220))
+        self.gorsel_preview.setStyleSheet(
+            f"background: {brand.BG_INPUT}; "
+            f"border: 1px dashed {brand.BORDER_HARD}; "
+            f"border-radius: {brand.R_MD}px; "
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_BODY_SM}px;"
+        )
         self.gorsel_preview.setAlignment(Qt.AlignCenter)
         self.gorsel_preview.setText("Önizleme")
         layout.addWidget(self.gorsel_preview, 2, 0, 1, 4, Qt.AlignCenter)
@@ -494,12 +660,21 @@ class TeklifDetayDialog(QDialog):
         if path:
             self.kaplama_sartnamesi_path = path
             self.sartname_label.setText(os.path.basename(path))
-            self.sartname_label.setStyleSheet(f"color: {self.success}; font-size: 12px; font-weight: 600;")
+            self.sartname_label.setStyleSheet(
+                f"color: {brand.SUCCESS}; "
+                f"font-size: {brand.FS_BODY_SM}px; "
+                f"font-weight: {brand.FW_SEMIBOLD}; "
+                f"background: transparent;"
+            )
 
     def _clear_sartname(self):
         self.kaplama_sartnamesi_path = None
         self.sartname_label.setText("Dosya seçilmedi")
-        self.sartname_label.setStyleSheet(f"color: {self.text_muted}; font-size: 12px;")
+        self.sartname_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
 
     def _select_gorsel(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -509,105 +684,131 @@ class TeklifDetayDialog(QDialog):
         if path:
             self.parca_gorseli_path = path
             self.gorsel_label.setText(os.path.basename(path))
-            self.gorsel_label.setStyleSheet(f"color: {self.success}; font-size: 12px; font-weight: 600;")
+            self.gorsel_label.setStyleSheet(
+                f"color: {brand.SUCCESS}; "
+                f"font-size: {brand.FS_BODY_SM}px; "
+                f"font-weight: {brand.FW_SEMIBOLD}; "
+                f"background: transparent;"
+            )
             pixmap = QPixmap(path)
             if not pixmap.isNull():
+                side = brand.sp(220)
                 self.gorsel_preview.setPixmap(
-                    pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    pixmap.scaled(side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 )
 
     def _clear_gorsel(self):
         self.parca_gorseli_path = None
         self.gorsel_label.setText("Görsel seçilmedi")
-        self.gorsel_label.setStyleSheet(f"color: {self.text_muted}; font-size: 12px;")
+        self.gorsel_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
         self.gorsel_preview.clear()
         self.gorsel_preview.setText("Önizleme")
 
     # ── DAHİLİ BİLGİLER (müşteri görmez) ──
     def _create_dahili_group(self) -> QGroupBox:
-        group = QGroupBox("🔒 Dahili Bilgiler (PDF'de görünmez)")
+        group = QGroupBox("Dahili Bilgiler (PDF'de görünmez)")
         layout = QGridLayout(group)
-        layout.setSpacing(12)
-        layout.setContentsMargins(20, 28, 20, 20)
+        layout.setSpacing(brand.SP_3)
+        layout.setContentsMargins(brand.SP_5, brand.SP_6, brand.SP_5, brand.SP_5)
 
-        input_style = f"""
-            background: {self.bg_input}; border: 1px solid {self.border};
-            border-radius: 6px; padding: 8px 12px; color: {self.text_color}; font-size: 13px;
-        """
-        label_style = f"color: {self.text_color}; font-weight: bold; font-size: 12px;"
+        input_style = self._input_style()
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
 
-        lbl = QLabel("Dahili Not:")
+        lbl = QLabel("Dahili Not")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, 0, 0, Qt.AlignTop)
         self.dahili_not_input = QTextEdit()
-        self.dahili_not_input.setMaximumHeight(60)
+        self.dahili_not_input.setMaximumHeight(brand.sp(72))
         self.dahili_not_input.setPlaceholderText("Sadece iç kullanım için notlar...")
-        self.dahili_not_input.setStyleSheet(f"QTextEdit {{ {input_style} }}")
+        self.dahili_not_input.setStyleSheet(input_style)
         layout.addWidget(self.dahili_not_input, 0, 1, 1, 3)
 
         return group
 
     # ── NOTLAR ──
     def _create_notlar_group(self) -> QGroupBox:
-        group = QGroupBox("📝 Notlar ve Özel Koşullar")
+        group = QGroupBox("Notlar ve Özel Koşullar")
         layout = QGridLayout(group)
-        layout.setSpacing(12)
-        layout.setContentsMargins(20, 28, 20, 20)
+        layout.setSpacing(brand.SP_3)
+        layout.setContentsMargins(brand.SP_5, brand.SP_6, brand.SP_5, brand.SP_5)
 
-        input_style = f"""
-            background: {self.bg_input}; border: 1px solid {self.border};
-            border-radius: 6px; padding: 8px 12px; color: {self.text_color}; font-size: 13px;
-        """
-        label_style = f"color: {self.text_color}; font-weight: bold; font-size: 12px;"
+        input_style = self._input_style()
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
 
-        lbl = QLabel("Notlar:")
+        lbl = QLabel("Notlar")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, 0, 0, Qt.AlignTop)
         self.notlar_input = QTextEdit()
-        self.notlar_input.setMaximumHeight(80)
+        self.notlar_input.setMaximumHeight(brand.sp(92))
         self.notlar_input.setPlaceholderText("Genel notlar...")
-        self.notlar_input.setStyleSheet(f"QTextEdit {{ {input_style} }}")
+        self.notlar_input.setStyleSheet(input_style)
         layout.addWidget(self.notlar_input, 0, 1)
 
-        lbl = QLabel("Özel Koşullar:")
+        lbl = QLabel("Özel Koşullar")
         lbl.setStyleSheet(label_style)
         layout.addWidget(lbl, 1, 0, Qt.AlignTop)
         self.ozel_kosullar_input = QTextEdit()
-        self.ozel_kosullar_input.setMaximumHeight(80)
+        self.ozel_kosullar_input.setMaximumHeight(brand.sp(92))
         self.ozel_kosullar_input.setPlaceholderText("Özel koşullar ve şartlar...")
-        self.ozel_kosullar_input.setStyleSheet(f"QTextEdit {{ {input_style} }}")
+        self.ozel_kosullar_input.setStyleSheet(input_style)
         layout.addWidget(self.ozel_kosullar_input, 1, 1)
 
         return group
 
     # ── FOOTER ──
-    def _create_footer(self) -> QFrame:
-        frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.bg_card}; border-radius: 8px; padding: 12px; }}")
+    def _create_footer(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet(
+            f"background: {brand.BG_CARD}; "
+            f"border-top: 1px solid {brand.BORDER};"
+        )
 
-        layout = QHBoxLayout(frame)
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_3)
+        layout.setSpacing(brand.SP_2)
 
-        btn_style_secondary = f"""
-            QPushButton {{ background: {self.bg_input}; color: {self.text_color};
-                border: 1px solid {self.border}; border-radius: 6px;
-                padding: 10px 20px; font-size: 13px; }}
-            QPushButton:hover {{ background: {self.border}; }}
-        """
+        btn_style_secondary = self._secondary_button_style()
+
+        def _cta_style(bg: str, hover: str) -> str:
+            return (
+                f"QPushButton {{"
+                f" background: {bg};"
+                f" color: white;"
+                f" border: none;"
+                f" border-radius: {brand.R_SM}px;"
+                f" padding: 0 {brand.SP_6}px;"
+                f" font-weight: {brand.FW_SEMIBOLD};"
+                f" font-size: {brand.FS_BODY}px;"
+                f" }}"
+                f"QPushButton:hover {{ background: {hover}; }}"
+            )
 
         if not self.yeni_kayit:
-            rev_btn = QPushButton("🔄 Revizyon Geçmişi")
+            rev_btn = QPushButton("Revizyon Geçmişi")
             rev_btn.setCursor(Qt.PointingHandCursor)
+            rev_btn.setFixedHeight(brand.sp(40))
             rev_btn.setStyleSheet(btn_style_secondary)
             rev_btn.clicked.connect(self._show_revision_history)
             layout.addWidget(rev_btn)
 
-        pdf_btn = QPushButton("📄 PDF Çıktı")
+        pdf_btn = QPushButton("PDF Çıktı")
         pdf_btn.setCursor(Qt.PointingHandCursor)
-        pdf_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.info}; color: white; border: none;
-                border-radius: 6px; padding: 10px 20px; font-weight: 600; font-size: 13px; }}
-            QPushButton:hover {{ background: #2563EB; }}
-        """)
+        pdf_btn.setFixedHeight(brand.sp(40))
+        pdf_btn.setStyleSheet(_cta_style(brand.INFO, "#2563EB"))
         pdf_btn.clicked.connect(self._export_pdf)
         layout.addWidget(pdf_btn)
 
@@ -615,31 +816,26 @@ class TeklifDetayDialog(QDialog):
 
         cancel_btn = QPushButton("İptal")
         cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(brand.sp(40))
         cancel_btn.setStyleSheet(btn_style_secondary)
         cancel_btn.clicked.connect(self.reject)
         layout.addWidget(cancel_btn)
 
-        save_btn = QPushButton("💾 Kaydet")
+        save_btn = QPushButton("Kaydet")
         save_btn.setCursor(Qt.PointingHandCursor)
-        save_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.success}; color: white; border: none;
-                border-radius: 6px; padding: 10px 28px; font-weight: bold; font-size: 14px; }}
-            QPushButton:hover {{ background: #059669; }}
-        """)
+        save_btn.setFixedHeight(brand.sp(40))
+        save_btn.setStyleSheet(_cta_style(brand.SUCCESS, "#059669"))
         save_btn.clicked.connect(self._save)
         layout.addWidget(save_btn)
 
-        send_btn = QPushButton("📤 Kaydet ve Gönder")
+        send_btn = QPushButton("Kaydet ve Gönder")
         send_btn.setCursor(Qt.PointingHandCursor)
-        send_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.primary}; color: white; border: none;
-                border-radius: 6px; padding: 10px 28px; font-weight: bold; font-size: 14px; }}
-            QPushButton:hover {{ background: #B91C1C; }}
-        """)
+        send_btn.setFixedHeight(brand.sp(40))
+        send_btn.setStyleSheet(_cta_style(brand.PRIMARY, brand.PRIMARY_HOVER))
         send_btn.clicked.connect(self._save_and_send)
         layout.addWidget(send_btn)
 
-        return frame
+        return wrapper
 
     # ── COMBO DATA ──
     def _load_combo_data(self):
@@ -703,7 +899,12 @@ class TeklifDetayDialog(QDialog):
         # Kaplama Tipi (ComboBox)
         kaplama_combo = QComboBox()
         kaplama_combo.addItems(KAPLAMA_TIPLERI)
-        kaplama_combo.setStyleSheet(f"background: {self.bg_input}; color: {self.text_color}; border: none; padding: 4px;")
+        kaplama_combo.setStyleSheet(
+            f"background: {brand.BG_INPUT}; "
+            f"color: {brand.TEXT}; "
+            f"border: none; "
+            f"padding: {brand.SP_1}px;"
+        )
         self.kalem_table.setCellWidget(row, 3, kaplama_combo)
 
         # Kalınlık
@@ -716,7 +917,12 @@ class TeklifDetayDialog(QDialog):
         # Birim (ComboBox)
         birim_combo = QComboBox()
         birim_combo.addItems(BIRIMLER)
-        birim_combo.setStyleSheet(f"background: {self.bg_input}; color: {self.text_color}; border: none; padding: 4px;")
+        birim_combo.setStyleSheet(
+            f"background: {brand.BG_INPUT}; "
+            f"color: {brand.TEXT}; "
+            f"border: none; "
+            f"padding: {brand.SP_1}px;"
+        )
         self.kalem_table.setCellWidget(row, 7, birim_combo)
 
         # Miktar
@@ -737,12 +943,21 @@ class TeklifDetayDialog(QDialog):
         self.kalem_table.setItem(row, 12, QTableWidgetItem(""))
 
         # Görsel butonu
-        gorsel_btn = QPushButton("Gorsel")
-        gorsel_btn.setFixedSize(50, 26)
+        gorsel_btn = QPushButton("Görsel")
+        gorsel_btn.setFixedSize(brand.sp(60), brand.sp(28))
         gorsel_btn.setCursor(Qt.PointingHandCursor)
         gorsel_btn.setToolTip("Satır görseli seç")
-        c = '#0EA5E9'
-        gorsel_btn.setStyleSheet(f"QPushButton {{ background: {c}18; color: {c}; border: 1px solid {c}30; border-radius: 6px; font-size: 11px; }} QPushButton:hover {{ background: {c}35; border-color: {c}55; }} QPushButton:pressed {{ background: {c}50; }}")
+        gorsel_btn.setStyleSheet(
+            f"QPushButton {{"
+            f" background: {brand.INFO_SOFT};"
+            f" color: {brand.INFO};"
+            f" border: 1px solid {brand.INFO_SOFT};"
+            f" border-radius: {brand.R_SM}px;"
+            f" font-size: {brand.FS_CAPTION}px;"
+            f" font-weight: {brand.FW_MEDIUM};"
+            f" }}"
+            f"QPushButton:hover {{ background: {brand.INFO}; color: white; }}"
+        )
         gorsel_btn.clicked.connect(lambda checked, r=row: self._select_satir_gorsel(r))
         self.kalem_table.setCellWidget(row, 13, gorsel_btn)
 
@@ -992,21 +1207,28 @@ class TeklifDetayDialog(QDialog):
         self.dahili_not_input.setPlainText(d.get('dahili_not', ''))
 
         # Dosyalar
+        file_label_active = (
+            f"color: {brand.SUCCESS}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"background: transparent;"
+        )
         sartname = d.get('kaplama_sartnamesi_dosya', '')
         if sartname and os.path.isfile(sartname):
             self.kaplama_sartnamesi_path = sartname
             self.sartname_label.setText(os.path.basename(sartname))
-            self.sartname_label.setStyleSheet(f"color: {self.success}; font-size: 12px; font-weight: 600;")
+            self.sartname_label.setStyleSheet(file_label_active)
 
         gorsel = d.get('parca_gorseli_dosya', '')
         if gorsel and os.path.isfile(gorsel):
             self.parca_gorseli_path = gorsel
             self.gorsel_label.setText(os.path.basename(gorsel))
-            self.gorsel_label.setStyleSheet(f"color: {self.success}; font-size: 12px; font-weight: 600;")
+            self.gorsel_label.setStyleSheet(file_label_active)
             pixmap = QPixmap(gorsel)
             if not pixmap.isNull():
+                side = brand.sp(220)
                 self.gorsel_preview.setPixmap(
-                    pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    pixmap.scaled(side, side, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 )
 
         # Satırları doldur
@@ -1420,33 +1642,63 @@ class TeklifDetayDialog(QDialog):
                 QMessageBox.information(self, "Revizyon Geçmişi", "Revizyon bulunamadı.")
                 return
 
-            # Basit dialog
+            # Dialog
             dlg = QDialog(self)
             dlg.setWindowTitle(f"Revizyon Geçmişi - {teklif_no}")
-            dlg.setMinimumSize(600, 300)
-            dlg.setStyleSheet(f"QDialog {{ background: {self.bg_card}; }}")
+            dlg.setMinimumSize(brand.sp(640), brand.sp(340))
+            dlg.setStyleSheet(f"QDialog {{ background: {brand.BG_MAIN}; }}")
 
             layout = QVBoxLayout(dlg)
-            layout.setContentsMargins(20, 20, 20, 20)
+            layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+            layout.setSpacing(brand.SP_4)
 
-            title = QLabel(f"📋 {teklif_no} - Revizyon Geçmişi")
-            title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.text_color};")
+            title = QLabel(f"{teklif_no} · Revizyon Geçmişi")
+            title.setStyleSheet(
+                f"font-size: {brand.FS_HEADING}px; "
+                f"font-weight: {brand.FW_BOLD}; "
+                f"color: {brand.TEXT}; "
+                f"background: transparent;"
+            )
             layout.addWidget(title)
 
             table = QTableWidget()
             table.setColumnCount(5)
             table.setHorizontalHeaderLabels(["Rev", "Tarih", "Durum", "Genel Toplam", ""])
             table.setStyleSheet(f"""
-                QTableWidget {{ background: {self.bg_input}; color: {self.text_color};
-                    border: 1px solid {self.border}; border-radius: 6px; }}
-                QTableWidget::item {{ padding: 8px; }}
-                QHeaderView::section {{ background: {self.bg_card}; color: {self.text_color};
-                    padding: 8px; border: none; font-weight: bold; }}
+                QTableWidget {{
+                    background: {brand.BG_CARD};
+                    color: {brand.TEXT};
+                    border: 1px solid {brand.BORDER};
+                    border-radius: {brand.R_MD}px;
+                    gridline-color: {brand.BORDER};
+                    outline: 0;
+                }}
+                QTableWidget::item {{
+                    padding: {brand.SP_2}px;
+                    background: transparent;
+                }}
+                QTableWidget::item:selected {{
+                    background: {brand.PRIMARY_SOFT};
+                    color: {brand.TEXT};
+                }}
+                QHeaderView::section {{
+                    background: {brand.BG_ELEVATED};
+                    color: {brand.TEXT_MUTED};
+                    padding: {brand.SP_2}px;
+                    border: none;
+                    border-bottom: 1px solid {brand.BORDER};
+                    font-weight: {brand.FW_SEMIBOLD};
+                    font-size: {brand.FS_CAPTION}px;
+                    text-transform: uppercase;
+                }}
             """)
             table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
             table.verticalHeader().setVisible(False)
+            table.verticalHeader().setDefaultSectionSize(brand.sp(36))
             table.setSelectionBehavior(QAbstractItemView.SelectRows)
             table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+            table.setFrameShape(QFrame.NoFrame)
+            table.setShowGrid(False)
             table.setRowCount(len(rows))
 
             for i, r in enumerate(rows):
@@ -1458,7 +1710,7 @@ class TeklifDetayDialog(QDialog):
 
                 durum = str(r[3] or 'TASLAK')
                 durum_item = QTableWidgetItem(DURUM_METINLER.get(durum, durum))
-                durum_item.setForeground(QColor(DURUM_RENKLER.get(durum, '#888')))
+                durum_item.setForeground(QColor(DURUM_RENKLER.get(durum, brand.TEXT_DIM)))
                 table.setItem(i, 2, durum_item)
 
                 toplam = float(r[4] or 0)
@@ -1475,10 +1727,8 @@ class TeklifDetayDialog(QDialog):
 
             close_btn = QPushButton("Kapat")
             close_btn.setCursor(Qt.PointingHandCursor)
-            close_btn.setStyleSheet(f"""
-                QPushButton {{ background: {self.bg_input}; color: {self.text_color};
-                    border: 1px solid {self.border}; border-radius: 6px; padding: 10px 24px; }}
-            """)
+            close_btn.setFixedHeight(brand.sp(40))
+            close_btn.setStyleSheet(self._secondary_button_style())
             close_btn.clicked.connect(dlg.accept)
             btn_row = QHBoxLayout()
             btn_row.addStretch()

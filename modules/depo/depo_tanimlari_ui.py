@@ -1,6 +1,7 @@
 """
-Depo Tanımları Modülü
-Redline NexorERP - Tanımlamalar / Depo Yönetimi
+NEXOR ERP - Depo Tanimlari Modulu
+==================================
+El Kitabi v3 uyumlu: brand token, emoji-free, responsive
 """
 
 from PySide6.QtWidgets import (
@@ -17,306 +18,477 @@ from PySide6.QtGui import QColor
 from datetime import datetime
 
 from core.database import get_db_connection
+from core.nexor_brand import brand
+
+
+# ── Ortak stil yardimcilari ──
+
+def _brand_table_style(table: QTableWidget):
+    """Tum tablolara brand uyumlu stil uygula"""
+    table.setShowGrid(False)
+    table.setAlternatingRowColors(True)
+    table.verticalHeader().setVisible(False)
+    table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+    table.setStyleSheet(f"""
+        QTableWidget {{
+            background: {brand.BG_CARD};
+            border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_LG}px;
+            outline: none;
+            color: {brand.TEXT};
+            font-size: {brand.FS_BODY_SM}px;
+        }}
+        QTableWidget::item {{
+            padding: {brand.SP_3}px {brand.SP_4}px;
+            border-bottom: 1px solid {brand.BORDER};
+            color: {brand.TEXT};
+        }}
+        QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+        QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; color: {brand.TEXT}; }}
+        QHeaderView::section {{
+            background: {brand.BG_SURFACE};
+            color: {brand.TEXT_MUTED};
+            padding: {brand.SP_3}px {brand.SP_4}px;
+            border: none;
+            border-bottom: 2px solid {brand.PRIMARY};
+            font-size: {brand.FS_BODY_SM}px;
+            font-weight: {brand.FW_SEMIBOLD};
+        }}
+    """)
+
+
+def _brand_btn_css(bg: str, hover_bg: str, fg: str = None) -> str:
+    """Brand uyumlu buton stili"""
+    fg = fg or brand.TEXT_INVERSE
+    return f"""
+        QPushButton {{
+            background: {bg};
+            color: {fg};
+            border: none;
+            border-radius: {brand.R_SM}px;
+            padding: {brand.SP_2}px {brand.SP_4}px;
+            font-size: {brand.FS_BODY}px;
+            font-weight: {brand.FW_SEMIBOLD};
+            min-height: {brand.sp(38)}px;
+        }}
+        QPushButton:hover {{ background: {hover_bg}; }}
+        QPushButton:disabled {{
+            background: {brand.BG_HOVER};
+            color: {brand.TEXT_DISABLED};
+        }}
+    """
+
+
+def _brand_dialog_style() -> str:
+    """Dialog icin ortak stylesheet"""
+    return f"""
+        QDialog {{
+            background: {brand.BG_MAIN};
+            font-family: {brand.FONT_FAMILY};
+        }}
+        QLabel {{ color: {brand.TEXT}; background: transparent; }}
+        QGroupBox {{
+            color: {brand.TEXT};
+            font-size: {brand.FS_BODY}px;
+            font-weight: {brand.FW_SEMIBOLD};
+            border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_LG}px;
+            margin-top: {brand.SP_5}px;
+            padding: {brand.SP_5}px;
+            padding-top: {brand.SP_8}px;
+        }}
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            left: {brand.SP_4}px;
+            top: {brand.SP_2}px;
+            padding: 0 {brand.SP_2}px;
+            color: {brand.TEXT_MUTED};
+            background: {brand.BG_MAIN};
+        }}
+        QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QDateEdit {{
+            background: {brand.BG_INPUT};
+            color: {brand.TEXT};
+            border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_SM}px;
+            padding: {brand.SP_2}px {brand.SP_3}px;
+            font-size: {brand.FS_BODY}px;
+        }}
+        QLineEdit:focus, QComboBox:focus, QSpinBox:focus,
+        QDoubleSpinBox:focus, QDateEdit:focus {{
+            border-color: {brand.PRIMARY};
+        }}
+        QCheckBox {{
+            color: {brand.TEXT};
+            spacing: {brand.SP_2}px;
+            font-size: {brand.FS_BODY}px;
+        }}
+    """
 
 
 class DepoTanimlariWidget(QWidget):
-    """Ana Depo Tanımları Widget'ı"""
-    
+    """Ana Depo Tanimlari Widget'i"""
+
     def __init__(self, theme=None, parent=None):
         super().__init__(parent)
         self.theme = theme or {}
         self.current_depo_id = None
         self.setup_ui()
         self.load_data()
-    
-    @property
-    def conn(self):
-        """Her çağrıda yeni veritabanı bağlantısı döndür"""
-        return get_db_connection()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        
-        # Üst Toolbar
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
+        # Ust Toolbar
         toolbar = self.create_toolbar()
         layout.addWidget(toolbar)
-        
-        # Ana içerik - Splitter
+
+        # Ana icerik - Splitter
         splitter = QSplitter(Qt.Horizontal)
-        
+        splitter.setHandleWidth(brand.SP_1)
+
         # Sol Panel - Depo Listesi
         left_panel = self.create_left_panel()
         splitter.addWidget(left_panel)
-        
-        # Sağ Panel - Detaylar (Tab)
+
+        # Sag Panel - Detaylar (Tab)
         right_panel = self.create_right_panel()
         splitter.addWidget(right_panel)
-        
-        splitter.setSizes([350, 650])
+
+        splitter.setSizes([brand.sp(350), brand.sp(650)])
         layout.addWidget(splitter)
-    
+
     def create_toolbar(self):
         toolbar = QFrame()
         toolbar.setFrameStyle(QFrame.StyledPanel)
-        toolbar.setStyleSheet("""
-            QFrame { background-color: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 5px; }
+        toolbar.setStyleSheet(f"""
+            QFrame {{
+                background-color: {brand.BG_SURFACE};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_1}px;
+            }}
         """)
-        
+
         layout = QHBoxLayout(toolbar)
-        layout.setContentsMargins(10, 5, 10, 5)
-        
+        layout.setContentsMargins(brand.SP_3, brand.SP_1, brand.SP_3, brand.SP_1)
+        layout.setSpacing(brand.SP_3)
+
         self.txt_search = QLineEdit()
-        self.txt_search.setPlaceholderText("🔍 Depo ara...")
-        self.txt_search.setMinimumWidth(200)
+        self.txt_search.setPlaceholderText("Depo ara...")
+        self.txt_search.setMinimumWidth(brand.sp(200))
+        self.txt_search.setStyleSheet(f"""
+            QLineEdit {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
         self.txt_search.textChanged.connect(self.filter_list)
         layout.addWidget(self.txt_search)
-        
+
         layout.addStretch()
-        
-        btn_style = "QPushButton { padding: 8px 16px; border-radius: 4px; font-weight: bold; }"
-        
-        self.btn_new = QPushButton("➕ Yeni Depo")
-        self.btn_new.setStyleSheet(btn_style + "QPushButton { background-color: #4CAF50; color: white; }")
+
+        self.btn_new = QPushButton("Yeni Depo")
+        self.btn_new.setCursor(Qt.PointingHandCursor)
+        self.btn_new.setStyleSheet(_brand_btn_css(brand.SUCCESS, "#059669"))
         self.btn_new.clicked.connect(self.new_depo)
         layout.addWidget(self.btn_new)
-        
-        self.btn_edit = QPushButton("✏️ Düzenle")
-        self.btn_edit.setStyleSheet(btn_style + "QPushButton { background-color: #2196F3; color: white; }")
+
+        self.btn_edit = QPushButton("Duzenle")
+        self.btn_edit.setCursor(Qt.PointingHandCursor)
+        self.btn_edit.setStyleSheet(_brand_btn_css(brand.INFO, "#2563EB"))
         self.btn_edit.clicked.connect(self.edit_depo)
         self.btn_edit.setEnabled(False)
         layout.addWidget(self.btn_edit)
-        
-        self.btn_delete = QPushButton("🗑️ Sil")
-        self.btn_delete.setStyleSheet(btn_style + "QPushButton { background-color: #f44336; color: white; }")
+
+        self.btn_delete = QPushButton("Sil")
+        self.btn_delete.setCursor(Qt.PointingHandCursor)
+        self.btn_delete.setStyleSheet(_brand_btn_css(brand.ERROR, "#DC2626"))
         self.btn_delete.clicked.connect(self.delete_depo)
         self.btn_delete.setEnabled(False)
         layout.addWidget(self.btn_delete)
-        
-        self.btn_refresh = QPushButton("🔄 Yenile")
-        self.btn_refresh.setStyleSheet(btn_style + "QPushButton { background-color: #607D8B; color: white; }")
+
+        self.btn_refresh = QPushButton("Yenile")
+        self.btn_refresh.setCursor(Qt.PointingHandCursor)
+        self.btn_refresh.setStyleSheet(_brand_btn_css(brand.BG_ELEVATED, brand.BG_HOVER, brand.TEXT))
         self.btn_refresh.clicked.connect(self.load_data)
         layout.addWidget(self.btn_refresh)
-        
+
         return toolbar
-    
+
     def create_left_panel(self):
         panel = QFrame()
         panel.setFrameStyle(QFrame.StyledPanel)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(5, 5, 5, 5)
-        
-        lbl_title = QLabel("📦 Depolar")
-        lbl_title.setStyleSheet("font-size: 14px; font-weight: bold; padding: 5px;")
+        layout.setContentsMargins(brand.SP_2, brand.SP_2, brand.SP_2, brand.SP_2)
+        layout.setSpacing(brand.SP_2)
+
+        lbl_title = QLabel("Depolar")
+        lbl_title.setStyleSheet(
+            f"font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_BOLD}; "
+            f"padding: {brand.SP_1}px; color: {brand.TEXT};"
+        )
         layout.addWidget(lbl_title)
-        
+
         self.tbl_depolar = QTableWidget()
         self.tbl_depolar.setColumnCount(5)
-        self.tbl_depolar.setHorizontalHeaderLabels(["Kod", "Depo Adı", "Tip", "Durum", "id"])
+        self.tbl_depolar.setHorizontalHeaderLabels(["Kod", "Depo Adi", "Tip", "Durum", "id"])
         self.tbl_depolar.setColumnHidden(4, True)
-        
+
         self.tbl_depolar.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.tbl_depolar.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.tbl_depolar.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeToContents)
         self.tbl_depolar.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        
+
         self.tbl_depolar.setSelectionBehavior(QTableWidget.SelectRows)
         self.tbl_depolar.setSelectionMode(QTableWidget.SingleSelection)
-        self.tbl_depolar.setAlternatingRowColors(True)
-        self.setup_table_style(self.tbl_depolar)
-        
+        _brand_table_style(self.tbl_depolar)
+
         self.tbl_depolar.itemSelectionChanged.connect(self.on_selection_changed)
         self.tbl_depolar.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tbl_depolar.customContextMenuRequested.connect(self.show_context_menu)
-        
+
         layout.addWidget(self.tbl_depolar)
         return panel
-    
+
     def create_right_panel(self):
         panel = QFrame()
         panel.setFrameStyle(QFrame.StyledPanel)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(5, 5, 5, 5)
-        
+        layout.setContentsMargins(brand.SP_2, brand.SP_2, brand.SP_2, brand.SP_2)
+
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #ddd; border-radius: 4px; }
-            QTabBar::tab { padding: 8px 16px; margin-right: 2px; }
-            QTabBar::tab:selected { background-color: #1976D2; color: white; }
+        self.tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+            }}
+            QTabBar::tab {{
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                margin-right: 2px;
+                color: {brand.TEXT_MUTED};
+            }}
+            QTabBar::tab:selected {{
+                background-color: {brand.PRIMARY};
+                color: {brand.TEXT_INVERSE};
+            }}
         """)
-        
+
         self.tab_genel = self.create_tab_genel()
-        self.tabs.addTab(self.tab_genel, "📋 Genel Bilgiler")
-        
+        self.tabs.addTab(self.tab_genel, "Genel Bilgiler")
+
         self.tab_bolumler = self.create_tab_bolumler()
-        self.tabs.addTab(self.tab_bolumler, "🗂️ Bölümler")
-        
+        self.tabs.addTab(self.tab_bolumler, "Bolumler")
+
         self.tab_raflar = self.create_tab_raflar()
-        self.tabs.addTab(self.tab_raflar, "📚 Raflar")
-        
+        self.tabs.addTab(self.tab_raflar, "Raflar")
+
         self.tab_sorumlular = self.create_tab_sorumlular()
-        self.tabs.addTab(self.tab_sorumlular, "👥 Sorumlular")
-        
+        self.tabs.addTab(self.tab_sorumlular, "Sorumlular")
+
         layout.addWidget(self.tabs)
         return panel
-    
+
     def create_tab_genel(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setSpacing(15)
-        
-        self.lbl_no_selection = QLabel("← Listeden bir depo seçin")
-        self.lbl_no_selection.setStyleSheet("font-size: 16px; color: #757575; padding: 50px;")
+        layout.setSpacing(brand.SP_4)
+
+        self.lbl_no_selection = QLabel("Listeden bir depo secin")
+        self.lbl_no_selection.setStyleSheet(
+            f"font-size: {brand.FS_HEADING_SM}px; color: {brand.TEXT_DIM}; "
+            f"padding: {brand.SP_10}px;"
+        )
         self.lbl_no_selection.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.lbl_no_selection)
-        
+
         self.detail_container = QWidget()
         detail_layout = QVBoxLayout(self.detail_container)
+        detail_layout.setSpacing(brand.SP_4)
         self.detail_container.hide()
-        
+
         # Temel Bilgiler
         grp_temel = QGroupBox("Temel Bilgiler")
+        grp_temel.setStyleSheet(f"""
+            QGroupBox {{
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                margin-top: {brand.SP_5}px;
+                padding: {brand.SP_5}px;
+                padding-top: {brand.SP_8}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY}px;
+                color: {brand.TEXT};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: {brand.SP_4}px;
+                top: {brand.SP_2}px;
+                padding: 0 {brand.SP_2}px;
+                color: {brand.TEXT_MUTED};
+            }}
+        """)
         form1 = QFormLayout(grp_temel)
+        form1.setSpacing(brand.SP_2)
         self.lbl_kod = QLabel("-")
         self.lbl_ad = QLabel("-")
         self.lbl_tip = QLabel("-")
         self.lbl_durum = QLabel("-")
         form1.addRow("Depo Kodu:", self.lbl_kod)
-        form1.addRow("Depo Adı:", self.lbl_ad)
+        form1.addRow("Depo Adi:", self.lbl_ad)
         form1.addRow("Depo Tipi:", self.lbl_tip)
         form1.addRow("Durum:", self.lbl_durum)
         detail_layout.addWidget(grp_temel)
-        
+
         # Kapasite
         grp_kapasite = QGroupBox("Kapasite Bilgileri")
+        grp_kapasite.setStyleSheet(grp_temel.styleSheet())
         form2 = QFormLayout(grp_kapasite)
+        form2.setSpacing(brand.SP_2)
         self.lbl_alan = QLabel("-")
         self.lbl_palet = QLabel("-")
         self.lbl_ton = QLabel("-")
-        form2.addRow("Alan (m²):", self.lbl_alan)
+        form2.addRow("Alan (m2):", self.lbl_alan)
         form2.addRow("Palet Kapasitesi:", self.lbl_palet)
         form2.addRow("Ton Kapasitesi:", self.lbl_ton)
         detail_layout.addWidget(grp_kapasite)
-        
-        # İstatistikler
-        grp_istat = QGroupBox("İstatistikler")
+
+        # Istatistikler
+        grp_istat = QGroupBox("Istatistikler")
+        grp_istat.setStyleSheet(grp_temel.styleSheet())
         form3 = QFormLayout(grp_istat)
+        form3.setSpacing(brand.SP_2)
         self.lbl_bolum_sayisi = QLabel("-")
         self.lbl_raf_sayisi = QLabel("-")
         self.lbl_sorumlu_sayisi = QLabel("-")
-        form3.addRow("Bölüm Sayısı:", self.lbl_bolum_sayisi)
-        form3.addRow("Raf Sayısı:", self.lbl_raf_sayisi)
-        form3.addRow("Sorumlu Sayısı:", self.lbl_sorumlu_sayisi)
+        form3.addRow("Bolum Sayisi:", self.lbl_bolum_sayisi)
+        form3.addRow("Raf Sayisi:", self.lbl_raf_sayisi)
+        form3.addRow("Sorumlu Sayisi:", self.lbl_sorumlu_sayisi)
         detail_layout.addWidget(grp_istat)
-        
+
         detail_layout.addStretch()
         layout.addWidget(self.detail_container)
         return widget
-    
+
+    def _create_tab_toolbar_btn(self, text: str, bg: str, hover_bg: str) -> QPushButton:
+        """Tab icerisindeki toolbar butonlarini olusturur"""
+        btn = QPushButton(text)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet(_brand_btn_css(bg, hover_bg))
+        return btn
+
     def create_tab_bolumler(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        
+        layout.setSpacing(brand.SP_3)
+
         toolbar = QHBoxLayout()
-        btn_add = QPushButton("➕ Bölüm Ekle")
+        toolbar.setSpacing(brand.SP_2)
+        btn_add = self._create_tab_toolbar_btn("Bolum Ekle", brand.SUCCESS, "#059669")
         btn_add.clicked.connect(self.add_bolum)
         toolbar.addWidget(btn_add)
-        btn_edit = QPushButton("✏️ Düzenle")
+        btn_edit = self._create_tab_toolbar_btn("Duzenle", brand.INFO, "#2563EB")
         btn_edit.clicked.connect(self.edit_bolum)
         toolbar.addWidget(btn_edit)
-        btn_del = QPushButton("🗑️ Sil")
+        btn_del = self._create_tab_toolbar_btn("Sil", brand.ERROR, "#DC2626")
         btn_del.clicked.connect(self.delete_bolum)
         toolbar.addWidget(btn_del)
         toolbar.addStretch()
         layout.addLayout(toolbar)
-        
+
         self.tbl_bolumler = QTableWidget()
         self.tbl_bolumler.setColumnCount(6)
-        self.tbl_bolumler.setHorizontalHeaderLabels(["Kod", "Bölüm Adı", "Kat", "Tip", "Alan (m²)", "id"])
+        self.tbl_bolumler.setHorizontalHeaderLabels(["Kod", "Bolum Adi", "Kat", "Tip", "Alan (m2)", "id"])
         self.tbl_bolumler.setColumnHidden(5, True)
         self.tbl_bolumler.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.tbl_bolumler.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tbl_bolumler.setAlternatingRowColors(True)
-        self.setup_table_style(self.tbl_bolumler)
+        _brand_table_style(self.tbl_bolumler)
         layout.addWidget(self.tbl_bolumler)
         return widget
-    
+
     def create_tab_raflar(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        
+        layout.setSpacing(brand.SP_3)
+
         toolbar = QHBoxLayout()
-        btn_add = QPushButton("➕ Raf Ekle")
+        toolbar.setSpacing(brand.SP_2)
+        btn_add = self._create_tab_toolbar_btn("Raf Ekle", brand.SUCCESS, "#059669")
         btn_add.clicked.connect(self.add_raf)
         toolbar.addWidget(btn_add)
-        btn_bulk = QPushButton("📊 Toplu Raf Oluştur")
+        btn_bulk = self._create_tab_toolbar_btn("Toplu Raf Olustur", brand.INFO, "#2563EB")
         btn_bulk.clicked.connect(self.bulk_create_raflar)
         toolbar.addWidget(btn_bulk)
-        btn_edit = QPushButton("✏️ Düzenle")
+        btn_edit = self._create_tab_toolbar_btn("Duzenle", brand.BG_ELEVATED, brand.BG_HOVER)
         btn_edit.clicked.connect(self.edit_raf)
         toolbar.addWidget(btn_edit)
-        btn_del = QPushButton("🗑️ Sil")
+        btn_del = self._create_tab_toolbar_btn("Sil", brand.ERROR, "#DC2626")
         btn_del.clicked.connect(self.delete_raf)
         toolbar.addWidget(btn_del)
         toolbar.addStretch()
-        
-        toolbar.addWidget(QLabel("Bölüm:"))
+
+        bolum_lbl = QLabel("Bolum:")
+        bolum_lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY}px;")
+        toolbar.addWidget(bolum_lbl)
         self.cmb_bolum_filter = QComboBox()
-        self.cmb_bolum_filter.addItem("Tümü", None)
+        self.cmb_bolum_filter.addItem("Tumu", None)
         self.cmb_bolum_filter.currentIndexChanged.connect(self.load_raflar)
         toolbar.addWidget(self.cmb_bolum_filter)
         layout.addLayout(toolbar)
-        
+
         self.tbl_raflar = QTableWidget()
         self.tbl_raflar.setColumnCount(9)
-        self.tbl_raflar.setHorizontalHeaderLabels(["Kod", "Barkod", "Bölüm", "Koridor", "Sıra", "Kat", "Dolu", "Rezerve", "id"])
+        self.tbl_raflar.setHorizontalHeaderLabels([
+            "Kod", "Barkod", "Bolum", "Koridor", "Sira", "Kat", "Dolu", "Rezerve", "id"
+        ])
         self.tbl_raflar.setColumnHidden(8, True)
         self.tbl_raflar.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.tbl_raflar.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tbl_raflar.setAlternatingRowColors(True)
-        self.setup_table_style(self.tbl_raflar)
+        _brand_table_style(self.tbl_raflar)
         layout.addWidget(self.tbl_raflar)
         return widget
-    
+
     def create_tab_sorumlular(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        
+        layout.setSpacing(brand.SP_3)
+
         toolbar = QHBoxLayout()
-        btn_add = QPushButton("➕ Sorumlu Ekle")
+        toolbar.setSpacing(brand.SP_2)
+        btn_add = self._create_tab_toolbar_btn("Sorumlu Ekle", brand.SUCCESS, "#059669")
         btn_add.clicked.connect(self.add_sorumlu)
         toolbar.addWidget(btn_add)
-        btn_edit = QPushButton("✏️ Düzenle")
+        btn_edit = self._create_tab_toolbar_btn("Duzenle", brand.INFO, "#2563EB")
         btn_edit.clicked.connect(self.edit_sorumlu)
         toolbar.addWidget(btn_edit)
-        btn_del = QPushButton("🗑️ Kaldır")
+        btn_del = self._create_tab_toolbar_btn("Kaldir", brand.ERROR, "#DC2626")
         btn_del.clicked.connect(self.delete_sorumlu)
         toolbar.addWidget(btn_del)
         toolbar.addStretch()
         layout.addLayout(toolbar)
-        
+
         self.tbl_sorumlular = QTableWidget()
         self.tbl_sorumlular.setColumnCount(7)
-        self.tbl_sorumlular.setHorizontalHeaderLabels(["Personel", "Sorumluluk Tipi", "Başlangıç", "Bitiş", "Yetki", "Durum", "id"])
+        self.tbl_sorumlular.setHorizontalHeaderLabels([
+            "Personel", "Sorumluluk Tipi", "Baslangic", "Bitis", "Yetki", "Durum", "id"
+        ])
         self.tbl_sorumlular.setColumnHidden(6, True)
         self.tbl_sorumlular.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.tbl_sorumlular.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tbl_sorumlular.setAlternatingRowColors(True)
-        self.setup_table_style(self.tbl_sorumlular)
+        _brand_table_style(self.tbl_sorumlular)
         layout.addWidget(self.tbl_sorumlular)
         return widget
-    
-    def setup_table_style(self, table):
-        table.setStyleSheet("""
-            QTableWidget { gridline-color: #e0e0e0; font-size: 12px; }
-            QTableWidget::item:selected { background-color: #1976D2; color: white; }
-            QHeaderView::section { background-color: #37474F; color: white; padding: 8px; font-weight: bold; border: none; }
-        """)
-    
-    # ==================== VERİ İŞLEMLERİ ====================
-    
+
+    # ==================== VERI ISLEMLERI ====================
+
     def load_data(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -324,32 +496,37 @@ class DepoTanimlariWidget(QWidget):
                 SELECT id, depo_kodu, depo_adi, depo_tipi, aktif_mi, renk_kodu
                 FROM tanim.vw_depolar ORDER BY sira_no, depo_kodu
             """)
-            
+
             rows = cursor.fetchall()
             self.tbl_depolar.setRowCount(len(rows))
-            
+
             for i, row in enumerate(rows):
                 self.tbl_depolar.setItem(i, 0, QTableWidgetItem(row.depo_kodu))
                 self.tbl_depolar.setItem(i, 1, QTableWidgetItem(row.depo_adi))
                 self.tbl_depolar.setItem(i, 2, QTableWidgetItem(row.depo_tipi or "-"))
-                
-                durum = "✅ Aktif" if row.aktif_mi else "❌ Pasif"
+
+                durum = "Aktif" if row.aktif_mi else "Pasif"
                 item_durum = QTableWidgetItem(durum)
                 if not row.aktif_mi:
-                    item_durum.setForeground(QColor("#9E9E9E"))
+                    item_durum.setForeground(QColor(brand.TEXT_DISABLED))
                 self.tbl_depolar.setItem(i, 3, item_durum)
                 self.tbl_depolar.setItem(i, 4, QTableWidgetItem(str(row.id)))
-                
+
                 if row.renk_kodu:
                     item = self.tbl_depolar.item(i, 0)
                     if item:
                         item.setBackground(QColor(row.renk_kodu).lighter(180))
-            
+
             cursor.close()
-            conn.close()
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Veri yüklenirken hata: {str(e)}")
-    
+            QMessageBox.critical(self, "Hata", f"Veri yuklenirken hata: {str(e)}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def on_selection_changed(self):
         selected = self.tbl_depolar.selectedItems()
         if selected:
@@ -364,56 +541,66 @@ class DepoTanimlariWidget(QWidget):
             self.btn_delete.setEnabled(False)
             self.lbl_no_selection.show()
             self.detail_container.hide()
-    
+
     def load_depo_details(self):
         if not self.current_depo_id:
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT * FROM tanim.vw_depolar WHERE id = ?", (self.current_depo_id,))
             row = cursor.fetchone()
-            
+
             if row:
                 self.lbl_no_selection.hide()
                 self.detail_container.show()
-                
+
                 self.lbl_kod.setText(row.depo_kodu)
                 self.lbl_ad.setText(row.depo_adi)
                 self.lbl_tip.setText(row.depo_tipi or "-")
-                self.lbl_durum.setText("✅ Aktif" if row.aktif_mi else "❌ Pasif")
+                self.lbl_durum.setText("Aktif" if row.aktif_mi else "Pasif")
                 self.lbl_alan.setText(f"{row.alan_m2:,.2f}" if row.alan_m2 else "-")
                 self.lbl_palet.setText(f"{row.kapasite_palet:,}" if row.kapasite_palet else "-")
                 self.lbl_ton.setText(f"{row.kapasite_ton:,.2f}" if row.kapasite_ton else "-")
                 self.lbl_bolum_sayisi.setText(str(row.bolum_sayisi or 0))
                 self.lbl_raf_sayisi.setText(str(row.raf_sayisi or 0))
                 self.lbl_sorumlu_sayisi.setText(str(row.sorumlu_sayisi or 0))
-            
+
             cursor.close()
             self.load_bolumler()
             self.load_raflar()
             self.load_sorumlular()
         except Exception as e:
-            QMessageBox.warning(self, "Uyarı", f"Detay yüklenirken hata: {str(e)}")
-    
+            QMessageBox.warning(self, "Uyari", f"Detay yuklenirken hata: {str(e)}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def load_bolumler(self):
         if not self.current_depo_id:
             self.tbl_bolumler.setRowCount(0)
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("""
                 SELECT id, kod, ad, kat_no, bolum_tipi, alan_m2
                 FROM tanim.depo_bolumleri WHERE depo_id = ? AND aktif_mi = 1 ORDER BY sira_no, kod
             """, (self.current_depo_id,))
-            
+
             rows = cursor.fetchall()
             self.tbl_bolumler.setRowCount(len(rows))
-            
+
             self.cmb_bolum_filter.clear()
-            self.cmb_bolum_filter.addItem("Tümü", None)
-            
+            self.cmb_bolum_filter.addItem("Tumu", None)
+
             for i, row in enumerate(rows):
                 self.tbl_bolumler.setItem(i, 0, QTableWidgetItem(row.kod))
                 self.tbl_bolumler.setItem(i, 1, QTableWidgetItem(row.ad))
@@ -422,20 +609,28 @@ class DepoTanimlariWidget(QWidget):
                 self.tbl_bolumler.setItem(i, 4, QTableWidgetItem(f"{row.alan_m2:,.2f}" if row.alan_m2 else "-"))
                 self.tbl_bolumler.setItem(i, 5, QTableWidgetItem(str(row.id)))
                 self.cmb_bolum_filter.addItem(f"{row.kod} - {row.ad}", row.id)
-            
+
             cursor.close()
         except Exception as e:
-            print(f"Bölüm yükleme hatası: {e}")
-    
+            print(f"[depo_tanimlari] Bolum yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def load_raflar(self):
         if not self.current_depo_id:
             self.tbl_raflar.setRowCount(0)
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             bolum_id = self.cmb_bolum_filter.currentData()
-            
+
             query = """
                 SELECT r.id, r.kod, r.barkod, b.ad as bolum_adi, r.koridor, r.sira, r.kat, r.dolu_mu, r.rezerve_mi
                 FROM tanim.depo_raflari r
@@ -443,16 +638,16 @@ class DepoTanimlariWidget(QWidget):
                 WHERE r.depo_id = ? AND r.aktif_mi = 1
             """
             params = [self.current_depo_id]
-            
+
             if bolum_id:
                 query += " AND r.bolum_id = ?"
                 params.append(bolum_id)
-            
+
             query += " ORDER BY r.koridor, r.sira, r.kat"
             cursor.execute(query, params)
             rows = cursor.fetchall()
             self.tbl_raflar.setRowCount(len(rows))
-            
+
             for i, row in enumerate(rows):
                 self.tbl_raflar.setItem(i, 0, QTableWidgetItem(row.kod))
                 self.tbl_raflar.setItem(i, 1, QTableWidgetItem(row.barkod or "-"))
@@ -460,53 +655,71 @@ class DepoTanimlariWidget(QWidget):
                 self.tbl_raflar.setItem(i, 3, QTableWidgetItem(row.koridor or "-"))
                 self.tbl_raflar.setItem(i, 4, QTableWidgetItem(str(row.sira) if row.sira else "-"))
                 self.tbl_raflar.setItem(i, 5, QTableWidgetItem(str(row.kat) if row.kat else "-"))
-                self.tbl_raflar.setItem(i, 6, QTableWidgetItem("✅" if row.dolu_mu else "➖"))
-                self.tbl_raflar.setItem(i, 7, QTableWidgetItem("🔒" if row.rezerve_mi else "➖"))
+                self.tbl_raflar.setItem(i, 6, QTableWidgetItem("Evet" if row.dolu_mu else "-"))
+                self.tbl_raflar.setItem(i, 7, QTableWidgetItem("Kilitli" if row.rezerve_mi else "-"))
                 self.tbl_raflar.setItem(i, 8, QTableWidgetItem(str(row.id)))
-            
+
             cursor.close()
         except Exception as e:
-            print(f"Raf yükleme hatası: {e}")
-    
+            print(f"[depo_tanimlari] Raf yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def load_sorumlular(self):
         if not self.current_depo_id:
             self.tbl_sorumlular.setRowCount(0)
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("""
                 SELECT ds.id, ds.personel_id, ds.sorumluluk_tipi, ds.baslangic_tarihi, ds.bitis_tarihi,
                        ds.tam_yetki_mi, ds.giris_yetkisi, ds.cikis_yetkisi, ds.transfer_yetkisi, ds.sayim_yetkisi, ds.aktif_mi
                 FROM tanim.depo_sorumlulari ds WHERE ds.depo_id = ? ORDER BY ds.aktif_mi DESC, ds.sorumluluk_tipi
             """, (self.current_depo_id,))
-            
+
             rows = cursor.fetchall()
             self.tbl_sorumlular.setRowCount(len(rows))
-            
+
             for i, row in enumerate(rows):
                 self.tbl_sorumlular.setItem(i, 0, QTableWidgetItem(f"Personel #{row.personel_id}"))
                 self.tbl_sorumlular.setItem(i, 1, QTableWidgetItem(row.sorumluluk_tipi))
                 self.tbl_sorumlular.setItem(i, 2, QTableWidgetItem(row.baslangic_tarihi.strftime("%d.%m.%Y") if row.baslangic_tarihi else "-"))
                 self.tbl_sorumlular.setItem(i, 3, QTableWidgetItem(row.bitis_tarihi.strftime("%d.%m.%Y") if row.bitis_tarihi else "-"))
-                
+
                 yetkiler = []
                 if row.tam_yetki_mi:
                     yetkiler.append("Tam")
                 else:
-                    if row.giris_yetkisi: yetkiler.append("G")
-                    if row.cikis_yetkisi: yetkiler.append("Ç")
-                    if row.transfer_yetkisi: yetkiler.append("T")
-                    if row.sayim_yetkisi: yetkiler.append("S")
-                
+                    if row.giris_yetkisi:
+                        yetkiler.append("G")
+                    if row.cikis_yetkisi:
+                        yetkiler.append("C")
+                    if row.transfer_yetkisi:
+                        yetkiler.append("T")
+                    if row.sayim_yetkisi:
+                        yetkiler.append("S")
+
                 self.tbl_sorumlular.setItem(i, 4, QTableWidgetItem("/".join(yetkiler) or "-"))
-                self.tbl_sorumlular.setItem(i, 5, QTableWidgetItem("✅ Aktif" if row.aktif_mi else "❌ Pasif"))
+                self.tbl_sorumlular.setItem(i, 5, QTableWidgetItem("Aktif" if row.aktif_mi else "Pasif"))
                 self.tbl_sorumlular.setItem(i, 6, QTableWidgetItem(str(row.id)))
-            
+
             cursor.close()
         except Exception as e:
-            print(f"Sorumlu yükleme hatası: {e}")
-    
+            print(f"[depo_tanimlari] Sorumlu yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def filter_list(self, text):
         for row in range(self.tbl_depolar.rowCount()):
             match = False
@@ -516,23 +729,23 @@ class DepoTanimlariWidget(QWidget):
                     match = True
                     break
             self.tbl_depolar.setRowHidden(row, not match)
-    
+
     def show_context_menu(self, pos):
         menu = QMenu(self)
-        menu.addAction("✏️ Düzenle", self.edit_depo)
+        menu.addAction("Duzenle", self.edit_depo)
         menu.addSeparator()
-        menu.addAction("🔄 Aktif/Pasif Yap", self.toggle_status)
+        menu.addAction("Aktif/Pasif Yap", self.toggle_status)
         menu.addSeparator()
-        menu.addAction("🗑️ Sil", self.delete_depo)
+        menu.addAction("Sil", self.delete_depo)
         menu.exec_(self.tbl_depolar.mapToGlobal(pos))
-    
+
     # ==================== CRUD ====================
-    
+
     def new_depo(self):
         dialog = DepoEditDialog(parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_data()
-    
+
     def edit_depo(self):
         if not self.current_depo_id:
             return
@@ -540,45 +753,61 @@ class DepoTanimlariWidget(QWidget):
         if dialog.exec_() == QDialog.Accepted:
             self.load_data()
             self.load_depo_details()
-    
+
     def delete_depo(self):
         if not self.current_depo_id:
             return
-        reply = QMessageBox.question(self, "Depo Sil", "Bu depoyu silmek istediğinizden emin misiniz?")
+        reply = QMessageBox.question(self, "Depo Sil", "Bu depoyu silmek istediginizden emin misiniz?")
         if reply == QMessageBox.Yes:
+            conn = None
             try:
-                cursor = self.conn.cursor()
+                conn = get_db_connection()
+                cursor = conn.cursor()
                 cursor.execute("UPDATE tanim.depolar SET silindi_mi = 1, silinme_tarihi = GETDATE() WHERE id = ?", (self.current_depo_id,))
-                self.conn.commit()
+                conn.commit()
                 cursor.close()
-                QMessageBox.information(self, "Başarılı", "Depo silindi.")
+                QMessageBox.information(self, "Basarili", "Depo silindi.")
                 self.load_data()
             except Exception as e:
-                QMessageBox.critical(self, "Hata", f"Silme hatası: {str(e)}")
-    
+                QMessageBox.critical(self, "Hata", f"Silme hatasi: {str(e)}")
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
     def toggle_status(self):
         if not self.current_depo_id:
             return
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("UPDATE tanim.depolar SET aktif_mi = CASE WHEN aktif_mi = 1 THEN 0 ELSE 1 END WHERE id = ?", (self.current_depo_id,))
-            self.conn.commit()
+            conn.commit()
             cursor.close()
             self.load_data()
             self.load_depo_details()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
-    
-    # Bölüm işlemleri
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+    # Bolum islemleri
     def add_bolum(self):
         if not self.current_depo_id:
-            QMessageBox.warning(self, "Uyarı", "Önce bir depo seçin.")
+            QMessageBox.warning(self, "Uyari", "Once bir depo secin.")
             return
         dialog = BolumEditDialog(self.current_depo_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_bolumler()
             self.load_depo_details()
-    
+
     def edit_bolum(self):
         selected = self.tbl_bolumler.selectedItems()
         if not selected:
@@ -587,34 +816,42 @@ class DepoTanimlariWidget(QWidget):
         dialog = BolumEditDialog(self.current_depo_id, bolum_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_bolumler()
-    
+
     def delete_bolum(self):
         selected = self.tbl_bolumler.selectedItems()
         if not selected:
             return
-        reply = QMessageBox.question(self, "Bölüm Sil", "Bu bölümü silmek istiyor musunuz?")
+        reply = QMessageBox.question(self, "Bolum Sil", "Bu bolumu silmek istiyor musunuz?")
         if reply == QMessageBox.Yes:
             bolum_id = int(self.tbl_bolumler.item(selected[0].row(), 5).text())
+            conn = None
             try:
-                cursor = self.conn.cursor()
+                conn = get_db_connection()
+                cursor = conn.cursor()
                 cursor.execute("UPDATE tanim.depo_bolumleri SET aktif_mi = 0 WHERE id = ?", (bolum_id,))
-                self.conn.commit()
+                conn.commit()
                 cursor.close()
                 self.load_bolumler()
                 self.load_depo_details()
             except Exception as e:
                 QMessageBox.critical(self, "Hata", str(e))
-    
-    # Raf işlemleri
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
+    # Raf islemleri
     def add_raf(self):
         if not self.current_depo_id:
-            QMessageBox.warning(self, "Uyarı", "Önce bir depo seçin.")
+            QMessageBox.warning(self, "Uyari", "Once bir depo secin.")
             return
         dialog = RafEditDialog(self.current_depo_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_raflar()
             self.load_depo_details()
-    
+
     def edit_raf(self):
         selected = self.tbl_raflar.selectedItems()
         if not selected:
@@ -623,43 +860,51 @@ class DepoTanimlariWidget(QWidget):
         dialog = RafEditDialog(self.current_depo_id, raf_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_raflar()
-    
+
     def delete_raf(self):
         selected = self.tbl_raflar.selectedItems()
         if not selected:
             return
-        reply = QMessageBox.question(self, "Raf Sil", "Bu rafı silmek istiyor musunuz?")
+        reply = QMessageBox.question(self, "Raf Sil", "Bu rafi silmek istiyor musunuz?")
         if reply == QMessageBox.Yes:
             raf_id = int(self.tbl_raflar.item(selected[0].row(), 8).text())
+            conn = None
             try:
-                cursor = self.conn.cursor()
+                conn = get_db_connection()
+                cursor = conn.cursor()
                 cursor.execute("UPDATE tanim.depo_raflari SET aktif_mi = 0 WHERE id = ?", (raf_id,))
-                self.conn.commit()
+                conn.commit()
                 cursor.close()
                 self.load_raflar()
                 self.load_depo_details()
             except Exception as e:
                 QMessageBox.critical(self, "Hata", str(e))
-    
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+
     def bulk_create_raflar(self):
         if not self.current_depo_id:
-            QMessageBox.warning(self, "Uyarı", "Önce bir depo seçin.")
+            QMessageBox.warning(self, "Uyari", "Once bir depo secin.")
             return
         dialog = BulkRafDialog(self.current_depo_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_raflar()
             self.load_depo_details()
-    
-    # Sorumlu işlemleri
+
+    # Sorumlu islemleri
     def add_sorumlu(self):
         if not self.current_depo_id:
-            QMessageBox.warning(self, "Uyarı", "Önce bir depo seçin.")
+            QMessageBox.warning(self, "Uyari", "Once bir depo secin.")
             return
         dialog = SorumluEditDialog(self.current_depo_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_sorumlular()
             self.load_depo_details()
-    
+
     def edit_sorumlu(self):
         selected = self.tbl_sorumlular.selectedItems()
         if not selected:
@@ -668,103 +913,121 @@ class DepoTanimlariWidget(QWidget):
         dialog = SorumluEditDialog(self.current_depo_id, sorumlu_id, parent=self)
         if dialog.exec_() == QDialog.Accepted:
             self.load_sorumlular()
-    
+
     def delete_sorumlu(self):
         selected = self.tbl_sorumlular.selectedItems()
         if not selected:
             return
-        reply = QMessageBox.question(self, "Sorumlu Kaldır", "Bu sorumluyu kaldırmak istiyor musunuz?")
+        reply = QMessageBox.question(self, "Sorumlu Kaldir", "Bu sorumluyu kaldirmak istiyor musunuz?")
         if reply == QMessageBox.Yes:
             sorumlu_id = int(self.tbl_sorumlular.item(selected[0].row(), 6).text())
+            conn = None
             try:
-                cursor = self.conn.cursor()
+                conn = get_db_connection()
+                cursor = conn.cursor()
                 cursor.execute("UPDATE tanim.depo_sorumlulari SET aktif_mi = 0 WHERE id = ?", (sorumlu_id,))
-                self.conn.commit()
+                conn.commit()
                 cursor.close()
                 self.load_sorumlular()
                 self.load_depo_details()
             except Exception as e:
                 QMessageBox.critical(self, "Hata", str(e))
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
 
 
-# ==================== DİYALOGLAR ====================
+# ==================== DIYALOGLAR ====================
 
 class DepoEditDialog(QDialog):
     def __init__(self, depo_id=None, parent=None):
         super().__init__(parent)
         self.depo_id = depo_id
-        self.setWindowTitle("Yeni Depo" if not depo_id else "Depo Düzenle")
-        self.setMinimumWidth(500)
+        self.setWindowTitle("Yeni Depo" if not depo_id else "Depo Duzenle")
+        self.setMinimumWidth(brand.sp(500))
+        self.setStyleSheet(_brand_dialog_style())
         self.setup_ui()
         if depo_id:
             self.load_data()
-    
-    @property
-    def conn(self):
-        """Her çağrıda yeni veritabanı bağlantısı döndür"""
-        return get_db_connection()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
         form = QFormLayout()
-        
+        form.setSpacing(brand.SP_2)
+
         self.txt_kod = QLineEdit()
         self.txt_kod.setMaxLength(20)
         form.addRow("Depo Kodu*:", self.txt_kod)
-        
+
         self.txt_ad = QLineEdit()
         self.txt_ad.setMaxLength(100)
-        form.addRow("Depo Adı*:", self.txt_ad)
-        
+        form.addRow("Depo Adi*:", self.txt_ad)
+
         self.txt_kisa_ad = QLineEdit()
         self.txt_kisa_ad.setMaxLength(30)
-        form.addRow("Kısa Ad:", self.txt_kisa_ad)
-        
+        form.addRow("Kisa Ad:", self.txt_kisa_ad)
+
         self.cmb_tip = QComboBox()
         self.load_depo_tipleri()
         form.addRow("Depo Tipi*:", self.cmb_tip)
-        
+
         self.spn_alan = QDoubleSpinBox()
         self.spn_alan.setRange(0, 999999)
-        self.spn_alan.setSuffix(" m²")
+        self.spn_alan.setSuffix(" m2")
         form.addRow("Alan:", self.spn_alan)
-        
+
         self.spn_palet = QSpinBox()
         self.spn_palet.setRange(0, 99999)
         form.addRow("Palet Kapasitesi:", self.spn_palet)
-        
+
         self.spn_sira = QSpinBox()
         self.spn_sira.setRange(0, 999)
-        form.addRow("Sıra No:", self.spn_sira)
-        
+        form.addRow("Sira No:", self.spn_sira)
+
         self.txt_renk = QLineEdit()
         self.txt_renk.setPlaceholderText("#RRGGBB")
         form.addRow("Renk Kodu:", self.txt_renk)
-        
+
         self.chk_aktif = QCheckBox("Aktif")
         self.chk_aktif.setChecked(True)
         form.addRow("", self.chk_aktif)
-        
+
         layout.addLayout(form)
-        
+
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-    
+
     def load_depo_tipleri(self):
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT id, ad FROM tanim.depo_tipleri WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall():
                 self.cmb_tip.addItem(row.ad, row.id)
             cursor.close()
         except Exception:
             pass
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def load_data(self):
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT * FROM tanim.depolar WHERE id = ?", (self.depo_id,))
             row = cursor.fetchone()
             if row:
@@ -781,18 +1044,26 @@ class DepoEditDialog(QDialog):
                 self.chk_aktif.setChecked(row.aktif_mi)
             cursor.close()
         except Exception as e:
-            QMessageBox.warning(self, "Uyarı", f"Veri yüklenemedi: {e}")
-    
+            QMessageBox.warning(self, "Uyari", f"Veri yuklenemedi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def save(self):
         if not self.txt_kod.text().strip():
-            QMessageBox.warning(self, "Uyarı", "Depo kodu zorunludur.")
+            QMessageBox.warning(self, "Uyari", "Depo kodu zorunludur.")
             return
         if not self.txt_ad.text().strip():
-            QMessageBox.warning(self, "Uyarı", "Depo adı zorunludur.")
+            QMessageBox.warning(self, "Uyari", "Depo adi zorunludur.")
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             if self.depo_id:
                 cursor.execute("""
                     UPDATE tanim.depolar SET kod = ?, ad = ?, kisa_ad = ?, depo_tipi_id = ?,
@@ -817,12 +1088,18 @@ class DepoEditDialog(QDialog):
                     self.spn_sira.value() or None, self.txt_renk.text().strip() or None,
                     self.chk_aktif.isChecked()
                 ))
-            
-            self.conn.commit()
+
+            conn.commit()
             cursor.close()
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Kayıt hatası: {str(e)}")
+            QMessageBox.critical(self, "Hata", f"Kayit hatasi: {str(e)}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 class BolumEditDialog(QDialog):
@@ -830,54 +1107,56 @@ class BolumEditDialog(QDialog):
         super().__init__(parent)
         self.depo_id = depo_id
         self.bolum_id = bolum_id
-        self.setWindowTitle("Yeni Bölüm" if not bolum_id else "Bölüm Düzenle")
-        self.setMinimumWidth(400)
+        self.setWindowTitle("Yeni Bolum" if not bolum_id else "Bolum Duzenle")
+        self.setMinimumWidth(brand.sp(400))
+        self.setStyleSheet(_brand_dialog_style())
         self.setup_ui()
         if bolum_id:
             self.load_data()
-    
-    @property
-    def conn(self):
-        """Her çağrıda yeni veritabanı bağlantısı döndür"""
-        return get_db_connection()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
         form = QFormLayout()
-        
+        form.setSpacing(brand.SP_2)
+
         self.txt_kod = QLineEdit()
-        form.addRow("Bölüm Kodu*:", self.txt_kod)
-        
+        form.addRow("Bolum Kodu*:", self.txt_kod)
+
         self.txt_ad = QLineEdit()
-        form.addRow("Bölüm Adı*:", self.txt_ad)
-        
+        form.addRow("Bolum Adi*:", self.txt_ad)
+
         self.spn_kat = QSpinBox()
         self.spn_kat.setRange(-5, 20)
         form.addRow("Kat No:", self.spn_kat)
-        
+
         self.cmb_tip = QComboBox()
-        self.cmb_tip.addItems(["Depolama", "Sevkiyat", "Kabul", "Hazırlık", "Karantina"])
-        form.addRow("Bölüm Tipi:", self.cmb_tip)
-        
+        self.cmb_tip.addItems(["Depolama", "Sevkiyat", "Kabul", "Hazirlik", "Karantina"])
+        form.addRow("Bolum Tipi:", self.cmb_tip)
+
         self.spn_alan = QDoubleSpinBox()
         self.spn_alan.setRange(0, 99999)
-        self.spn_alan.setSuffix(" m²")
+        self.spn_alan.setSuffix(" m2")
         form.addRow("Alan:", self.spn_alan)
-        
+
         self.spn_sira = QSpinBox()
         self.spn_sira.setRange(0, 999)
-        form.addRow("Sıra No:", self.spn_sira)
-        
+        form.addRow("Sira No:", self.spn_sira)
+
         layout.addLayout(form)
-        
+
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-    
+
     def load_data(self):
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT * FROM tanim.depo_bolumleri WHERE id = ?", (self.bolum_id,))
             row = cursor.fetchone()
             if row:
@@ -890,15 +1169,23 @@ class BolumEditDialog(QDialog):
                 self.spn_sira.setValue(row.sira_no or 0)
             cursor.close()
         except Exception as e:
-            QMessageBox.warning(self, "Uyarı", str(e))
-    
+            QMessageBox.warning(self, "Uyari", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def save(self):
         if not self.txt_kod.text().strip() or not self.txt_ad.text().strip():
-            QMessageBox.warning(self, "Uyarı", "Kod ve Ad zorunludur.")
+            QMessageBox.warning(self, "Uyari", "Kod ve Ad zorunludur.")
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             if self.bolum_id:
                 cursor.execute("""
                     UPDATE tanim.depo_bolumleri SET kod = ?, ad = ?, kat_no = ?, bolum_tipi = ?,
@@ -911,11 +1198,17 @@ class BolumEditDialog(QDialog):
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (self.depo_id, self.txt_kod.text().strip(), self.txt_ad.text().strip(),
                       self.spn_kat.value(), self.cmb_tip.currentText(), self.spn_alan.value() or None, self.spn_sira.value()))
-            self.conn.commit()
+            conn.commit()
             cursor.close()
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 class RafEditDialog(QDialog):
@@ -923,74 +1216,84 @@ class RafEditDialog(QDialog):
         super().__init__(parent)
         self.depo_id = depo_id
         self.raf_id = raf_id
-        self.setWindowTitle("Yeni Raf" if not raf_id else "Raf Düzenle")
-        self.setMinimumWidth(400)
+        self.setWindowTitle("Yeni Raf" if not raf_id else "Raf Duzenle")
+        self.setMinimumWidth(brand.sp(400))
+        self.setStyleSheet(_brand_dialog_style())
         self.setup_ui()
         self.load_bolumler()
         if raf_id:
             self.load_data()
-    
-    @property
-    def conn(self):
-        """Her çağrıda yeni veritabanı bağlantısı döndür"""
-        return get_db_connection()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
         form = QFormLayout()
-        
+        form.setSpacing(brand.SP_2)
+
         self.txt_kod = QLineEdit()
-        self.txt_kod.setPlaceholderText("Örn: A-01-03")
+        self.txt_kod.setPlaceholderText("Orn: A-01-03")
         form.addRow("Raf Kodu*:", self.txt_kod)
-        
+
         self.txt_barkod = QLineEdit()
         form.addRow("Barkod:", self.txt_barkod)
-        
+
         self.cmb_bolum = QComboBox()
-        form.addRow("Bölüm:", self.cmb_bolum)
-        
+        form.addRow("Bolum:", self.cmb_bolum)
+
         self.txt_koridor = QLineEdit()
         form.addRow("Koridor:", self.txt_koridor)
-        
+
         self.spn_sira = QSpinBox()
         self.spn_sira.setRange(0, 999)
-        form.addRow("Sıra:", self.spn_sira)
-        
+        form.addRow("Sira:", self.spn_sira)
+
         self.spn_kat = QSpinBox()
         self.spn_kat.setRange(0, 20)
         form.addRow("Kat:", self.spn_kat)
-        
+
         self.spn_max_kg = QDoubleSpinBox()
         self.spn_max_kg.setRange(0, 9999)
         self.spn_max_kg.setSuffix(" kg")
-        form.addRow("Max Ağırlık:", self.spn_max_kg)
-        
+        form.addRow("Max Agirlik:", self.spn_max_kg)
+
         self.cmb_tip = QComboBox()
-        self.cmb_tip.addItems(["Palet", "Kutu", "Küçük Parça", "Özel"])
+        self.cmb_tip.addItems(["Palet", "Kutu", "Kucuk Parca", "Ozel"])
         form.addRow("Raf Tipi:", self.cmb_tip)
-        
+
         layout.addLayout(form)
-        
+
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-    
+
     def load_bolumler(self):
         self.cmb_bolum.clear()
-        self.cmb_bolum.addItem("(Bölüm Seçilmedi)", None)
+        self.cmb_bolum.addItem("(Bolum Secilmedi)", None)
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT id, kod, ad FROM tanim.depo_bolumleri WHERE depo_id = ? AND aktif_mi = 1 ORDER BY sira_no", (self.depo_id,))
             for row in cursor.fetchall():
                 self.cmb_bolum.addItem(f"{row.kod} - {row.ad}", row.id)
             cursor.close()
         except Exception:
             pass
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def load_data(self):
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT * FROM tanim.depo_raflari WHERE id = ?", (self.raf_id,))
             row = cursor.fetchone()
             if row:
@@ -1006,15 +1309,23 @@ class RafEditDialog(QDialog):
                 self.cmb_tip.setCurrentIndex(max(0, idx))
             cursor.close()
         except Exception as e:
-            QMessageBox.warning(self, "Uyarı", str(e))
-    
+            QMessageBox.warning(self, "Uyari", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def save(self):
         if not self.txt_kod.text().strip():
-            QMessageBox.warning(self, "Uyarı", "Raf kodu zorunludur.")
+            QMessageBox.warning(self, "Uyari", "Raf kodu zorunludur.")
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             if self.raf_id:
                 cursor.execute("""
                     UPDATE tanim.depo_raflari SET kod = ?, barkod = ?, bolum_id = ?, koridor = ?,
@@ -1029,39 +1340,47 @@ class RafEditDialog(QDialog):
                 """, (self.depo_id, self.txt_kod.text().strip(), self.txt_barkod.text().strip() or None, self.cmb_bolum.currentData(),
                       self.txt_koridor.text().strip() or None, self.spn_sira.value() or None, self.spn_kat.value() or None,
                       self.spn_max_kg.value() or None, self.cmb_tip.currentText()))
-            self.conn.commit()
+            conn.commit()
             cursor.close()
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 class BulkRafDialog(QDialog):
     def __init__(self, depo_id, parent=None):
         super().__init__(parent)
         self.depo_id = depo_id
-        self.setWindowTitle("Toplu Raf Oluştur")
-        self.setMinimumWidth(400)
+        self.setWindowTitle("Toplu Raf Olustur")
+        self.setMinimumWidth(brand.sp(400))
+        self.setStyleSheet(_brand_dialog_style())
         self.setup_ui()
-    
-    @property
-    def conn(self):
-        """Her çağrıda yeni veritabanı bağlantısı döndür"""
-        return get_db_connection()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        
-        info = QLabel("Belirttiğiniz parametrelere göre otomatik raf kodları oluşturulur.")
-        info.setStyleSheet("color: #666; margin-bottom: 10px;")
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
+        info = QLabel("Belirttiginiz parametrelere gore otomatik raf kodlari olusturulur.")
+        info.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY_SM}px; "
+            f"margin-bottom: {brand.SP_2}px;"
+        )
         layout.addWidget(info)
-        
+
         form = QFormLayout()
-        
+        form.setSpacing(brand.SP_2)
+
         self.txt_koridor = QLineEdit()
-        self.txt_koridor.setPlaceholderText("Örn: A,B,C veya A-D")
+        self.txt_koridor.setPlaceholderText("Orn: A,B,C veya A-D")
         form.addRow("Koridorlar*:", self.txt_koridor)
-        
+
         layout_sira = QHBoxLayout()
         self.spn_sira_bas = QSpinBox()
         self.spn_sira_bas.setRange(1, 99)
@@ -1070,10 +1389,12 @@ class BulkRafDialog(QDialog):
         self.spn_sira_son.setRange(1, 99)
         self.spn_sira_son.setValue(10)
         layout_sira.addWidget(self.spn_sira_bas)
-        layout_sira.addWidget(QLabel("-"))
+        sep_lbl = QLabel("-")
+        sep_lbl.setStyleSheet(f"color: {brand.TEXT_MUTED};")
+        layout_sira.addWidget(sep_lbl)
         layout_sira.addWidget(self.spn_sira_son)
-        form.addRow("Sıra Aralığı*:", layout_sira)
-        
+        form.addRow("Sira Araligi*:", layout_sira)
+
         layout_kat = QHBoxLayout()
         self.spn_kat_bas = QSpinBox()
         self.spn_kat_bas.setRange(1, 10)
@@ -1082,48 +1403,54 @@ class BulkRafDialog(QDialog):
         self.spn_kat_son.setRange(1, 10)
         self.spn_kat_son.setValue(3)
         layout_kat.addWidget(self.spn_kat_bas)
-        layout_kat.addWidget(QLabel("-"))
+        sep_lbl2 = QLabel("-")
+        sep_lbl2.setStyleSheet(f"color: {brand.TEXT_MUTED};")
+        layout_kat.addWidget(sep_lbl2)
         layout_kat.addWidget(self.spn_kat_son)
-        form.addRow("Kat Aralığı*:", layout_kat)
-        
+        form.addRow("Kat Araligi*:", layout_kat)
+
         self.txt_format = QLineEdit()
         self.txt_format.setText("{koridor}-{sira:02d}-{kat:02d}")
-        form.addRow("Kod Formatı:", self.txt_format)
-        
+        form.addRow("Kod Formati:", self.txt_format)
+
         layout.addLayout(form)
-        
-        self.lbl_preview = QLabel("Önizleme: -")
-        self.lbl_preview.setStyleSheet("background: #f5f5f5; padding: 10px; border-radius: 4px;")
+
+        self.lbl_preview = QLabel("Onizleme: -")
+        self.lbl_preview.setStyleSheet(
+            f"background: {brand.BG_SURFACE}; padding: {brand.SP_3}px; "
+            f"border-radius: {brand.R_SM}px; color: {brand.TEXT}; "
+            f"font-size: {brand.FS_BODY_SM}px;"
+        )
         layout.addWidget(self.lbl_preview)
-        
+
         self.txt_koridor.textChanged.connect(self.update_preview)
         self.spn_sira_bas.valueChanged.connect(self.update_preview)
         self.spn_sira_son.valueChanged.connect(self.update_preview)
         self.spn_kat_bas.valueChanged.connect(self.update_preview)
         self.spn_kat_son.valueChanged.connect(self.update_preview)
         self.update_preview()
-        
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.create_raflar)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-    
+
     def update_preview(self):
         koridorlar = self.parse_koridorlar()
         sira_count = self.spn_sira_son.value() - self.spn_sira_bas.value() + 1
         kat_count = self.spn_kat_son.value() - self.spn_kat_bas.value() + 1
         total = len(koridorlar) * sira_count * kat_count
-        
-        preview = f"Toplam {total} raf oluşturulacak"
+
+        preview = f"Toplam {total} raf olusturulacak"
         if koridorlar:
             try:
                 first = self.txt_format.text().format(koridor=koridorlar[0], sira=self.spn_sira_bas.value(), kat=self.spn_kat_bas.value())
                 last = self.txt_format.text().format(koridor=koridorlar[-1], sira=self.spn_sira_son.value(), kat=self.spn_kat_son.value())
-                preview += f"\nİlk: {first}, Son: {last}"
+                preview += f"\nIlk: {first}, Son: {last}"
             except Exception:
-                preview += "\nFormat hatası!"
+                preview += "\nFormat hatasi!"
         self.lbl_preview.setText(preview)
-    
+
     def parse_koridorlar(self):
         text = self.txt_koridor.text().strip().upper()
         if not text:
@@ -1135,15 +1462,17 @@ class BulkRafDialog(QDialog):
             if len(parts) == 2 and len(parts[0]) == 1 and len(parts[1]) == 1:
                 return [chr(i) for i in range(ord(parts[0]), ord(parts[1]) + 1)]
         return [text]
-    
+
     def create_raflar(self):
         koridorlar = self.parse_koridorlar()
         if not koridorlar:
-            QMessageBox.warning(self, "Uyarı", "Koridor belirtiniz.")
+            QMessageBox.warning(self, "Uyari", "Koridor belirtiniz.")
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             count = 0
             for koridor in koridorlar:
                 for sira in range(self.spn_sira_bas.value(), self.spn_sira_son.value() + 1):
@@ -1152,12 +1481,18 @@ class BulkRafDialog(QDialog):
                         cursor.execute("INSERT INTO tanim.depo_raflari (depo_id, kod, koridor, sira, kat) VALUES (?, ?, ?, ?, ?)",
                                        (self.depo_id, kod, koridor, sira, kat))
                         count += 1
-            self.conn.commit()
+            conn.commit()
             cursor.close()
-            QMessageBox.information(self, "Başarılı", f"{count} raf oluşturuldu.")
+            QMessageBox.information(self, "Basarili", f"{count} raf olusturuldu.")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 class SorumluEditDialog(QDialog):
@@ -1165,90 +1500,113 @@ class SorumluEditDialog(QDialog):
         super().__init__(parent)
         self.depo_id = depo_id
         self.sorumlu_id = sorumlu_id
-        self.setWindowTitle("Yeni Sorumlu" if not sorumlu_id else "Sorumlu Düzenle")
-        self.setMinimumWidth(400)
+        self.setWindowTitle("Yeni Sorumlu" if not sorumlu_id else "Sorumlu Duzenle")
+        self.setMinimumWidth(brand.sp(400))
+        self.setStyleSheet(_brand_dialog_style())
         self.setup_ui()
         if sorumlu_id:
             self.load_data()
-    
-    @property
-    def conn(self):
-        """Her çağrıda yeni veritabanı bağlantısı döndür"""
-        return get_db_connection()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
         form = QFormLayout()
-        
+        form.setSpacing(brand.SP_2)
+
         self.cmb_personel = QComboBox()
         self.load_personeller()
         form.addRow("Personel*:", self.cmb_personel)
-        
+
         self.cmb_tip = QComboBox()
-        self.cmb_tip.addItems(["Ana Sorumlu", "Yardımcı", "Vardiya Sorumlusu"])
+        self.cmb_tip.addItems(["Ana Sorumlu", "Yardimci", "Vardiya Sorumlusu"])
         form.addRow("Sorumluluk Tipi*:", self.cmb_tip)
-        
+
         self.date_baslangic = QDateEdit()
         self.date_baslangic.setDate(QDate.currentDate())
         self.date_baslangic.setCalendarPopup(True)
-        form.addRow("Başlangıç Tarihi:", self.date_baslangic)
-        
+        form.addRow("Baslangic Tarihi:", self.date_baslangic)
+
         self.date_bitis = QDateEdit()
         self.date_bitis.setSpecialValueText("Belirsiz")
         self.date_bitis.setCalendarPopup(True)
-        form.addRow("Bitiş Tarihi:", self.date_bitis)
-        
+        form.addRow("Bitis Tarihi:", self.date_bitis)
+
         # Yetkiler
         grp_yetki = QGroupBox("Yetkiler")
+        grp_yetki.setStyleSheet(f"""
+            QGroupBox {{
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                margin-top: {brand.SP_5}px;
+                padding: {brand.SP_5}px;
+                padding-top: {brand.SP_8}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY}px;
+                color: {brand.TEXT};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: {brand.SP_4}px;
+                top: {brand.SP_2}px;
+                padding: 0 {brand.SP_2}px;
+                color: {brand.TEXT_MUTED};
+                background: {brand.BG_MAIN};
+            }}
+        """)
         yetki_layout = QVBoxLayout(grp_yetki)
-        
+        yetki_layout.setSpacing(brand.SP_2)
+
         self.chk_tam_yetki = QCheckBox("Tam Yetki")
         self.chk_tam_yetki.stateChanged.connect(self.toggle_yetkiler)
         yetki_layout.addWidget(self.chk_tam_yetki)
-        
-        self.chk_giris = QCheckBox("Giriş Yetkisi")
+
+        self.chk_giris = QCheckBox("Giris Yetkisi")
         self.chk_giris.setChecked(True)
         yetki_layout.addWidget(self.chk_giris)
-        
-        self.chk_cikis = QCheckBox("Çıkış Yetkisi")
+
+        self.chk_cikis = QCheckBox("Cikis Yetkisi")
         self.chk_cikis.setChecked(True)
         yetki_layout.addWidget(self.chk_cikis)
-        
+
         self.chk_transfer = QCheckBox("Transfer Yetkisi")
         yetki_layout.addWidget(self.chk_transfer)
-        
-        self.chk_sayim = QCheckBox("Sayım Yetkisi")
+
+        self.chk_sayim = QCheckBox("Sayim Yetkisi")
         yetki_layout.addWidget(self.chk_sayim)
-        
+
         form.addRow(grp_yetki)
-        
+
         self.chk_aktif = QCheckBox("Aktif")
         self.chk_aktif.setChecked(True)
         form.addRow("", self.chk_aktif)
-        
+
         layout.addLayout(form)
-        
+
         buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.save)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-    
+
     def load_personeller(self):
         self.cmb_personel.clear()
-        # Personel tablosu olmadığı için örnek veri
+        # Personel tablosu olmadigi icin ornek veri
         for i in range(1, 11):
             self.cmb_personel.addItem(f"Personel #{i}", i)
-    
+
     def toggle_yetkiler(self, state):
         enabled = state != Qt.Checked
         self.chk_giris.setEnabled(enabled)
         self.chk_cikis.setEnabled(enabled)
         self.chk_transfer.setEnabled(enabled)
         self.chk_sayim.setEnabled(enabled)
-    
+
     def load_data(self):
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             cursor.execute("SELECT * FROM tanim.depo_sorumlulari WHERE id = ?", (self.sorumlu_id,))
             row = cursor.fetchone()
             if row:
@@ -1266,17 +1624,25 @@ class SorumluEditDialog(QDialog):
                 self.chk_aktif.setChecked(row.aktif_mi)
             cursor.close()
         except Exception as e:
-            QMessageBox.warning(self, "Uyarı", str(e))
-    
+            QMessageBox.warning(self, "Uyari", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def save(self):
         if self.cmb_personel.currentIndex() < 0:
-            QMessageBox.warning(self, "Uyarı", "Personel seçiniz.")
+            QMessageBox.warning(self, "Uyari", "Personel seciniz.")
             return
-        
+
+        conn = None
         try:
-            cursor = self.conn.cursor()
+            conn = get_db_connection()
+            cursor = conn.cursor()
             baslangic = self.date_baslangic.date().toPython()
-            
+
             if self.sorumlu_id:
                 cursor.execute("""
                     UPDATE tanim.depo_sorumlulari SET personel_id = ?, sorumluluk_tipi = ?,
@@ -1294,9 +1660,15 @@ class SorumluEditDialog(QDialog):
                 """, (self.depo_id, self.cmb_personel.currentData(), self.cmb_tip.currentText(), baslangic,
                       self.chk_tam_yetki.isChecked(), self.chk_giris.isChecked(), self.chk_cikis.isChecked(),
                       self.chk_transfer.isChecked(), self.chk_sayim.isChecked(), self.chk_aktif.isChecked()))
-            
-            self.conn.commit()
+
+            conn.commit()
             cursor.close()
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass

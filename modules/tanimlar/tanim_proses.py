@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class ProsesDialog(QDialog):
@@ -35,13 +36,13 @@ class ProsesDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}
-            QLabel {{ color: {self.theme.get('text', '#fff')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QSpinBox {{
-                background: {self.theme.get('bg_input', '#1e2330')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """)
         
@@ -130,8 +131,8 @@ class ProsesDialog(QDialog):
         iptal_btn = QPushButton("İptal")
         iptal_btn.setStyleSheet(f"""
             QPushButton {{ 
-                background: {self.theme.get('bg_input')}; color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')}; border-radius: 6px;
+                background: {brand.BG_INPUT}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: 6px;
                 padding: 10px 24px;
             }}
         """)
@@ -141,7 +142,7 @@ class ProsesDialog(QDialog):
         kaydet_btn = QPushButton("💾 Kaydet")
         kaydet_btn.setStyleSheet(f"""
             QPushButton {{ 
-                background: {self.theme.get('success', '#22c55e')}; color: white;
+                background: {brand.SUCCESS}; color: white;
                 border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;
             }}
         """)
@@ -253,7 +254,7 @@ class TanimProsesPage(BasePage):
         header = QHBoxLayout()
         
         title = QLabel("⚙️ Proses Tanımları")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         
         header.addStretch()
@@ -263,7 +264,7 @@ class TanimProsesPage(BasePage):
         yeni_btn.setCursor(Qt.PointingHandCursor)
         yeni_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')}; color: white;
+                background: {brand.SUCCESS}; color: white;
                 border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;
             }}
             QPushButton:hover {{ background: #1da34d; }}
@@ -275,8 +276,8 @@ class TanimProsesPage(BasePage):
         refresh_btn = QPushButton("🔄 Yenile")
         refresh_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')}; color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 16px;
+                background: {brand.BG_INPUT}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 10px 16px;
             }}
         """)
         refresh_btn.clicked.connect(self._load_data)
@@ -295,13 +296,13 @@ class TanimProsesPage(BasePage):
         
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')}; color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')}; border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
+                background: {brand.BG_CARD}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: 8px;
+                gridline-color: {brand.BORDER};
             }}
             QTableWidget::item {{ padding: 8px; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')}; color: {self.theme.get('text')};
+                background: {brand.BG_INPUT}; color: {brand.TEXT};
                 padding: 10px; border: none; font-weight: bold;
             }}
         """)
@@ -319,7 +320,7 @@ class TanimProsesPage(BasePage):
         
         # Alt bilgi
         self.info_label = QLabel("")
-        self.info_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.info_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         layout.addWidget(self.info_label)
     
     def _load_data(self):

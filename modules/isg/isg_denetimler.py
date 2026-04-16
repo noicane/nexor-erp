@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class DenetimDialog(QDialog):
@@ -35,15 +36,15 @@ class DenetimDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateTimeEdit, QTextEdit {{
-                background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px; color: {self.theme.get('text')};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -87,12 +88,12 @@ class DenetimDialog(QDialog):
         
         toolbar = QHBoxLayout()
         btn_olumlu = QPushButton("✓ Olumlu Ekle")
-        btn_olumlu.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_olumlu.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_olumlu.clicked.connect(lambda: self._add_bulgu("OLUMLU"))
         toolbar.addWidget(btn_olumlu)
         
         btn_uygunsuz = QPushButton("✗ Uygunsuzluk Ekle")
-        btn_uygunsuz.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_uygunsuz.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_uygunsuz.clicked.connect(lambda: self._add_bulgu("UYGUNSUZLUK"))
         toolbar.addWidget(btn_uygunsuz)
         
@@ -107,7 +108,7 @@ class DenetimDialog(QDialog):
         self.table_bulgu.setHorizontalHeaderLabels(["ID", "Tip", "Bulgu", "Durum"])
         self.table_bulgu.setColumnHidden(0, True)
         self.table_bulgu.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table_bulgu.setStyleSheet(f"QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; }}")
+        self.table_bulgu.setStyleSheet(f"QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; }}")
         header = self.table_bulgu.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
         bulgu_layout.addWidget(self.table_bulgu)
@@ -122,7 +123,7 @@ class DenetimDialog(QDialog):
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         layout.addLayout(btn_layout)
@@ -192,9 +193,9 @@ class DenetimDialog(QDialog):
                 self.table_bulgu.setItem(i, 0, QTableWidgetItem(str(row[0])))
                 tip_item = QTableWidgetItem(row[1] or "")
                 if row[1] == "OLUMLU":
-                    tip_item.setForeground(QColor(self.theme.get('success')))
+                    tip_item.setForeground(QColor(brand.SUCCESS))
                 elif row[1] == "UYGUNSUZLUK":
-                    tip_item.setForeground(QColor(self.theme.get('danger')))
+                    tip_item.setForeground(QColor(brand.ERROR))
                 self.table_bulgu.setItem(i, 1, tip_item)
                 self.table_bulgu.setItem(i, 2, QTableWidgetItem(row[2] or ""))
                 self.table_bulgu.setItem(i, 3, QTableWidgetItem(row[3] or ""))
@@ -290,16 +291,16 @@ class ISGDenetimlerPage(BasePage):
         layout.setSpacing(12)
         
         header = QLabel("🔍 Saha Denetimleri")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("➕ Yeni Denetim")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
         
@@ -309,7 +310,7 @@ class ISGDenetimlerPage(BasePage):
         toolbar_layout.addStretch()
         
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 12px; color: {self.theme.get('text')};")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 12px; color: {brand.TEXT};")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -322,9 +323,9 @@ class ISGDenetimlerPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px; font-weight: bold; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(4, QHeaderView.Stretch)
@@ -354,7 +355,7 @@ class ISGDenetimlerPage(BasePage):
                 for j, val in enumerate(row):
                     if j == 6 and val:  # Uygunsuzluk
                         item = QTableWidgetItem(str(val))
-                        item.setForeground(QColor(self.theme.get('danger')))
+                        item.setForeground(QColor(brand.ERROR))
                     else:
                         item = QTableWidgetItem(str(val) if val else "")
                     self.table.setItem(i, j, item)

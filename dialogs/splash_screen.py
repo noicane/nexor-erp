@@ -13,6 +13,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QPainter, QLinearGradient, QColor, QFont
 
 from version import VERSION
+from core.nexor_brand import brand
 
 
 class NexorSplashScreen(QSplashScreen):
@@ -28,47 +29,47 @@ class NexorSplashScreen(QSplashScreen):
 
         # Arka plan gradient
         gradient = QLinearGradient(0, 0, 0, 360)
-        gradient.setColorAt(0, QColor("#0B0E13"))
-        gradient.setColorAt(1, QColor("#0F1419"))
+        gradient.setColorAt(0, QColor(brand.BG_MAIN))
+        gradient.setColorAt(1, QColor(brand.BG_SURFACE))
         painter.setBrush(gradient)
         painter.setPen(Qt.NoPen)
-        painter.drawRoundedRect(0, 0, 520, 360, 16, 16)
+        painter.drawRoundedRect(0, 0, 520, 360, brand.R_XL, brand.R_XL)
 
         # Üst kırmızı accent çizgi
         red_gradient = QLinearGradient(0, 0, 520, 0)
-        red_gradient.setColorAt(0, QColor("#E2130D"))
-        red_gradient.setColorAt(1, QColor("#FF4136"))
+        red_gradient.setColorAt(0, QColor(brand.PRIMARY))
+        red_gradient.setColorAt(1, QColor(brand.ERROR))
         painter.setBrush(red_gradient)
         painter.drawRect(0, 0, 520, 4)
 
         # REDLINE yazısı
-        painter.setPen(QColor("#5C6878"))
-        painter.setFont(QFont("Segoe UI", 11, QFont.Weight.Normal))
+        painter.setPen(QColor(brand.TEXT_DIM))
+        painter.setFont(QFont("Inter", brand.fs(11), QFont.Weight.Normal))
         painter.drawText(0, 90, 520, 30, Qt.AlignCenter, "REDLINE")
 
         # NEXOR yazısı
-        painter.setPen(QColor("#E8ECF1"))
-        painter.setFont(QFont("Segoe UI", 36, QFont.Weight.Bold))
+        painter.setPen(QColor(brand.TEXT))
+        painter.setFont(QFont("Inter", brand.fs(36), QFont.Weight.Bold))
         painter.drawText(0, 115, 520, 60, Qt.AlignCenter, "NEXOR")
 
         # ERP YÖNETİM SİSTEMLERİ yazısı (kırmızı)
-        painter.setPen(QColor("#E2130D"))
-        painter.setFont(QFont("Segoe UI", 12, QFont.Weight.DemiBold))
+        painter.setPen(QColor(brand.PRIMARY))
+        painter.setFont(QFont("Inter", brand.fs(12), QFont.Weight.DemiBold))
         painter.drawText(0, 175, 520, 30, Qt.AlignCenter, "ERP YÖNETİM SİSTEMLERİ")
 
         # Alt kırmızı çizgi (dekoratif)
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor("#E2130D"))
+        painter.setBrush(QColor(brand.PRIMARY))
         painter.drawRect(180, 212, 160, 2)
 
         # Versiyon
-        painter.setPen(QColor("#5C6878"))
-        painter.setFont(QFont("Segoe UI", 9))
+        painter.setPen(QColor(brand.TEXT_DIM))
+        painter.setFont(QFont("Inter", brand.fs(9)))
         painter.drawText(0, 330, 510, 20, Qt.AlignRight, f"v{VERSION}")
 
         # Powered by
-        painter.setPen(QColor("#3A4250"))
-        painter.setFont(QFont("Segoe UI", 8))
+        painter.setPen(QColor(brand.TEXT_DISABLED))
+        painter.setFont(QFont("Inter", brand.fs(8)))
         painter.drawText(10, 330, 300, 20, Qt.AlignLeft, "Redline Creative Solutions")
 
         painter.end()
@@ -83,24 +84,24 @@ class NexorSplashScreen(QSplashScreen):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self.progress.setTextVisible(False)
-        self.progress.setStyleSheet("""
-            QProgressBar {
-                background: #1E2736;
+        self.progress.setStyleSheet(f"""
+            QProgressBar {{
+                background: {brand.BORDER};
                 border: none;
                 border-radius: 3px;
-            }
-            QProgressBar::chunk {
+            }}
+            QProgressBar::chunk {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #E2130D, stop:1 #FF4136);
+                    stop:0 {brand.PRIMARY}, stop:1 {brand.ERROR});
                 border-radius: 3px;
-            }
+            }}
         """)
 
         # Durum mesajı
         self.status_label = QLabel(self)
         self.status_label.setGeometry(40, 292, 440, 20)
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("color: #5C6878; font-size: 10px;")
+        self.status_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.fs(10)}px;")
         self.status_label.setText("Başlatılıyor...")
 
     def set_progress(self, value: int, message: str = ""):

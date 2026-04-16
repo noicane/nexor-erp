@@ -14,10 +14,75 @@ from PySide6.QtWidgets import (
     QWidget, QSizePolicy, QPushButton, QInputDialog, QLineEdit
 )
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QPixmap, QCursor
+from PySide6.QtGui import QPixmap, QCursor, QPainter, QColor, QPen
 
 from core.menu_structure import MENU_STRUCTURE, get_page_title, get_page_icon
 from core.yetki_manager import YetkiManager
+from core.nexor_brand import brand
+
+
+# =============================================================================
+# SUN / MOON ICON (QPainter)
+# =============================================================================
+
+class _SunMoonIcon(QLabel):
+    """Tema toggle icin guneş/ay ikonu — QPainter, scale-aware."""
+    def __init__(self, is_dark: bool, color: str, size: int, parent=None):
+        super().__init__(parent)
+        self.is_dark = is_dark
+        self.color = color
+        self.size_px = size
+        self.setFixedSize(size, size)
+
+    def set_dark(self, is_dark: bool):
+        self.is_dark = is_dark
+        self.update()
+
+    def set_color(self, color: str):
+        self.color = color
+        self.update()
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(QColor(self.color))
+        pen.setWidthF(max(1.5, self.size_px * 0.09))
+        pen.setCapStyle(Qt.RoundCap)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        s = self.size_px
+        cx, cy = s / 2, s / 2
+
+        if self.is_dark:
+            # GUNES: daire + 8 isin
+            r = s * 0.24
+            p.drawEllipse(int(cx - r), int(cy - r), int(2 * r), int(2 * r))
+            import math
+            for i in range(8):
+                angle = i * math.pi / 4
+                x1 = cx + math.cos(angle) * (r + s * 0.07)
+                y1 = cy + math.sin(angle) * (r + s * 0.07)
+                x2 = cx + math.cos(angle) * (r + s * 0.18)
+                y2 = cy + math.sin(angle) * (r + s * 0.18)
+                p.drawLine(int(x1), int(y1), int(x2), int(y2))
+        else:
+            # AY: crescent (iki arc ile)
+            import math
+            from PySide6.QtGui import QPainterPath
+            r = s * 0.34
+            path = QPainterPath()
+            # Dis daire
+            path.addEllipse(int(cx - r), int(cy - r), int(2 * r), int(2 * r))
+            # Ic daire (kesme)
+            offset = r * 0.45
+            path2 = QPainterPath()
+            path2.addEllipse(int(cx - r + offset), int(cy - r - offset * 0.2),
+                             int(2 * r), int(2 * r))
+            path = path.subtracted(path2)
+            p.setBrush(QColor(self.color))
+            p.setPen(Qt.NoPen)
+            p.drawPath(path)
+        p.end()
 
 
 # =============================================================================
@@ -45,113 +110,127 @@ class MenuItem(QFrame):
     
     def _setup_ui(self):
         self.setCursor(QCursor(Qt.PointingHandCursor))
-        
+
         if self.expanded_mode:
-            self.setFixedHeight(42 if not self.is_child else 38)
+            self.setFixedHeight(brand.sp(44) if not self.is_child else brand.sp(36))
             layout = QHBoxLayout(self)
-            layout.setContentsMargins(16 if not self.is_child else 48, 0, 12, 0)
-            layout.setSpacing(12)
-            
+            left_pad = brand.SP_4 if not self.is_child else brand.sp(44)
+            layout.setContentsMargins(left_pad, 0, brand.SP_3, 0)
+            layout.setSpacing(brand.SP_3)
+
+            # Active indicator (sol bar, sadece aktifken gosterilir)
+            self.active_bar = QFrame(self)
+            self.active_bar.setFixedWidth(brand.sp(3))
+            self.active_bar.setStyleSheet(
+                f"background: {brand.PRIMARY}; border: none; border-radius: 2px;"
+            )
+            self.active_bar.setVisible(False)
+
             # Icon
             if self.icon:
                 self.icon_label = QLabel(self.icon)
-                self.icon_label.setFixedWidth(24)
+                self.icon_label.setFixedWidth(brand.sp(22))
                 self.icon_label.setAlignment(Qt.AlignCenter)
                 layout.addWidget(self.icon_label)
-            
+
             # Text
             self.text_label = QLabel(self.label)
             self.text_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             layout.addWidget(self.text_label)
-            
+
             # Arrow
             if self.has_children:
                 self.arrow = QLabel("›")
-                self.arrow.setFixedWidth(16)
+                self.arrow.setFixedWidth(brand.sp(14))
                 layout.addWidget(self.arrow)
         else:
             # Compact mode
-            self.setFixedSize(50, 50)
+            self.setFixedSize(brand.sp(52), brand.sp(48))
             self.setToolTip(self.label)
             layout = QVBoxLayout(self)
             layout.setContentsMargins(0, 0, 0, 0)
             self.icon_label = QLabel(self.icon if self.icon else "•")
             self.icon_label.setAlignment(Qt.AlignCenter)
             layout.addWidget(self.icon_label)
-        
+
         self._apply_style()
-    
+
+    def resizeEvent(self, event):
+        """Active bar'i sol kenarda konumlandir."""
+        super().resizeEvent(event)
+        if hasattr(self, 'active_bar'):
+            bar_h = int(self.height() * 0.5)
+            self.active_bar.setGeometry(0, (self.height() - bar_h) // 2,
+                                        brand.sp(3), bar_h)
+
     def _apply_style(self):
-        t = self.theme
-        primary = t.get('primary', '#DC2626')
-        
         if self.is_active:
-            bg = primary
-            text_color = "#FFFFFF"
-            icon_color = "#FFFFFF"
+            bg = brand.PRIMARY_SOFT
+            text_color = brand.TEXT
+            icon_color = brand.PRIMARY
         else:
             bg = "transparent"
-            text_color = t.get('text_secondary', t.get('text', '#AAAAAA'))
-            icon_color = t.get('text_muted', t.get('text_secondary', '#666666'))
-        
-        hover_bg = t.get('bg_hover', t.get('bg_card', '#252525'))
+            text_color = brand.TEXT_MUTED
+            icon_color = brand.TEXT_DIM
+
+        hover_bg = brand.BG_HOVER
 
         if self.expanded_mode:
             self.setStyleSheet(f"""
                 MenuItem {{
                     background: {bg};
-                    border-radius: 10px;
-                    margin: 2px 8px;
+                    border-radius: {brand.R_MD}px;
+                    margin: {brand.SP_1}px {brand.SP_2}px;
                 }}
                 MenuItem:hover {{
                     background: {hover_bg if not self.is_active else bg};
                 }}
+                MenuItem QLabel {{ background: transparent; border: none; }}
             """)
-            
+
+            if hasattr(self, 'active_bar'):
+                self.active_bar.setVisible(self.is_active)
+                self.active_bar.raise_()
+
             if hasattr(self, 'text_label'):
-                font_weight = '600' if self.is_active else '400'
-                self.text_label.setStyleSheet(f"""
-                    color: {text_color};
-                    font-size: 13px;
-                    font-weight: {font_weight};
-                    background: transparent;
-                """)
-            
+                fw = brand.FW_SEMIBOLD if self.is_active else brand.FW_MEDIUM
+                self.text_label.setStyleSheet(
+                    f"color: {text_color}; "
+                    f"font-size: {brand.FS_BODY}px; "
+                    f"font-weight: {fw};"
+                )
+
             if hasattr(self, 'icon_label'):
-                self.icon_label.setStyleSheet(f"""
-                    font-size: 18px;
-                    color: {icon_color};
-                    background: transparent;
-                """)
-            
+                self.icon_label.setStyleSheet(
+                    f"font-size: {brand.fs(17)}px; color: {icon_color};"
+                )
+
             if self.has_children and hasattr(self, 'arrow'):
                 arrow_char = "⌄" if self.is_expanded else "›"
                 self.arrow.setText(arrow_char)
-                self.arrow.setStyleSheet(f"""
-                    color: {t.get('text_muted', t.get('text_secondary', '#666666'))};
-                    font-size: 14px;
-                    font-weight: bold;
-                    background: transparent;
-                """)
+                self.arrow.setStyleSheet(
+                    f"color: {brand.TEXT_DIM}; "
+                    f"font-size: {brand.fs(14)}px; "
+                    f"font-weight: {brand.FW_BOLD};"
+                )
         else:
             # Compact mode
             self.setStyleSheet(f"""
                 MenuItem {{
                     background: {bg};
-                    border-radius: 12px;
-                    margin: 4px;
+                    border-radius: {brand.R_MD}px;
+                    margin: {brand.SP_1}px {brand.SP_2}px;
                 }}
                 MenuItem:hover {{
                     background: {hover_bg if not self.is_active else bg};
                 }}
             """)
-            
+
             if hasattr(self, 'icon_label'):
-                self.icon_label.setStyleSheet(f"""
-                    font-size: 20px;
-                    color: {icon_color if not self.is_active else '#FFFFFF'};
-                    background: transparent;
-                """)
+                self.icon_label.setStyleSheet(
+                    f"font-size: {brand.fs(20)}px; "
+                    f"color: {brand.PRIMARY if self.is_active else icon_color};"
+                )
     
     def set_active(self, active: bool):
         self.is_active = active
@@ -189,70 +268,55 @@ class ThemeToggleButton(QFrame):
     
     def _setup_ui(self):
         self.setCursor(QCursor(Qt.PointingHandCursor))
-        
+
         if self.expanded_mode:
-            self.setFixedHeight(44)
+            self.setFixedHeight(brand.sp(46))
             layout = QHBoxLayout(self)
-            layout.setContentsMargins(16, 8, 16, 8)
-            layout.setSpacing(12)
-            
-            # Icon
-            self.icon_label = QLabel()
-            self.icon_label.setFixedWidth(24)
-            self.icon_label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(self.icon_label)
-            
-            # Text
+            layout.setContentsMargins(brand.SP_4, brand.SP_2, brand.SP_4, brand.SP_2)
+            layout.setSpacing(brand.SP_3)
+
+            self.icon = _SunMoonIcon(self.is_dark, brand.TEXT_MUTED, brand.sp(20))
+            layout.addWidget(self.icon, 0, Qt.AlignVCenter)
+
             self.text_label = QLabel()
             self.text_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             layout.addWidget(self.text_label)
         else:
-            self.setFixedSize(50, 50)
+            self.setFixedSize(brand.sp(52), brand.sp(48))
             self.setToolTip("Tema Değiştir")
             layout = QVBoxLayout(self)
             layout.setContentsMargins(0, 0, 0, 0)
-            self.icon_label = QLabel()
-            self.icon_label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(self.icon_label)
-        
+            self.icon = _SunMoonIcon(self.is_dark, brand.TEXT_MUTED, brand.sp(22))
+            layout.addWidget(self.icon, 0, Qt.AlignCenter)
+
         self._apply_style()
-    
+
     def _apply_style(self):
-        t = self.theme
-        
-        if self.is_dark:
-            icon = "☀️"
-            text = "Açık Tema"
-        else:
-            icon = "🌙"
-            text = "Koyu Tema"
-        
-        self.icon_label.setText(icon)
-        self.icon_label.setStyleSheet(f"""
-            font-size: {'18px' if self.expanded_mode else '22px'};
-            background: transparent;
-        """)
-        
+        text = "Açık Tema" if self.is_dark else "Koyu Tema"
+
+        if hasattr(self, 'icon'):
+            self.icon.set_dark(self.is_dark)
+            self.icon.set_color(brand.TEXT_MUTED)
+
         if self.expanded_mode and hasattr(self, 'text_label'):
             self.text_label.setText(text)
-            self.text_label.setStyleSheet(f"""
-                color: {t.get('text_secondary', t.get('text', '#AAAAAA'))};
-                font-size: 13px;
-                background: transparent;
-            """)
-        
-        hover_bg = t.get('bg_hover', t.get('bg_card', '#252525'))
-        border_color = t.get('border', t.get('border_light', '#2A2A2A'))
-        
+            self.text_label.setStyleSheet(
+                f"color: {brand.TEXT_MUTED}; "
+                f"font-size: {brand.FS_BODY}px; "
+                f"font-weight: {brand.FW_MEDIUM}; "
+                f"background: transparent;"
+            )
+
         self.setStyleSheet(f"""
             ThemeToggleButton {{
-                background: {t.get('bg_card', t.get('bg_main', '#1A1A1A'))};
-                border: 1px solid {border_color};
-                border-radius: 10px;
-                margin: 8px;
+                background: transparent;
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                margin: {brand.SP_2}px;
             }}
             ThemeToggleButton:hover {{
-                background: {hover_bg};
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
             }}
         """)
     
@@ -283,9 +347,15 @@ class Sidebar(QFrame):
     
     menu_clicked = Signal(str)
     theme_toggle_requested = Signal()
-    
-    EXPANDED_WIDTH = 220
-    COMPACT_WIDTH = 70
+
+    # Responsive — scale faktoru ile carpilir
+    @property
+    def EXPANDED_WIDTH(self) -> int:
+        return brand.sp(240)
+
+    @property
+    def COMPACT_WIDTH(self) -> int:
+        return brand.sp(68)
     
     def __init__(self, theme: dict, expanded_mode: bool = True, 
                  logo_path: str = None, is_dark_mode: bool = True):
@@ -307,137 +377,91 @@ class Sidebar(QFrame):
         self._setup_ui()
     
     def _setup_ui(self):
-        t = self.theme
-        
         width = self.EXPANDED_WIDTH if self.expanded_mode else self.COMPACT_WIDTH
         self.setFixedWidth(width)
-        
-        self.setStyleSheet(f"""
-            Sidebar {{
-                background: {t.get('bg_sidebar', t.get('bg_main', '#0A0A0A'))};
-                border-right: 1px solid {t.get('border', t.get('border_light', '#2A2A2A'))};
-            }}
-        """)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        
-        # === LOGO ===
-        logo_frame = QFrame()
-        logo_frame.setFixedHeight(70)
-        logo_frame.setStyleSheet(f"""
-            background: transparent;
-            border-bottom: 1px solid {t.get('border', t.get('border_light', '#2A2A2A'))};
-        """)
-        
-        logo_layout = QHBoxLayout(logo_frame)
-        logo_layout.setContentsMargins(16, 0, 16, 0)
-        logo_layout.setSpacing(12)
-        
-        # Logo icon
-        self.logo_icon = QLabel("N")
-        self.logo_icon.setFixedSize(40, 40)
-        self.logo_icon.setAlignment(Qt.AlignCenter)
-        primary = t.get('primary', '#DC2626')
-        self.logo_icon.setStyleSheet(f"""
-            background: {primary};
-            color: white;
-            font-size: 20px;
-            font-weight: 700;
-            border-radius: 10px;
-        """)
-        logo_layout.addWidget(self.logo_icon)
-        
-        if self.expanded_mode:
-            self.brand_label = QLabel("NEXOR")
-            self.brand_label.setStyleSheet(f"""
-                font-size: 20px;
-                font-weight: 700;
-                color: {t.get('text', '#FFFFFF')};
-                background: transparent;
-            """)
-            logo_layout.addWidget(self.brand_label)
-        
-        logo_layout.addStretch()
-        layout.addWidget(logo_frame)
 
-        # === SON KULLANILANLAR ===
+        # ================ LOGO BASLIGI ================
+        self.logo_frame = QFrame()
+        self.logo_frame.setFixedHeight(brand.sp(72))
+
+        logo_layout = QHBoxLayout(self.logo_frame)
+        logo_layout.setContentsMargins(brand.SP_4, 0, brand.SP_4, 0)
+        logo_layout.setSpacing(brand.SP_3)
+
+        self.logo_icon = QLabel("N")
+        self.logo_icon.setFixedSize(brand.sp(38), brand.sp(38))
+        self.logo_icon.setAlignment(Qt.AlignCenter)
+        logo_layout.addWidget(self.logo_icon)
+
+        self.brand_label = None
+        self.erp_label = None
+        if self.expanded_mode:
+            brand_col = QVBoxLayout()
+            brand_col.setSpacing(0)
+            brand_col.setContentsMargins(0, 0, 0, 0)
+
+            self.brand_label = QLabel("NEXOR")
+            brand_col.addWidget(self.brand_label)
+
+            self.erp_label = QLabel("ERP")
+            brand_col.addWidget(self.erp_label)
+
+            logo_layout.addLayout(brand_col)
+
+        logo_layout.addStretch()
+        layout.addWidget(self.logo_frame)
+
+        # ================ SON KULLANILANLAR ================
+        self.recent_frame = None
+        self.recent_title = None
         if self.expanded_mode:
             self.recent_frame = QFrame()
-            self.recent_frame.setStyleSheet("background: transparent;")
             self.recent_frame.setVisible(False)
             self.recent_layout = QVBoxLayout(self.recent_frame)
-            self.recent_layout.setContentsMargins(12, 8, 12, 4)
+            self.recent_layout.setContentsMargins(
+                brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_1
+            )
             self.recent_layout.setSpacing(0)
 
-            recent_title = QLabel("SON KULLANILANLAR")
-            recent_title.setStyleSheet(f"""
-                color: {t.get('text_muted', '#64748B')};
-                font-size: 9px;
-                font-weight: 700;
-                letter-spacing: 1px;
-                padding: 4px 4px 6px 4px;
-                background: transparent;
-            """)
-            self.recent_layout.addWidget(recent_title)
+            self.recent_title = QLabel("SON KULLANILANLAR")
+            self.recent_layout.addWidget(self.recent_title)
             layout.addWidget(self.recent_frame)
 
-        # === MENU SCROLL ===
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet(f"""
-            QScrollArea {{
-                background: transparent;
-                border: none;
-            }}
-            QScrollBar:vertical {{
-                background: transparent;
-                width: 6px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {t.get('border', t.get('border_light', '#2A2A2A'))};
-                border-radius: 3px;
-                min-height: 30px;
-            }}
-            QScrollBar::handle:vertical:hover {{
-                background: {t.get('border_light', t.get('border', '#333333'))};
-            }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                height: 0;
-            }}
-        """)
-        
-        menu_widget = QWidget()
-        menu_widget.setStyleSheet("background: transparent;")
-        self.menu_layout = QVBoxLayout(menu_widget)
-        self.menu_layout.setContentsMargins(0, 12, 0, 12)
-        self.menu_layout.setSpacing(2)
-        
+        # ================ MENU SCROLL ================
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        self.menu_widget = QWidget()
+        self.menu_layout = QVBoxLayout(self.menu_widget)
+        self.menu_layout.setContentsMargins(0, brand.SP_3, 0, brand.SP_3)
+        self.menu_layout.setSpacing(brand.sp(2))
+
         self._build_menu()
-        
+
         self.menu_layout.addStretch()
-        scroll.setWidget(menu_widget)
-        layout.addWidget(scroll, 1)
-        
-        # === FOOTER ===
-        footer = QFrame()
-        footer.setStyleSheet(f"""
-            background: transparent;
-            border-top: 1px solid {t.get('border', t.get('border_light', '#2A2A2A'))};
-        """)
-        
-        footer_layout = QVBoxLayout(footer)
-        footer_layout.setContentsMargins(0, 8, 0, 8)
+        self.scroll_area.setWidget(self.menu_widget)
+        layout.addWidget(self.scroll_area, 1)
+
+        # ================ FOOTER ================
+        self.footer_frame = QFrame()
+
+        footer_layout = QVBoxLayout(self.footer_frame)
+        footer_layout.setContentsMargins(0, brand.SP_2, 0, brand.SP_2)
         footer_layout.setSpacing(0)
-        
-        # Theme toggle
+
         self.theme_btn = ThemeToggleButton(self.theme, self.expanded_mode, self.is_dark_mode)
         self.theme_btn.theme_toggled.connect(self.theme_toggle_requested.emit)
         footer_layout.addWidget(self.theme_btn)
-        
-        layout.addWidget(footer)
+
+        layout.addWidget(self.footer_frame)
+
+        # Tum child stillerini brand'den uygula
+        self._apply_child_styles()
     
     def _build_menu(self):
         """Menu yapisini olustur"""
@@ -529,6 +553,24 @@ class Sidebar(QFrame):
                 else:
                     self._animate_collapse(container)
         else:
+            # Child sayfa — parent sifre korumali mi kontrol et
+            parent_menu = next(
+                (m for m in MENU_STRUCTURE
+                 if m.get('children') and any(ch['id'] == item_id for ch in m['children'])),
+                None
+            )
+            if parent_menu and parent_menu.get('password'):
+                parent_id = parent_menu['id']
+                if parent_id not in self._unlocked_menus:
+                    pwd, ok = QInputDialog.getText(
+                        self, "Sifre Gerekli",
+                        f"'{parent_menu['label']}' menusune erisim icin sifre girin:",
+                        QLineEdit.Password
+                    )
+                    if not ok or pwd != parent_menu['password']:
+                        return
+                    self._unlocked_menus.add(parent_id)
+
             # Sayfa sec
             self.set_active(item_id)
             self.add_recent_page(item_id)
@@ -611,7 +653,6 @@ class Sidebar(QFrame):
             if item.widget():
                 item.widget().deleteLater()
 
-        t = self.theme
         for page_id in self._recent_pages:
             title = get_page_title(page_id)
             icon = get_page_icon(page_id)
@@ -621,16 +662,16 @@ class Sidebar(QFrame):
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background: transparent;
-                    color: {t.get('text_secondary', '#94A3B8')};
+                    color: {brand.TEXT_MUTED};
                     border: none;
                     text-align: left;
-                    padding: 5px 8px;
-                    border-radius: 4px;
-                    font-size: 11px;
+                    padding: {brand.SP_1}px {brand.SP_2}px;
+                    border-radius: {brand.R_SM}px;
+                    font-size: {brand.FS_CAPTION}px;
                 }}
                 QPushButton:hover {{
-                    background: {t.get('bg_hover', '#1E293B')};
-                    color: {t.get('text', '#E2E8F0')};
+                    background: {brand.BG_HOVER};
+                    color: {brand.TEXT};
                 }}
             """)
             btn.clicked.connect(lambda checked, pid=page_id: self._on_recent_clicked(pid))
@@ -670,46 +711,124 @@ class Sidebar(QFrame):
         """Menu genislik modu"""
         self.expanded_mode = expanded
     
-    def update_theme(self, theme: dict):
-        """Temayi guncelle"""
-        self.theme = theme
-        
-        t = theme
-        
-        # Ana frame
+    def _apply_child_styles(self):
+        """Tum sidebar child widget stillerini brand'den okuyup uygula.
+        Tema modu degistiginde yeniden uygulanmasi GEREK."""
+        # Ana frame — ana arka plan ile ayni renk, sadece sag border ayirici
         self.setStyleSheet(f"""
             Sidebar {{
-                background: {t.get('bg_sidebar', t.get('bg_main', '#0A0A0A'))};
-                border-right: 1px solid {t.get('border', t.get('border_light', '#2A2A2A'))};
+                background: {brand.BG_MAIN};
+                border-right: 1px solid {brand.BORDER};
             }}
         """)
-        
-        # Logo
-        primary = t.get('primary', '#DC2626')
+
+        # Logo frame
+        if hasattr(self, 'logo_frame'):
+            self.logo_frame.setStyleSheet(
+                f"background: transparent; "
+                f"border-bottom: 1px solid {brand.BORDER};"
+            )
+
+        # Logo icon
         if hasattr(self, 'logo_icon') and not self.logo_path:
-            self.logo_icon.setStyleSheet(f"""
-                background: {primary};
-                color: white;
-                font-size: 20px;
-                font-weight: 700;
-                border-radius: 10px;
+            self.logo_icon.setStyleSheet(
+                f"background: {brand.PRIMARY}; "
+                f"color: white; "
+                f"font-size: {brand.fs(18)}px; "
+                f"font-weight: {brand.FW_BOLD}; "
+                f"border-radius: {brand.R_MD}px;"
+            )
+
+        if getattr(self, 'brand_label', None):
+            self.brand_label.setStyleSheet(
+                f"font-size: {brand.fs(18)}px; "
+                f"font-weight: {brand.FW_BOLD}; "
+                f"color: {brand.TEXT}; "
+                f"background: transparent; "
+                f"letter-spacing: 1px; "
+                f"border: none;"
+            )
+
+        if getattr(self, 'erp_label', None):
+            self.erp_label.setStyleSheet(
+                f"font-size: {brand.fs(9)}px; "
+                f"font-weight: {brand.FW_SEMIBOLD}; "
+                f"color: {brand.PRIMARY}; "
+                f"letter-spacing: 2px; "
+                f"background: transparent; "
+                f"border: none;"
+            )
+
+        # Recent frame
+        if getattr(self, 'recent_frame', None):
+            self.recent_frame.setStyleSheet("background: transparent; border: none;")
+        if getattr(self, 'recent_title', None):
+            self.recent_title.setStyleSheet(
+                f"color: {brand.TEXT_DIM}; "
+                f"font-size: {brand.fs(9)}px; "
+                f"font-weight: {brand.FW_BOLD}; "
+                f"letter-spacing: 1.2px; "
+                f"padding: {brand.SP_1}px; "
+                f"background: transparent; "
+                f"border: none;"
+            )
+
+        # Scroll area
+        if hasattr(self, 'scroll_area'):
+            self.scroll_area.setStyleSheet(f"""
+                QScrollArea {{
+                    background: transparent;
+                    border: none;
+                }}
+                QScrollBar:vertical {{
+                    background: transparent;
+                    width: {brand.sp(6)}px;
+                    margin: 0;
+                }}
+                QScrollBar::handle:vertical {{
+                    background: {brand.BORDER_HARD};
+                    border-radius: {brand.sp(3)}px;
+                    min-height: {brand.sp(30)}px;
+                }}
+                QScrollBar::handle:vertical:hover {{
+                    background: {brand.TEXT_DIM};
+                }}
+                QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                    height: 0;
+                }}
+                QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                    background: transparent;
+                }}
             """)
-        
-        if hasattr(self, 'brand_label'):
-            self.brand_label.setStyleSheet(f"""
-                font-size: 20px;
-                font-weight: 700;
-                color: {t.get('text', '#FFFFFF')};
-                background: transparent;
-            """)
-        
+        if hasattr(self, 'menu_widget'):
+            self.menu_widget.setStyleSheet("background: transparent;")
+
+        # Footer
+        if hasattr(self, 'footer_frame'):
+            self.footer_frame.setStyleSheet(
+                f"background: transparent; "
+                f"border-top: 1px solid {brand.BORDER};"
+            )
+
         # Menu items
         for item in self.menu_items.values():
-            item.update_theme(theme)
-        
+            item._apply_style()
+
         # Theme button
         if hasattr(self, 'theme_btn'):
-            self.theme_btn.update_theme(theme)
+            self.theme_btn._apply_style()
+
+        # Son kullanilanlar butonlarini yeniden yukle
+        if hasattr(self, '_update_recent_ui'):
+            try:
+                self._update_recent_ui()
+            except Exception:
+                pass
+
+    def update_theme(self, theme: dict):
+        """Temayi guncelle — tum child stilleri yeniden uygulanir."""
+        self.theme = theme
+        self._apply_child_styles()
 
 
 # Geriye uyumluluk icin alias

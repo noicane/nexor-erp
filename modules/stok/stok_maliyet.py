@@ -19,33 +19,33 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 import uuid
 
 
-def get_modern_style(theme: dict) -> dict:
-    """Modern tema renkleri - TÜM MODÜLLERDE AYNI"""
-    t = theme or {}
+def get_modern_style(theme: dict = None) -> dict:
+    """Modern tema renkleri — brand sisteminden."""
     return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
+        'card_bg':        brand.BG_CARD,
+        'card_solid':     brand.BG_CARD,
+        'input_bg':       brand.BG_INPUT,
+        'bg_main':        brand.BG_MAIN,
+        'bg_hover':       brand.BG_HOVER,
+        'bg_selected':    brand.BG_SELECTED,
+        'border':         brand.BORDER,
+        'border_light':   brand.BORDER_HARD,
+        'border_input':   brand.BORDER,
+        'text':           brand.TEXT,
+        'text_secondary': brand.TEXT_MUTED,
+        'text_muted':     brand.TEXT_DIM,
+        'primary':        brand.PRIMARY,
+        'primary_hover':  brand.PRIMARY_HOVER,
+        'success':        brand.SUCCESS,
+        'warning':        brand.WARNING,
+        'error':          brand.ERROR,
+        'danger':         brand.ERROR,
+        'info':           brand.INFO,
+        'gradient':       brand.PRIMARY,
     }
 
 
@@ -62,10 +62,10 @@ class MaliyetKalemiDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDoubleSpinBox, QTextEdit {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -125,7 +125,7 @@ class MaliyetKalemiDialog(QDialog):
         btn_iptal = QPushButton("İptal")
         btn_iptal.clicked.connect(self.reject)
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_iptal)
         btn_layout.addStretch()
@@ -167,21 +167,21 @@ class StokMaliyetPage(BasePage):
         
         header = QHBoxLayout()
         title = QLabel("📊 Ürün Maliyet Yönetimi")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 20px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 20px; font-weight: bold;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
         
         # Ürün Seçimi
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme['bg_card_solid']}; border-radius: 8px; padding: 12px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 12px;")
         f_layout = QHBoxLayout(filter_frame)
         
         f_layout.addWidget(QLabel("Ürün Ara:"))
         self.txt_arama = QLineEdit()
         self.txt_arama.setPlaceholderText("Ürün kodu veya adı...")
         self.txt_arama.setMinimumWidth(300)
-        self.txt_arama.setStyleSheet(f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};")
+        self.txt_arama.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};")
         self.txt_arama.returnPressed.connect(self._ara_urun)
         f_layout.addWidget(self.txt_arama)
         
@@ -192,7 +192,7 @@ class StokMaliyetPage(BasePage):
         f_layout.addStretch()
         
         btn_yeni = QPushButton("+ Maliyet Kalemi")
-        btn_yeni.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
+        btn_yeni.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
         btn_yeni.clicked.connect(self._yeni_kalem)
         f_layout.addWidget(btn_yeni)
         layout.addWidget(filter_frame)
@@ -201,11 +201,11 @@ class StokMaliyetPage(BasePage):
         info_layout = QHBoxLayout()
         
         self.urun_info = QLabel("Ürün seçiniz...")
-        self.urun_info.setStyleSheet(f"color: {self.theme['text_muted']}; padding: 8px; background: {self.theme['bg_hover']}; border-radius: 6px;")
+        self.urun_info.setStyleSheet(f"color: {brand.TEXT_DIM}; padding: 8px; background: {brand.BG_HOVER}; border-radius: 6px;")
         info_layout.addWidget(self.urun_info, 2)
         
         self.toplam_label = QLabel("Toplam Maliyet: ₺0.00")
-        self.toplam_label.setStyleSheet(f"color: {self.theme['success']}; padding: 8px; background: {self.theme['bg_card_solid']}; border-radius: 6px; font-weight: bold; font-size: 14px;")
+        self.toplam_label.setStyleSheet(f"color: {brand.SUCCESS}; padding: 8px; background: {brand.BG_CARD}; border-radius: 6px; font-weight: bold; font-size: 14px;")
         info_layout.addWidget(self.toplam_label, 1)
         
         layout.addLayout(info_layout)
@@ -240,10 +240,10 @@ class StokMaliyetPage(BasePage):
         layout.addLayout(btn_layout)
     
     def _table_style(self):
-        return f"QTableWidget {{ background: {self.theme['bg_main']}; border: 1px solid {self.theme['border']}; }} QTableWidget::item {{ padding: 8px; color: {self.theme['text']}; }} QHeaderView::section {{ background: {self.theme['bg_card_solid']}; color: {self.theme['text']}; padding: 10px; border-bottom: 2px solid {self.theme['primary']}; }}"
+        return f"QTableWidget {{ background: {brand.BG_MAIN}; border: 1px solid {brand.BORDER}; }} QTableWidget::item {{ padding: 8px; color: {brand.TEXT}; }} QHeaderView::section {{ background: {brand.BG_CARD}; color: {brand.TEXT}; padding: 10px; border-bottom: 2px solid {brand.PRIMARY}; }}"
     
     def _button_style(self):
-        return f"QPushButton {{ background: {self.theme['bg_card_solid']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px 16px; }}"
+        return f"QPushButton {{ background: {brand.BG_CARD}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 16px; }}"
     
     def _ara_urun(self):
         arama = self.txt_arama.text().strip()

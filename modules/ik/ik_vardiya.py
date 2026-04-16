@@ -20,6 +20,7 @@ from core.log_manager import LogManager
 from config import REPORT_OUTPUT_DIR
 from core.firma_bilgileri import get_firma_bilgileri
 from utils.etiket_yazdir import _register_dejavu_fonts
+from core.nexor_brand import brand
 
 
 # Vardiya adına göre renk eşleme
@@ -65,33 +66,29 @@ class TopluAtamaDialog(QDialog):
         self.theme = theme
         self.result_data = None
         self.setWindowTitle("Toplu Vardiya Atama")
-        self.setMinimumSize(500, 520)
+        self.setMinimumSize(brand.sp(500), brand.sp(520))
         self.setModal(True)
         self._setup_ui()
 
     def _setup_ui(self):
-        bg = self.theme.get('bg_card', '#151B23')
-        txt = self.theme.get('text', '#E8ECF1')
-        border = self.theme.get('border', '#1E2736')
-        bg_input = self.theme.get('bg_input', '#232C3B')
-        primary = self.theme.get('primary', '#C41E1E')
-
         self.setStyleSheet(f"""
-            QDialog {{ background: {bg}; }}
-            QLabel {{ color: {txt}; }}
+            QDialog {{ background: {brand.BG_MAIN}; font-family: {brand.FONT_FAMILY}; }}
+            QLabel {{ color: {brand.TEXT}; }}
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_3)
 
-        # --- Personel seçimi ---
-        layout.addWidget(QLabel("Personel Seçimi:"))
+        # --- Personel secimi ---
+        lbl_per = QLabel("Personel Secimi:")
+        lbl_per.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};")
+        layout.addWidget(lbl_per)
 
-        # Tümünü seç / kaldır
+        # Tumunu sec / kaldir
         select_all_layout = QHBoxLayout()
-        self.select_all_cb = QCheckBox("Tümünü Seç")
-        self.select_all_cb.setStyleSheet(f"color: {txt};")
+        self.select_all_cb = QCheckBox("Tumunu Sec")
+        self.select_all_cb.setStyleSheet(f"color: {brand.TEXT};")
         self.select_all_cb.stateChanged.connect(self._toggle_select_all)
         select_all_layout.addWidget(self.select_all_cb)
         select_all_layout.addStretch()
@@ -100,12 +97,12 @@ class TopluAtamaDialog(QDialog):
         self.personel_list = QListWidget()
         self.personel_list.setStyleSheet(f"""
             QListWidget {{
-                background: {bg_input};
-                border: 1px solid {border};
-                border-radius: 6px;
-                color: {txt};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                color: {brand.TEXT};
             }}
-            QListWidget::item {{ padding: 4px; }}
+            QListWidget::item {{ padding: {brand.SP_1}px; }}
         """)
         for per_id, per_ad in self.personeller:
             item = QListWidgetItem(per_ad)
@@ -114,32 +111,38 @@ class TopluAtamaDialog(QDialog):
             self.personel_list.addItem(item)
         layout.addWidget(self.personel_list, 1)
 
-        # --- Gün seçimi ---
-        layout.addWidget(QLabel("Gün Seçimi:"))
+        # --- Gun secimi ---
+        lbl_gun = QLabel("Gun Secimi:")
+        lbl_gun.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};")
+        layout.addWidget(lbl_gun)
         gun_layout = QHBoxLayout()
-        gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
+        gun_isimleri = ["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"]
         self.gun_checkboxes = []
         for gun in gun_isimleri:
             cb = QCheckBox(gun)
-            cb.setStyleSheet(f"color: {txt};")
+            cb.setStyleSheet(f"color: {brand.TEXT};")
             cb.setChecked(True)
             gun_layout.addWidget(cb)
             self.gun_checkboxes.append(cb)
         layout.addLayout(gun_layout)
 
-        # --- Vardiya seçimi ---
-        layout.addWidget(QLabel("Vardiya:"))
+        # --- Vardiya secimi ---
+        lbl_var = QLabel("Vardiya:")
+        lbl_var.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};")
+        layout.addWidget(lbl_var)
         self.vardiya_combo = QComboBox()
         self.vardiya_combo.setStyleSheet(f"""
             QComboBox {{
-                background: {bg_input};
-                border: 1px solid {border};
-                border-radius: 6px;
-                padding: 8px;
-                color: {txt};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
         """)
-        self.vardiya_combo.addItem("– (Boş / Kaldır)", None)
+        self.vardiya_combo.addItem("- (Bos / Kaldir)", None)
         for v_id, v_ad in self.vardiyalar:
             self.vardiya_combo.addItem(v_ad, v_id)
         layout.addWidget(self.vardiya_combo)
@@ -148,29 +151,38 @@ class TopluAtamaDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        cancel_btn = QPushButton("İptal")
+        cancel_btn = QPushButton("Iptal")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(brand.sp(38))
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {bg_input};
-                color: {txt};
-                border: 1px solid {border};
-                border-radius: 6px;
-                padding: 8px 20px;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
         """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
         apply_btn = QPushButton("Uygula")
+        apply_btn.setCursor(Qt.PointingHandCursor)
+        apply_btn.setFixedHeight(brand.sp(38))
         apply_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {primary};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 20px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         apply_btn.clicked.connect(self._apply)
         btn_layout.addWidget(apply_btn)
@@ -243,45 +255,53 @@ class IKVardiyaPage(BasePage):
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 16px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                min-height: {brand.sp(38)}px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
         """
 
     def _combo_style(self):
         return f"""
             QComboBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
         """
 
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
             }}
             QTableWidget::item {{
-                padding: 4px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
             }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                padding: 10px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
-                font-weight: bold;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """
 
@@ -289,98 +309,105 @@ class IKVardiyaPage(BasePage):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
 
-        # ─── Header ───
-        header = QHBoxLayout()
+        # -- Header --
+        header = self.create_page_header(
+            "Vardiya Planlama",
+            "Haftalik personel vardiya atama ve takip"
+        )
 
-        title = QLabel("Vardiya Planlama")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
-        header.addWidget(title)
-        header.addStretch()
-
-        prev_btn = QPushButton("◀ Önceki Hafta")
+        prev_btn = QPushButton("Onceki Hafta")
+        prev_btn.setCursor(Qt.PointingHandCursor)
+        prev_btn.setFixedHeight(brand.sp(38))
         prev_btn.setStyleSheet(self._button_style())
         prev_btn.clicked.connect(self._prev_week)
         header.addWidget(prev_btn)
 
         self.week_label = QLabel()
         self.week_label.setStyleSheet(
-            f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 14px; margin: 0 16px;"
+            f"color: {brand.PRIMARY}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_BODY_LG}px; margin: 0 {brand.SP_4}px;"
         )
         header.addWidget(self.week_label)
 
-        next_btn = QPushButton("Sonraki Hafta ▶")
+        next_btn = QPushButton("Sonraki Hafta")
+        next_btn.setCursor(Qt.PointingHandCursor)
+        next_btn.setFixedHeight(brand.sp(38))
         next_btn.setStyleSheet(self._button_style())
         next_btn.clicked.connect(self._next_week)
         header.addWidget(next_btn)
 
-        today_btn = QPushButton("Bugün")
+        today_btn = QPushButton("Bugun")
+        today_btn.setCursor(Qt.PointingHandCursor)
+        today_btn.setFixedHeight(brand.sp(38))
         today_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
-            QPushButton:hover {{ background: {self.theme.get('primary_hover')}; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         today_btn.clicked.connect(self._go_today)
         header.addWidget(today_btn)
 
         layout.addLayout(header)
 
-        # ─── Filtre Çubuğu ───
+        # -- Filtre Cubugu --
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: {brand.R_LG}px;")
         filter_layout = QHBoxLayout(filter_frame)
-        filter_layout.setContentsMargins(16, 12, 16, 12)
+        filter_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
 
         # Departman filtresi
         lbl_dept = QLabel("Departman:")
-        lbl_dept.setStyleSheet(f"color: {self.theme.get('text')};")
+        lbl_dept.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
         filter_layout.addWidget(lbl_dept)
 
         self.dept_combo = QComboBox()
         self.dept_combo.setStyleSheet(self._combo_style())
-        self.dept_combo.setMinimumWidth(150)
+        self.dept_combo.setMinimumWidth(brand.sp(150))
         self.dept_combo.currentIndexChanged.connect(self._on_dept_changed)
         filter_layout.addWidget(self.dept_combo)
 
         # Pozisyon filtresi
         lbl_poz = QLabel("Pozisyon:")
-        lbl_poz.setStyleSheet(f"color: {self.theme.get('text')}; margin-left: 12px;")
+        lbl_poz.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; margin-left: {brand.SP_3}px;")
         filter_layout.addWidget(lbl_poz)
 
         self.poz_combo = QComboBox()
         self.poz_combo.setStyleSheet(self._combo_style())
-        self.poz_combo.setMinimumWidth(150)
+        self.poz_combo.setMinimumWidth(brand.sp(150))
         self.poz_combo.currentIndexChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.poz_combo)
 
         # Vardiya filtresi
         lbl_var = QLabel("Vardiya:")
-        lbl_var.setStyleSheet(f"color: {self.theme.get('text')}; margin-left: 12px;")
+        lbl_var.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; margin-left: {brand.SP_3}px;")
         filter_layout.addWidget(lbl_var)
 
         self.vardiya_combo = QComboBox()
         self.vardiya_combo.setStyleSheet(self._combo_style())
-        self.vardiya_combo.setMinimumWidth(130)
+        self.vardiya_combo.setMinimumWidth(brand.sp(130))
         self.vardiya_combo.currentIndexChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.vardiya_combo)
 
         filter_layout.addStretch()
 
-        # Vardiya renk göstergesi (legend)
+        # Vardiya renk gostergesi (legend)
         legend_layout = QHBoxLayout()
         for vardiya_ad, renk in LEGEND_ITEMS:
-            dot = QLabel("●")
-            dot.setStyleSheet(f"color: {renk}; font-size: 16px;")
+            dot = QLabel("*")
+            dot.setStyleSheet(f"color: {renk}; font-size: {brand.FS_HEADING}px;")
             legend_layout.addWidget(dot)
             lbl = QLabel(vardiya_ad)
-            lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px; margin-right: 12px;")
+            lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px; margin-right: {brand.SP_3}px;")
             legend_layout.addWidget(lbl)
         filter_layout.addLayout(legend_layout)
 
@@ -388,46 +415,33 @@ class IKVardiyaPage(BasePage):
 
         # Excel butonu
         excel_btn = QPushButton("Excel")
-        excel_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
-        """)
+        excel_btn.setCursor(Qt.PointingHandCursor)
+        excel_btn.setFixedHeight(brand.sp(38))
+        excel_btn.setStyleSheet(self._button_style())
         excel_btn.clicked.connect(self._export_excel)
         filter_layout.addWidget(excel_btn)
 
         # PDF butonu
         pdf_btn = QPushButton("PDF")
-        pdf_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
-        """)
+        pdf_btn.setCursor(Qt.PointingHandCursor)
+        pdf_btn.setFixedHeight(brand.sp(38))
+        pdf_btn.setStyleSheet(self._button_style())
         pdf_btn.clicked.connect(self._export_pdf)
         filter_layout.addWidget(pdf_btn)
 
         # Toplu Atama butonu
         toplu_btn = QPushButton("Toplu Atama")
+        toplu_btn.setCursor(Qt.PointingHandCursor)
+        toplu_btn.setFixedHeight(brand.sp(38))
         toplu_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('info', '#3b82f6')};
+                background: {brand.INFO};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
             QPushButton:hover {{ background: #2563eb; }}
         """)
@@ -436,14 +450,17 @@ class IKVardiyaPage(BasePage):
 
         # Kaydet butonu
         self.save_btn = QPushButton("Kaydet")
+        self.save_btn.setCursor(Qt.PointingHandCursor)
+        self.save_btn.setFixedHeight(brand.sp(38))
         self.save_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#10B981')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 20px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
             QPushButton:hover {{ background: #059669; }}
         """)
@@ -452,21 +469,24 @@ class IKVardiyaPage(BasePage):
 
         layout.addWidget(filter_frame)
 
-        # ─── Ana Tablo ───
+        # -- Ana Tablo --
         self.table = QTableWidget()
-        self.table.setColumnCount(10)  # Personel + Departman + Pozisyon + 7 gün
+        self.table.setColumnCount(10)  # Personel + Departman + Pozisyon + 7 gun
         self.table.setStyleSheet(self._table_style())
         self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
 
-        # Sütun genişlikleri
+        # Sutun genislikleri
         self.table.horizontalHeader().setSectionResizeMode(self.COL_PERSONEL, QHeaderView.Stretch)
-        self.table.setColumnWidth(self.COL_DEPARTMAN, 120)
-        self.table.setColumnWidth(self.COL_POZISYON, 120)
+        self.table.setColumnWidth(self.COL_DEPARTMAN, brand.sp(120))
+        self.table.setColumnWidth(self.COL_POZISYON, brand.sp(120))
         for i in range(self.COL_DAY_START, self.COL_DAY_START + 7):
-            self.table.setColumnWidth(i, 110)
+            self.table.setColumnWidth(i, brand.sp(110))
 
         layout.addWidget(self.table, 1)
 
@@ -489,34 +509,46 @@ class IKVardiyaPage(BasePage):
         self._monitor_timer.start(5000)
 
     def _load_departmanlar(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad FROM ik.departmanlar WHERE aktif_mi = 1 ORDER BY ad")
             rows = cursor.fetchall()
-            conn.close()
 
             self._loading = True
             self.dept_combo.clear()
-            self.dept_combo.addItem("Tümü", None)
+            self.dept_combo.addItem("Tumu", None)
             for row in rows:
                 self.dept_combo.addItem(row[1], row[0])
             self._loading = False
         except Exception as e:
             self._loading = False
-            print(f"Departman yükleme hatası: {e}")
+            print(f"Departman yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _load_pozisyonlar_all(self):
-        """Tüm pozisyonları yükle (dahili cache)"""
+        """Tum pozisyonlari yukle (dahili cache)"""
         self._all_pozisyonlar = []  # [(id, ad, departman_id), ...]
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad, departman_id FROM ik.pozisyonlar WHERE aktif_mi = 1 ORDER BY ad")
             self._all_pozisyonlar = cursor.fetchall()
-            conn.close()
         except Exception as e:
-            print(f"Pozisyon yükleme hatası: {e}")
+            print(f"Pozisyon yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         self._update_poz_combo()
 
@@ -533,6 +565,7 @@ class IKVardiyaPage(BasePage):
         self._loading = False
 
     def _load_vardiyalar(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -540,9 +573,14 @@ class IKVardiyaPage(BasePage):
                 "SELECT id, ad, baslangic_saati, bitis_saati FROM tanim.vardiyalar WHERE aktif_mi = 1"
             )
             self.vardiyalar = cursor.fetchall()
-            conn.close()
         except Exception as e:
-            print(f"Vardiya yükleme hatası: {e}")
+            print(f"Vardiya yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
         # Vardiya filtre combo'sunu doldur
         self._loading = True
@@ -553,10 +591,11 @@ class IKVardiyaPage(BasePage):
         self._loading = False
 
     def _load_data(self):
-        """Haftalık verileri yükle ve tabloyu doldur"""
+        """Haftalik verileri yukle ve tabloyu doldur"""
         if self._loading:
             return
 
+        conn = None
         try:
             week_end = self.current_week_start + timedelta(days=6)
 
@@ -576,7 +615,7 @@ class IKVardiyaPage(BasePage):
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # ── Personeller ──
+            # -- Personeller --
             where = ["p.aktif_mi = 1"]
             params = []
 
@@ -629,9 +668,7 @@ class IKVardiyaPage(BasePage):
                     if self.current_week_start <= izin_gun <= week_end:
                         self.izin_map[(row[0], izin_gun)] = True
 
-            conn.close()
-
-            # Değişiklikleri sıfırla
+            # Degisiklikleri sifirla
             self.changes = {}
 
             # Tabloyu doldur
@@ -640,7 +677,13 @@ class IKVardiyaPage(BasePage):
         except Exception as e:
             import traceback
             traceback.print_exc()
-            QMessageBox.critical(self, "Hata", f"Veri yüklenemedi: {e}")
+            QMessageBox.critical(self, "Hata", f"Veri yuklenemedi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _get_filtered_personeller(self):
         """Vardiya filtresine göre personel listesini döndür"""
@@ -683,7 +726,7 @@ class IKVardiyaPage(BasePage):
         for row_idx, per in enumerate(display_personeller):
             per_id, ad_soyad, dept_ad, poz_ad, varsayilan_vardiya_id = per
 
-            self.table.setRowHeight(row_idx, 42)
+            self.table.setRowHeight(row_idx, brand.sp(42))
 
             # Personel adı
             name_item = QTableWidgetItem(ad_soyad)
@@ -694,13 +737,13 @@ class IKVardiyaPage(BasePage):
             # Departman
             dept_item = QTableWidgetItem(dept_ad)
             dept_item.setFlags(dept_item.flags() & ~Qt.ItemIsEditable)
-            dept_item.setForeground(QColor(self.theme.get('text_muted')))
+            dept_item.setForeground(QColor(brand.TEXT_MUTED))
             self.table.setItem(row_idx, self.COL_DEPARTMAN, dept_item)
 
             # Pozisyon
             poz_item = QTableWidgetItem(poz_ad)
             poz_item.setFlags(poz_item.flags() & ~Qt.ItemIsEditable)
-            poz_item.setForeground(QColor(self.theme.get('text_muted')))
+            poz_item.setForeground(QColor(brand.TEXT_MUTED))
             self.table.setItem(row_idx, self.COL_POZISYON, poz_item)
 
             # 7 gün
@@ -729,7 +772,7 @@ class IKVardiyaPage(BasePage):
                         cell.setBackground(renk)
                 else:
                     cell.setText("–")
-                    cell.setForeground(QColor(self.theme.get('text_muted')))
+                    cell.setForeground(QColor(brand.TEXT_MUTED))
 
                 self.table.setItem(row_idx, col, cell)
 
@@ -868,14 +911,14 @@ class IKVardiyaPage(BasePage):
         if vardiya_id is not None:
             vardiya_adi = self._vardiya_adi(vardiya_id)
             item.setText(vardiya_adi)
-            item.setForeground(QColor(self.theme.get('text')))
+            item.setForeground(QColor(brand.TEXT))
             renk = _vardiya_renk(vardiya_adi)
             if renk:
                 item.setBackground(renk)
         else:
             item.setText("–")
-            item.setForeground(QColor(self.theme.get('text_muted')))
-            item.setBackground(QColor(self.theme.get('bg_card')))
+            item.setForeground(QColor(brand.TEXT_MUTED))
+            item.setBackground(QColor(brand.BG_CARD))
 
     # ──────────────────── Tekil Vardiya Değiştirme ────────────────────
 
@@ -900,25 +943,25 @@ class IKVardiyaPage(BasePage):
         # Dialog oluştur
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Vardiya Değiştir - {per_ad}")
-        dialog.setMinimumWidth(350)
+        dialog.setMinimumWidth(brand.sp(350))
         dialog.setModal(True)
         dialog.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_card', '#151B23')}; }}
-            QLabel {{ color: {self.theme.get('text', '#E8ECF1')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; font-family: {brand.FONT_FAMILY}; }}
+            QLabel {{ color: {brand.TEXT}; }}
         """)
 
         dlg_layout = QVBoxLayout(dialog)
-        dlg_layout.setContentsMargins(20, 20, 20, 20)
-        dlg_layout.setSpacing(12)
+        dlg_layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        dlg_layout.setSpacing(brand.SP_3)
 
-        lbl = QLabel(f"{per_ad} için tüm haftanın vardiyasını seçin:")
+        lbl = QLabel(f"{per_ad} icin tum haftanin vardiyasini secin:")
         lbl.setWordWrap(True)
-        lbl.setStyleSheet(f"font-size: 13px; color: {self.theme.get('text')};")
+        lbl.setStyleSheet(f"font-size: {brand.FS_BODY}px; color: {brand.TEXT};")
         dlg_layout.addWidget(lbl)
 
         combo = QComboBox()
         combo.setStyleSheet(self._combo_style())
-        combo.addItem("– (Boş / Kaldır)", None)
+        combo.addItem("- (Bos / Kaldir)", None)
         current_index = 0
         for idx, v in enumerate(self.vardiyalar):
             combo.addItem(v[1], v[0])
@@ -927,9 +970,9 @@ class IKVardiyaPage(BasePage):
         combo.setCurrentIndex(current_index)
         dlg_layout.addWidget(combo)
 
-        # Gün seçimi
-        gun_lbl = QLabel("Uygulanacak günler:")
-        gun_lbl.setStyleSheet(f"font-size: 11px; color: {self.theme.get('text_muted')};")
+        # Gun secimi
+        gun_lbl = QLabel("Uygulanacak gunler:")
+        gun_lbl.setStyleSheet(f"font-size: {brand.FS_CAPTION}px; color: {brand.TEXT_MUTED};")
         dlg_layout.addWidget(gun_lbl)
 
         gun_isimleri = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"]
@@ -937,7 +980,7 @@ class IKVardiyaPage(BasePage):
         gun_cbs = []
         for g in gun_isimleri:
             cb = QCheckBox(g)
-            cb.setStyleSheet(f"color: {self.theme.get('text')};")
+            cb.setStyleSheet(f"color: {brand.TEXT};")
             cb.setChecked(True)
             gun_layout.addWidget(cb)
             gun_cbs.append(cb)
@@ -947,18 +990,24 @@ class IKVardiyaPage(BasePage):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
 
-        cancel_btn = QPushButton("İptal")
+        cancel_btn = QPushButton("Iptal")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(brand.sp(38))
         cancel_btn.setStyleSheet(self._button_style())
         cancel_btn.clicked.connect(dialog.reject)
         btn_layout.addWidget(cancel_btn)
 
         apply_btn = QPushButton("Uygula")
+        apply_btn.setCursor(Qt.PointingHandCursor)
+        apply_btn.setFixedHeight(brand.sp(38))
         apply_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
-                color: white; border: none; border-radius: 6px;
-                padding: 8px 24px; font-weight: bold;
+                background: {brand.PRIMARY};
+                color: white; border: none; border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px; font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY}px;
             }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         apply_btn.clicked.connect(dialog.accept)
         btn_layout.addWidget(apply_btn)
@@ -1033,30 +1082,30 @@ class IKVardiyaPage(BasePage):
                 if vardiya_id is not None:
                     vardiya_adi = self._vardiya_adi(vardiya_id)
                     item.setText(vardiya_adi)
-                    item.setForeground(QColor(self.theme.get('text')))
+                    item.setForeground(QColor(brand.TEXT))
                     renk = _vardiya_renk(vardiya_adi)
                     if renk:
                         item.setBackground(renk)
                 else:
                     item.setText("–")
-                    item.setForeground(QColor(self.theme.get('text_muted')))
-                    item.setBackground(QColor(self.theme.get('bg_card')))
+                    item.setForeground(QColor(brand.TEXT_MUTED))
+                    item.setBackground(QColor(brand.BG_CARD))
 
     # ──────────────────── Kaydetme ────────────────────
 
     def _save_changes(self):
-        """Değişiklikleri veritabanına kaydet"""
+        """Degisiklikleri veritabanina kaydet"""
         if not self.changes:
-            QMessageBox.information(self, "Bilgi", "Kaydedilecek değişiklik yok.")
+            QMessageBox.information(self, "Bilgi", "Kaydedilecek degisiklik yok.")
             return
 
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
             for (per_id, gun), vardiya_id in self.changes.items():
                 if vardiya_id is not None:
-                    # MERGE: varsa güncelle, yoksa ekle
                     cursor.execute("""
                         MERGE ik.vardiya_planlama AS hedef
                         USING (SELECT ? AS personel_id, ? AS tarih) AS kaynak
@@ -1068,7 +1117,6 @@ class IKVardiyaPage(BasePage):
                             VALUES (?, ?, ?);
                     """, (per_id, gun, vardiya_id, per_id, gun, vardiya_id))
                 else:
-                    # Vardiya kaldırma: kaydı sil
                     cursor.execute("""
                         DELETE FROM ik.vardiya_planlama
                         WHERE personel_id = ? AND tarih = ?
@@ -1078,22 +1126,26 @@ class IKVardiyaPage(BasePage):
             degisiklik_sayisi = len(self.changes)
             LogManager.log_update('ik', 'ik.vardiya_planlama', None,
                                   f'Vardiya planlama guncellendi: {degisiklik_sayisi} atama')
-            conn.close()
 
             self.changes = {}
 
             QMessageBox.information(
-                self, "Başarılı",
-                f"{degisiklik_sayisi} vardiya ataması kaydedildi."
+                self, "Basarili",
+                f"{degisiklik_sayisi} vardiya atamasi kaydedildi."
             )
 
-            # Verileri yeniden yükle
             self._load_data()
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            QMessageBox.critical(self, "Hata", f"Kaydetme hatası: {e}")
+            QMessageBox.critical(self, "Hata", f"Kaydetme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     # ──────────────────── Ortak Gruplama ────────────────────
 
@@ -1547,56 +1599,57 @@ class IKVardiyaPage(BasePage):
     # ──────────────────── Canlı Vardiya Monitörü ────────────────────
 
     def _setup_monitor_panel(self, parent_layout):
-        """Canlı vardiya monitör panelini oluştur"""
+        """Canli vardiya monitor panelini olustur"""
         self.monitor_frame = QFrame()
         self.monitor_frame.setObjectName("monitorFrame")
-        self.monitor_frame.setFixedHeight(180)
+        self.monitor_frame.setFixedHeight(brand.sp(180))
         self.monitor_frame.setStyleSheet(f"""
             QFrame#monitorFrame {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 10px;
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
             }}
         """)
 
         m_lay = QVBoxLayout(self.monitor_frame)
-        m_lay.setContentsMargins(16, 12, 16, 12)
-        m_lay.setSpacing(8)
+        m_lay.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+        m_lay.setSpacing(brand.SP_2)
 
-        # Başlık
+        # Baslik
         m_title = QLabel("Aktif Vardiya Durumu")
         m_title.setStyleSheet(
-            f"color: {self.theme.get('text')}; font-weight: bold; font-size: 13px; border: none;"
+            f"color: {brand.TEXT}; font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_BODY}px; border: none;"
         )
         m_lay.addWidget(m_title)
 
-        # Özet kartları
+        # Ozet kartlari
         cards = QHBoxLayout()
-        cards.setSpacing(12)
+        cards.setSpacing(brand.SP_3)
 
         def _card(title, color):
             f = QFrame()
-            f.setFixedSize(180, 52)
+            f.setFixedSize(brand.sp(180), brand.sp(52))
             f.setStyleSheet(
-                f"QFrame {{ background: {self.theme.get('bg_input')}; "
-                f"border-radius: 8px; border-left: 3px solid {color}; }}"
+                f"QFrame {{ background: {brand.BG_INPUT}; "
+                f"border-radius: {brand.R_SM}px; border-left: 3px solid {color}; }}"
             )
             vl = QVBoxLayout(f)
-            vl.setContentsMargins(10, 6, 10, 6)
-            vl.setSpacing(2)
+            vl.setContentsMargins(brand.SP_3, brand.SP_2, brand.SP_3, brand.SP_2)
+            vl.setSpacing(brand.SP_1)
             t = QLabel(title)
-            t.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 10px;")
+            t.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_CAPTION}px;")
             vl.addWidget(t)
-            v = QLabel("–")
-            v.setStyleSheet(f"color: {color}; font-size: 14px; font-weight: bold;")
+            v = QLabel("-")
+            v.setStyleSheet(f"color: {color}; font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_BOLD};")
             vl.addWidget(v)
             cards.addWidget(f)
             return v
 
-        self._mv_vardiya = _card("Vardiya", self.theme.get('primary', '#C41E1E'))
-        self._mv_beklenen = _card("Beklenen", '#3b82f6')
-        self._mv_gelen = _card("Gelen", '#22c55e')
-        self._mv_gelmeyen = _card("Gelmeyen", '#ef4444')
+        self._mv_vardiya = _card("Vardiya", brand.PRIMARY)
+        self._mv_beklenen = _card("Beklenen", brand.INFO)
+        self._mv_gelen = _card("Gelen", brand.SUCCESS)
+        self._mv_gelmeyen = _card("Gelmeyen", brand.ERROR)
 
         cards.addStretch()
         m_lay.addLayout(cards)
@@ -1605,7 +1658,7 @@ class IKVardiyaPage(BasePage):
         self._mv_absent = QLabel("")
         self._mv_absent.setWordWrap(True)
         self._mv_absent.setStyleSheet(
-            f"color: {self.theme.get('text_muted')}; font-size: 12px; border: none;"
+            f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; border: none;"
         )
         m_lay.addWidget(self._mv_absent)
 
@@ -1613,12 +1666,13 @@ class IKVardiyaPage(BasePage):
         parent_layout.addWidget(self.monitor_frame)
 
     def _load_monitor_data(self):
-        """Canlı vardiya monitörünü güncelle"""
+        """Canli vardiya monitorunu guncelle"""
+        conn = None
         try:
             now = datetime.now()
             current_time = now.time()
 
-            # Aktif vardiyayı bul
+            # Aktif vardiyayi bul
             aktif = None
             for v in self.vardiyalar:
                 v_id, v_ad, bas, bit = v
@@ -1677,8 +1731,6 @@ class IKVardiyaPage(BasePage):
             """)
             izinli_ids = {row[0] for row in cursor.fetchall()}
 
-            conn.close()
-
             beklenen = []
             gelenler = []
             gelmeyenler = []
@@ -1704,4 +1756,10 @@ class IKVardiyaPage(BasePage):
                 self._mv_absent.setText("Tüm personel mevcut.")
 
         except Exception as e:
-            print(f"Monitör güncelleme hatası: {e}")
+            print(f"Monitor guncelleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass

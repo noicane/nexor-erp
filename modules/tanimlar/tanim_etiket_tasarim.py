@@ -39,6 +39,7 @@ PT_TO_MM = 25.4 / 72.0  # 0.3527777778
 
 # NAS resim yolu - Ürün görselleri için (config.json'dan)
 from config import NAS_PATHS
+from core.nexor_brand import brand
 NAS_IMAGE_PATH = NAS_PATHS["image_path"]
 NAS_IMAGE_EXTENSIONS = ['.jpg', '.JPG', '.jpeg', '.JPEG', '.png', '.PNG', '.bmp', '.BMP']
 
@@ -75,8 +76,8 @@ class PropertiesPanel(QFrame):
     def _group_style(self):
         return f"""
             QGroupBox {{
-                color: {self.theme.get('text', '#fff')}; font-weight: bold;
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                color: {brand.TEXT}; font-weight: bold;
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px; margin-top: 12px; padding: 12px 8px 8px 8px;
             }}
             QGroupBox::title {{
@@ -87,31 +88,31 @@ class PropertiesPanel(QFrame):
     def _input_style(self):
         return f"""
             QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
-                background: {self.theme.get('bg_input', '#1e2330')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px; padding: 5px 8px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
                 min-height: 24px;
             }}
             QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus {{
-                border-color: {self.theme.get('primary', '#6366f1')};
+                border-color: {brand.PRIMARY};
             }}
-            QCheckBox {{ color: {self.theme.get('text', '#fff')}; spacing: 6px; }}
+            QCheckBox {{ color: {brand.TEXT}; spacing: 6px; }}
             QCheckBox::indicator {{ width: 16px; height: 16px; border-radius: 3px;
-                border: 1px solid {self.theme.get('border', '#3d4454')};
-                background: {self.theme.get('bg_input', '#1e2330')};
+                border: 1px solid {brand.BORDER};
+                background: {brand.BG_INPUT};
             }}
             QCheckBox::indicator:checked {{
-                background: {self.theme.get('primary', '#6366f1')};
-                border-color: {self.theme.get('primary', '#6366f1')};
+                background: {brand.PRIMARY};
+                border-color: {brand.PRIMARY};
             }}
         """
 
     # ── UI Setup ────────────────────────────────────────────────────────
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QFrame {{ background: {self.theme.get('bg_card', '#242938')}; border-radius: 8px; }}
-            QLabel {{ color: {self.theme.get('text', '#fff')}; background: transparent; border: none; }}
+            QFrame {{ background: {brand.BG_CARD}; border-radius: 8px; }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; border: none; }}
         """)
 
         layout = QVBoxLayout(self)
@@ -189,7 +190,7 @@ class PropertiesPanel(QFrame):
         # Empty state
         self.empty_label = QLabel("Bir element seçin\nveya yeni ekleyin")
         self.empty_label.setAlignment(Qt.AlignCenter)
-        self.empty_label.setStyleSheet(f"color: {self.theme.get('text_secondary', '#9ca3af')}; font-size: 13px;")
+        self.empty_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 13px;")
         layout.addWidget(self.empty_label)
 
         self._show_empty()
@@ -419,13 +420,13 @@ class PropertiesPanel(QFrame):
 
         lay.addWidget(QLabel("Dosya:"), 0, 0)
         path_label = QLabel(os.path.basename(elem.get('image_path', '')) or "(Seçilmedi)")
-        path_label.setStyleSheet(f"color: {self.theme.get('text_secondary', '#9ca3af')}; font-size: 11px;")
+        path_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
         lay.addWidget(path_label, 0, 1, 1, 2)
 
         btn = QPushButton("📂 Değiştir")
         btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#6366f1')};
+                background: {brand.PRIMARY};
                 color: white; border: none; border-radius: 4px; padding: 5px 10px;
             }}
             QPushButton:hover {{ background: #818cf8; }}
@@ -471,13 +472,13 @@ class PropertiesPanel(QFrame):
 
         lay.addWidget(QLabel("Kaynak:"), 0, 0)
         src_label = QLabel(f"NAS: {NAS_IMAGE_PATH}")
-        src_label.setStyleSheet(f"color: {self.theme.get('text_secondary', '#9ca3af')}; font-size: 10px;")
+        src_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 10px;")
         src_label.setWordWrap(True)
         lay.addWidget(src_label, 0, 1, 1, 3)
 
         # Info label
         info = QLabel("ℹ️ Yazdırırken stok koduna göre\notomatik olarak NAS'tan çekilir")
-        info.setStyleSheet(f"color: {self.theme.get('text_secondary', '#9ca3af')}; font-size: 11px;")
+        info.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
         info.setWordWrap(True)
         lay.addWidget(info, 1, 0, 1, 4)
 
@@ -492,7 +493,7 @@ class PropertiesPanel(QFrame):
         test_btn.setFixedWidth(36)
         test_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#6366f1')};
+                background: {brand.PRIMARY};
                 color: white; border: none; border-radius: 4px; padding: 5px;
             }}
             QPushButton:hover {{ background: #818cf8; }}
@@ -628,7 +629,7 @@ class DesignCanvas(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
 
-        bg_color = self.theme.get('bg_secondary', '#1a1f2e')
+        bg_color = brand.BG_SURFACE
         self.setStyleSheet(f"QGraphicsView {{ background: {bg_color}; border: none; border-radius: 6px; }}")
 
         QTimer.singleShot(50, self._fit_view)
@@ -1618,7 +1619,7 @@ class EtiketTasarimPage(BasePage):
         # Splitter
         splitter = QSplitter(Qt.Horizontal)
         splitter.setStyleSheet(f"""
-            QSplitter::handle {{ background: {self.theme.get('border', '#3d4454')}; width: 2px; }}
+            QSplitter::handle {{ background: {brand.BORDER}; width: 2px; }}
         """)
 
         # Left - Templates & Tools
@@ -1639,15 +1640,15 @@ class EtiketTasarimPage(BasePage):
         frame.setStyleSheet(f"""
             QFrame {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {self.theme.get('bg_card', '#242938')},
-                    stop:1 {self.theme.get('bg_secondary', '#1e2330')});
+                    stop:0 {brand.BG_CARD},
+                    stop:1 {brand.BG_SURFACE});
                 border-radius: 10px; padding: 12px;
             }}
         """)
         layout = QHBoxLayout(frame)
 
         title = QLabel("🏷️ Etiket Tasarım v3.0")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('text')};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         layout.addStretch()
 
@@ -1661,10 +1662,10 @@ class EtiketTasarimPage(BasePage):
         """
 
         buttons = [
-            ("➕ Yeni", self.theme.get('success', '#22c55e'), self._new_sablon),
-            ("💾 Kaydet", self.theme.get('primary', '#6366f1'), self._save_sablon),
+            ("➕ Yeni", brand.SUCCESS, self._new_sablon),
+            ("💾 Kaydet", brand.PRIMARY, self._save_sablon),
             ("📋 Kopyala", '#0ea5e9', self._duplicate_element),
-            ("👁️ Önizle (PDF)", self.theme.get('warning', '#f59e0b'), self._preview_pdf),
+            ("👁️ Önizle (PDF)", brand.WARNING, self._preview_pdf),
         ]
 
         for text, color, handler in buttons:
@@ -1679,28 +1680,28 @@ class EtiketTasarimPage(BasePage):
     # ── Left panel ─────────────────────────────────────────────────────
     def _create_left_panel(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card', '#242938')}; border-radius: 8px; }}")
+        frame.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border-radius: 8px; }}")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
         # ── Templates ──
         lbl = QLabel("📋 Şablonlar")
-        lbl.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 14px;")
+        lbl.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; font-size: 14px;")
         layout.addWidget(lbl)
 
         self.sablon_list = QListWidget()
         self.sablon_list.setMaximumHeight(160)
         self.sablon_list.setStyleSheet(f"""
             QListWidget {{
-                background: {self.theme.get('bg_input', '#1e2330')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
             }}
-            QListWidget::item {{ padding: 7px; border-bottom: 1px solid {self.theme.get('border', '#3d4454')}; }}
-            QListWidget::item:selected {{ background: {self.theme.get('primary', '#6366f1')}; color: white; }}
-            QListWidget::item:hover {{ background: {self.theme.get('bg_hover', '#2d3548')}; }}
+            QListWidget::item {{ padding: 7px; border-bottom: 1px solid {brand.BORDER}; }}
+            QListWidget::item:selected {{ background: {brand.PRIMARY}; color: white; }}
+            QListWidget::item:hover {{ background: {brand.BG_HOVER}; }}
         """)
         self.sablon_list.itemClicked.connect(self._on_sablon_selected)
         layout.addWidget(self.sablon_list)
@@ -1709,11 +1710,11 @@ class EtiketTasarimPage(BasePage):
         del_tmpl_btn = QPushButton("🗑️ Şablonu Sil")
         del_tmpl_btn.setStyleSheet(f"""
             QPushButton {{
-                background: transparent; color: {self.theme.get('error', '#ef4444')};
-                border: 1px solid {self.theme.get('error', '#ef4444')};
+                background: transparent; color: {brand.ERROR};
+                border: 1px solid {brand.ERROR};
                 border-radius: 4px; padding: 4px 8px; font-size: 11px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('error', '#ef4444')}; color: white; }}
+            QPushButton:hover {{ background: {brand.ERROR}; color: white; }}
         """)
         del_tmpl_btn.clicked.connect(self._delete_sablon)
         layout.addWidget(del_tmpl_btn)
@@ -1722,11 +1723,11 @@ class EtiketTasarimPage(BasePage):
         varsayilan_btn = QPushButton("⭐ Final Kalite Varsayılanı Yap")
         varsayilan_btn.setStyleSheet(f"""
             QPushButton {{
-                background: transparent; color: {self.theme.get('warning', '#f59e0b')};
-                border: 1px solid {self.theme.get('warning', '#f59e0b')};
+                background: transparent; color: {brand.WARNING};
+                border: 1px solid {brand.WARNING};
                 border-radius: 4px; padding: 4px 8px; font-size: 11px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('warning', '#f59e0b')}; color: black; }}
+            QPushButton:hover {{ background: {brand.WARNING}; color: black; }}
         """)
         varsayilan_btn.clicked.connect(self._set_varsayilan)
         layout.addWidget(varsayilan_btn)
@@ -1734,18 +1735,18 @@ class EtiketTasarimPage(BasePage):
         # ── Label Size ──
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet(f"background: {self.theme.get('border', '#3d4454')}; max-height: 1px;")
+        sep.setStyleSheet(f"background: {brand.BORDER}; max-height: 1px;")
         layout.addWidget(sep)
 
         lbl2 = QLabel("📐 Etiket Boyutu")
-        lbl2.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 14px;")
+        lbl2.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; font-size: 14px;")
         layout.addWidget(lbl2)
 
         spin_style = f"""
             QDoubleSpinBox {{
-                background: {self.theme.get('bg_input', '#1e2330')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px; padding: 5px;
             }}
         """
@@ -1773,12 +1774,12 @@ class EtiketTasarimPage(BasePage):
         apply_btn = QPushButton("↻ Boyut Uygula")
         apply_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#1e2330')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px; padding: 5px;
             }}
-            QPushButton:hover {{ border-color: {self.theme.get('primary', '#6366f1')}; }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; }}
         """)
         apply_btn.clicked.connect(self._apply_label_size)
         size_layout.addWidget(apply_btn, 2, 0, 1, 2)
@@ -1788,24 +1789,24 @@ class EtiketTasarimPage(BasePage):
         # ── Tools ──
         sep2 = QFrame()
         sep2.setFrameShape(QFrame.HLine)
-        sep2.setStyleSheet(f"background: {self.theme.get('border', '#3d4454')}; max-height: 1px;")
+        sep2.setStyleSheet(f"background: {brand.BORDER}; max-height: 1px;")
         layout.addWidget(sep2)
 
         lbl3 = QLabel("🧰 Element Ekle")
-        lbl3.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 14px;")
+        lbl3.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; font-size: 14px;")
         layout.addWidget(lbl3)
 
         tool_style = f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#1e2330')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px; padding: 9px 12px;
                 text-align: left; font-weight: 500; font-size: 13px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover', '#2d3548')};
-                border-color: {self.theme.get('primary', '#6366f1')};
+                background: {brand.BG_HOVER};
+                border-color: {brand.PRIMARY};
             }}
         """
 
@@ -1832,7 +1833,7 @@ class EtiketTasarimPage(BasePage):
     # ── Center panel ───────────────────────────────────────────────────
     def _create_center_panel(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card', '#242938')}; border-radius: 8px; }}")
+        frame.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border-radius: 8px; }}")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
@@ -1840,7 +1841,7 @@ class EtiketTasarimPage(BasePage):
         # Title row
         title_row = QHBoxLayout()
         title = QLabel("🎨 Tasarım Alanı")
-        title.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 14px;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; font-size: 14px;")
         title_row.addWidget(title)
         title_row.addStretch()
 
@@ -1848,9 +1849,9 @@ class EtiketTasarimPage(BasePage):
         zoom_in = QPushButton("Yaklas")
         zoom_in.setFixedSize(52, 28)
         zoom_in.setStyleSheet(f"""
-            QPushButton {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')}; border-radius: 4px; font-size: 11px; }}
-            QPushButton:hover {{ border-color: {self.theme.get('primary')}; }}
+            QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: 4px; font-size: 11px; }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; }}
         """)
         zoom_in.clicked.connect(lambda: self.canvas.scale(1.2, 1.2))
         title_row.addWidget(zoom_in)
@@ -1883,7 +1884,7 @@ class EtiketTasarimPage(BasePage):
         # Bottom toolbar
         toolbar = QFrame()
         toolbar.setStyleSheet(f"""
-            QFrame {{ background: {self.theme.get('bg_input', '#1e2330')};
+            QFrame {{ background: {brand.BG_INPUT};
                 border-radius: 6px; padding: 6px; }}
         """)
         tb_layout = QHBoxLayout(toolbar)
@@ -1893,7 +1894,7 @@ class EtiketTasarimPage(BasePage):
         del_btn = QPushButton("🗑️ Seçili Sil")
         del_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('error', '#ef4444')};
+                background: {brand.ERROR};
                 color: white; border: none; border-radius: 4px; padding: 6px 14px;
                 font-weight: bold;
             }}
@@ -1907,11 +1908,11 @@ class EtiketTasarimPage(BasePage):
         clear_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
-                color: {self.theme.get('text_secondary', '#9ca3af')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                color: {brand.TEXT_MUTED};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px; padding: 6px 14px;
             }}
-            QPushButton:hover {{ border-color: {self.theme.get('error', '#ef4444')}; color: {self.theme.get('error', '#ef4444')}; }}
+            QPushButton:hover {{ border-color: {brand.ERROR}; color: {brand.ERROR}; }}
         """)
         clear_btn.clicked.connect(self._clear_all_confirm)
         tb_layout.addWidget(clear_btn)
@@ -1920,7 +1921,7 @@ class EtiketTasarimPage(BasePage):
 
         # Coordinate display
         self.coord_label = QLabel("📍 Hazır")
-        self.coord_label.setStyleSheet(f"color: {self.theme.get('text_secondary', '#9ca3af')}; font-size: 12px;")
+        self.coord_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px;")
         tb_layout.addWidget(self.coord_label)
 
         layout.addWidget(toolbar)

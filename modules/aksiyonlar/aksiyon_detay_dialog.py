@@ -18,6 +18,7 @@ from PySide6.QtGui import QFont, QCursor
 from core.database import execute_query, execute_non_query
 from core.yetki_manager import YetkiManager
 from core.aksiyon_service import AksiyonService
+from core.nexor_brand import brand
 
 
 class AksiyonDetayDialog(QDialog):
@@ -56,9 +57,9 @@ class AksiyonDetayDialog(QDialog):
         title.setStyleSheet(f"""
             font-size: 20px;
             font-weight: 700;
-            color: {self.theme['text']};
+            color: {brand.TEXT};
             padding-bottom: 8px;
-            border-bottom: 2px solid {self.theme['border']};
+            border-bottom: 2px solid {brand.BORDER};
         """)
         layout.addWidget(title)
 
@@ -186,7 +187,7 @@ class AksiyonDetayDialog(QDialog):
 
         # Yorum ekleme alani
         yorum_header = QLabel("Yeni Yorum / İlerleme Notu")
-        yorum_header.setStyleSheet(f"font-weight: 600; font-size: 14px; color: {self.theme['text']};")
+        yorum_header.setStyleSheet(f"font-weight: 600; font-size: 14px; color: {brand.TEXT};")
         layout.addWidget(yorum_header)
 
         self.txt_yorum = QTextEdit()
@@ -205,12 +206,12 @@ class AksiyonDetayDialog(QDialog):
         # Separator
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet(f"background: {self.theme['border']}; max-height: 1px;")
+        sep.setStyleSheet(f"background: {brand.BORDER}; max-height: 1px;")
         layout.addWidget(sep)
 
         # Timeline scroll alani
         timeline_header = QLabel("Aktivite Geçmişi")
-        timeline_header.setStyleSheet(f"font-weight: 600; font-size: 14px; color: {self.theme['text']};")
+        timeline_header.setStyleSheet(f"font-weight: 600; font-size: 14px; color: {brand.TEXT};")
         layout.addWidget(timeline_header)
 
         scroll = QScrollArea()
@@ -384,7 +385,7 @@ class AksiyonDetayDialog(QDialog):
         if not yorumlar:
             empty_label = QLabel("Henüz aktivite kaydı yok")
             empty_label.setAlignment(Qt.AlignCenter)
-            empty_label.setStyleSheet(f"color: {self.theme['text_secondary']}; padding: 20px;")
+            empty_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; padding: 20px;")
             self.timeline_layout.insertWidget(0, empty_label)
             return
 
@@ -512,7 +513,7 @@ class AksiyonDetayDialog(QDialog):
         if not ekler:
             empty_label = QLabel("Henüz dosya eklenmemiş")
             empty_label.setAlignment(Qt.AlignCenter)
-            empty_label.setStyleSheet(f"color: {self.theme['text_secondary']}; padding: 20px;")
+            empty_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; padding: 20px;")
             self.dosya_layout.insertWidget(0, empty_label)
             return
 
@@ -760,7 +761,7 @@ class AksiyonDetayDialog(QDialog):
     def _form_label(self, text: str) -> QLabel:
         """Form etiketi olustur"""
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color: {self.theme['text_secondary']}; font-weight: 500;")
+        lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-weight: 500;")
         return lbl
 
     def _get_dosya_icon(self, dosya_tipi: str) -> str:
@@ -799,68 +800,68 @@ class AksiyonDetayDialog(QDialog):
         """Dialog stillerini uygula"""
         self.setStyleSheet(f"""
             QDialog {{
-                background: {self.theme['bg_main']};
+                background: {brand.BG_MAIN};
             }}
             QLabel {{
-                color: {self.theme['text']};
+                color: {brand.TEXT};
             }}
             QPushButton {{
                 min-width: 80px;
                 padding: 8px 16px;
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                color: {self.theme['text']};
+                color: {brand.TEXT};
                 font-weight: 500;
             }}
             QPushButton:hover {{
-                background: {self.theme['bg_hover']};
+                background: {brand.BG_HOVER};
             }}
             QPushButton[class="primary"] {{
-                background: {self.theme['primary']};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 font-weight: 600;
             }}
             QPushButton[class="primary"]:hover {{
-                background: {self.theme['primary_hover']};
+                background: {brand.PRIMARY_HOVER};
             }}
             QPushButton[class="danger"] {{
-                background: {self.theme['error']};
+                background: {brand.ERROR};
                 color: white;
                 border: none;
                 font-weight: 600;
             }}
             QLineEdit, QTextEdit, QComboBox, QSpinBox, QDateEdit {{
-                background: {self.theme['bg_input']};
-                border: 1px solid {self.theme['border_input']};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
                 padding: 8px 12px;
-                color: {self.theme['text']};
+                color: {brand.TEXT};
             }}
             QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {{
-                border-color: {self.theme['primary']};
+                border-color: {brand.PRIMARY};
             }}
             QTabWidget::pane {{
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 12px;
                 padding: 8px;
             }}
             QTabBar::tab {{
                 background: transparent;
-                color: {self.theme['text_muted']};
+                color: {brand.TEXT_DIM};
                 padding: 10px 20px;
                 border: none;
                 border-bottom: 2px solid transparent;
                 font-weight: 500;
             }}
             QTabBar::tab:hover {{
-                color: {self.theme['text']};
+                color: {brand.TEXT};
             }}
             QTabBar::tab:selected {{
-                color: {self.theme['primary']};
-                border-bottom-color: {self.theme['primary']};
+                color: {brand.PRIMARY};
+                border-bottom-color: {brand.PRIMARY};
             }}
             QScrollArea {{
                 background: transparent;

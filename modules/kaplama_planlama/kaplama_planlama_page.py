@@ -31,6 +31,7 @@ from .widgets import (
     CevrimPlanWidget, optimize_cevrim_plan
 )
 from . import db_operations as db
+from core.nexor_brand import brand
 
 
 # ══════════════════════════════════════════════════════════════
@@ -233,7 +234,7 @@ class KaplamaPlanlamaPage(BasePage):
         main_layout.setSpacing(0)
 
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setStyleSheet(f"QSplitter::handle {{ background: {self.s['border']}; width: 2px; }}")
+        splitter.setStyleSheet(f"QSplitter::handle {{ background: {brand.BORDER}; width: 2px; }}")
 
         left_widget = self._build_left_panel()
         splitter.addWidget(left_widget)
@@ -330,10 +331,10 @@ class KaplamaPlanlamaPage(BasePage):
         grid = QGridLayout()
         grid.setSpacing(CARD_SPACING)
 
-        self.lbl_toplam_aski = self._stat_card("Toplam Yukleme", "0", self.s['info'])
-        self.lbl_toplam_parca = self._stat_card("Toplam Parca", "0", self.s['success'])
-        self.lbl_bara_kullanim = self._stat_card("Bara Kullanim", "%0", self.s['warning'])
-        self.lbl_plan_durum = self._stat_card("Durum", "Taslak", self.s['text_muted'])
+        self.lbl_toplam_aski = self._stat_card("Toplam Yukleme", "0", brand.INFO)
+        self.lbl_toplam_parca = self._stat_card("Toplam Parca", "0", brand.SUCCESS)
+        self.lbl_bara_kullanim = self._stat_card("Bara Kullanim", "%0", brand.WARNING)
+        self.lbl_plan_durum = self._stat_card("Durum", "Taslak", brand.TEXT_DIM)
 
         grid.addWidget(self.lbl_toplam_aski, 0, 0)
         grid.addWidget(self.lbl_toplam_parca, 0, 1)
@@ -422,7 +423,7 @@ class KaplamaPlanlamaPage(BasePage):
         parent_layout.addWidget(self.recete_widget)
 
         self.lbl_recete_toplam = QLabel("Urun secin")
-        self.lbl_recete_toplam.setStyleSheet(f"color: {self.s['text_muted']}; font-size: {LABEL_SIZE}px;")
+        self.lbl_recete_toplam.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {LABEL_SIZE}px;")
         parent_layout.addWidget(self.lbl_recete_toplam)
 
     # ── SAG PANEL ──
@@ -805,7 +806,7 @@ class KaplamaPlanlamaPage(BasePage):
     def _section_label(self, parent, text: str):
         lbl = QLabel(text.upper())
         lbl.setStyleSheet(f"""
-            color: {self.s['text_muted']};
+            color: {brand.TEXT_DIM};
             font-size: {LABEL_SIZE}px;
             font-weight: 600;
             letter-spacing: 1px;
@@ -953,7 +954,7 @@ class KaplamaPlanlamaPage(BasePage):
 
         if not self.banyo_cards:
             lbl = QLabel("PLC verisi bekleniyor...")
-            lbl.setStyleSheet(f"color: {self.s['text_muted']}; font-size: {SMALL_SIZE}px; padding: 20px;")
+            lbl.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {SMALL_SIZE}px; padding: 20px;")
             lbl.setAlignment(Qt.AlignCenter)
             self.banyo_cards_layout.addWidget(lbl)
 
@@ -1743,7 +1744,7 @@ class UrunEkleDialog(QDialog):
         self.setWindowTitle("Stok Kartindan Urun Ekle")
         self.setMinimumSize(650, 580)
         self.setModal(True)
-        self.setStyleSheet(f"QDialog {{ background: {self.s['card_bg']}; color: {self.s['text']}; }}")
+        self.setStyleSheet(f"QDialog {{ background: {brand.BG_CARD}; color: {brand.TEXT}; }}")
         self._setup_ui()
 
     def _setup_ui(self):
@@ -1926,7 +1927,7 @@ class UrunEkleDialog(QDialog):
         self.selected_urun = s
 
         self.lbl_secilen.setText(f"Secilen: {s['urun_kodu']} - {s['urun_adi'] or ''}")
-        self.lbl_secilen.setStyleSheet(f"color: {self.s['success']}; font-size: {SMALL_SIZE}px; font-weight: 600; padding: 2px;")
+        self.lbl_secilen.setStyleSheet(f"color: {brand.SUCCESS}; font-size: {SMALL_SIZE}px; font-weight: 600; padding: 2px;")
 
         self.findChild(QLabel, "info_recete").setText(s['recete_no'] or '-')
         self.findChild(QLabel, "info_kaplama").setText(s['kaplama_adi'] or '-')
@@ -1990,10 +1991,10 @@ class UrunEkleDialog(QDialog):
             self.lbl_cevrim_info.setText(
                 f"PLC'den hesaplanan: {tanim['toplam_sure_dk']} dk (adim toplami)"
             )
-            self.lbl_cevrim_info.setStyleSheet(f"color: {self.s['success']}; font-size: {LABEL_SIZE}px;")
+            self.lbl_cevrim_info.setStyleSheet(f"color: {brand.SUCCESS}; font-size: {LABEL_SIZE}px;")
         else:
             self.lbl_cevrim_info.setText("PLC verisi bulunamadi - manuel girin")
-            self.lbl_cevrim_info.setStyleSheet(f"color: {self.s['warning']}; font-size: {LABEL_SIZE}px;")
+            self.lbl_cevrim_info.setStyleSheet(f"color: {brand.WARNING}; font-size: {LABEL_SIZE}px;")
 
     def _on_ekle(self):
         if not self.selected_urun:

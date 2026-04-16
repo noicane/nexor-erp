@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 from datetime import datetime
 
 
@@ -38,15 +39,15 @@ class MalKabulSatirDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px;
+                color: {brand.TEXT};
             }}
-            QGroupBox {{ color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; margin-top: 10px; padding-top: 10px; }}
+            QGroupBox {{ color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_MD}px; margin-top: {brand.SP_3}px; padding-top: {brand.SP_3}px; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -78,7 +79,7 @@ class MalKabulSatirDialog(QDialog):
         
         # Lot/Parti Bilgileri
         lbl_lot = QLabel("📦 Lot / Parti Bilgileri")
-        lbl_lot.setStyleSheet(f"font-weight: bold; color: {self.theme.get('primary')}; margin-top: 10px;")
+        lbl_lot.setStyleSheet(f"font-weight: {brand.FW_BOLD}; color: {brand.PRIMARY}; margin-top: {brand.SP_3}px;")
         layout.addWidget(lbl_lot)
         
         form2 = QFormLayout()
@@ -99,7 +100,7 @@ class MalKabulSatirDialog(QDialog):
         
         # Tarihler
         lbl_tarih = QLabel("📅 Tarih Bilgileri")
-        lbl_tarih.setStyleSheet(f"font-weight: bold; color: {self.theme.get('primary')}; margin-top: 10px;")
+        lbl_tarih.setStyleSheet(f"font-weight: {brand.FW_BOLD}; color: {brand.PRIMARY}; margin-top: {brand.SP_3}px;")
         layout.addWidget(lbl_tarih)
         
         form3 = QFormLayout()
@@ -120,13 +121,13 @@ class MalKabulSatirDialog(QDialog):
         
         # Sertifika
         lbl_sertifika = QLabel("📄 Sertifika Bilgileri")
-        lbl_sertifika.setStyleSheet(f"font-weight: bold; color: {self.theme.get('primary')}; margin-top: 10px;")
+        lbl_sertifika.setStyleSheet(f"font-weight: {brand.FW_BOLD}; color: {brand.PRIMARY}; margin-top: {brand.SP_3}px;")
         layout.addWidget(lbl_sertifika)
         
         form4 = QFormLayout()
         
         self.chk_sertifika = QCheckBox("Sertifika Mevcut")
-        self.chk_sertifika.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.chk_sertifika.setStyleSheet(f"color: {brand.TEXT};")
         form4.addRow("", self.chk_sertifika)
         
         self.txt_sertifika_no = QLineEdit()
@@ -160,12 +161,12 @@ class MalKabulSatirDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_5}px; border-radius: {brand.R_SM}px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 20px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_3}px {brand.SP_5}px; border-radius: {brand.R_SM}px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -311,17 +312,17 @@ class MalKabulDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px;
+                color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_5}px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -365,7 +366,7 @@ class MalKabulDialog(QDialog):
         
         self.chk_kalite = QCheckBox("Kalite Kontrol Gerekli")
         self.chk_kalite.setChecked(True)
-        self.chk_kalite.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.chk_kalite.setStyleSheet(f"color: {brand.TEXT};")
         genel_layout.addRow("", self.chk_kalite)
         
         self.txt_notlar = QTextEdit()
@@ -380,17 +381,17 @@ class MalKabulDialog(QDialog):
         
         toolbar = QHBoxLayout()
         btn_ekle = QPushButton("➕ Kalem Ekle")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_ekle.clicked.connect(self._add_satir)
         toolbar.addWidget(btn_ekle)
         
         btn_duzenle = QPushButton("✏️ Düzenle")
-        btn_duzenle.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 16px; border-radius: 6px;")
+        btn_duzenle.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_duzenle.clicked.connect(self._edit_satir)
         toolbar.addWidget(btn_duzenle)
         
         btn_sil = QPushButton("🗑️ Sil")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_sil.clicked.connect(self._delete_satir)
         toolbar.addWidget(btn_sil)
         toolbar.addStretch()
@@ -401,7 +402,7 @@ class MalKabulDialog(QDialog):
         self.table_satirlar.setHorizontalHeaderLabels(["ID", "Ürün", "Miktar", "Birim", "Lot No", "Parti No", "SKT", "Sertifika", "Kalite"])
         self.table_satirlar.setColumnHidden(0, True)
         self.table_satirlar.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table_satirlar.setStyleSheet(f"QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; }}")
+        self.table_satirlar.setStyleSheet(f"QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; }}")
         header = self.table_satirlar.horizontalHeader()
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         self.table_satirlar.setColumnWidth(2, 80)
@@ -422,18 +423,18 @@ class MalKabulDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 24px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
         if self.kabul_id:
             btn_kalite = QPushButton("🔬 Kalite Kontrole Gönder")
-            btn_kalite.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; padding: 10px 24px; border-radius: 6px;")
+            btn_kalite.setStyleSheet(f"background: {brand.PRIMARY}; color: white; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
             btn_kalite.clicked.connect(self._send_to_quality)
             btn_layout.addWidget(btn_kalite)
         
@@ -586,17 +587,17 @@ class MalKabulDialog(QDialog):
                 self.table_satirlar.setItem(i, 6, QTableWidgetItem(row[6] or "-"))
                 
                 sertifika_item = QTableWidgetItem("✓" if row[7] else "✗")
-                sertifika_item.setForeground(QColor(self.theme.get('success') if row[7] else self.theme.get('danger')))
+                sertifika_item.setForeground(QColor(brand.SUCCESS if row[7] else brand.ERROR))
                 self.table_satirlar.setItem(i, 7, sertifika_item)
                 
                 kalite = row[8] or "BEKLIYOR"
                 kalite_item = QTableWidgetItem(kalite)
                 if kalite == "ONAYLANDI":
-                    kalite_item.setForeground(QColor(self.theme.get('success')))
+                    kalite_item.setForeground(QColor(brand.SUCCESS))
                 elif kalite == "REDDEDILDI":
-                    kalite_item.setForeground(QColor(self.theme.get('danger')))
+                    kalite_item.setForeground(QColor(brand.ERROR))
                 else:
-                    kalite_item.setForeground(QColor(self.theme.get('warning')))
+                    kalite_item.setForeground(QColor(brand.WARNING))
                 self.table_satirlar.setItem(i, 8, kalite_item)
         except Exception: pass
     
@@ -712,20 +713,20 @@ class MalKabulPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
         
         header = QLabel("📥 Mal Kabul (Giriş Kabul)")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: {brand.FS_HEADING_LG}px; font-weight: {brand.FW_BOLD}; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: {brand.R_MD}px;")
         toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(16, 12, 16, 12)
+        toolbar_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
         
         btn_yeni = QPushButton("➕ Yeni Mal Kabul")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px; font-weight: {brand.FW_BOLD};")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
 
@@ -733,12 +734,12 @@ class MalKabulPage(BasePage):
         
         self.cmb_durum = QComboBox()
         self.cmb_durum.addItems(["Tümü", "KABUL_EDILDI", "KALITE_KONTROLDE", "ONAYLANDI", "REDDEDILDI"])
-        self.cmb_durum.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text')};")
+        self.cmb_durum.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px; color: {brand.TEXT};")
         self.cmb_durum.currentIndexChanged.connect(self._filter)
         toolbar_layout.addWidget(self.cmb_durum)
         
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 16px; color: {self.theme.get('text')};")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_4}px; color: {brand.TEXT};")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -751,9 +752,9 @@ class MalKabulPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_MD}px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px; font-weight: {brand.FW_BOLD}; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(3, QHeaderView.Stretch)
@@ -768,7 +769,7 @@ class MalKabulPage(BasePage):
         layout.addWidget(self.table)
         
         self.lbl_stat = QLabel()
-        self.lbl_stat.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_stat.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.lbl_stat)
     
     def _load_data(self):
@@ -797,11 +798,11 @@ class MalKabulPage(BasePage):
                 if j == 6:  # Durum
                     item = QTableWidgetItem(str(val) if val else "")
                     if val == "ONAYLANDI":
-                        item.setForeground(QColor(self.theme.get('success')))
+                        item.setForeground(QColor(brand.SUCCESS))
                     elif val == "REDDEDILDI":
-                        item.setForeground(QColor(self.theme.get('danger')))
+                        item.setForeground(QColor(brand.ERROR))
                     elif val == "KALITE_KONTROLDE":
-                        item.setForeground(QColor(self.theme.get('warning')))
+                        item.setForeground(QColor(brand.WARNING))
                 elif j == 7:  # Kalite gerekli
                     item = QTableWidgetItem("Evet" if val else "Hayır")
                 else:

@@ -19,6 +19,7 @@ import os
 from datetime import datetime
 from typing import Optional, Callable, Any
 
+from core.nexor_brand import brand
 from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QWidget,
     QHBoxLayout, QVBoxLayout, QPushButton, QAbstractItemView,
@@ -124,25 +125,25 @@ class LoadingOverlay(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         self.label = QLabel("Yükleniyor...")
-        self.label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
+        self.label.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY_LG}px; font-weight: bold;")
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label)
-        
+
         self.progress = QProgressBar()
         self.progress.setFixedWidth(200)
         self.progress.setTextVisible(False)
         self.progress.setRange(0, 0)  # Indeterminate
-        self.progress.setStyleSheet("""
-            QProgressBar {
+        self.progress.setStyleSheet(f"""
+            QProgressBar {{
                 border: none;
-                border-radius: 4px;
+                border-radius: {brand.R_SM}px;
                 background: rgba(255,255,255,0.2);
                 height: 6px;
-            }
-            QProgressBar::chunk {
-                background: #3b82f6;
-                border-radius: 4px;
-            }
+            }}
+            QProgressBar::chunk {{
+                background: {brand.INFO};
+                border-radius: {brand.R_SM}px;
+            }}
         """)
         layout.addWidget(self.progress)
         
@@ -175,17 +176,17 @@ class EmptyStateWidget(QWidget):
         
         self.message_label = QLabel("Görüntülenecek veri bulunamadı")
         self.message_label.setStyleSheet(f"""
-            color: {theme.get('text_muted', '#64748b')};
-            font-size: 14px;
-            margin-top: 8px;
+            color: {brand.TEXT_DIM};
+            font-size: {brand.FS_BODY_LG}px;
+            margin-top: {brand.SP_2}px;
         """)
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.message_label)
-        
+
         self.sub_label = QLabel("")
         self.sub_label.setStyleSheet(f"""
-            color: {theme.get('text_muted', '#64748b')};
-            font-size: 12px;
+            color: {brand.TEXT_DIM};
+            font-size: {brand.FS_BODY_SM}px;
         """)
         self.sub_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.sub_label)
@@ -218,24 +219,24 @@ class PaginationWidget(QFrame):
     def _setup_ui(self):
         self.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_card', '#1e293b')};
-                border: 1px solid {self.theme.get('border', '#334155')};
-                border-radius: 8px;
-                padding: 4px;
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                padding: {brand.SP_1}px;
             }}
         """)
-        
+
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 6, 12, 6)
-        layout.setSpacing(8)
-        
-        # Sol: Kayıt bilgisi
+        layout.setContentsMargins(brand.SP_3, brand.SP_2, brand.SP_3, brand.SP_2)
+        layout.setSpacing(brand.SP_2)
+
+        # Sol: Kayit bilgisi
         self.info_label = QLabel()
-        self.info_label.setStyleSheet(f"color: {self.theme.get('text_secondary', '#94a3b8')}; font-size: 12px;")
+        self.info_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
         layout.addWidget(self.info_label)
-        
+
         layout.addStretch()
-        
+
         # Orta: Sayfa boyutu
         layout.addWidget(QLabel("Sayfa:"))
         self.page_size_combo = QComboBox()
@@ -245,51 +246,51 @@ class PaginationWidget(QFrame):
         self.page_size_combo.setCurrentText(str(self.page_size))
         self.page_size_combo.currentIndexChanged.connect(self._on_page_size_changed)
         layout.addWidget(self.page_size_combo)
-        
-        layout.addSpacing(20)
-        
-        # Sağ: Navigasyon butonları
+
+        layout.addSpacing(brand.SP_5)
+
+        # Sag: Navigasyon butonlari
         btn_style = f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#1e293b')};
-                border: 1px solid {self.theme.get('border', '#334155')};
-                border-radius: 4px;
-                padding: 4px 8px;
-                color: {self.theme.get('text', '#ffffff')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_1}px {brand.SP_2}px;
+                color: {brand.TEXT};
                 min-width: 28px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover', '#334155')};
-                border-color: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.BG_HOVER};
+                border-color: {brand.PRIMARY};
             }}
             QPushButton:disabled {{
-                color: {self.theme.get('text_muted', '#64748b')};
+                color: {brand.TEXT_DISABLED};
             }}
         """
-        
-        self.btn_first = QPushButton("⏮")
-        self.btn_first.setToolTip("İlk Sayfa")
+
+        self.btn_first = QPushButton("\u23ee")
+        self.btn_first.setToolTip("Ilk Sayfa")
         self.btn_first.setStyleSheet(btn_style)
         self.btn_first.clicked.connect(lambda: self.go_to_page(1))
         layout.addWidget(self.btn_first)
-        
-        self.btn_prev = QPushButton("◀")
-        self.btn_prev.setToolTip("Önceki Sayfa")
+
+        self.btn_prev = QPushButton("\u25c0")
+        self.btn_prev.setToolTip("Onceki Sayfa")
         self.btn_prev.setStyleSheet(btn_style)
         self.btn_prev.clicked.connect(lambda: self.go_to_page(self.current_page - 1))
         layout.addWidget(self.btn_prev)
-        
+
         self.page_label = QLabel("1 / 1")
-        self.page_label.setStyleSheet(f"color: {self.theme.get('text', '#ffffff')}; font-weight: bold; margin: 0 8px;")
+        self.page_label.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; margin: 0 {brand.SP_2}px;")
         layout.addWidget(self.page_label)
-        
-        self.btn_next = QPushButton("▶")
+
+        self.btn_next = QPushButton("\u25b6")
         self.btn_next.setToolTip("Sonraki Sayfa")
         self.btn_next.setStyleSheet(btn_style)
         self.btn_next.clicked.connect(lambda: self.go_to_page(self.current_page + 1))
         layout.addWidget(self.btn_next)
-        
-        self.btn_last = QPushButton("⏭")
+
+        self.btn_last = QPushButton("\u23ed")
         self.btn_last.setToolTip("Son Sayfa")
         self.btn_last.setStyleSheet(btn_style)
         self.btn_last.clicked.connect(lambda: self.go_to_page(self.total_pages))
@@ -360,30 +361,26 @@ class SearchFilterWidget(QFrame):
         self._setup_ui()
     
     def _setup_ui(self):
-        self.setStyleSheet(f"""
-            QFrame {{
-                background: transparent;
-            }}
-        """)
-        
+        self.setStyleSheet("QFrame { background: transparent; }")
+
         self.layout = QHBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(12)
-        
+        self.layout.setSpacing(brand.SP_3)
+
         # Arama kutusu
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Ara...")
+        self.search_input.setPlaceholderText("\U0001f50d Ara...")
         self.search_input.setFixedWidth(250)
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input', '#1e293b')};
-                border: 1px solid {self.theme.get('border', '#334155')};
-                border-radius: 8px;
-                padding: 8px 12px;
-                color: {self.theme.get('text', '#ffffff')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
             }}
             QLineEdit:focus {{
-                border-color: {self.theme.get('primary', '#3b82f6')};
+                border-color: {brand.PRIMARY};
             }}
         """)
         
@@ -417,11 +414,11 @@ class SearchFilterWidget(QFrame):
         combo.setFixedWidth(150)
         combo.setStyleSheet(f"""
             QComboBox {{
-                background: {self.theme.get('bg_input', '#1e293b')};
-                border: 1px solid {self.theme.get('border', '#334155')};
-                border-radius: 8px;
-                padding: 8px 12px;
-                color: {self.theme.get('text', '#ffffff')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
             }}
         """)
         
@@ -538,74 +535,74 @@ class StyledTable(QTableWidget):
         self._setup_signals()
     
     def _apply_style(self):
-        """Tema bazlı stil uygula"""
+        """Brand bazli stil uygula"""
         self.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card_solid', '#1e293b')};
-                border: 1px solid {self.theme.get('border', '#334155')};
-                border-radius: 12px;
-                gridline-color: {self.theme.get('border', '#334155')};
-                color: {self.theme.get('text', '#ffffff')};
-                font-size: 12px;
-                selection-background-color: {self.theme.get('primary', '#3b82f6')}40;
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY_SM}px;
+                selection-background-color: {brand.PRIMARY_SOFT};
                 outline: none;
             }}
             QTableWidget::item {{
-                padding: 8px;
-                border-bottom: 1px solid {self.theme.get('border', '#334155')};
+                padding: {brand.SP_2}px;
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background: {self.theme.get('primary', '#3b82f6')}40;
-                color: {self.theme.get('text', '#ffffff')};
+                background: {brand.PRIMARY_SOFT};
+                color: {brand.TEXT};
             }}
             QTableWidget::item:hover {{
-                background: {self.theme.get('bg_hover', 'rgba(51, 65, 85, 0.5)')};
+                background: {brand.BG_HOVER};
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_sidebar', '#1e293b')};
-                color: {self.theme.get('text', '#ffffff')};
-                padding: 10px 8px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT};
+                padding: {brand.SP_3}px {brand.SP_2}px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary', '#3b82f6')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
-                font-size: 12px;
+                font-size: {brand.FS_BODY_SM}px;
             }}
             QHeaderView::section:hover {{
-                background: {self.theme.get('bg_hover', '#334155')};
+                background: {brand.BG_HOVER};
             }}
             QTableCornerButton::section {{
-                background: {self.theme.get('bg_sidebar', '#1e293b')};
+                background: {brand.BG_SURFACE};
                 border: none;
             }}
             QScrollBar:vertical {{
-                background: {self.theme.get('bg_card', '#1e293b')};
+                background: {brand.BG_CARD};
                 width: 10px;
                 border-radius: 5px;
                 margin: 0;
             }}
             QScrollBar::handle:vertical {{
-                background: {self.theme.get('scrollbar_thumb', '#475569')};
+                background: {brand.BORDER_HARD};
                 border-radius: 5px;
                 min-height: 30px;
             }}
             QScrollBar::handle:vertical:hover {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0px;
             }}
             QScrollBar:horizontal {{
-                background: {self.theme.get('bg_card', '#1e293b')};
+                background: {brand.BG_CARD};
                 height: 10px;
                 border-radius: 5px;
             }}
             QScrollBar::handle:horizontal {{
-                background: {self.theme.get('scrollbar_thumb', '#475569')};
+                background: {brand.BORDER_HARD};
                 border-radius: 5px;
                 min-width: 30px;
             }}
             QScrollBar::handle:horizontal:hover {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
             }}
             QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
                 width: 0px;
@@ -1014,7 +1011,7 @@ class StyledTable(QTableWidget):
             "view": "#8B5CF6",
             "print": "#6366F1",
             "photo": "#0EA5E9",
-            "primary": self.theme.get('primary', '#C41E1E'),
+            "primary": brand.PRIMARY,
             "success": "#10B981",
             "danger": "#EF4444",
             "warning": "#F59E0B",
@@ -1070,11 +1067,11 @@ class StyledTable(QTableWidget):
         item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         
         status_colors = {
-            "success": (self.theme.get('success', '#22c55e'), "#ffffff"),
-            "warning": (self.theme.get('warning', '#f59e0b'), "#000000"),
-            "danger": (self.theme.get('error', '#ef4444'), "#ffffff"),
-            "info": ("#17a2b8", "#ffffff"),
-            "default": (self.theme.get('bg_hover', '#334155'), self.theme.get('text', '#ffffff')),
+            "success": (brand.SUCCESS, brand.TEXT_INVERSE),
+            "warning": (brand.WARNING, brand.TEXT_INVERSE),
+            "danger": (brand.ERROR, brand.TEXT_INVERSE),
+            "info": (brand.INFO, brand.TEXT_INVERSE),
+            "default": (brand.BG_HOVER, brand.TEXT),
         }
         
         bg, fg = status_colors.get(status, status_colors["default"])
@@ -1092,23 +1089,23 @@ class StyledTable(QTableWidget):
         menu = QMenu(self)
         menu.setStyleSheet(f"""
             QMenu {{
-                background: {self.theme.get('bg_card_solid', '#1e293b')};
-                border: 1px solid {self.theme.get('border', '#334155')};
-                border-radius: 8px;
-                padding: 4px;
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                padding: {brand.SP_1}px;
             }}
             QMenu::item {{
-                padding: 8px 24px;
-                color: {self.theme.get('text', '#ffffff')};
+                padding: {brand.SP_2}px {brand.SP_6}px;
+                color: {brand.TEXT};
             }}
             QMenu::item:selected {{
-                background: {self.theme.get('primary', '#3b82f6')};
-                border-radius: 4px;
+                background: {brand.PRIMARY};
+                border-radius: {brand.R_SM}px;
             }}
             QMenu::separator {{
                 height: 1px;
-                background: {self.theme.get('border', '#334155')};
-                margin: 4px 8px;
+                background: {brand.BORDER};
+                margin: {brand.SP_1}px {brand.SP_2}px;
             }}
         """)
         

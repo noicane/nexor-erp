@@ -105,6 +105,83 @@ def _get_zirve_cari(zirve_cursor, crk: str) -> Optional[dict]:
     return None
 
 
+def _musteri_email_gonder(cari_email: str, cari_adi: str, irsaliye_id: int,
+                          irsaliye_no: str, evrakno: str) -> str:
+    """
+    Zirve aktarimi sonrasi musteriye irsaliye + kalite raporlarini email ile gonder.
+    Returns: durum mesaji
+    """
+    try:
+        from utils.email_service import get_email_service
+        from utils.final_kalite_raporu_pdf import batch_final_kalite_raporu
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.base import MIMEBase
+        from email import encoders
+        import os
+
+        es = get_email_service()
+        if not es.ayarlar:
+            return "\nEmail ayarlari yapilandirilmamis"
+
+        # Kalite raporlarini olustur
+        sonuclar = batch_final_kalite_raporu(irsaliye_id)
+        rapor_pdfler = [path for lot, path in sonuclar if not str(path).startswith("HATA")]
+
+        # Email olustur
+        msg = MIMEMultipart()
+        msg['From'] = f"{es.ayarlar['gonderen_adi']} <{es.ayarlar['gonderen_email']}>"
+        msg['To'] = cari_email
+        msg['Subject'] = f"Sevkiyat - {irsaliye_no} - ATLAS KATAFOREZ"
+
+        body = f"""Sayin {cari_adi},
+
+{irsaliye_no} numarali sevkiyatimiza ait kalite kontrol raporlari ekte gonderilmistir.
+
+Zirve Evrak No: {evrakno}
+Toplam Rapor: {len(rapor_pdfler)} adet
+
+Iyi calismalar dileriz.
+
+Saygilarimizla,
+ATLAS KATAFOREZ
+"""
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+        # Kalite raporlarini ekle
+        for pdf_path in rapor_pdfler:
+            try:
+                with open(pdf_path, 'rb') as f:
+                    part = MIMEBase('application', 'pdf')
+                    part.set_payload(f.read())
+                    encoders.encode_base64(part)
+                    part.add_header('Content-Disposition',
+                                    f'attachment; filename="{os.path.basename(pdf_path)}"')
+                    msg.attach(part)
+            except Exception as ek_err:
+                print(f"[Zirve] PDF ek hatasi {pdf_path}: {ek_err}")
+
+        # SMTP ile gonder
+        if es.ayarlar['smtp_ssl'] and es.ayarlar['smtp_port'] == 465:
+            server = smtplib.SMTP_SSL(es.ayarlar['smtp_server'],
+                                      es.ayarlar['smtp_port'], timeout=20)
+        else:
+            server = smtplib.SMTP(es.ayarlar['smtp_server'],
+                                  es.ayarlar['smtp_port'], timeout=20)
+            if es.ayarlar['smtp_ssl']:
+                server.starttls()
+        if es.ayarlar['gonderen_sifre']:
+            server.login(es.ayarlar['gonderen_email'], es.ayarlar['gonderen_sifre'])
+        server.send_message(msg)
+        server.quit()
+
+        return f"\nEmail gonderildi: {cari_email} ({len(rapor_pdfler)} rapor)"
+
+    except Exception as e:
+        return f"\nEmail hatasi: {e}"
+
+
 def _sonraki_evrakno(zirve_cursor) -> str:
     """Zirve'deki son EVRAKNO'dan sonraki numarayı üret (IRO serisi)"""
     yil = datetime.now().year
@@ -315,9 +392,17 @@ def irsaliye_aktar(irsaliye_id: int) -> ZirveAktarimSonuc:
                 }
 
         for idx, (stok_kodu, data) in enumerate(toplanan.items()):
-            lot_no = ', '.join(data['lot_no_list'][:3])  # Max 3 lot goster
-            if len(data['lot_no_list']) > 3:
-                lot_no += f" +{len(data['lot_no_list'])-3}"
+            # LOTNO max 30 karakter (Zirve siniri)
+            if data['lot_no_list']:
+                if len(data['lot_no_list']) == 1:
+                    lot_no = str(data['lot_no_list'][0])[:30]
+                else:
+                    # Coklu lot: ilk lot + adet
+                    ilk = str(data['lot_no_list'][0])
+                    suffix = f" +{len(data['lot_no_list'])-1}"
+                    lot_no = ilk[:30 - len(suffix)] + suffix
+            else:
+                lot_no = ''
             miktar = data['miktar']
             stok_adi = data['stok_adi']
             birim = data['birim']
@@ -449,6 +534,50 @@ def irsaliye_aktar(irsaliye_id: int) -> ZirveAktarimSonuc:
 
         nexor_conn.commit()
 
+        # 13) Musteriye email gonder (irsaliye PDF + kalite raporlari)
+        # Yetkililerden fkk_mail_alacak veya irsaliye_mail_alacak olanlari topla
+        email_mesaj = ""
+        try:
+            nexor_cursor.execute("""
+                SELECT cy.email, cy.ad_soyad
+                FROM musteri.cari_yetkililer cy
+                JOIN musteri.cariler c ON cy.cari_id = c.id
+                WHERE c.zirve_cari_kodu = ?
+                  AND cy.aktif_mi = 1
+                  AND (cy.silindi_mi = 0 OR cy.silindi_mi IS NULL)
+                  AND cy.email IS NOT NULL AND cy.email LIKE '%@%'
+                  AND (cy.fkk_mail_alacak = 1 OR cy.irsaliye_mail_alacak = 1)
+            """, (zirve_cari_kodu,))
+            yetkili_emails = [(r[0].strip(), r[1] or '') for r in nexor_cursor.fetchall()]
+
+            # Yetkili yoksa cari ana email'ine de bak
+            if not yetkili_emails:
+                nexor_cursor.execute("SELECT email FROM musteri.cariler WHERE zirve_cari_kodu = ?", (zirve_cari_kodu,))
+                cari_row = nexor_cursor.fetchone()
+                if cari_row and cari_row[0] and '@' in str(cari_row[0]):
+                    yetkili_emails = [(cari_row[0].strip(), cari['unvan'])]
+
+            if yetkili_emails:
+                gonderilen = []
+                for email_adr, isim in yetkili_emails:
+                    sonuc = _musteri_email_gonder(
+                        cari_email=email_adr,
+                        cari_adi=cari['unvan'],
+                        irsaliye_id=irsaliye_id,
+                        irsaliye_no=irsaliye_no,
+                        evrakno=evrakno,
+                    )
+                    if 'gonderildi' in sonuc.lower() or 'gonderildi' in sonuc:
+                        gonderilen.append(email_adr)
+                email_mesaj = f"\nEmail gonderildi: {len(gonderilen)} alici"
+                if gonderilen:
+                    email_mesaj += f"\n  " + "\n  ".join(gonderilen)
+            else:
+                email_mesaj = f"\nMail alacak yetkili bulunamadi ({zirve_cari_kodu})"
+        except Exception as em_err:
+            email_mesaj = f"\nEmail gonderim hatasi: {em_err}"
+            print(f"[Zirve] Email hatasi: {em_err}")
+
         nexor_conn.close()
 
         return ZirveAktarimSonuc(
@@ -461,7 +590,7 @@ def irsaliye_aktar(irsaliye_id: int) -> ZirveAktarimSonuc:
                   f"Zirve Evrak No: {evrakno}\n"
                   f"Zirve SIRANO: {sirano}\n"
                   f"Müşteri: {cari['unvan']}\n"
-                  f"Satır: {len(satirlar)} kalem"
+                  f"Satır: {len(satirlar)} kalem{email_mesaj}"
         )
 
     except Exception as e:

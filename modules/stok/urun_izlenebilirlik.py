@@ -18,18 +18,22 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
-def get_style(theme):
+def get_style(theme=None):
     return {
-        'card_bg': theme.get('bg_card', theme.get('bg_card_solid', '#1E1E1E')),
-        'input_bg': theme.get('bg_input', '#1A1A1A'),
-        'border': theme.get('border', '#2A2A2A'),
-        'text': theme.get('text', '#FFFFFF'),
-        'text2': theme.get('text_secondary', '#AAAAAA'),
-        'muted': theme.get('text_muted', '#666666'),
-        'primary': theme.get('primary', '#DC2626'),
-        'ok': '#10B981', 'warn': '#F59E0B', 'err': '#EF4444', 'info': '#3B82F6',
+        'card_bg':  brand.BG_CARD,
+        'input_bg': brand.BG_INPUT,
+        'border':   brand.BORDER,
+        'text':     brand.TEXT,
+        'text2':    brand.TEXT_MUTED,
+        'muted':    brand.TEXT_DIM,
+        'primary':  brand.PRIMARY,
+        'ok':       brand.SUCCESS,
+        'warn':     brand.WARNING,
+        'err':      brand.ERROR,
+        'info':     brand.INFO,
     }
 
 

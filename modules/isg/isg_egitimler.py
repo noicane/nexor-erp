@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class EgitimDialog(QDialog):
@@ -35,15 +36,15 @@ class EgitimDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTimeEdit, QTextEdit, QDoubleSpinBox {{
-                background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px; color: {self.theme.get('text')};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -93,12 +94,12 @@ class EgitimDialog(QDialog):
         
         toolbar = QHBoxLayout()
         btn_ekle = QPushButton("➕ Ekle")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_ekle.clicked.connect(self._add_katilimci)
         toolbar.addWidget(btn_ekle)
         
         btn_sil = QPushButton("🗑️ Kaldır")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_sil.clicked.connect(self._remove_katilimci)
         toolbar.addWidget(btn_sil)
         
@@ -119,7 +120,7 @@ class EgitimDialog(QDialog):
         self.table_katilimci.setHorizontalHeaderLabels(["ID", "Sicil", "Ad Soyad", "Katıldı"])
         self.table_katilimci.setColumnHidden(0, True)
         self.table_katilimci.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table_katilimci.setStyleSheet(f"QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; }}")
+        self.table_katilimci.setStyleSheet(f"QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; }}")
         header = self.table_katilimci.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
         katilimci_layout.addWidget(self.table_katilimci)
@@ -139,7 +140,7 @@ class EgitimDialog(QDialog):
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -212,7 +213,7 @@ class EgitimDialog(QDialog):
                 self.table_katilimci.setItem(i, 2, QTableWidgetItem(row[2] or ""))
                 katildi = "✓" if row[3] else "✗"
                 item = QTableWidgetItem(katildi)
-                item.setForeground(QColor(self.theme.get('success') if row[3] else self.theme.get('danger')))
+                item.setForeground(QColor(brand.SUCCESS if row[3] else brand.ERROR))
                 self.table_katilimci.setItem(i, 3, item)
                 if row[3]: katilan += 1
             
@@ -343,16 +344,16 @@ class ISGEgitimlerPage(BasePage):
         layout.setSpacing(12)
         
         header = QLabel("📚 İSG Eğitimleri")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("➕ Yeni Eğitim")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
         
@@ -364,7 +365,7 @@ class ISGEgitimlerPage(BasePage):
         toolbar_layout.addWidget(self.cmb_durum)
         
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 12px; color: {self.theme.get('text')};")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 12px; color: {brand.TEXT};")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -377,9 +378,9 @@ class ISGEgitimlerPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px; font-weight: bold; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
@@ -416,9 +417,9 @@ class ISGEgitimlerPage(BasePage):
                 if j == 6:
                     item = QTableWidgetItem(str(val) if val else "")
                     if val == "TAMAMLANDI":
-                        item.setForeground(QColor(self.theme.get('success')))
+                        item.setForeground(QColor(brand.SUCCESS))
                     elif val == "IPTAL":
-                        item.setForeground(QColor(self.theme.get('danger')))
+                        item.setForeground(QColor(brand.ERROR))
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

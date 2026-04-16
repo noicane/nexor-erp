@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from core.nexor_brand import brand
+
 _bar_instance = None
 
 
@@ -49,16 +51,16 @@ def add_minimize_button(dialog: QDialog):
     min_btn.setToolTip("Asagi Al")
     min_btn.setStyleSheet(f"""
         QPushButton {{
-            background: {theme.get('bg_input', '#232C3B')};
-            color: {theme.get('text', '#E8ECF1')};
-            border: 1px solid {theme.get('border', '#1E2736')};
+            background: {brand.BG_INPUT};
+            color: {brand.TEXT};
+            border: 1px solid {brand.BORDER};
             border-radius: 3px;
-            font-size: 12px;
-            font-weight: bold;
+            font-size: {brand.FS_BODY_SM}px;
+            font-weight: {brand.FW_BOLD};
         }}
         QPushButton:hover {{
-            background: {theme.get('warning', '#F59E0B')};
-            color: #000;
+            background: {brand.WARNING};
+            color: {brand.TEXT_INVERSE};
         }}
     """)
     min_btn.clicked.connect(lambda: bar.minimize_dialog(dialog))
@@ -87,15 +89,15 @@ class DialogMinimizeBar(QWidget):
         t = self.theme
         self.setStyleSheet(f"""
             QWidget#minimizeBar {{
-                background: {t.get('bg_card', '#151B23')};
-                border-top: 2px solid {t.get('primary', '#DC2626')};
+                background: {brand.BG_CARD};
+                border-top: 2px solid {brand.PRIMARY};
             }}
         """)
         self.setObjectName("minimizeBar")
 
         main_layout = QHBoxLayout(self)
-        main_layout.setContentsMargins(8, 4, 8, 4)
-        main_layout.setSpacing(6)
+        main_layout.setContentsMargins(brand.SP_2, brand.SP_1, brand.SP_2, brand.SP_1)
+        main_layout.setSpacing(brand.sp(6))
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -130,25 +132,24 @@ class DialogMinimizeBar(QWidget):
         if len(title) > 30:
             title = title[:27] + "..."
 
-        t = self.theme
         btn = QPushButton(f"  {title}  ")
-        btn.setFixedHeight(28)
+        btn.setFixedHeight(brand.sp(28))
         btn.setCursor(Qt.PointingHandCursor)
         btn.setToolTip(f"{dialog.windowTitle()}\nTikla: Geri getir")
         btn.setStyleSheet(f"""
             QPushButton {{
-                background: {t.get('bg_input', '#232C3B')};
-                color: {t.get('text', '#E8ECF1')};
-                border: 1px solid {t.get('border', '#1E2736')};
-                border-radius: 4px;
-                font-size: 11px;
-                font-weight: 500;
-                padding: 0 12px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.SP_1}px;
+                font-size: {brand.FS_CAPTION}px;
+                font-weight: {brand.FW_MEDIUM};
+                padding: 0 {brand.SP_3}px;
             }}
             QPushButton:hover {{
-                background: {t.get('primary', '#DC2626')};
+                background: {brand.PRIMARY};
                 color: white;
-                border-color: {t.get('primary', '#DC2626')};
+                border-color: {brand.PRIMARY};
             }}
         """)
 

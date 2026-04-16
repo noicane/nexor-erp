@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class KaplamaTipiDialog(QDialog):
@@ -44,11 +45,11 @@ class KaplamaTipiDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -57,7 +58,7 @@ class KaplamaTipiDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("🎨 " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -80,7 +81,7 @@ class KaplamaTipiDialog(QDialog):
         
         # Bilgi label
         info = QLabel("⚠️ Üretim deposu: Bu kaplama tipindeki\nmalzemeler hangi depoya gidecek?")
-        info.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 11px;")
+        info.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 11px;")
         form.addRow("", info)
         
         self.sira_input = QSpinBox()
@@ -103,7 +104,7 @@ class KaplamaTipiDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
@@ -176,11 +177,11 @@ class TanimKaplamaPage(BasePage):
         # Header
         header = QHBoxLayout()
         title = QLabel("🎨 Kaplama Tipleri")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         
         subtitle = QLabel("Kaplama tipi ve üretim deposu eşleştirmesi")
-        subtitle.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 12px;")
+        subtitle.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         header.addWidget(subtitle)
         header.addStretch()
         
@@ -218,10 +219,10 @@ class TanimKaplamaPage(BasePage):
         
         # Info
         info_frame = QFrame()
-        info_frame.setStyleSheet(f"background: {self.theme['bg_card']}; border-radius: 8px; padding: 8px;")
+        info_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 8px;")
         info_layout = QHBoxLayout(info_frame)
         info_label = QLabel("💡 Mal kabul ve planlama işlemlerinde bu eşleştirme kullanılarak malzeme otomatik olarak doğru depoya yönlendirilir.")
-        info_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 11px;")
+        info_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 11px;")
         info_layout.addWidget(info_label)
         layout.addWidget(info_frame)
         
@@ -230,32 +231,32 @@ class TanimKaplamaPage(BasePage):
     def _primary_button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#E2130D')};
+                background: {brand.PRIMARY};
                 color: #fff;
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
                 font-weight: bold;
             }}
-            QPushButton:hover {{ background: {self.theme.get('primary_light', '#FF2D20')}; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """
 
     def _input_style(self):
         return f"""
             QLineEdit, QComboBox {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """
 
     def _table_style(self):
         return f"""
-            QTableWidget {{ background: {self.theme.get('bg_card', '#242938')}; border: 1px solid {self.theme.get('border', '#3d4454')}; gridline-color: {self.theme.get('border', '#3d4454')}; }}
-            QTableWidget::item {{ padding: 8px; color: {self.theme.get('text', '#fff')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_card_solid', '#1e2230')}; color: {self.theme.get('text', '#fff')}; padding: 10px; border: none; border-bottom: 2px solid {self.theme.get('primary', '#E2130D')}; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; gridline-color: {brand.BORDER}; }}
+            QTableWidget::item {{ padding: 8px; color: {brand.TEXT}; }}
+            QHeaderView::section {{ background: {brand.BG_CARD}; color: {brand.TEXT}; padding: 10px; border: none; border-bottom: 2px solid {brand.PRIMARY}; font-weight: bold; }}
         """
 
     def _load_data(self):

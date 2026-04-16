@@ -29,6 +29,7 @@ from datetime import datetime
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 def _get_zirve_connection():
@@ -93,8 +94,8 @@ class FaturaSorguTab(QWidget):
         filter_frame = QFrame()
         filter_frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 12px;
             }}
         """)
@@ -103,13 +104,13 @@ class FaturaSorguTab(QWidget):
         filter_layout.setSpacing(12)
         
         input_style = f"""
-            background: {self.theme['bg_main']};
-            color: {self.theme['text']};
-            border: 1px solid {self.theme['border']};
+            background: {brand.BG_MAIN};
+            color: {brand.TEXT};
+            border: 1px solid {brand.BORDER};
             border-radius: 6px;
             padding: 6px;
         """
-        label_style = f"color: {self.theme['text_secondary']}; font-weight: bold;"
+        label_style = f"color: {brand.TEXT_MUTED}; font-weight: bold;"
         
         # Tarih aralığı
         filter_layout.addWidget(QLabel("Başlangıç:", styleSheet=label_style), 0, 0)
@@ -142,7 +143,7 @@ class FaturaSorguTab(QWidget):
         btn_search.setCursor(Qt.PointingHandCursor)
         btn_search.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme['primary']};
+                background: {brand.PRIMARY};
                 color: white;
                 font-weight: bold;
                 padding: 8px 20px;
@@ -150,7 +151,7 @@ class FaturaSorguTab(QWidget):
                 border: none;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('primary_dark', '#2563EB')};
+                background: {brand.PRIMARY_HOVER};
             }}
         """)
         btn_search.clicked.connect(self._run_query)
@@ -162,22 +163,22 @@ class FaturaSorguTab(QWidget):
         self.table = QTableWidget()
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme['bg_card']};
-                color: {self.theme['text']};
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
                 border: none;
-                gridline-color: {self.theme['border']};
+                gridline-color: {brand.BORDER};
             }}
             QHeaderView::section {{
-                background: {self.theme['bg_main']};
-                color: {self.theme['text']};
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
-                border-bottom: 2px solid {self.theme['primary']};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
             QTableWidget::item {{
                 padding: 6px;
-                border-bottom: 1px solid {self.theme['border']};
+                border-bottom: 1px solid {brand.BORDER};
             }}
         """)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -189,8 +190,8 @@ class FaturaSorguTab(QWidget):
         bottom_frame = QFrame()
         bottom_frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 12px;
             }}
         """)
@@ -198,7 +199,7 @@ class FaturaSorguTab(QWidget):
         bottom_layout.setContentsMargins(16, 12, 16, 12)
         
         self.lbl_total = QLabel("Toplam: -")
-        self.lbl_total.setStyleSheet(f"color: {self.theme.get('warning', '#F59E0B')}; font-weight: bold; font-size: 14px;")
+        self.lbl_total.setStyleSheet(f"color: {brand.WARNING}; font-weight: bold; font-size: 14px;")
         bottom_layout.addWidget(self.lbl_total)
         bottom_layout.addStretch()
         
@@ -297,8 +298,8 @@ class AnalizTab(QWidget):
         top_frame = QFrame()
         top_frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 12px;
             }}
         """)
@@ -306,21 +307,21 @@ class AnalizTab(QWidget):
         top_layout.setContentsMargins(16, 12, 16, 12)
         
         input_style = f"""
-            background: {self.theme['bg_main']};
-            color: {self.theme['text']};
-            border: 1px solid {self.theme['border']};
+            background: {brand.BG_MAIN};
+            color: {brand.TEXT};
+            border: 1px solid {brand.BORDER};
             border-radius: 6px;
             padding: 6px;
         """
         
-        top_layout.addWidget(QLabel("Yıl:", styleSheet=f"color: {self.theme['text_secondary']}; font-weight: bold;"))
+        top_layout.addWidget(QLabel("Yıl:", styleSheet=f"color: {brand.TEXT_MUTED}; font-weight: bold;"))
         self.sp_year = QSpinBox()
         self.sp_year.setRange(2000, 2100)
         self.sp_year.setValue(datetime.now().year)
         self.sp_year.setStyleSheet(input_style)
         top_layout.addWidget(self.sp_year)
         
-        top_layout.addWidget(QLabel("Ay:", styleSheet=f"color: {self.theme['text_secondary']}; font-weight: bold;"))
+        top_layout.addWidget(QLabel("Ay:", styleSheet=f"color: {brand.TEXT_MUTED}; font-weight: bold;"))
         self.cb_month = QComboBox()
         self.cb_month.addItems([f"{i:02d}" for i in range(1, 13)])
         self.cb_month.setCurrentIndex(datetime.now().month - 1)
@@ -331,7 +332,7 @@ class AnalizTab(QWidget):
         btn_run.setCursor(Qt.PointingHandCursor)
         btn_run.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme['primary']};
+                background: {brand.PRIMARY};
                 color: white;
                 font-weight: bold;
                 padding: 8px 20px;
@@ -359,7 +360,7 @@ class AnalizTab(QWidget):
         else:
             no_chart = QLabel("📊 Grafik için QtCharts gerekli")
             no_chart.setAlignment(Qt.AlignCenter)
-            no_chart.setStyleSheet(f"color: {self.theme['text_secondary']};")
+            no_chart.setStyleSheet(f"color: {brand.TEXT_MUTED};")
             content_layout.addWidget(no_chart, 2)
         
         # Sağ: Detay Paneli
@@ -369,7 +370,7 @@ class AnalizTab(QWidget):
         right_layout.setSpacing(16)
         
         # Top 15 Tablosu
-        right_layout.addWidget(QLabel("📈 Top 15 Cari (Brüt TL)", styleSheet=f"color: {self.theme['text']}; font-weight: bold;"))
+        right_layout.addWidget(QLabel("📈 Top 15 Cari (Brüt TL)", styleSheet=f"color: {brand.TEXT}; font-weight: bold;"))
         self.tbl_top = QTableWidget()
         self.tbl_top.setStyleSheet(self._table_style())
         self.tbl_top.setMaximumHeight(200)
@@ -391,7 +392,7 @@ class AnalizTab(QWidget):
         right_layout.addLayout(card_layout)
         
         # Tüm Cariler Tablosu
-        right_layout.addWidget(QLabel("📋 Tüm Cariler", styleSheet=f"color: {self.theme['text']}; font-weight: bold;"))
+        right_layout.addWidget(QLabel("📋 Tüm Cariler", styleSheet=f"color: {brand.TEXT}; font-weight: bold;"))
         self.tbl_all = QTableWidget()
         self.tbl_all.setStyleSheet(self._table_style())
         self.tbl_all.verticalHeader().setVisible(False)
@@ -403,14 +404,14 @@ class AnalizTab(QWidget):
     def _table_style(self) -> str:
         return f"""
             QTableWidget {{
-                background: {self.theme['bg_card']};
-                color: {self.theme['text']};
-                border: 1px solid {self.theme['border']};
-                gridline-color: {self.theme['border']};
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                gridline-color: {brand.BORDER};
             }}
             QHeaderView::section {{
-                background: {self.theme['bg_main']};
-                color: {self.theme['text']};
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
                 padding: 6px;
                 border: none;
                 font-weight: bold;
@@ -577,20 +578,20 @@ class TrendTab(QWidget):
         layout.setSpacing(16)
 
         input_style = f"""
-            background: {self.theme['bg_main']};
-            color: {self.theme['text']};
-            border: 1px solid {self.theme['border']};
+            background: {brand.BG_MAIN};
+            color: {brand.TEXT};
+            border: 1px solid {brand.BORDER};
             border-radius: 6px;
             padding: 6px;
         """
-        label_style = f"color: {self.theme['text_secondary']}; font-weight: bold;"
+        label_style = f"color: {brand.TEXT_MUTED}; font-weight: bold;"
 
         # Filtre paneli
         filter_frame = QFrame()
         filter_frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 12px;
             }}
         """)
@@ -610,10 +611,10 @@ class TrendTab(QWidget):
         self.firma_combo.setMinimumWidth(350)
         combo_style = input_style + """
             QComboBox QAbstractItemView {
-                background: """ + self.theme['bg_card'] + """;
-                color: """ + self.theme['text'] + """;
-                border: 1px solid """ + self.theme['border'] + """;
-                selection-background-color: """ + self.theme['primary'] + """;
+                background: """ + brand.BG_CARD + """;
+                color: """ + brand.TEXT + """;
+                border: 1px solid """ + brand.BORDER + """;
+                selection-background-color: """ + brand.PRIMARY + """;
             }
         """
         self.firma_combo.setStyleSheet(combo_style)
@@ -623,15 +624,15 @@ class TrendTab(QWidget):
         row1.addWidget(QLabel("Dönem:", styleSheet=label_style))
         donem_style = f"""
             QPushButton {{
-                background: {self.theme['bg_main']};
-                color: {self.theme['text']};
-                border: 1px solid {self.theme['border']};
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 6px 14px;
                 font-size: 12px;
             }}
-            QPushButton:hover {{ border-color: {self.theme['primary']}; color: {self.theme['primary']}; }}
-            QPushButton:checked {{ background: {self.theme['primary']}; color: white; border-color: {self.theme['primary']}; }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; color: {brand.PRIMARY}; }}
+            QPushButton:checked {{ background: {brand.PRIMARY}; color: white; border-color: {brand.PRIMARY}; }}
         """
         self.donem_buttons = []
         for ay, text in [(3, "3 Ay"), (6, "6 Ay"), (12, "12 Ay"), (24, "24 Ay")]:
@@ -649,12 +650,12 @@ class TrendTab(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme['primary']};
+                background: {brand.PRIMARY};
                 color: white; font-weight: bold;
                 padding: 8px 24px; border-radius: 8px; border: none;
                 font-size: 13px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('primary_dark', '#B91C1C')}; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         btn.clicked.connect(self._run_trend)
         row1.addWidget(btn)
@@ -667,7 +668,7 @@ class TrendTab(QWidget):
 
         self.secili_firmalar = []
         self.secili_label = QLabel("Firma seçip Göster'e tıklayın. Birden fazla firma eklemek için + Ekle butonunu kullanın.")
-        self.secili_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 11px;")
+        self.secili_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 11px;")
         self.secili_label.setWordWrap(True)
         row2.addWidget(self.secili_label, 1)
 
@@ -675,7 +676,7 @@ class TrendTab(QWidget):
         firma_ekle_btn.setToolTip("Seçili firmayı karşılaştırma listesine ekle")
         firma_ekle_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#10B981')};
+                background: {brand.SUCCESS};
                 color: white; border: none; border-radius: 6px;
                 padding: 5px 12px; font-size: 11px; font-weight: bold;
             }}
@@ -688,12 +689,12 @@ class TrendTab(QWidget):
         firma_temizle_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
-                color: {self.theme.get('error', '#EF4444')};
-                border: 1px solid {self.theme.get('error', '#EF4444')};
+                color: {brand.ERROR};
+                border: 1px solid {brand.ERROR};
                 border-radius: 6px;
                 padding: 5px 12px; font-size: 11px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('error', '#EF4444')}; color: white; }}
+            QPushButton:hover {{ background: {brand.ERROR}; color: white; }}
         """)
         firma_temizle_btn.clicked.connect(self._firma_temizle)
         row2.addWidget(firma_temizle_btn)
@@ -718,26 +719,26 @@ class TrendTab(QWidget):
         else:
             lbl = QLabel("📈 Grafik için QtCharts gerekli")
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet(f"color: {self.theme['text_secondary']};")
+            lbl.setStyleSheet(f"color: {brand.TEXT_MUTED};")
             content.addWidget(lbl, 3)
 
         # Sağ: Tablo
         right = QVBoxLayout()
         right.setSpacing(12)
 
-        right.addWidget(QLabel("📋 Aylık Detay", styleSheet=f"color: {self.theme['text']}; font-weight: bold; font-size: 14px;"))
+        right.addWidget(QLabel("📋 Aylık Detay", styleSheet=f"color: {brand.TEXT}; font-weight: bold; font-size: 14px;"))
 
         self.tbl_trend = QTableWidget()
         self.tbl_trend.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme['bg_card']};
-                color: {self.theme['text']};
-                border: 1px solid {self.theme['border']};
-                gridline-color: {self.theme['border']};
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                gridline-color: {brand.BORDER};
             }}
             QHeaderView::section {{
-                background: {self.theme['bg_main']};
-                color: {self.theme['text']};
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
                 padding: 6px; border: none; font-weight: bold;
             }}
         """)
@@ -748,7 +749,7 @@ class TrendTab(QWidget):
 
         # Toplam kartları
         self.lbl_trend_total = QLabel("")
-        self.lbl_trend_total.setStyleSheet(f"color: {self.theme.get('warning', '#F59E0B')}; font-weight: bold; font-size: 13px;")
+        self.lbl_trend_total.setStyleSheet(f"color: {brand.WARNING}; font-weight: bold; font-size: 13px;")
         right.addWidget(self.lbl_trend_total)
 
         content.addLayout(right, 2)
@@ -1002,13 +1003,13 @@ class CiroAnalizPage(BasePage):
         
         # Başlık
         header = QFrame()
-        header.setStyleSheet(f"background: {self.theme['bg_card']}; border-radius: 12px;")
+        header.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 12px;")
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(20, 16, 20, 16)
         
         icon_frame = QFrame()
         icon_frame.setFixedSize(48, 48)
-        icon_frame.setStyleSheet(f"background: {self.theme.get('gradient_css', '#10B981')}; border-radius: 12px;")
+        icon_frame.setStyleSheet(f"background: {brand.PRIMARY_SOFT}; border-radius: 12px;")
         icon_lbl = QLabel("💰")
         icon_lbl.setAlignment(Qt.AlignCenter)
         icon_lbl.setStyleSheet("font-size: 22px; background: transparent;")
@@ -1019,9 +1020,9 @@ class CiroAnalizPage(BasePage):
         
         title_layout = QVBoxLayout()
         title = QLabel("Ciro ve Finans Analizi")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 18px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 18px; font-weight: bold;")
         subtitle = QLabel("Fatura sorgu ve satış performans dashboard")
-        subtitle.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 12px;")
+        subtitle.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px;")
         title_layout.addWidget(title)
         title_layout.addWidget(subtitle)
         header_layout.addLayout(title_layout)
@@ -1033,13 +1034,13 @@ class CiroAnalizPage(BasePage):
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
-                background: {self.theme['bg_card']};
+                background: {brand.BG_CARD};
                 border: none;
                 border-radius: 12px;
             }}
             QTabBar::tab {{
-                background: {self.theme['bg_main']};
-                color: {self.theme['text_secondary']};
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT_MUTED};
                 padding: 10px 20px;
                 margin-right: 4px;
                 border-top-left-radius: 8px;
@@ -1047,8 +1048,8 @@ class CiroAnalizPage(BasePage):
                 font-weight: bold;
             }}
             QTabBar::tab:selected {{
-                background: {self.theme['bg_card']};
-                color: {self.theme['primary']};
+                background: {brand.BG_CARD};
+                color: {brand.PRIMARY};
             }}
         """)
         

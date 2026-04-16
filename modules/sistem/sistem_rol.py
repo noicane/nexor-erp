@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 class RolDialog(QDialog):
@@ -80,7 +81,7 @@ class RolDialog(QDialog):
         btn_kaydet = QPushButton("💾 Kaydet")
         btn_kaydet.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 padding: 8px 20px;
                 border: none;
@@ -203,11 +204,11 @@ class SistemRolPage(BasePage):
         
         # Başlık
         header = QFrame()
-        header.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;padding:16px;}}")
+        header.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;padding:16px;}}")
         hl = QHBoxLayout(header)
         
         title = QLabel("🎭 Rol Yönetimi")
-        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{self.theme.get('text', '#ffffff')};")
+        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{brand.TEXT};")
         hl.addWidget(title)
         hl.addStretch()
         
@@ -216,7 +217,7 @@ class SistemRolPage(BasePage):
         btn_yeni.clicked.connect(self.yeni_rol)
         btn_yeni.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -232,7 +233,7 @@ class SistemRolPage(BasePage):
         btn_refresh.clicked.connect(self.load_data)
         btn_refresh.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -264,21 +265,21 @@ class SistemRolPage(BasePage):
         
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_card', '#1e293b')};
-                color: {self.theme.get('text', '#ffffff')};
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                background-color: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                gridline-color: {brand.BORDER};
             }}
             QTableWidget::item {{
                 padding: 8px;
             }}
             QTableWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#3b82f6')};
+                background-color: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_main', '#0f172a')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_MAIN};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
                 font-weight: bold;
@@ -323,10 +324,10 @@ class SistemRolPage(BasePage):
             # Durum
             if r.get('aktif_mi'):
                 durum = "✅ Aktif"
-                durum_renk = self.theme.get('success', '#22c55e')
+                durum_renk = brand.SUCCESS
             else:
                 durum = "⏸️ Pasif"
-                durum_renk = self.theme.get('warning', '#f59e0b')
+                durum_renk = brand.WARNING
             
             durum_item = QTableWidgetItem(durum)
             durum_item.setForeground(QColor(durum_renk))

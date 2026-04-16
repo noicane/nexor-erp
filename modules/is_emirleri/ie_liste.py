@@ -15,7 +15,7 @@ if parent_dir not in sys.path:
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QLineEdit, QComboBox, QTableWidget, QTableWidgetItem,
-    QHeaderView, QAbstractItemView, QDateEdit, QMessageBox
+    QHeaderView, QAbstractItemView, QDateEdit, QMessageBox, QWidget
 )
 from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor
@@ -23,232 +23,311 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 from config import DEFAULT_PAGE_SIZE
-
-
-def get_modern_style(theme: dict) -> dict:
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
 
 
 class IsEmriListePage(BasePage):
     def __init__(self, theme: dict):
         super().__init__(theme)
-        self.s = get_modern_style(theme)
         self.page_size = DEFAULT_PAGE_SIZE
         self.current_page = 1
         self.total_pages = 1
         self.total_items = 0
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)
-    
+
+    # ── ORTAK STİL HELPER'LARI ──
+    def _input_style(self) -> str:
+        return f"""
+            QLineEdit, QDateEdit, QComboBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QLineEdit:focus, QDateEdit:focus, QComboBox:focus {{
+                border-color: {brand.PRIMARY};
+                background: {brand.BG_HOVER};
+            }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(24)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                selection-background-color: {brand.PRIMARY};
+                outline: 0;
+                padding: {brand.SP_1}px;
+            }}
+        """
+
+    def _secondary_btn_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
+            QPushButton:pressed {{ background: {brand.BG_SELECTED}; }}
+            QPushButton:disabled {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_DISABLED};
+            }}
+        """
+
     def _setup_ui(self):
-        s = self.s
+        self.setStyleSheet(f"IsEmriListePage {{ background: {brand.BG_MAIN}; }}")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
-        
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
         layout.addWidget(self._create_header())
         layout.addWidget(self._create_toolbar())
         self.table = self._create_table()
-        layout.addWidget(self.table)
+        layout.addWidget(self.table, 1)
         layout.addWidget(self._create_bottom_bar())
-    
-    def _create_header(self) -> QFrame:
-        s = self.s
-        frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; }}")
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(20, 16, 20, 16)
-        
-        title_section = QVBoxLayout()
-        title_section.setSpacing(4)
-        title_row = QHBoxLayout()
-        icon = QLabel("📋")
-        icon.setStyleSheet("font-size: 24px;")
-        title_row.addWidget(icon)
+
+    def _create_header(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(brand.SP_1, 0, brand.SP_1, 0)
+        layout.setSpacing(brand.SP_3)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+
         title = QLabel("İş Emirleri")
-        title.setStyleSheet(f"color: {s['text']}; font-size: 20px; font-weight: 600;")
-        title_row.addWidget(title)
-        title_row.addStretch()
-        title_section.addLayout(title_row)
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_TITLE_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.4px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(title)
+
         subtitle = QLabel("Tüm iş emirlerini görüntüleyin ve yönetin")
-        subtitle.setStyleSheet(f"color: {s['text_secondary']}; font-size: 12px;")
-        title_section.addWidget(subtitle)
-        layout.addLayout(title_section)
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY}px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(subtitle)
+
+        layout.addLayout(title_col)
         layout.addStretch()
-        
-        new_btn = QPushButton("➕ Yeni İş Emri")
+
+        new_btn = QPushButton("+ Yeni İş Emri")
         new_btn.setCursor(Qt.PointingHandCursor)
-        new_btn.setStyleSheet(f"QPushButton {{ background: {s['success']}; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; }} QPushButton:hover {{ background: #059669; }}")
+        new_btn.setFixedHeight(brand.sp(40))
+        new_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         new_btn.clicked.connect(self._new_is_emri)
         layout.addWidget(new_btn)
-        return frame
-    
-    def _create_toolbar(self) -> QFrame:
-        s = self.s
-        frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; }}")
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(12)
-        
-        input_style = f"background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 6px; padding: 8px 12px; font-size: 12px;"
-        label_style = f"color: {s['text']}; font-weight: 600; font-size: 12px;"
-        
-        lbl = QLabel("🔍 Arama:")
-        lbl.setStyleSheet(label_style)
-        layout.addWidget(lbl)
-        
+        return wrapper
+
+    def _create_toolbar(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(brand.SP_3)
+
+        input_style = self._input_style()
+
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("İş emri no, müşteri...")
-        self.search_input.setFixedWidth(180)
-        self.search_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.search_input.setPlaceholderText("Ara (iş emri, müşteri, stok)")
+        self.search_input.setFixedHeight(brand.sp(40))
+        self.search_input.setMinimumWidth(brand.sp(260))
+        self.search_input.setStyleSheet(input_style)
         self.search_input.returnPressed.connect(self._load_data)
         layout.addWidget(self.search_input)
-        
-        lbl2 = QLabel("📅 Tarih:")
-        lbl2.setStyleSheet(label_style)
-        layout.addWidget(lbl2)
-        
+
         self.tarih_bas = QDateEdit()
         self.tarih_bas.setDate(QDate.currentDate().addDays(-30))
         self.tarih_bas.setCalendarPopup(True)
-        self.tarih_bas.setStyleSheet(f"QDateEdit {{ {input_style} min-width: 100px; }}")
+        self.tarih_bas.setFixedHeight(brand.sp(40))
+        self.tarih_bas.setFixedWidth(brand.sp(130))
+        self.tarih_bas.setStyleSheet(input_style)
         self.tarih_bas.dateChanged.connect(self._filter_changed)
         layout.addWidget(self.tarih_bas)
 
-        layout.addWidget(QLabel("-", styleSheet=f"color: {s['text_muted']};"))
+        sep = QLabel("—")
+        sep.setStyleSheet(f"color: {brand.TEXT_DIM}; background: transparent;")
+        layout.addWidget(sep)
 
         self.tarih_bit = QDateEdit()
         self.tarih_bit.setDate(QDate.currentDate().addDays(30))
         self.tarih_bit.setCalendarPopup(True)
-        self.tarih_bit.setStyleSheet(f"QDateEdit {{ {input_style} min-width: 100px; }}")
+        self.tarih_bit.setFixedHeight(brand.sp(40))
+        self.tarih_bit.setFixedWidth(brand.sp(130))
+        self.tarih_bit.setStyleSheet(input_style)
         self.tarih_bit.dateChanged.connect(self._filter_changed)
         layout.addWidget(self.tarih_bit)
-        
-        lbl3 = QLabel("Durum:")
-        lbl3.setStyleSheet(label_style)
-        layout.addWidget(lbl3)
-        
+
         self.durum_combo = QComboBox()
-        self.durum_combo.addItem("Tümü", "")
+        self.durum_combo.addItem("Tüm Durumlar", "")
         self.durum_combo.addItem("Bekliyor", "BEKLIYOR")
         self.durum_combo.addItem("Planlandı", "PLANLI")
         self.durum_combo.addItem("Üretimde", "URETIMDE")
         self.durum_combo.addItem("Tamamlandı", "TAMAMLANDI")
-        self.durum_combo.setStyleSheet(f"QComboBox {{ {input_style} }}")
+        self.durum_combo.setFixedHeight(brand.sp(40))
+        self.durum_combo.setMinimumWidth(brand.sp(150))
+        self.durum_combo.setStyleSheet(input_style)
         self.durum_combo.currentIndexChanged.connect(self._filter_changed)
         layout.addWidget(self.durum_combo)
-        
-        search_btn = QPushButton("🔍 Ara")
+
+        search_btn = QPushButton("Ara")
         search_btn.setCursor(Qt.PointingHandCursor)
-        search_btn.setStyleSheet(f"QPushButton {{ background: {s['primary']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }} QPushButton:hover {{ background: #B91C1C; }}")
+        search_btn.setFixedHeight(brand.sp(40))
+        search_btn.setStyleSheet(self._secondary_btn_style())
         search_btn.clicked.connect(self._load_data)
         layout.addWidget(search_btn)
 
-        pdf_btn = QPushButton("📄 PDF")
+        pdf_btn = QPushButton("PDF")
         pdf_btn.setCursor(Qt.PointingHandCursor)
-        pdf_btn.setStyleSheet(f"QPushButton {{ background: {s['info']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }} QPushButton:hover {{ background: #2563EB; }}")
+        pdf_btn.setFixedHeight(brand.sp(40))
+        pdf_btn.setStyleSheet(self._secondary_btn_style())
         pdf_btn.clicked.connect(self._export_pdf)
         layout.addWidget(pdf_btn)
 
-        birlesik_btn = QPushButton("📋 Birleşik Çıktı")
+        birlesik_btn = QPushButton("Birleşik Çıktı")
         birlesik_btn.setCursor(Qt.PointingHandCursor)
+        birlesik_btn.setFixedHeight(brand.sp(40))
         birlesik_btn.setToolTip("Seçili iş emirleri + depo çıkış emirlerini tek kağıtta listele")
-        birlesik_btn.setStyleSheet(f"QPushButton {{ background: {s.get('success', '#10B981')}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }} QPushButton:hover {{ background: #059669; }}")
+        birlesik_btn.setStyleSheet(self._secondary_btn_style())
         birlesik_btn.clicked.connect(self._birlesik_cikti)
         layout.addWidget(birlesik_btn)
 
         layout.addWidget(self.create_export_button(title="Is Emirleri"))
 
         layout.addStretch()
-        return frame
-    
+        return wrapper
+
     def _create_table(self) -> QTableWidget:
-        s = self.s
         table = QTableWidget()
         table.setColumnCount(10)
-        table.setHorizontalHeaderLabels(["İş Emri No", "Termin", "Müşteri", "Ürün", "Kaplama", "Miktar", "Bara", "Hat", "Durum", "Oluşturma"])
+        table.setHorizontalHeaderLabels([
+            "İş Emri No", "Termin", "Müşteri", "Ürün", "Kaplama",
+            "Miktar", "Bara", "Hat", "Durum", "Oluşturma"
+        ])
         table.setStyleSheet(f"""
-            QTableWidget {{ background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 10px; gridline-color: {s['border']}; font-size: 12px; }}
-            QTableWidget::item {{ padding: 8px; border-bottom: 1px solid {s['border']}; }}
-            QTableWidget::item:selected {{ background: {s['primary']}; }}
-            QHeaderView::section {{ background: rgba(0,0,0,0.3); color: {s['text_secondary']}; padding: 10px 8px; border: none; border-bottom: 2px solid {s['primary']}; font-weight: 600; font-size: 11px; }}
+            QTableWidget {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                gridline-color: {brand.BORDER};
+                font-size: {brand.FS_BODY_SM}px;
+                outline: 0;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                background: transparent;
+            }}
+            QTableWidget::item:selected {{
+                background: {brand.PRIMARY_SOFT};
+                color: {brand.TEXT};
+            }}
+            QHeaderView::section {{
+                background: {brand.BG_ELEVATED};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_2}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_CAPTION}px;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }}
         """)
         header = table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
         header.setSectionResizeMode(3, QHeaderView.Stretch)
-        table.setColumnWidth(0, 120)
-        table.setColumnWidth(1, 90)
-        table.setColumnWidth(4, 90)
-        table.setColumnWidth(5, 70)
-        table.setColumnWidth(6, 60)
-        table.setColumnWidth(7, 70)
-        table.setColumnWidth(8, 90)
-        table.setColumnWidth(9, 90)
+        table.setColumnWidth(0, brand.sp(140))
+        table.setColumnWidth(1, brand.sp(100))
+        table.setColumnWidth(4, brand.sp(100))
+        table.setColumnWidth(5, brand.sp(80))
+        table.setColumnWidth(6, brand.sp(70))
+        table.setColumnWidth(7, brand.sp(80))
+        table.setColumnWidth(8, brand.sp(100))
+        table.setColumnWidth(9, brand.sp(100))
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.ExtendedSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.verticalHeader().setVisible(False)
+        table.verticalHeader().setDefaultSectionSize(brand.sp(40))
         table.setAlternatingRowColors(False)
+        table.setShowGrid(False)
+        table.setFrameShape(QFrame.NoFrame)
         table.doubleClicked.connect(self._open_detail)
         return table
-    
-    def _create_bottom_bar(self) -> QFrame:
-        s = self.s
-        frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 10px; }}")
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(16, 10, 16, 10)
-        
+
+    def _create_bottom_bar(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(brand.SP_1, 0, brand.SP_1, 0)
+
         self.stat_label = QLabel("Yükleniyor...")
-        self.stat_label.setStyleSheet(f"color: {s['text_secondary']}; font-size: 12px;")
+        self.stat_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
         layout.addWidget(self.stat_label)
         layout.addStretch()
-        
-        btn_style = f"QPushButton {{ background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 6px; padding: 6px 14px; font-size: 12px; }} QPushButton:hover {{ background: {s['border']}; }}"
-        
-        self.prev_btn = QPushButton("◀ Önceki")
+
+        btn_style = self._secondary_btn_style()
+
+        self.prev_btn = QPushButton("◀  Önceki")
         self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setFixedHeight(brand.sp(32))
         self.prev_btn.setStyleSheet(btn_style)
         self.prev_btn.clicked.connect(self._prev_page)
         layout.addWidget(self.prev_btn)
-        
+
         self.page_label = QLabel("1 / 1")
-        self.page_label.setStyleSheet(f"color: {s['text']}; padding: 0 12px; font-weight: 600;")
+        self.page_label.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"padding: 0 {brand.SP_3}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
         layout.addWidget(self.page_label)
-        
-        self.next_btn = QPushButton("Sonraki ▶")
+
+        self.next_btn = QPushButton("Sonraki  ▶")
         self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setFixedHeight(brand.sp(32))
         self.next_btn.setStyleSheet(btn_style)
         self.next_btn.clicked.connect(self._next_page)
         layout.addWidget(self.next_btn)
-        return frame
+        return wrapper
     
     def _load_data(self):
-        s = self.s
         self.stat_label.setText("Yükleniyor...")
         try:
             conn = get_db_connection()
@@ -306,7 +385,6 @@ class IsEmriListePage(BasePage):
             self.table.setRowCount(0)
     
     def _populate_table(self, items):
-        s = self.s
         self.table.clearSelection()
         self.table.setRowCount(0)
         self.table.setRowCount(len(items))
@@ -318,29 +396,36 @@ class IsEmriListePage(BasePage):
                 id_val = 0
             no_item.setData(Qt.UserRole, id_val)
             self.table.setItem(row, 0, no_item)
-            
+
             termin = item[2]
             termin_str = str(termin)[:10] if termin else '-'
             termin_item = QTableWidgetItem(termin_str)
             if termin and termin < date.today():
-                termin_item.setForeground(QColor(s['error']))
+                termin_item.setForeground(QColor(brand.ERROR))
             self.table.setItem(row, 1, termin_item)
-            
+
             self.table.setItem(row, 2, QTableWidgetItem(str(item[3] or '')[:25]))
             self.table.setItem(row, 3, QTableWidgetItem(str(item[4] or '')))
             self.table.setItem(row, 4, QTableWidgetItem(str(item[6] or '')))
-            
+
             miktar = item[7] or 0
-            self.table.setItem(row, 5, QTableWidgetItem(f"{miktar:,.0f}"))
+            miktar_item = QTableWidgetItem(f"{miktar:,.0f}")
+            miktar_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.table.setItem(row, 5, miktar_item)
             self.table.setItem(row, 6, QTableWidgetItem(str(item[9] or '')))
             self.table.setItem(row, 7, QTableWidgetItem('-'))
-            
+
             durum = item[11] or 'BEKLIYOR'
             durum_item = QTableWidgetItem(durum)
-            colors = {'BEKLIYOR': s['warning'], 'PLANLI': s['info'], 'URETIMDE': s['success'], 'TAMAMLANDI': '#10b981'}
-            durum_item.setForeground(QColor(colors.get(durum, '#888')))
+            colors = {
+                'BEKLIYOR': brand.WARNING,
+                'PLANLI': brand.INFO,
+                'URETIMDE': brand.SUCCESS,
+                'TAMAMLANDI': brand.SUCCESS,
+            }
+            durum_item.setForeground(QColor(colors.get(durum, brand.TEXT_DIM)))
             self.table.setItem(row, 8, durum_item)
-            
+
             olusturma = item[12]
             self.table.setItem(row, 9, QTableWidgetItem(str(olusturma)[:10] if olusturma else ''))
     

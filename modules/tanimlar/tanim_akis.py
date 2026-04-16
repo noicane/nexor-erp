@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QIcon
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class AkisYonetimiPage(QWidget):

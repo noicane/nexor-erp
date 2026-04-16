@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PySide6.QtCore import Qt, QTimer, QRectF
 from PySide6.QtGui import QPainter, QLinearGradient, QColor
 
+from core.nexor_brand import brand
+
 
 class SkeletonBlock(QWidget):
     """Shimmer animasyonlu tek bir placeholder bar"""
@@ -18,8 +20,8 @@ class SkeletonBlock(QWidget):
         self._radius = radius
         self._phase = 0.0
         # Notr varsayilan renkler (tema tarafindan override edilir)
-        self._base_color = QColor(base_color or "#E2E8F0")
-        self._shimmer_color = QColor(shimmer_color or "#CBD5E1")
+        self._base_color = QColor(base_color or brand.BG_HOVER)
+        self._shimmer_color = QColor(shimmer_color or brand.BORDER)
 
         if width > 0:
             self.setFixedWidth(width)
@@ -72,26 +74,26 @@ class SkeletonCardLoader(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
 
         # Baslik block
-        title = SkeletonBlock(width=200, height=24, radius=6)
+        title = SkeletonBlock(width=brand.sp(200), height=brand.sp(24), radius=brand.R_SM)
         self._blocks.append(title)
         layout.addWidget(title)
 
         # Ust kartlar (4 adet)
         cards_row = QHBoxLayout()
-        cards_row.setSpacing(16)
+        cards_row.setSpacing(brand.SP_4)
         for _ in range(4):
-            card = SkeletonBlock(height=100, radius=12)
+            card = SkeletonBlock(height=brand.sp(100), radius=brand.R_LG)
             self._blocks.append(card)
             cards_row.addWidget(card)
         layout.addLayout(cards_row)
 
         # Alt satirlar
         for w in [0, 0, 300]:
-            blk = SkeletonBlock(width=w if w else 0, height=16, radius=4)
+            blk = SkeletonBlock(width=brand.sp(w) if w else 0, height=brand.sp(16), radius=brand.SP_1)
             self._blocks.append(blk)
             layout.addWidget(blk)
 

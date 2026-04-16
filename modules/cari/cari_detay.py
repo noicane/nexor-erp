@@ -15,6 +15,7 @@ from datetime import datetime
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 class CariDetayPage(BasePage):
@@ -51,7 +52,7 @@ class CariDetayPage(BasePage):
     
     def _create_top_bar(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.theme['bg_card']}; border-radius: 12px; }}")
+        frame.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border-radius: 12px; }}")
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(16, 12, 16, 12)
         
@@ -59,8 +60,8 @@ class CariDetayPage(BasePage):
         back_btn = QPushButton("← Listeye Dön")
         back_btn.setCursor(Qt.PointingHandCursor)
         back_btn.setStyleSheet(f"""
-            QPushButton {{ background: transparent; color: {self.theme['primary']}; border: none; font-size: 13px; font-weight: 500; padding: 8px 12px; }}
-            QPushButton:hover {{ background: {self.theme['primary']}15; border-radius: 6px; }}
+            QPushButton {{ background: transparent; color: {brand.PRIMARY}; border: none; font-size: 13px; font-weight: 500; padding: 8px 12px; }}
+            QPushButton:hover {{ background: {brand.PRIMARY}15; border-radius: 6px; }}
         """)
         back_btn.clicked.connect(self.back_requested.emit)
         layout.addWidget(back_btn)
@@ -69,15 +70,15 @@ class CariDetayPage(BasePage):
         
         # Cari seçici
         lbl = QLabel("Cari Seç:")
-        lbl.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 12px;")
+        lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px;")
         layout.addWidget(lbl)
         
         self.cari_combo = QComboBox()
         self.cari_combo.setFixedWidth(400)
         self.cari_combo.setEditable(True)
         self.cari_combo.setStyleSheet(f"""
-            QComboBox {{ background: {self.theme['bg_main']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px 12px; font-size: 13px; }}
-            QComboBox QAbstractItemView {{ background: {self.theme['bg_card']}; color: {self.theme['text']}; selection-background-color: {self.theme['primary']}; }}
+            QComboBox {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 12px; font-size: 13px; }}
+            QComboBox QAbstractItemView {{ background: {brand.BG_CARD}; color: {brand.TEXT}; selection-background-color: {brand.PRIMARY}; }}
         """)
         self.cari_combo.currentIndexChanged.connect(self._on_cari_selected)
         layout.addWidget(self.cari_combo)
@@ -85,14 +86,14 @@ class CariDetayPage(BasePage):
         layout.addStretch()
         
         self.title_label = QLabel("Cari Detay")
-        self.title_label.setStyleSheet(f"color: {self.theme['text']}; font-size: 18px; font-weight: bold;")
+        self.title_label.setStyleSheet(f"color: {brand.TEXT}; font-size: 18px; font-weight: bold;")
         layout.addWidget(self.title_label)
         
         return frame
     
     def _create_info_card(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.theme['bg_card']}; border-radius: 12px; }}")
+        frame.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border-radius: 12px; }}")
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(24)
@@ -102,17 +103,17 @@ class CariDetayPage(BasePage):
         left.setSpacing(8)
         
         self.unvan_label = QLabel("-")
-        self.unvan_label.setStyleSheet(f"color: {self.theme['text']}; font-size: 20px; font-weight: bold;")
+        self.unvan_label.setStyleSheet(f"color: {brand.TEXT}; font-size: 20px; font-weight: bold;")
         self.unvan_label.setWordWrap(True)
         left.addWidget(self.unvan_label)
         
         info_row = QHBoxLayout()
         self.kod_label = QLabel("-")
-        self.kod_label.setStyleSheet(f"color: {self.theme['primary']}; background: {self.theme['primary']}20; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;")
+        self.kod_label.setStyleSheet(f"color: {brand.PRIMARY}; background: {brand.PRIMARY}20; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 600;")
         info_row.addWidget(self.kod_label)
         
         self.tip_label = QLabel("-")
-        self.tip_label.setStyleSheet(f"color: {self.theme['text_secondary']}; background: {self.theme['border']}; padding: 4px 12px; border-radius: 4px; font-size: 12px;")
+        self.tip_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; background: {brand.BORDER}; padding: 4px 12px; border-radius: 4px; font-size: 12px;")
         info_row.addWidget(self.tip_label)
         
         self.durum_label = QLabel("-")
@@ -129,10 +130,10 @@ class CariDetayPage(BasePage):
         for i, (icon, label, key) in enumerate(items):
             mid.addWidget(QLabel(icon), i, 0)
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 11px;")
+            lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
             mid.addWidget(lbl, i, 1)
             val = QLabel("-")
-            val.setStyleSheet(f"color: {self.theme['text']}; font-size: 12px;")
+            val.setStyleSheet(f"color: {brand.TEXT}; font-size: 12px;")
             self.contact_labels[key] = val
             mid.addWidget(val, i, 2)
         layout.addLayout(mid, 1)
@@ -144,10 +145,10 @@ class CariDetayPage(BasePage):
         self.tax_labels = {}
         for i, (label, key) in enumerate(tax_items):
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 11px;")
+            lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
             right.addWidget(lbl, i, 0)
             val = QLabel("-")
-            val.setStyleSheet(f"color: {self.theme['text']}; font-size: 12px; font-weight: 500;")
+            val.setStyleSheet(f"color: {brand.TEXT}; font-size: 12px; font-weight: 500;")
             self.tax_labels[key] = val
             right.addWidget(val, i, 1)
         layout.addLayout(right, 1)
@@ -157,9 +158,9 @@ class CariDetayPage(BasePage):
     def _create_tabs(self) -> QTabWidget:
         tabs = QTabWidget()
         tabs.setStyleSheet(f"""
-            QTabWidget::pane {{ background: {self.theme['bg_card']}; border: none; border-radius: 10px; }}
-            QTabBar::tab {{ background: {self.theme['bg_main']}; color: {self.theme['text_secondary']}; padding: 10px 20px; margin-right: 4px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 12px; }}
-            QTabBar::tab:selected {{ background: {self.theme['bg_card']}; color: {self.theme['primary']}; font-weight: 600; }}
+            QTabWidget::pane {{ background: {brand.BG_CARD}; border: none; border-radius: 10px; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT_MUTED}; padding: 10px 20px; margin-right: 4px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 12px; }}
+            QTabBar::tab:selected {{ background: {brand.BG_CARD}; color: {brand.PRIMARY}; font-weight: 600; }}
         """)
         
         tabs.addTab(self._create_general_tab(), "📋 Genel")
@@ -176,7 +177,7 @@ class CariDetayPage(BasePage):
         
         # Adresler
         grp = QGroupBox("Adres Bilgileri")
-        grp.setStyleSheet(f"QGroupBox {{ color: {self.theme['text']}; font-weight: bold; border: 1px solid {self.theme['border']}; border-radius: 8px; margin-top: 12px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 16px; padding: 0 8px; }}")
+        grp.setStyleSheet(f"QGroupBox {{ color: {brand.TEXT}; font-weight: bold; border: 1px solid {brand.BORDER}; border-radius: 8px; margin-top: 12px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 16px; padding: 0 8px; }}")
         g_layout = QGridLayout(grp)
         g_layout.setContentsMargins(16, 24, 16, 16)
         
@@ -184,7 +185,7 @@ class CariDetayPage(BasePage):
         self.fatura_text = QTextEdit()
         self.fatura_text.setReadOnly(True)
         self.fatura_text.setMaximumHeight(70)
-        self.fatura_text.setStyleSheet(f"QTextEdit {{ background: {self.theme['bg_main']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; }}")
+        self.fatura_text.setStyleSheet(f"QTextEdit {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; }}")
         g_layout.addWidget(self.fatura_text, 0, 1)
         
         g_layout.addWidget(QLabel("Sevk Adresi:"), 1, 0, Qt.AlignTop)
@@ -236,17 +237,17 @@ class CariDetayPage(BasePage):
         layout.addWidget(self.spec_table)
         
         note = QLabel("💡 Müşteriye özel kaplama kalınlığı ve kalite gereksinimleri")
-        note.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 11px; font-style: italic;")
+        note.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px; font-style: italic;")
         layout.addWidget(note)
         
         return widget
     
     def _style_table(self, table: QTableWidget):
         table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme['bg_card']}; color: {self.theme['text']}; border: none; gridline-color: {self.theme['border']}; font-size: 12px; }}
-            QTableWidget::item {{ padding: 8px; border-bottom: 1px solid {self.theme['border']}; }}
-            QTableWidget::item:selected {{ background: {self.theme['primary']}30; }}
-            QHeaderView::section {{ background: {self.theme['bg_main']}; color: {self.theme['text']}; padding: 10px 8px; border: none; border-bottom: 2px solid {self.theme['border']}; font-weight: bold; font-size: 11px; }}
+            QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; border: none; gridline-color: {brand.BORDER}; font-size: 12px; }}
+            QTableWidget::item {{ padding: 8px; border-bottom: 1px solid {brand.BORDER}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}30; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 8px; border: none; border-bottom: 2px solid {brand.BORDER}; font-weight: bold; font-size: 11px; }}
         """)
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.verticalHeader().setVisible(False)
@@ -257,7 +258,7 @@ class CariDetayPage(BasePage):
         layout = QHBoxLayout()
         
         self.update_label = QLabel("Son güncelleme: -")
-        self.update_label.setStyleSheet(f"color: {self.theme['text_secondary']}; font-size: 11px;")
+        self.update_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
         layout.addWidget(self.update_label)
         layout.addStretch()
         
@@ -266,8 +267,8 @@ class CariDetayPage(BasePage):
             btn.setFixedHeight(36)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet(f"""
-                QPushButton {{ background: {self.theme['bg_card']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 8px; padding: 0 16px; font-size: 12px; }}
-                QPushButton:hover {{ background: {self.theme['bg_main']}; border-color: {self.theme['primary']}; }}
+                QPushButton {{ background: {brand.BG_CARD}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 8px; padding: 0 16px; font-size: 12px; }}
+                QPushButton:hover {{ background: {brand.BG_INPUT}; border-color: {brand.PRIMARY}; }}
             """)
             btn.clicked.connect(callback)
             layout.addWidget(btn)

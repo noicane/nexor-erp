@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal, QTimer, QPoint, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor, QCursor
 
+from core.nexor_brand import brand
+
 
 # Bildirim önem renkleri
 _ONEM_COLORS = {
@@ -261,148 +263,98 @@ class Header(QFrame):
         self.user_data = user_data
         self._unread_count = 0
         self._dropdown = None
-        self.setFixedHeight(64)
+        self.setFixedHeight(brand.sp(68))
         self._setup_ui()
         self._setup_polling()
 
     def _setup_ui(self):
-        self._apply_style()
-
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 0, 24, 0)
-        layout.setSpacing(16)
+        layout.setContentsMargins(brand.SP_5, 0, brand.SP_6, 0)
+        layout.setSpacing(brand.SP_4)
 
         # Toggle butonu
         self.toggle_btn = QPushButton("☰")
-        self.toggle_btn.setFixedSize(40, 40)
+        self.toggle_btn.setFixedSize(brand.sp(40), brand.sp(40))
         self.toggle_btn.setCursor(Qt.PointingHandCursor)
-        self.toggle_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: transparent;
-                border: none;
-                font-size: 20px;
-                color: {self.theme['text_secondary']};
-                border-radius: 8px;
-            }}
-            QPushButton:hover {{
-                background: {self.theme['bg_hover']};
-                color: {self.theme['text']};
-            }}
-        """)
         self.toggle_btn.clicked.connect(self.toggle_sidebar.emit)
         layout.addWidget(self.toggle_btn)
 
+        # Nefes aldirma — toggle ile baslik arasi bosluk
+        layout.addSpacing(brand.SP_2)
+
         # Başlık + Tarih
         title_container = QVBoxLayout()
-        title_container.setSpacing(2)
+        title_container.setSpacing(brand.SP_1)
+        title_container.setContentsMargins(0, 0, 0, 0)
 
         self.title_label = QLabel("Dashboard")
-        self.title_label.setStyleSheet(f"color: {self.theme['text']}; font-size: 18px; font-weight: bold;")
         title_container.addWidget(self.title_label)
 
-        # Tarih
         now = datetime.now()
         days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar']
-        months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
+        months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz',
+                  'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık']
         day_name = days[now.weekday()]
         date_str = f"{now.day} {months[now.month-1]} {now.year}, {day_name}"
 
         self.date_label = QLabel(date_str)
-        self.date_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 12px;")
         title_container.addWidget(self.date_label)
 
         layout.addLayout(title_container)
         layout.addStretch()
 
         # Arama
-        search = QLineEdit()
-        search.setPlaceholderText("Ara... (Ctrl+K)")
-        search.setFixedWidth(240)
-        search.setStyleSheet(f"""
-            QLineEdit {{
-                background: {self.theme['bg_hover']};
-                border: 1px solid {self.theme['border']};
-                border-radius: 8px;
-                padding: 8px 12px;
-                color: {self.theme['text']};
-            }}
-        """)
-        layout.addWidget(search)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Ara... (Ctrl+K)")
+        self.search_input.setFixedWidth(brand.sp(280))
+        self.search_input.setFixedHeight(brand.sp(38))
+        layout.addWidget(self.search_input)
 
         # =============== YARDIM BUTONU ===============
-        help_btn = QPushButton("❓")
-        help_btn.setFixedSize(40, 40)
-        help_btn.setCursor(Qt.PointingHandCursor)
-        help_btn.setToolTip("Kullanım Kılavuzu")
-        help_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: transparent;
-                border: none;
-                font-size: 18px;
-                border-radius: 8px;
-            }}
-            QPushButton:hover {{
-                background: {self.theme['bg_hover']};
-            }}
-        """)
-        help_btn.clicked.connect(self._show_kilavuz)
-        layout.addWidget(help_btn)
+        self.help_btn = QPushButton("?")
+        self.help_btn.setFixedSize(brand.sp(38), brand.sp(38))
+        self.help_btn.setCursor(Qt.PointingHandCursor)
+        self.help_btn.setToolTip("Kullanım Kılavuzu")
+        self.help_btn.clicked.connect(self._show_kilavuz)
+        layout.addWidget(self.help_btn)
 
         # =============== BİLDİRİM BUTONU ===============
         self.notif_container = QFrame()
-        self.notif_container.setFixedSize(44, 44)
+        self.notif_container.setFixedSize(brand.sp(42), brand.sp(42))
         self.notif_container.setStyleSheet("background: transparent; border: none;")
         notif_layout = QVBoxLayout(self.notif_container)
         notif_layout.setContentsMargins(0, 0, 0, 0)
 
         self.notif_btn = QPushButton("🔔")
-        self.notif_btn.setFixedSize(40, 40)
+        self.notif_btn.setFixedSize(brand.sp(38), brand.sp(38))
         self.notif_btn.setCursor(Qt.PointingHandCursor)
-        self.notif_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: transparent;
-                border: none;
-                font-size: 18px;
-                border-radius: 8px;
-            }}
-            QPushButton:hover {{
-                background: {self.theme['bg_hover']};
-            }}
-        """)
         self.notif_btn.clicked.connect(self._toggle_dropdown)
         notif_layout.addWidget(self.notif_btn)
 
         # Badge (okunmamış sayı)
         self.badge = QLabel()
         self.badge.setAlignment(Qt.AlignCenter)
-        self.badge.setFixedSize(20, 20)
-        self.badge.setStyleSheet(f"""
-            QLabel {{
-                background: {self.theme.get('error', '#EF4444')};
-                color: white;
-                border-radius: 10px;
-                font-size: 10px;
-                font-weight: bold;
-            }}
-        """)
+        self.badge.setFixedSize(brand.sp(20), brand.sp(20))
         self.badge.hide()
         self.badge.setParent(self.notif_container)
-        self.badge.move(24, 2)
+        self.badge.move(brand.sp(22), brand.sp(2))
 
         layout.addWidget(self.notif_container)
 
         # Avatar
         initials = f"{self.user_data.get('ad', 'U')[0]}{self.user_data.get('soyad', 'S')[0]}"
-        avatar = QFrame()
-        avatar.setFixedSize(36, 36)
-        avatar.setStyleSheet(f"background: {self.theme['gradient_css']}; border-radius: 18px;")
-        a_layout = QVBoxLayout(avatar)
+        self.avatar = QFrame()
+        self.avatar.setFixedSize(brand.sp(38), brand.sp(38))
+        a_layout = QVBoxLayout(self.avatar)
         a_layout.setContentsMargins(0, 0, 0, 0)
-        a_label = QLabel(initials)
-        a_label.setAlignment(Qt.AlignCenter)
-        a_label.setStyleSheet("color: white; font-size: 12px; font-weight: bold; background: transparent;")
-        a_layout.addWidget(a_label)
-        layout.addWidget(avatar)
+        self.avatar_label = QLabel(initials.upper())
+        self.avatar_label.setAlignment(Qt.AlignCenter)
+        a_layout.addWidget(self.avatar_label)
+        layout.addWidget(self.avatar)
+
+        # Tum widget'lara brand stillerini uygula
+        self._apply_child_styles()
+        self._apply_style()
 
     def _setup_polling(self):
         """60 saniyede bir bildirim sayısını kontrol et."""
@@ -684,7 +636,118 @@ class Header(QFrame):
         return '\n'.join(html_lines)
 
     def _apply_style(self):
-        self.setStyleSheet(f"Header {{ background: {self.theme['bg_card']}; border-bottom: 1px solid {self.theme['border']}; }}")
+        self.setStyleSheet(
+            f"Header {{ "
+            f"background: {brand.BG_MAIN}; "
+            f"border-bottom: 1px solid {brand.BORDER}; "
+            f"}}"
+        )
+
+    def _apply_child_styles(self):
+        """Tum child widget stillerini brand'den okuyup uygula.
+        Tema modu degistiginde bunlarin yeniden uygulanmasi GEREK.
+        """
+        # Toggle button
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                font-size: {brand.fs(20)}px;
+                color: {brand.TEXT_MUTED};
+                border-radius: {brand.R_SM}px;
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT};
+            }}
+        """)
+
+        # Title + Date
+        self.title_label.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_HEADING_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.3px; "
+            f"background: transparent;"
+        )
+        self.date_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"background: transparent;"
+        )
+
+        # Search
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus {{
+                border-color: {brand.BORDER_FOCUS};
+                background: {brand.BG_HOVER};
+            }}
+        """)
+
+        # Help button
+        self.help_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: 1px solid {brand.BORDER};
+                font-size: {brand.fs(16)}px;
+                font-weight: {brand.FW_BOLD};
+                color: {brand.TEXT_MUTED};
+                border-radius: {brand.R_SM}px;
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+                color: {brand.TEXT};
+            }}
+        """)
+
+        # Notification button
+        self.notif_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: 1px solid {brand.BORDER};
+                font-size: {brand.fs(16)}px;
+                border-radius: {brand.R_SM}px;
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
+        """)
+
+        # Badge
+        self.badge.setStyleSheet(f"""
+            QLabel {{
+                background: {brand.ERROR};
+                color: white;
+                border-radius: {brand.sp(10)}px;
+                font-size: {brand.fs(10)}px;
+                font-weight: {brand.FW_BOLD};
+                border: 2px solid {brand.BG_MAIN};
+            }}
+        """)
+
+        # Avatar
+        self.avatar.setStyleSheet(
+            f"background: {brand.PRIMARY}; "
+            f"border-radius: {brand.sp(19)}px; "
+            f"border: 2px solid {brand.PRIMARY_HOVER};"
+        )
+        self.avatar_label.setStyleSheet(
+            f"color: white; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"background: transparent; border: none;"
+        )
 
     def set_title(self, title: str):
         self.title_label.setText(title)
@@ -692,7 +755,7 @@ class Header(QFrame):
     def update_theme(self, theme: dict):
         self.theme = theme
         self._apply_style()
-        self.title_label.setStyleSheet(f"color: {theme['text']}; font-size: 18px; font-weight: bold;")
+        self._apply_child_styles()
         # Dropdown'ı yeniden oluştur (tema değişikliği)
         if self._dropdown:
             self._dropdown.deleteLater()

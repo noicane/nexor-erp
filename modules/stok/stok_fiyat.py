@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 import uuid
 
 
@@ -31,10 +32,10 @@ class FiyatDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDoubleSpinBox, QDateEdit {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -83,7 +84,7 @@ class FiyatDialog(QDialog):
         btn_iptal = QPushButton("İptal")
         btn_iptal.clicked.connect(self.reject)
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_iptal)
         btn_layout.addStretch()
@@ -135,20 +136,20 @@ class StokFiyatPage(BasePage):
         
         header = QHBoxLayout()
         title = QLabel("💰 Ürün Fiyat Yönetimi")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 20px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 20px; font-weight: bold;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
         
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme['bg_card_solid']}; border-radius: 8px; padding: 12px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 12px;")
         f_layout = QHBoxLayout(filter_frame)
         
         f_layout.addWidget(QLabel("Ürün Ara:"))
         self.txt_arama = QLineEdit()
         self.txt_arama.setPlaceholderText("Ürün kodu veya adı...")
         self.txt_arama.setMinimumWidth(300)
-        self.txt_arama.setStyleSheet(f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};")
+        self.txt_arama.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};")
         self.txt_arama.returnPressed.connect(self._ara_urun)
         f_layout.addWidget(self.txt_arama)
         
@@ -159,13 +160,13 @@ class StokFiyatPage(BasePage):
         f_layout.addStretch()
         
         btn_yeni = QPushButton("+ Yeni Fiyat")
-        btn_yeni.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
+        btn_yeni.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 10px 20px;")
         btn_yeni.clicked.connect(self._yeni_fiyat)
         f_layout.addWidget(btn_yeni)
         layout.addWidget(filter_frame)
         
         self.urun_info = QLabel("Ürün seçiniz...")
-        self.urun_info.setStyleSheet(f"color: {self.theme['text_muted']}; padding: 8px; background: {self.theme['bg_hover']}; border-radius: 6px;")
+        self.urun_info.setStyleSheet(f"color: {brand.TEXT_DIM}; padding: 8px; background: {brand.BG_HOVER}; border-radius: 6px;")
         layout.addWidget(self.urun_info)
         
         self.table = QTableWidget()
@@ -192,10 +193,10 @@ class StokFiyatPage(BasePage):
         layout.addLayout(btn_layout)
     
     def _table_style(self):
-        return f"QTableWidget {{ background: {self.theme['bg_main']}; border: 1px solid {self.theme['border']}; }} QHeaderView::section {{ background: {self.theme['bg_card_solid']}; color: {self.theme['text']}; padding: 10px; border-bottom: 2px solid {self.theme['primary']}; }}"
+        return f"QTableWidget {{ background: {brand.BG_MAIN}; border: 1px solid {brand.BORDER}; }} QHeaderView::section {{ background: {brand.BG_CARD}; color: {brand.TEXT}; padding: 10px; border-bottom: 2px solid {brand.PRIMARY}; }}"
     
     def _button_style(self):
-        return f"QPushButton {{ background: {self.theme['bg_card_solid']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px 16px; }}"
+        return f"QPushButton {{ background: {brand.BG_CARD}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 16px; }}"
     
     def _ara_urun(self):
         arama = self.txt_arama.text().strip()

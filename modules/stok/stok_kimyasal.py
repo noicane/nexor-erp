@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 from core.log_manager import LogManager
 
 
@@ -39,13 +40,13 @@ class TDSFormulDialog(QDialog):
 
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDoubleSpinBox, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """)
         layout = QVBoxLayout(self)
@@ -93,7 +94,7 @@ class TDSFormulDialog(QDialog):
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         btn_kaydet = QPushButton("Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 20px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 20px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         layout.addLayout(btn_layout)
@@ -189,7 +190,7 @@ class StokKimyasalPage(BasePage):
         # Header
         header = QHBoxLayout()
         title = QLabel("Kimyasal Tuketim Takip")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
@@ -197,9 +198,9 @@ class StokKimyasalPage(BasePage):
         # Tabs
         tabs = QTabWidget()
         tabs.setStyleSheet(f"""
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
 
         tabs.addTab(self._create_stok_tab(), "Kimyasal Stok")
@@ -217,21 +218,21 @@ class StokKimyasalPage(BasePage):
         # Toolbar
         toolbar = QHBoxLayout(); toolbar.setSpacing(12)
         lbl_info = QLabel("Kimyasal deposundaki stoklar - Satira cift tiklayarak tuketim kaydi girebilirsiniz")
-        lbl_info.setStyleSheet(f"color: {t.get('text_secondary', '#888')}; font-size: 12px;")
+        lbl_info.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px;")
         toolbar.addWidget(lbl_info)
         toolbar.addStretch()
         self.txt_stok_ara = QLineEdit()
         self.txt_stok_ara.setPlaceholderText("Ara (stok kodu, adi, lot)...")
         self.txt_stok_ara.setMaximumWidth(250)
-        self.txt_stok_ara.setStyleSheet(f"background: {t.get('bg_input')}; border: 1px solid {t.get('border')}; border-radius: 6px; padding: 8px; color: {t.get('text')};")
+        self.txt_stok_ara.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};")
         self.txt_stok_ara.textChanged.connect(self._stok_filtrele)
         toolbar.addWidget(self.txt_stok_ara)
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"QPushButton {{ background: {t.get('bg_input')}; color: {t.get('text')}; border: 1px solid {t.get('border')}; border-radius: 6px; padding: 8px 14px; }}")
+        btn_yenile.setStyleSheet(f"QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 14px; }}")
         btn_yenile.clicked.connect(self._load_stok)
         toolbar.addWidget(btn_yenile)
         btn_yazdir = QPushButton("Yazdir")
-        btn_yazdir.setStyleSheet(f"QPushButton {{ background: {t.get('info', '#3B82F6')}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }}")
+        btn_yazdir.setStyleSheet(f"QPushButton {{ background: {brand.INFO}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }}")
         btn_yazdir.clicked.connect(self._stok_yazdir)
         toolbar.addWidget(btn_yazdir)
         layout.addLayout(toolbar)
@@ -252,7 +253,7 @@ class StokKimyasalPage(BasePage):
         layout.addWidget(self.tbl_stok)
 
         self.lbl_stok_ozet = QLabel("")
-        self.lbl_stok_ozet.setStyleSheet(f"color: {t.get('text_muted', '#666')}; font-size: 12px; padding: 4px;")
+        self.lbl_stok_ozet.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px; padding: 4px;")
         layout.addWidget(self.lbl_stok_ozet)
         return w
 
@@ -274,7 +275,7 @@ class StokKimyasalPage(BasePage):
         toolbar.addWidget(self.dt_bit)
 
         btn_filtre = QPushButton("Filtrele")
-        btn_filtre.setStyleSheet(f"background: {self.theme.get('info')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_filtre.setStyleSheet(f"background: {brand.INFO}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_filtre.clicked.connect(self._load_tuketim)
         toolbar.addWidget(btn_filtre)
         toolbar.addStretch()
@@ -299,15 +300,15 @@ class StokKimyasalPage(BasePage):
 
         toolbar = QHBoxLayout()
         btn_ekle = QPushButton("Yeni Formul")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_ekle.clicked.connect(self._add_formul)
         toolbar.addWidget(btn_ekle)
         btn_duzenle = QPushButton("Duzenle")
-        btn_duzenle.setStyleSheet(f"background: {self.theme.get('info')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_duzenle.setStyleSheet(f"background: {brand.INFO}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_duzenle.clicked.connect(self._edit_formul)
         toolbar.addWidget(btn_duzenle)
         btn_sil = QPushButton("Sil")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_sil.clicked.connect(self._del_formul)
         toolbar.addWidget(btn_sil)
         toolbar.addStretch()
@@ -336,7 +337,7 @@ class StokKimyasalPage(BasePage):
         self.cmb_donem.addItems(["Son 7 Gun", "Son 30 Gun", "Son 90 Gun", "Bu Yil"])
         toolbar.addWidget(self.cmb_donem)
         btn_rapor = QPushButton("Rapor Olustur")
-        btn_rapor.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_rapor.setStyleSheet(f"background: {brand.PRIMARY}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_rapor.clicked.connect(self._load_rapor)
         toolbar.addWidget(btn_rapor)
         toolbar.addStretch()
@@ -358,19 +359,19 @@ class StokKimyasalPage(BasePage):
     def _style_table(self, tbl):
         tbl.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{ padding: 6px; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """)
@@ -418,7 +419,7 @@ class StokKimyasalPage(BasePage):
                 }
 
                 lot_item = QTableWidgetItem(str(r[1] or ""))
-                lot_item.setForeground(QColor(self.theme.get('info', '#3B82F6')))
+                lot_item.setForeground(QColor(brand.INFO))
                 self.tbl_stok.setItem(i, 0, lot_item)
                 self.tbl_stok.setItem(i, 1, QTableWidgetItem(str(r[2] or "")))
                 self.tbl_stok.setItem(i, 2, QTableWidgetItem(str(r[3] or "")))
@@ -436,7 +437,7 @@ class StokKimyasalPage(BasePage):
                 durum = str(r[7] or "")
                 durum_item = QTableWidgetItem(durum)
                 if durum == 'ONAY':
-                    durum_item.setForeground(QColor(self.theme.get('success', '#22c55e')))
+                    durum_item.setForeground(QColor(brand.SUCCESS))
                 self.tbl_stok.setItem(i, 6, durum_item)
                 self.tbl_stok.setRowHeight(i, 38)
 
@@ -466,24 +467,24 @@ class StokKimyasalPage(BasePage):
         dlg.setWindowTitle(f"Tuketim - {data['urun_kodu']}")
         dlg.setMinimumWidth(500); dlg.setModal(True)
         dlg.setStyleSheet(f"""
-            QDialog {{ background: {t.get('bg_main', '#0F1419')}; }}
-            QLabel {{ color: {t.get('text', '#fff')}; }}
-            QComboBox, QDoubleSpinBox, QTextEdit {{ background: {t.get('bg_input', '#232C3B')};
-                border: 1px solid {t.get('border', '#333')}; border-radius: 6px; padding: 8px; color: {t.get('text', '#fff')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
+            QComboBox, QDoubleSpinBox, QTextEdit {{ background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT}; }}
         """)
 
         lay = QVBoxLayout(dlg); lay.setContentsMargins(24, 24, 24, 24); lay.setSpacing(16)
 
         hdr = QLabel(f"{data['urun_kodu']} - {data['urun_adi']}")
-        hdr.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {t.get('text')};")
+        hdr.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {brand.TEXT};")
         lay.addWidget(hdr)
 
         info = QLabel(f"Lot: {data['lot_no']}  |  Mevcut: {data['miktar']:.2f} {data['birim']}")
-        info.setStyleSheet(f"color: {t.get('text_secondary', '#888')}; font-size: 13px; padding: 8px 12px; background: {t.get('bg_card', '#151B23')}; border-radius: 6px;")
+        info.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 13px; padding: 8px 12px; background: {brand.BG_CARD}; border-radius: 6px;")
         lay.addWidget(info)
 
         form = QFormLayout(); form.setSpacing(12)
-        lbl_s = f"color: {t.get('text_secondary', '#888')}; font-size: 13px;"
+        lbl_s = f"color: {brand.TEXT_MUTED}; font-size: 13px;"
 
         lbl = QLabel("Banyo *"); lbl.setStyleSheet(lbl_s)
         cmb_banyo = QComboBox(); cmb_banyo.addItem("-- Banyo Secin --", None)
@@ -525,10 +526,10 @@ class StokKimyasalPage(BasePage):
 
         btn_bar = QHBoxLayout(); btn_bar.addStretch()
         btn_iptal = QPushButton("Iptal")
-        btn_iptal.setStyleSheet(f"QPushButton {{ background: {t.get('bg_input')}; color: {t.get('text')}; border: 1px solid {t.get('border')}; border-radius: 6px; padding: 10px 20px; }}")
+        btn_iptal.setStyleSheet(f"QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 10px 20px; }}")
         btn_iptal.clicked.connect(dlg.reject)
         btn_kaydet = QPushButton("Kaydet ve Stoktan Dus")
-        btn_kaydet.setStyleSheet(f"QPushButton {{ background: {t.get('success', '#10B981')}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: 600; }}")
+        btn_kaydet.setStyleSheet(f"QPushButton {{ background: {brand.SUCCESS}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: 600; }}")
 
         def _kaydet():
             banyo_id = cmb_banyo.currentData()

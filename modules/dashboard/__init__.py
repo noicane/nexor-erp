@@ -6,16 +6,19 @@ from modules import PageRegistry
 
 MODULE_NAME = "dashboard"
 
-# Sayfa importları - Her iki dosyada da DashboardPageV2 var
+# Brand-aware v3 aktif dashboard
+from .dashboard_v3 import DashboardPageV3
+# Eski v2 geriye uyumluluk icin
 from .dashboard_v2 import DashboardPageV2
 
-# Geriye dönük uyumluluk için alias
-DashboardPage = DashboardPageV2
+# Alias — her ikisi de 'dashboard' sayfa kimligine esit
+DashboardPage = DashboardPageV3
 
-# Sayfa kayıtları
-PageRegistry.register("dashboard", DashboardPageV2, MODULE_NAME)
+# Sayfa kayitlari
+PageRegistry.register("dashboard", DashboardPageV3, MODULE_NAME)
 
 __all__ = [
     "DashboardPage",
-    "DashboardPageV2"
+    "DashboardPageV2",
+    "DashboardPageV3",
 ]

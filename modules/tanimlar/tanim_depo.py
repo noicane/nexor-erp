@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 # ==================== DEPO TİPİ DİALOG ====================
@@ -44,11 +45,11 @@ class DepoTipiDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QTextEdit, QSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -57,7 +58,7 @@ class DepoTipiDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("🏷️ " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -89,7 +90,7 @@ class DepoTipiDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
@@ -142,11 +143,11 @@ class DepoDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -155,7 +156,7 @@ class DepoDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("📦 " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -205,7 +206,7 @@ class DepoDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
@@ -281,11 +282,11 @@ class BolumDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -294,7 +295,7 @@ class BolumDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("🗂️ " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -349,7 +350,7 @@ class BolumDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
@@ -423,11 +424,11 @@ class RafDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -436,7 +437,7 @@ class RafDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("📚 " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -493,7 +494,7 @@ class RafDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
@@ -571,11 +572,11 @@ class TopluRafDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -584,7 +585,7 @@ class TopluRafDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("📊 Toplu Raf Oluştur")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -633,7 +634,7 @@ class TopluRafDialog(QDialog):
         layout.addLayout(form)
         
         self.preview_label = QLabel("Önizleme: -")
-        self.preview_label.setStyleSheet(f"background: {self.theme['bg_card']}; padding: 12px; border-radius: 6px; color: {self.theme['text']};")
+        self.preview_label.setStyleSheet(f"background: {brand.BG_CARD}; padding: 12px; border-radius: 6px; color: {brand.TEXT};")
         layout.addWidget(self.preview_label)
         
         layout.addStretch()
@@ -644,7 +645,7 @@ class TopluRafDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         create_btn = QPushButton("🔨 Oluştur")
-        create_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        create_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         create_btn.clicked.connect(self._create)
         btn_layout.addWidget(create_btn)
         layout.addLayout(btn_layout)
@@ -733,9 +734,9 @@ class TanimDepoPage(BasePage):
         # Tabs
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(f"""
-            QTabWidget::pane {{ border: 1px solid {self.theme['border']}; border-radius: 8px; background: {self.theme['bg_card']}; }}
-            QTabBar::tab {{ padding: 10px 20px; margin-right: 2px; background: {self.theme['bg_main']}; color: {self.theme['text']}; border-top-left-radius: 6px; border-top-right-radius: 6px; }}
-            QTabBar::tab:selected {{ background: {self.theme['primary']}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; border-radius: 8px; background: {brand.BG_CARD}; }}
+            QTabBar::tab {{ padding: 10px 20px; margin-right: 2px; background: {brand.BG_MAIN}; color: {brand.TEXT}; border-top-left-radius: 6px; border-top-right-radius: 6px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         self.tabs.addTab(self._create_tipler_tab(), "🏷️ Depo Tipleri")
@@ -867,7 +868,7 @@ class TanimDepoPage(BasePage):
         toolbar.addWidget(self.raf_depo_filter)
         toolbar.addStretch()
         bulk_btn = QPushButton("📊 Toplu Raf")
-        bulk_btn.setStyleSheet(self._primary_btn_style().replace(self.theme['primary'], '#10B981'))
+        bulk_btn.setStyleSheet(self._primary_btn_style().replace(brand.PRIMARY, '#10B981'))
         bulk_btn.clicked.connect(self._add_bulk_raf)
         toolbar.addWidget(bulk_btn)
         add_btn = QPushButton("➕ Yeni Raf")
@@ -1171,18 +1172,18 @@ class TanimDepoPage(BasePage):
     
     # ==================== STİLLER ====================
     def _input_style(self):
-        return f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};"
+        return f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};"
     
     def _combo_style(self):
-        return f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']}; min-width: 120px;"
+        return f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT}; min-width: 120px;"
     
     def _primary_btn_style(self):
-        return f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;"
+        return f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;"
     
     def _table_style(self):
         return f"""
-            QTableWidget {{ background: {self.theme['bg_card_solid']}; border: 1px solid {self.theme['border']}; border-radius: 8px; gridline-color: {self.theme['border']}; color: {self.theme['text']}; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; gridline-color: {brand.BORDER}; color: {brand.TEXT}; }}
             QTableWidget::item {{ padding: 6px; }}
-            QTableWidget::item:selected {{ background: {self.theme['primary']}; }}
-            QHeaderView::section {{ background: {self.theme['bg_main']}; color: {self.theme['text']}; padding: 8px; border: none; border-bottom: 2px solid {self.theme['primary']}; font-weight: bold; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_MAIN}; color: {brand.TEXT}; padding: 8px; border: none; border-bottom: 2px solid {brand.PRIMARY}; font-weight: bold; }}
         """

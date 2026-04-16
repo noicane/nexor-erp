@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class TatbikatDialog(QDialog):
@@ -33,13 +34,13 @@ class TatbikatDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateTimeEdit, QTextEdit, QSpinBox {{
-                background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px; color: {self.theme.get('text')};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
-            QCheckBox {{ color: {self.theme.get('text')}; }}
+            QCheckBox {{ color: {brand.TEXT}; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -75,7 +76,7 @@ class TatbikatDialog(QDialog):
         
         # Sonuçlar (tamamlandı için)
         lbl_sonuc = QLabel("📊 Sonuçlar")
-        lbl_sonuc.setStyleSheet(f"font-weight: bold; color: {self.theme.get('primary')}; margin-top: 10px;")
+        lbl_sonuc.setStyleSheet(f"font-weight: bold; color: {brand.PRIMARY}; margin-top: 10px;")
         form.addRow("", lbl_sonuc)
         
         self.spin_katilimci = QSpinBox()
@@ -108,7 +109,7 @@ class TatbikatDialog(QDialog):
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         layout.addLayout(btn_layout)
@@ -224,16 +225,16 @@ class ISGTatbikatlarPage(BasePage):
         layout.setSpacing(12)
         
         header = QLabel("🔥 Acil Durum Tatbikatları")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("➕ Yeni Tatbikat")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
         
@@ -261,9 +262,9 @@ class ISGTatbikatlarPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px; font-weight: bold; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
@@ -296,11 +297,11 @@ class ISGTatbikatlarPage(BasePage):
                 if j == 6:  # Durum
                     item = QTableWidgetItem(str(val) if val else "")
                     if val == "TAMAMLANDI":
-                        item.setForeground(QColor(self.theme.get('success')))
+                        item.setForeground(QColor(brand.SUCCESS))
                     elif val == "PLANLI":
-                        item.setForeground(QColor(self.theme.get('warning')))
+                        item.setForeground(QColor(brand.WARNING))
                     elif val == "IPTAL":
-                        item.setForeground(QColor(self.theme.get('danger')))
+                        item.setForeground(QColor(brand.ERROR))
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

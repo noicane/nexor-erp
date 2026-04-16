@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class PozisyonDialog(QDialog):
@@ -34,14 +35,14 @@ class PozisyonDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """)
         
@@ -74,7 +75,7 @@ class PozisyonDialog(QDialog):
         # Aktif
         self.chk_aktif = QCheckBox("Aktif")
         self.chk_aktif.setChecked(True)
-        self.chk_aktif.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.chk_aktif.setStyleSheet(f"color: {brand.TEXT};")
         form.addRow("", self.chk_aktif)
         
         layout.addLayout(form)
@@ -85,12 +86,12 @@ class PozisyonDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 24px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 24px; border-radius: 6px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px; font-weight: bold;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px; font-weight: bold;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -199,27 +200,27 @@ class TanimPozisyonlarPage(BasePage):
         
         # Header
         header = QLabel("Görev Tanımları")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         # Toolbar
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("Yeni Görev")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
         
         btn_duzenle = QPushButton("✏️ Düzenle")
-        btn_duzenle.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 16px; border-radius: 6px;")
+        btn_duzenle.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 8px 16px; border-radius: 6px;")
         btn_duzenle.clicked.connect(self._duzenle)
         toolbar_layout.addWidget(btn_duzenle)
         
         btn_sil = QPushButton("🗑️ Sil")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_sil.clicked.connect(self._sil)
         toolbar_layout.addWidget(btn_sil)
         
@@ -235,11 +236,11 @@ class TanimPozisyonlarPage(BasePage):
         self.cmb_departman.addItem("Tüm Bölümler", None)
         self.cmb_departman.setStyleSheet(f"""
             QComboBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
                 min-width: 150px;
             }}
         """)
@@ -247,7 +248,7 @@ class TanimPozisyonlarPage(BasePage):
         toolbar_layout.addWidget(self.cmb_departman)
         
         btn_yenile = QPushButton("🔄 Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 16px; border-radius: 6px;")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 8px 16px; border-radius: 6px;")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -265,19 +266,19 @@ class TanimPozisyonlarPage(BasePage):
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{ padding: 8px; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """)
@@ -295,7 +296,7 @@ class TanimPozisyonlarPage(BasePage):
         
         # İstatistik
         self.lbl_stat = QLabel()
-        self.lbl_stat.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_stat.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.lbl_stat)
         
         # Departman combosunu doldur
@@ -360,13 +361,13 @@ class TanimPozisyonlarPage(BasePage):
             per_item = QTableWidgetItem(str(row[7]) if row[7] else "0")
             per_item.setTextAlignment(Qt.AlignCenter)
             if row[7] and row[7] > 0:
-                per_item.setForeground(QColor(self.theme.get('info', '#3b82f6')))
+                per_item.setForeground(QColor(brand.INFO))
             self.table.setItem(i, 5, per_item)
 
             # Durum
             aktif = row[5]
             durum_item = QTableWidgetItem("Aktif" if aktif else "Pasif")
-            durum_item.setForeground(QColor(self.theme.get('success') if aktif else self.theme.get('danger')))
+            durum_item.setForeground(QColor(brand.SUCCESS if aktif else brand.ERROR))
             durum_item.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(i, 6, durum_item)
 

@@ -14,32 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
-
-
-def get_modern_style(theme: dict) -> dict:
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
+from core.nexor_brand import brand
 
 
 class EventLogPage(BasePage):
@@ -47,7 +22,6 @@ class EventLogPage(BasePage):
     
     def __init__(self, theme: dict):
         super().__init__(theme)
-        self.s = get_modern_style(theme)
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)
         
@@ -57,131 +31,93 @@ class EventLogPage(BasePage):
         self.auto_refresh.start(30000)
     
     def _setup_ui(self):
-        s = self.s
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
-        
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
+
         # Header
-        header_frame = QFrame()
-        header_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 16px;")
-        header_layout = QHBoxLayout(header_frame)
-        
-        # Başlık
-        title_layout = QVBoxLayout()
-        title_row = QHBoxLayout()
-        icon = QLabel("📋")
-        icon.setStyleSheet("font-size: 24px;")
-        title_row.addWidget(icon)
-        
-        title = QLabel("Event Log")
-        title.setStyleSheet(f"color: {s['text']}; font-size: 20px; font-weight: 600;")
-        title_row.addWidget(title)
-        title_row.addStretch()
-        title_layout.addLayout(title_row)
-        
-        subtitle = QLabel("Sistem olayları ve bildirimler")
-        subtitle.setStyleSheet(f"color: {s['text_secondary']}; font-size: 12px;")
-        title_layout.addWidget(subtitle)
-        
-        header_layout.addLayout(title_layout)
-        header_layout.addStretch()
-        
-        # İstatistikler
-        self.stat_widgets = {}
-        for key, emoji, color in [
-            ('toplam', '📊', s['info']),
-            ('bekleyen', '⏳', s['warning']),
-            ('tamamlanan', '✅', s['success'])
-        ]:
-            stat_frame = QFrame()
-            stat_layout = QHBoxLayout(stat_frame)
-            stat_layout.setContentsMargins(12, 8, 12, 8)
-            stat_layout.setSpacing(6)
-            
-            emoji_lbl = QLabel(emoji)
-            emoji_lbl.setStyleSheet("font-size: 16px;")
-            stat_layout.addWidget(emoji_lbl)
-            
-            val_lbl = QLabel("0")
-            val_lbl.setStyleSheet(f"color: {color}; font-size: 16px; font-weight: 600;")
-            self.stat_widgets[key] = val_lbl
-            stat_layout.addWidget(val_lbl)
-            
-            header_layout.addWidget(stat_frame)
-        
-        refresh_btn = QPushButton("Yenile")
-        refresh_btn.setFixedSize(60, 32)
-        refresh_btn.setCursor(Qt.PointingHandCursor)
-        refresh_btn.setStyleSheet(f"QPushButton {{ background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 6px; font-size: 12px; }} QPushButton:hover {{ background: {s['border']}; }}")
+        header = self.create_page_header("Event Log", "Sistem olaylari ve bildirimler")
+        refresh_btn = self.create_primary_button("Yenile")
         refresh_btn.clicked.connect(self._load_data)
-        header_layout.addWidget(refresh_btn)
-        
-        layout.addWidget(header_frame)
-        
+        header.addWidget(refresh_btn)
+        layout.addLayout(header)
+
+        # KPI kartlari
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(brand.SP_4)
+        self._kpi_toplam = self.create_stat_card("TOPLAM", "0", color=brand.INFO)
+        self._kpi_bekleyen = self.create_stat_card("BEKLEYEN", "0", color=brand.WARNING)
+        self._kpi_tamamlanan = self.create_stat_card("TAMAMLANAN", "0", color=brand.SUCCESS)
+        kpi_row.addWidget(self._kpi_toplam)
+        kpi_row.addWidget(self._kpi_bekleyen)
+        kpi_row.addWidget(self._kpi_tamamlanan)
+        kpi_row.addStretch()
+        layout.addLayout(kpi_row)
+
+        # stat_widgets uyumluluk - findChild ile guncelleme
+        self.stat_widgets = {
+            'toplam': self._kpi_toplam.findChild(QLabel, "stat_value"),
+            'bekleyen': self._kpi_bekleyen.findChild(QLabel, "stat_value"),
+            'tamamlanan': self._kpi_tamamlanan.findChild(QLabel, "stat_value"),
+        }
+
         # Filtreler
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 12px; padding: 12px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_LG}px; padding: {brand.SP_3}px;")
         filter_layout = QHBoxLayout(filter_frame)
-        filter_layout.setSpacing(12)
-        
-        input_style = f"background: {s['input_bg']}; color: {s['text']}; border: 1px solid {s['border']}; border-radius: 6px; padding: 8px; font-size: 12px;"
-        
-        # Arama
-        filter_layout.addWidget(QLabel("🔍", styleSheet="font-size: 14px;"))
+        filter_layout.setSpacing(brand.SP_3)
+
+        input_css = f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px; font-size: {brand.FS_BODY_SM}px;"
+
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Lot no ara...")
-        self.search_input.setFixedWidth(150)
-        self.search_input.setStyleSheet(f"QLineEdit {{ {input_style} }}")
+        self.search_input.setFixedWidth(brand.sp(150))
+        self.search_input.setStyleSheet(f"QLineEdit {{ {input_css} }}")
         self.search_input.returnPressed.connect(self._load_data)
         filter_layout.addWidget(self.search_input)
-        
-        # Event Tipi
-        filter_layout.addWidget(QLabel("Tip:", styleSheet=f"color: {s['text']}; font-size: 12px;"))
+
+        lbl_css = f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;"
+        filter_layout.addWidget(QLabel("Tip:", styleSheet=lbl_css))
         self.event_combo = QComboBox()
-        self.event_combo.setFixedWidth(180)
-        self.event_combo.setStyleSheet(f"QComboBox {{ {input_style} }}")
-        self.event_combo.addItem("Tümü", None)
-        self.event_combo.addItem("🔍 Giriş Kontrol", "GIRIS_KONTROL_GEREKLI")
-        self.event_combo.addItem("✅ Final Kontrol", "FINAL_KONTROL_GEREKLI")
-        self.event_combo.addItem("⚙️ Üretime Hazır", "URETIM_HAZIR")
-        self.event_combo.addItem("🚚 Sevk Hazır", "SEVK_HAZIR")
+        self.event_combo.setFixedWidth(brand.sp(180))
+        self.event_combo.setStyleSheet(f"QComboBox {{ {input_css} }}")
+        self.event_combo.addItem("Tumu", None)
+        self.event_combo.addItem("Giris Kontrol", "GIRIS_KONTROL_GEREKLI")
+        self.event_combo.addItem("Final Kontrol", "FINAL_KONTROL_GEREKLI")
+        self.event_combo.addItem("Uretime Hazir", "URETIM_HAZIR")
+        self.event_combo.addItem("Sevk Hazir", "SEVK_HAZIR")
         self.event_combo.currentIndexChanged.connect(self._load_data)
         filter_layout.addWidget(self.event_combo)
-        
-        # Durum
-        filter_layout.addWidget(QLabel("Durum:", styleSheet=f"color: {s['text']}; font-size: 12px;"))
+
+        filter_layout.addWidget(QLabel("Durum:", styleSheet=lbl_css))
         self.durum_combo = QComboBox()
-        self.durum_combo.setFixedWidth(120)
-        self.durum_combo.setStyleSheet(f"QComboBox {{ {input_style} }}")
-        self.durum_combo.addItem("Tümü", None)
-        self.durum_combo.addItem("⏳ Bekleyen", "BEKLIYOR")
-        self.durum_combo.addItem("✅ Tamamlanan", "TAMAMLANDI")
+        self.durum_combo.setFixedWidth(brand.sp(120))
+        self.durum_combo.setStyleSheet(f"QComboBox {{ {input_css} }}")
+        self.durum_combo.addItem("Tumu", None)
+        self.durum_combo.addItem("Bekleyen", "BEKLIYOR")
+        self.durum_combo.addItem("Tamamlanan", "TAMAMLANDI")
         self.durum_combo.currentIndexChanged.connect(self._load_data)
         filter_layout.addWidget(self.durum_combo)
-        
-        # Tarih Aralığı
-        filter_layout.addWidget(QLabel("Tarih:", styleSheet=f"color: {s['text']}; font-size: 12px;"))
-        
+
+        filter_layout.addWidget(QLabel("Tarih:", styleSheet=lbl_css))
         self.tarih_bas = QDateEdit()
         self.tarih_bas.setDate(QDate.currentDate().addDays(-7))
         self.tarih_bas.setCalendarPopup(True)
-        self.tarih_bas.setFixedWidth(110)
-        self.tarih_bas.setStyleSheet(f"QDateEdit {{ {input_style} }}")
+        self.tarih_bas.setFixedWidth(brand.sp(110))
+        self.tarih_bas.setStyleSheet(f"QDateEdit {{ {input_css} }}")
         filter_layout.addWidget(self.tarih_bas)
-        
-        filter_layout.addWidget(QLabel("-", styleSheet=f"color: {s['text_muted']};"))
-        
+
+        filter_layout.addWidget(QLabel("-", styleSheet=f"color: {brand.TEXT_DIM};"))
         self.tarih_bit = QDateEdit()
         self.tarih_bit.setDate(QDate.currentDate())
         self.tarih_bit.setCalendarPopup(True)
-        self.tarih_bit.setFixedWidth(110)
-        self.tarih_bit.setStyleSheet(f"QDateEdit {{ {input_style} }}")
+        self.tarih_bit.setFixedWidth(brand.sp(110))
+        self.tarih_bit.setStyleSheet(f"QDateEdit {{ {input_css} }}")
         filter_layout.addWidget(self.tarih_bit)
         
         ara_btn = QPushButton("🔍 Ara")
         ara_btn.setCursor(Qt.PointingHandCursor)
-        ara_btn.setStyleSheet(f"QPushButton {{ background: {s['primary']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }} QPushButton:hover {{ background: #B91C1C; }}")
+        ara_btn.setStyleSheet(f"QPushButton {{ background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: 600; }} QPushButton:hover {{ background: #B91C1C; }}")
         ara_btn.clicked.connect(self._load_data)
         filter_layout.addWidget(ara_btn)
         
@@ -196,71 +132,57 @@ class EventLogPage(BasePage):
         ])
         
         self.table.setColumnWidth(0, 60)
-        self.table.setColumnWidth(1, 140)
-        self.table.setColumnWidth(2, 180)
-        self.table.setColumnWidth(3, 100)
-        self.table.setColumnWidth(4, 120)
-        self.table.setColumnWidth(5, 80)
-        self.table.setColumnWidth(6, 140)
-        self.table.setColumnWidth(7, 80)
-        
-        self.table.setStyleSheet(f"""
-            QTableWidget {{ 
-                background: {s['input_bg']}; 
-                color: {s['text']}; 
-                border: 1px solid {s['border']}; 
-                border-radius: 10px;
-                gridline-color: {s['border']};
-                font-size: 12px;
-            }}
-            QTableWidget::item {{ 
-                padding: 8px; 
-                border-bottom: 1px solid {s['border']};
-            }}
-            QTableWidget::item:selected {{ 
-                background: {s['primary']}; 
-            }}
-            QHeaderView::section {{ 
-                background: rgba(0,0,0,0.3); 
-                color: {s['text_secondary']}; 
-                padding: 10px 8px; 
-                border: none; 
-                border-bottom: 2px solid {s['primary']};
-                font-weight: 600;
-                font-size: 11px;
-            }}
-        """)
-        
+        self.table.setColumnWidth(1, brand.sp(140))
+        self.table.setColumnWidth(2, brand.sp(180))
+        self.table.setColumnWidth(3, brand.sp(100))
+        self.table.setColumnWidth(4, brand.sp(120))
+        self.table.setColumnWidth(5, brand.sp(80))
+        self.table.setColumnWidth(6, brand.sp(140))
+        self.table.setColumnWidth(7, brand.sp(80))
+
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
-        
-        layout.addWidget(self.table)
-        
+        self.table.setShowGrid(False)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px; outline: none;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border-bottom: 1px solid {brand.BORDER}; color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
+            QHeaderView::section {{
+                background: {brand.BG_SURFACE}; color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_4}px; border: none;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};
+            }}
+        """)
+
+        layout.addWidget(self.table, 1)
+
         # Footer
-        footer_frame = QFrame()
-        footer_frame.setStyleSheet(f"background: {s['card_bg']}; border: 1px solid {s['border']}; border-radius: 10px; padding: 12px;")
-        footer_layout = QHBoxLayout(footer_frame)
-        
-        self.footer_label = QLabel("Yükleniyor...")
-        self.footer_label.setStyleSheet(f"color: {s['text_secondary']}; font-size: 12px;")
+        footer_layout = QHBoxLayout()
+        self.footer_label = QLabel("Yukleniyor...")
+        self.footer_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY_SM}px;")
         footer_layout.addWidget(self.footer_label)
-        
         footer_layout.addStretch()
-        
-        # Sil butonu (sadece admin için - opsiyonel)
-        temizle_btn = QPushButton("🗑️ Eski Kayıtları Temizle")
-        temizle_btn.setStyleSheet(f"QPushButton {{ background: {s['error']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; }} QPushButton:hover {{ background: #DC2626; }}")
+
+        temizle_btn = self.create_danger_button("Eski Kayitlari Temizle")
         temizle_btn.clicked.connect(self._temizle_eski)
         footer_layout.addWidget(temizle_btn)
-        
-        layout.addWidget(footer_frame)
+
+        layout.addLayout(footer_layout)
     
     def _load_data(self):
         """Event log verilerini yükle"""
-        s = self.s
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -337,7 +259,7 @@ class EventLogPage(BasePage):
                 
                 # Lot No
                 lot_item = QTableWidgetItem(row[1] or '')
-                lot_item.setForeground(QColor(s['info']))
+                lot_item.setForeground(QColor(brand.INFO))
                 self.table.setItem(i, 1, lot_item)
                 
                 # Event Tipi
@@ -347,10 +269,10 @@ class EventLogPage(BasePage):
                 # Durum
                 durum_item = QTableWidgetItem(row[3] or '')
                 if row[3] == 'BEKLIYOR':
-                    durum_item.setForeground(QColor(s['warning']))
+                    durum_item.setForeground(QColor(brand.WARNING))
                     durum_item.setText("⏳ Bekleyen")
                 elif row[3] == 'TAMAMLANDI':
-                    durum_item.setForeground(QColor(s['success']))
+                    durum_item.setForeground(QColor(brand.SUCCESS))
                     durum_item.setText("✅ Tamam")
                 self.table.setItem(i, 3, durum_item)
                 
@@ -370,9 +292,9 @@ class EventLogPage(BasePage):
                 if row[7] is not None:
                     sure_item = QTableWidgetItem(f"{row[7]}h")
                     if row[7] > 24:
-                        sure_item.setForeground(QColor(s['error']))
+                        sure_item.setForeground(QColor(brand.ERROR))
                     elif row[7] > 8:
-                        sure_item.setForeground(QColor(s['warning']))
+                        sure_item.setForeground(QColor(brand.WARNING))
                     self.table.setItem(i, 7, sure_item)
                 else:
                     self.table.setItem(i, 7, QTableWidgetItem("-"))

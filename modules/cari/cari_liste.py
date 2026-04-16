@@ -20,35 +20,41 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 from config import DEFAULT_PAGE_SIZE
 
 
 # ============================================================================
-# MODERN STYLE HELPER
+# MODERN STYLE HELPER — artik brand'den okuyor
 # ============================================================================
-def get_modern_style(theme: dict) -> dict:
-    t = theme or {}
+def get_modern_style(theme: dict = None) -> dict:
+    """Brand sisteminden snapshot dict uret.
+
+    NOT: Her cagrida taze degerler doner. Tema modu degistiginde self.s'i
+    yeniden olusturup update_theme icinde stilleri tekrar uygulamak gerek.
+    """
     return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
+        # Colors
+        'card_bg':        brand.BG_CARD,
+        'card_solid':     brand.BG_CARD,
+        'input_bg':       brand.BG_INPUT,
+        'bg_main':        brand.BG_MAIN,
+        'bg_hover':       brand.BG_HOVER,
+        'bg_selected':    brand.BG_SELECTED,
+        'border':         brand.BORDER,
+        'border_light':   brand.BORDER_HARD,
+        'border_input':   brand.BORDER,
+        'text':           brand.TEXT,
+        'text_secondary': brand.TEXT_MUTED,
+        'text_muted':     brand.TEXT_DIM,
+        'primary':        brand.PRIMARY,
+        'primary_hover':  brand.PRIMARY_HOVER,
+        'success':        brand.SUCCESS,
+        'warning':        brand.WARNING,
+        'error':          brand.ERROR,
+        'danger':         brand.ERROR,
+        'info':           brand.INFO,
+        'gradient':       brand.PRIMARY,
     }
 
 
@@ -166,110 +172,129 @@ class CariDetayDialog(QDialog):
         self._set_edit_enabled(False)
     
     def _create_header(self) -> QFrame:
-        s = self.s
         header = QFrame()
-        header.setFixedHeight(70)
-        header.setStyleSheet(f"""
-            QFrame {{
-                background: {s['card_solid']};
-                border-bottom: 1px solid {s['border']};
-            }}
-        """)
+        header.setFixedHeight(brand.sp(64))
+        header.setStyleSheet(
+            f"QFrame {{ background: {brand.BG_MAIN}; "
+            f"border-bottom: 1px solid {brand.BORDER}; }}"
+        )
         h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(24, 0, 24, 0)
-        
+        h_layout.setContentsMargins(brand.SP_6, 0, brand.SP_4, 0)
+        h_layout.setSpacing(brand.SP_3)
+
         cari_tipi = self.cari_data.get('cari_tipi', 'MUSTERI')
-        icon = "🏭" if cari_tipi == 'TEDARIKCI' else "🏢"
-        
-        title = QLabel(f"{icon} {self.cari_data.get('cari_kodu', '')} - {self.cari_data.get('unvan', '')}")
-        title.setStyleSheet(f"color: {s['text']}; font-size: 18px; font-weight: 600;")
+        title = QLabel(
+            f"{self.cari_data.get('cari_kodu', '')} — "
+            f"{self.cari_data.get('unvan', '')}"
+        )
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_HEADING}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"letter-spacing: -0.2px; "
+            f"background: transparent; border: none;"
+        )
         title.setWordWrap(True)
         h_layout.addWidget(title, 1)
-        
-        tip_colors = {'MUSTERI': s['info'], 'TEDARIKCI': s['success'], 'BOTH': '#a855f7'}
-        tip_label = QLabel(cari_tipi or "MUSTERI")
-        tip_label.setStyleSheet(f"""
-            color: white;
-            font-weight: bold;
-            padding: 6px 16px;
-            background: {tip_colors.get(cari_tipi, '#6b7280')};
-            border-radius: 16px;
-            font-size: 12px;
-        """)
+
+        # Tip + Durum — kucuk badge'ler (pill'ler)
+        tip_label_text = {
+            'MUSTERI': 'Müşteri', 'TEDARIKCI': 'Tedarikçi', 'BOTH': 'İkisi'
+        }.get(cari_tipi, cari_tipi or 'Müşteri')
+        tip_color = {
+            'MUSTERI': brand.INFO, 'TEDARIKCI': brand.SUCCESS, 'BOTH': brand.PRIMARY
+        }.get(cari_tipi, brand.TEXT_MUTED)
+        tip_label = self._make_pill(tip_label_text, tip_color)
         h_layout.addWidget(tip_label)
-        
-        h_layout.addSpacing(12)
-        
+
         is_aktif = self.cari_data.get('aktif_mi', 1)
-        self.aktif_label = QLabel("✓ Aktif" if is_aktif else "✗ Pasif")
-        self.aktif_label.setStyleSheet(f"""
-            color: {s['success'] if is_aktif else s['error']};
-            font-weight: bold;
-            padding: 6px 16px;
-            background: {'rgba(16,185,129,0.2)' if is_aktif else 'rgba(239,68,68,0.2)'};
-            border-radius: 16px;
-            font-size: 12px;
-        """)
+        durum_color = brand.SUCCESS if is_aktif else brand.ERROR
+        self.aktif_label = self._make_pill(
+            "Aktif" if is_aktif else "Pasif", durum_color
+        )
         h_layout.addWidget(self.aktif_label)
-        
-        h_layout.addSpacing(12)
-        
+
+        h_layout.addSpacing(brand.SP_2)
+
+        # Butonlar — ince ghost + primary
         self.toggle_aktif_btn = QPushButton("Pasif Yap" if is_aktif else "Aktif Yap")
         self.toggle_aktif_btn.setCursor(Qt.PointingHandCursor)
+        self.toggle_aktif_btn.setFixedHeight(brand.sp(34))
         self.toggle_aktif_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {s['error'] if is_aktif else s['success']};
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 18px;
-                font-weight: 600;
-                font-size: 12px;
+                background: transparent;
+                color: {brand.TEXT_MUTED};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
             QPushButton:hover {{
-                background: {'#DC2626' if is_aktif else '#059669'};
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+                color: {brand.TEXT};
             }}
         """)
         self.toggle_aktif_btn.clicked.connect(self._toggle_aktif)
         h_layout.addWidget(self.toggle_aktif_btn)
-        
-        self.edit_btn = QPushButton("✏️ Düzenle")
+
+        self.edit_btn = QPushButton("Düzenle")
         self.edit_btn.setCursor(Qt.PointingHandCursor)
+        self.edit_btn.setFixedHeight(brand.sp(34))
         self.edit_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {s['primary']};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
-                border-radius: 8px;
-                padding: 10px 18px;
-                font-weight: 600;
-                font-size: 12px;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
-            QPushButton:hover {{ background: {s['primary_hover']}; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         self.edit_btn.clicked.connect(self._toggle_edit_mode)
         h_layout.addWidget(self.edit_btn)
-        
+
         close_btn = QPushButton("✕")
-        close_btn.setFixedSize(40, 40)
+        close_btn.setFixedSize(brand.sp(34), brand.sp(34))
         close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
-                color: {s['text_muted']};
-                border: none;
-                font-size: 20px;
-                border-radius: 8px;
+                color: {brand.TEXT_DIM};
+                border: 1px solid {brand.BORDER};
+                font-size: {brand.fs(14)}px;
+                border-radius: {brand.R_SM}px;
             }}
             QPushButton:hover {{
-                color: {s['error']};
-                background: rgba(239,68,68,0.1);
+                background: {brand.ERROR_SOFT};
+                color: {brand.ERROR};
+                border-color: {brand.ERROR};
             }}
         """)
         close_btn.clicked.connect(self.close)
         h_layout.addWidget(close_btn)
-        
+
         return header
+
+    def _make_pill(self, text: str, color: str) -> QLabel:
+        """Kucuk, sakin badge — metin + soft arkaplan + ince border."""
+        c = QColor(color)
+        lbl = QLabel(text)
+        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setFixedHeight(brand.sp(26))
+        lbl.setStyleSheet(f"""
+            color: {color};
+            background: rgba({c.red()},{c.green()},{c.blue()},0.12);
+            border: 1px solid rgba({c.red()},{c.green()},{c.blue()},0.35);
+            border-radius: {brand.R_SM}px;
+            padding: 0 {brand.SP_3}px;
+            font-size: {brand.FS_CAPTION}px;
+            font-weight: {brand.FW_SEMIBOLD};
+        """)
+        return lbl
     
     def _create_left_panel(self) -> QFrame:
         s = self.s
@@ -528,35 +553,26 @@ class CariDetayDialog(QDialog):
             
             self.cari_data['aktif_mi'] = new_status
             is_aktif = new_status
-            
-            self.aktif_label.setText("✓ Aktif" if is_aktif else "✗ Pasif")
+
+            # Badge'i yeniden stille (brand pill)
+            color = brand.SUCCESS if is_aktif else brand.ERROR
+            c = QColor(color)
+            self.aktif_label.setText("Aktif" if is_aktif else "Pasif")
             self.aktif_label.setStyleSheet(f"""
-                color: {s['success'] if is_aktif else s['error']};
-                font-weight: bold;
-                padding: 6px 16px;
-                background: {'rgba(16,185,129,0.2)' if is_aktif else 'rgba(239,68,68,0.2)'};
-                border-radius: 16px;
-                font-size: 12px;
+                color: {color};
+                background: rgba({c.red()},{c.green()},{c.blue()},0.12);
+                border: 1px solid rgba({c.red()},{c.green()},{c.blue()},0.35);
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                font-size: {brand.FS_CAPTION}px;
+                font-weight: {brand.FW_SEMIBOLD};
             """)
-            
+
+            # Toggle buton — ghost stil korunuyor, sadece yazi degisir
             self.toggle_aktif_btn.setText("Pasif Yap" if is_aktif else "Aktif Yap")
-            self.toggle_aktif_btn.setStyleSheet(f"""
-                QPushButton {{
-                    background: {s['error'] if is_aktif else s['success']};
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    padding: 10px 18px;
-                    font-weight: 600;
-                    font-size: 12px;
-                }}
-                QPushButton:hover {{
-                    background: {'#DC2626' if is_aktif else '#059669'};
-                }}
-            """)
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "❌ Hata", f"Durum değiştirilemedi: {e}")
+            QMessageBox.critical(self, "Hata", f"Durum değiştirilemedi: {e}")
 
 
 class CariListePage(BasePage):
@@ -573,237 +589,327 @@ class CariListePage(BasePage):
         QTimer.singleShot(100, self._load_data)
     
     def _setup_ui(self):
-        s = self.s
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
-        
-        # Header
+        layout.setContentsMargins(brand.SP_8, brand.SP_8, brand.SP_8, brand.SP_8)
+        layout.setSpacing(brand.SP_6)
+
+        # ================ HEADER ================
         header = QHBoxLayout()
+        header.setSpacing(brand.SP_4)
+
         title_section = QVBoxLayout()
-        title_section.setSpacing(4)
-        
-        title_row = QHBoxLayout()
-        icon = QLabel("🏢")
-        icon.setStyleSheet("font-size: 28px;")
-        title_row.addWidget(icon)
-        title = QLabel("Cari Kartları")
-        title.setStyleSheet(f"color: {s['text']}; font-size: 24px; font-weight: 600;")
-        title_row.addWidget(title)
-        title_row.addStretch()
-        title_section.addLayout(title_row)
-        
-        subtitle = QLabel("Müşteri ve tedarikçi kartlarını yönetin")
-        subtitle.setStyleSheet(f"color: {s['text_secondary']}; font-size: 13px;")
-        title_section.addWidget(subtitle)
+        title_section.setSpacing(brand.SP_1)
+
+        self.title_label = QLabel("Cari Kartları")
+        title_section.addWidget(self.title_label)
+
+        self.subtitle_label = QLabel("Müşteri ve tedarikçi kartlarını yönetin")
+        title_section.addWidget(self.subtitle_label)
+
         header.addLayout(title_section)
         header.addStretch()
-        
+
         self.stat_label = QLabel("")
-        self.stat_label.setStyleSheet(f"""
-            color: {s['text_muted']};
-            font-size: 13px;
-            padding: 8px 16px;
-            background: {s['card_bg']};
-            border: 1px solid {s['border']};
-            border-radius: 8px;
-        """)
         header.addWidget(self.stat_label)
-        
+
         layout.addLayout(header)
-        
-        # Toolbar
+
+        # ================ TOOLBAR ================
         toolbar = QHBoxLayout()
-        toolbar.setSpacing(12)
-        
+        toolbar.setSpacing(brand.SP_3)
+
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Ara (Kod, Ünvan, Vergi No, Telefon)")
-        self.search_input.setStyleSheet(f"""
-            QLineEdit {{
-                background: {s['input_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 14px;
-                color: {s['text']};
-                font-size: 13px;
-                min-width: 280px;
-            }}
-            QLineEdit:focus {{ border-color: {s['primary']}; }}
-        """)
+        self.search_input.setPlaceholderText("Ara (Kod, Ünvan, Vergi No, Telefon)")
+        self.search_input.setFixedHeight(brand.sp(40))
+        self.search_input.setMinimumWidth(brand.sp(300))
         self.search_input.returnPressed.connect(self._on_search)
         toolbar.addWidget(self.search_input)
-        
-        combo_style = f"""
-            QComboBox {{
-                background: {s['input_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 12px;
-                color: {s['text']};
-                min-width: 130px;
-                font-size: 13px;
-            }}
-            QComboBox:hover {{ border-color: {s['border_light']}; }}
-            QComboBox::drop-down {{ border: none; width: 30px; }}
-            QComboBox QAbstractItemView {{
-                background: {s['card_bg']};
-                border: 1px solid {s['border']};
-                color: {s['text']};
-                selection-background-color: {s['primary']};
-            }}
-        """
-        
+
         self.tip_combo = QComboBox()
-        self.tip_combo.addItem("📊 Tüm Tipler", None)
-        self.tip_combo.addItem("🏢 Müşteri", "MUSTERI")
-        self.tip_combo.addItem("🏭 Tedarikçi", "TEDARIKCI")
-        self.tip_combo.addItem("🔄 Her İkisi", "BOTH")
-        self.tip_combo.setStyleSheet(combo_style)
+        self.tip_combo.addItem("Tüm Tipler", None)
+        self.tip_combo.addItem("Müşteri", "MUSTERI")
+        self.tip_combo.addItem("Tedarikçi", "TEDARIKCI")
+        self.tip_combo.addItem("Her İkisi", "BOTH")
+        self.tip_combo.setFixedHeight(brand.sp(40))
         self.tip_combo.currentIndexChanged.connect(self._on_filter_change)
         toolbar.addWidget(self.tip_combo)
-        
+
         self.sehir_combo = QComboBox()
-        self.sehir_combo.addItem("📍 Tüm Şehirler", None)
-        self.sehir_combo.setStyleSheet(combo_style)
+        self.sehir_combo.addItem("Tüm Şehirler", None)
+        self.sehir_combo.setFixedHeight(brand.sp(40))
         self.sehir_combo.currentIndexChanged.connect(self._on_filter_change)
         toolbar.addWidget(self.sehir_combo)
-        
+
         self.aktif_combo = QComboBox()
-        self.aktif_combo.addItem("✅ Aktif", True)
-        self.aktif_combo.setStyleSheet(combo_style)
+        self.aktif_combo.addItem("Aktif", True)
+        self.aktif_combo.setFixedHeight(brand.sp(40))
         self.aktif_combo.currentIndexChanged.connect(self._on_filter_change)
         toolbar.addWidget(self.aktif_combo)
-        
+
         toolbar.addStretch()
 
         toolbar.addWidget(self.create_export_button(title="Cari Kartlari"))
 
-        refresh_btn = QPushButton("🔄")
-        refresh_btn.setToolTip("Yenile")
-        refresh_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: {s['input_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 14px;
-                font-size: 14px;
-            }}
-            QPushButton:hover {{ background: {s['border']}; border-color: {s['primary']}; }}
-        """)
-        refresh_btn.clicked.connect(self._load_data)
-        toolbar.addWidget(refresh_btn)
+        self.refresh_btn = QPushButton("Yenile")
+        self.refresh_btn.setToolTip("Listeyi yenile")
+        self.refresh_btn.setFixedHeight(brand.sp(40))
+        self.refresh_btn.setCursor(Qt.PointingHandCursor)
+        self.refresh_btn.clicked.connect(self._load_data)
+        toolbar.addWidget(self.refresh_btn)
 
-        zirve_btn = QPushButton("📥 Zirve Senkron")
-        zirve_btn.setToolTip("Zirve Ticari'den cari kartlarını senkronize et")
-        zirve_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: #2563eb;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 16px;
-                font-size: 12px;
-                font-weight: bold;
-            }}
-            QPushButton:hover {{ background: #1d4ed8; }}
-        """)
-        zirve_btn.clicked.connect(self._zirve_senkron)
-        toolbar.addWidget(zirve_btn)
+        self.zirve_btn = QPushButton("Zirve Senkron")
+        self.zirve_btn.setToolTip("Zirve Ticari'den cari kartlarını senkronize et")
+        self.zirve_btn.setFixedHeight(brand.sp(40))
+        self.zirve_btn.setCursor(Qt.PointingHandCursor)
+        self.zirve_btn.clicked.connect(self._zirve_senkron)
+        toolbar.addWidget(self.zirve_btn)
 
         layout.addLayout(toolbar)
-        
-        # Table
+
+        # ================ TABLE ================
         self.table = QTableWidget()
-        self.table.setStyleSheet(f"""
-            QTableWidget {{
-                background: {s['card_bg']};
-                border: 1px solid {s['border']};
-                border-radius: 10px;
-                gridline-color: {s['border']};
-                color: {s['text']};
-            }}
-            QTableWidget::item {{
-                padding: 10px;
-                border-bottom: 1px solid {s['border']};
-            }}
-            QTableWidget::item:selected {{ background: {s['primary']}; }}
-            QTableWidget::item:hover {{ background: rgba(220, 38, 38, 0.1); }}
-            QHeaderView::section {{
-                background: rgba(0,0,0,0.3);
-                color: {s['text_secondary']};
-                padding: 12px 8px;
-                border: none;
-                border-bottom: 2px solid {s['primary']};
-                font-weight: 600;
-                font-size: 12px;
-                text-transform: uppercase;
-            }}
-        """)
         self.table.setColumnCount(8)
-        self.table.setHorizontalHeaderLabels(["Cari Kodu", "Ünvan", "Tip", "Şehir", "Telefon", "E-posta", "Vade", "Durum"])
+        self.table.setHorizontalHeaderLabels([
+            "Cari Kodu", "Ünvan", "Tip", "Şehir", "Telefon", "E-posta", "Vade", "Durum"
+        ])
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.table.setColumnWidth(0, 120)
-        self.table.setColumnWidth(2, 120)
-        self.table.setColumnWidth(3, 100)
-        self.table.setColumnWidth(4, 130)
-        self.table.setColumnWidth(5, 180)
-        self.table.setColumnWidth(6, 80)
-        self.table.setColumnWidth(7, 90)
+        self.table.setColumnWidth(0, brand.sp(130))
+        self.table.setColumnWidth(2, brand.sp(120))
+        self.table.setColumnWidth(3, brand.sp(110))
+        self.table.setColumnWidth(4, brand.sp(140))
+        self.table.setColumnWidth(5, brand.sp(200))
+        self.table.setColumnWidth(6, brand.sp(80))
+        self.table.setColumnWidth(7, brand.sp(100))
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(44))
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(False)
         self.table.doubleClicked.connect(self._on_row_double_click)
+        self.table.setFrameShape(QFrame.NoFrame)
         layout.addWidget(self.table, 1)
         
-        # Sayfalama
-        paging = QFrame()
-        paging.setFixedHeight(60)
-        paging.setStyleSheet(f"""
-            QFrame {{
-                background: {s['card_solid']};
-                border: 1px solid {s['border']};
-                border-radius: 10px;
-            }}
-        """)
-        p_layout = QHBoxLayout(paging)
-        p_layout.setContentsMargins(20, 0, 20, 0)
-        
+        # ================ SAYFALAMA ================
+        self.paging_frame = QFrame()
+        self.paging_frame.setFixedHeight(brand.sp(56))
+        p_layout = QHBoxLayout(self.paging_frame)
+        p_layout.setContentsMargins(brand.SP_5, 0, brand.SP_5, 0)
+
         self.total_label = QLabel("")
-        self.total_label.setStyleSheet(f"color: {s['text_muted']}; font-size: 13px;")
         p_layout.addWidget(self.total_label)
         p_layout.addStretch()
-        
-        btn_style = f"""
-            QPushButton {{
-                background: {s['input_bg']};
-                color: {s['text']};
-                border: 1px solid {s['border']};
-                border-radius: 8px;
-                padding: 10px 18px;
-                font-size: 13px;
-            }}
-            QPushButton:hover {{ background: {s['border']}; border-color: {s['primary']}; }}
-            QPushButton:disabled {{ color: {s['text_muted']}; background: {s['bg_main']}; }}
-        """
-        
-        self.prev_btn = QPushButton("◀ Önceki")
+
+        self.prev_btn = QPushButton("‹  Önceki")
         self.prev_btn.setCursor(Qt.PointingHandCursor)
-        self.prev_btn.setStyleSheet(btn_style)
+        self.prev_btn.setFixedHeight(brand.sp(36))
         self.prev_btn.clicked.connect(self._prev_page)
         p_layout.addWidget(self.prev_btn)
-        
+
         self.page_label = QLabel("Sayfa 1 / 1")
-        self.page_label.setStyleSheet(f"color: {s['text']}; margin: 0 16px; font-size: 13px;")
         p_layout.addWidget(self.page_label)
-        
-        self.next_btn = QPushButton("Sonraki ▶")
+
+        self.next_btn = QPushButton("Sonraki  ›")
         self.next_btn.setCursor(Qt.PointingHandCursor)
-        self.next_btn.setStyleSheet(btn_style)
+        self.next_btn.setFixedHeight(brand.sp(36))
         self.next_btn.clicked.connect(self._next_page)
         p_layout.addWidget(self.next_btn)
-        
-        layout.addWidget(paging)
+
+        layout.addWidget(self.paging_frame)
+
+        # Tum stilleri brand'den uygula
+        self._apply_page_styles()
         self._load_filters()
+
+    # =============================================================
+    # STIL UYGULAMA (tek noktadan) — tema degiste tekrar cagrilir
+    # =============================================================
+    def _apply_page_styles(self):
+        self.setStyleSheet(f"""
+            QWidget {{ background: {brand.BG_MAIN}; color: {brand.TEXT}; }}
+        """)
+
+        # Baslik + alt yazi
+        self.title_label.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_TITLE_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.4px; "
+            f"background: transparent; border: none;"
+        )
+        self.subtitle_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY}px; "
+            f"background: transparent; border: none;"
+        )
+        self.stat_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"padding: {brand.SP_2}px {brand.SP_4}px; "
+            f"background: {brand.BG_CARD}; "
+            f"border: 1px solid {brand.BORDER}; "
+            f"border-radius: {brand.R_SM}px;"
+        )
+
+        # Search
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; background: {brand.BG_HOVER}; }}
+        """)
+
+        # Combo stil (tek tanim, hepsine uygulanir)
+        combo_style = f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                min-width: {brand.sp(130)}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(28)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+                selection-background-color: {brand.PRIMARY};
+                outline: 0;
+                padding: {brand.SP_1}px;
+            }}
+        """
+        self.tip_combo.setStyleSheet(combo_style)
+        self.sehir_combo.setStyleSheet(combo_style)
+        self.aktif_combo.setStyleSheet(combo_style)
+
+        # Yenile / Zirve butonlari
+        self.refresh_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
+        """)
+        self.zirve_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
+
+        # Table
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: 0;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QTableWidget::item {{
+                padding: 0 {brand.SP_4}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+            }}
+            QTableWidget::item:selected {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT};
+            }}
+            QHeaderView::section {{
+                background: transparent;
+                color: {brand.TEXT_DIM};
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-size: {brand.FS_CAPTION}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+            }}
+            QTableWidget QTableCornerButton::section {{
+                background: transparent; border: none;
+            }}
+        """)
+
+        # Sayfalama
+        self.paging_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+            }}
+        """)
+        self.total_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent; border: none;"
+        )
+        self.page_label.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"margin: 0 {brand.SP_4}px; "
+            f"background: transparent; border: none;"
+        )
+        page_btn_style = f"""
+            QPushButton {{
+                background: transparent;
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.PRIMARY};
+            }}
+            QPushButton:disabled {{
+                color: {brand.TEXT_DISABLED};
+                border-color: {brand.BORDER};
+            }}
+        """
+        self.prev_btn.setStyleSheet(page_btn_style)
+        self.next_btn.setStyleSheet(page_btn_style)
+
+    # =============================================================
+    # TEMA DEGISIMI
+    # =============================================================
+    def update_theme(self, theme: dict = None):
+        """Tema modu degistiginde brand'den yeni stilleri uygula."""
+        self.theme = theme
+        self.s = get_modern_style(theme)
+        self._apply_page_styles()
+        # Tabloyu yeniden renklendirmek icin satirlari tekrar populate et
+        try:
+            self._load_data()
+        except Exception:
+            pass
     
     # ========== DATA METHODS (UNCHANGED) ==========
     def _load_filters(self):

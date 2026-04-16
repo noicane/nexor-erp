@@ -19,48 +19,22 @@ from PySide6.QtWidgets import (
     QHeaderView, QAbstractItemView, QCheckBox, QMessageBox,
     QWidget, QDateEdit, QDialog, QGridLayout, QGroupBox,
     QSpinBox, QScrollArea, QTreeWidget, QTreeWidgetItem,
-    QSizePolicy, QStyle, QLineEdit, QInputDialog
+    QSizePolicy, QStyle, QLineEdit, QInputDialog, QProgressBar
 )
 from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor, QFont, QBrush
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 TURKCE_GUNLER_KISA = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
 PLC_SIFRE = "2010"
 
 
-def get_modern_style(theme: dict) -> dict:
-    t = theme or {}
-    return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'danger': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'bg_hover': t.get('bg_hover', '#1C2430'),
-        'bg_selected': t.get('bg_selected', '#1E1215'),
-        'border_light': t.get('border_light', '#2A3545'),
-        'border_input': t.get('border_input', '#1E2736'),
-        'card_solid': t.get('bg_card_solid', '#151B23'),
-        'gradient': t.get('gradient_css', ''),
-    }
-
-
 class IsEmriPlanlamaPage(BasePage):
     def __init__(self, theme: dict):
         super().__init__(theme)
-        self.s = get_modern_style(theme)
         self.selected_lots = []
         self.planned_lots = []
         self.hatlar = []
@@ -68,176 +42,490 @@ class IsEmriPlanlamaPage(BasePage):
         self.stok_data = {}
         self.toplam_bekleyen_miktar = 0
         self.toplam_bekleyen_bara = 0
-        
-        # Eski değişken isimleri için uyumluluk
-        self.bg_card = self.s['card_bg']
-        self.bg_input = self.s['input_bg']
-        self.text = self.s['text']
-        self.text_muted = self.s['text_muted']
-        self.border = self.s['border']
-        self.primary = self.s['primary']
-        self.success = self.s['success']
-        self.warning = self.s['warning']
-        self.danger = self.s['error']
-        
+
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)
-    
+
+    # ── SETUP ──
     def _setup_ui(self):
+        self.setStyleSheet(
+            f"IsEmriPlanlamaPage {{ background: {brand.BG_MAIN}; }}"
+        )
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        # Başlık
-        header = QFrame()
-        header.setStyleSheet(f"QFrame {{ background: {self.bg_card}; border-radius: 8px; padding: 12px; }}")
-        header_layout = QHBoxLayout(header)
-        title = QLabel("📅 Üretim Planlama")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.text};")
-        header_layout.addWidget(title)
-        header_layout.addStretch()
-        refresh_btn = QPushButton("🔄 Yenile")
-        refresh_btn.setStyleSheet(f"QPushButton {{ background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; border-radius: 6px; padding: 8px 16px; }} QPushButton:hover {{ background: {self.border}; }}")
-        refresh_btn.clicked.connect(self._load_data)
-        header_layout.addWidget(refresh_btn)
-        layout.addWidget(header)
-        
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
+        # Hero header
+        layout.addWidget(self._create_hero_header())
+
         # Ana Splitter - SOL BÜYÜK, SAĞ KÜÇÜK
         main_splitter = QSplitter(Qt.Horizontal)
-        main_splitter.setStyleSheet(f"QSplitter::handle {{ background: {self.border}; width: 3px; }}")
-        
+        main_splitter.setHandleWidth(brand.sp(6))
+        main_splitter.setStyleSheet(f"""
+            QSplitter::handle {{
+                background: transparent;
+            }}
+            QSplitter::handle:hover {{
+                background: {brand.PRIMARY_SOFT};
+            }}
+        """)
+
         # SOL PANEL - Stok Havuzu
         main_splitter.addWidget(self._create_stok_panel())
-        
+
         # SAĞ PANEL
         right_widget = QWidget()
+        right_widget.setStyleSheet("background: transparent;")
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(12)
+        right_layout.setSpacing(brand.SP_4)
         right_layout.addWidget(self._create_planlanan_panel())
         right_layout.addWidget(self._create_takvim_panel(), 1)
         main_splitter.addWidget(right_widget)
-        
-        # Sol %65, Sağ %35
-        main_splitter.setSizes([750, 450])
+
+        main_splitter.setStretchFactor(0, 62)
+        main_splitter.setStretchFactor(1, 38)
+        main_splitter.setSizes([brand.sp(800), brand.sp(480)])
         layout.addWidget(main_splitter, 1)
+
+    # ── HERO HEADER ──
+    def _create_hero_header(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(brand.SP_1, 0, brand.SP_1, 0)
+        layout.setSpacing(brand.SP_3)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+
+        title = QLabel("Üretim Planlama")
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_TITLE_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.4px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(title)
+
+        subtitle = QLabel("Stok havuzundaki lotları hat ve vardiyaya planlayın")
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY}px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(subtitle)
+
+        layout.addLayout(title_col)
+        layout.addStretch()
+
+        refresh_btn = QPushButton("Yenile")
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.setFixedHeight(brand.sp(40))
+        refresh_btn.setStyleSheet(self._secondary_btn_style())
+        refresh_btn.clicked.connect(self._load_data)
+        layout.addWidget(refresh_btn)
+
+        return wrapper
+
+    # ── ORTAK STİL HELPER'LARI ──
+    def _card_style(self, border_accent: str = None) -> str:
+        border_color = border_accent or brand.BORDER
+        return (
+            f"QFrame#card {{"
+            f" background: {brand.BG_CARD};"
+            f" border: 1px solid {border_color};"
+            f" border-radius: {brand.R_LG}px;"
+            f" }}"
+        )
+
+    def _input_style(self) -> str:
+        return f"""
+            QLineEdit, QDateEdit, QComboBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QLineEdit:focus, QDateEdit:focus, QComboBox:focus {{
+                border-color: {brand.PRIMARY};
+                background: {brand.BG_HOVER};
+            }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(24)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                selection-background-color: {brand.PRIMARY};
+                outline: 0;
+                padding: {brand.SP_1}px;
+            }}
+        """
+
+    def _secondary_btn_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
+            QPushButton:pressed {{ background: {brand.BG_SELECTED}; }}
+            QPushButton:disabled {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_DISABLED};
+                border-color: {brand.BORDER};
+            }}
+        """
+
+    def _primary_btn_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+            QPushButton:disabled {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_DISABLED};
+            }}
+        """
+
+    def _success_btn_style(self) -> str:
+        return f"""
+            QPushButton {{
+                background: {brand.SUCCESS};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: #059669; }}
+            QPushButton:disabled {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_DISABLED};
+            }}
+        """
+
+    def _section_title(self, text: str, muted: bool = False) -> QLabel:
+        lbl = QLabel(text)
+        color = brand.TEXT_MUTED if muted else brand.TEXT
+        lbl.setStyleSheet(
+            f"color: {color}; "
+            f"font-size: {brand.FS_BODY_LG}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"letter-spacing: -0.2px; "
+            f"background: transparent;"
+        )
+        return lbl
     
     def _create_stok_panel(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.bg_card}; border-radius: 8px; }}")
+        frame.setObjectName("card")
+        frame.setStyleSheet(self._card_style())
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
-        # Başlık
-        header = QLabel("📦 Stok Havuzu - Bekleyen Ürünler")
-        header.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.text};")
-        layout.addWidget(header)
-        
+        layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_4)
+
+        # Başlık + sayaç rozeti
+        header_row = QHBoxLayout()
+        header_row.setSpacing(brand.SP_3)
+        header_row.addWidget(self._section_title("Stok Havuzu"))
+
+        self.stok_count_badge = QLabel("0 ürün")
+        self.stok_count_badge.setStyleSheet(
+            f"background: {brand.PRIMARY_SOFT}; "
+            f"color: {brand.PRIMARY}; "
+            f"border: 1px solid {brand.PRIMARY_BORDER}; "
+            f"border-radius: {brand.sp(12)}px; "
+            f"padding: {brand.SP_1}px {brand.SP_3}px; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
+        header_row.addWidget(self.stok_count_badge)
+        header_row.addStretch()
+
+        sub = QLabel("Bekleyen lotlar")
+        sub.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
+        header_row.addWidget(sub)
+        layout.addLayout(header_row)
+
         # Filtreler
         filter_layout = QHBoxLayout()
-        input_style = f"background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; border-radius: 4px; padding: 6px 10px;"
-        
+        filter_layout.setSpacing(brand.SP_2)
+        input_style = self._input_style()
+
         self.musteri_filter = QComboBox()
-        self.musteri_filter.setStyleSheet(f"QComboBox {{ {input_style} min-width: 150px; }}")
+        self.musteri_filter.setStyleSheet(input_style)
+        self.musteri_filter.setFixedHeight(brand.sp(36))
+        self.musteri_filter.setMinimumWidth(brand.sp(180))
         self.musteri_filter.addItem("Tüm Müşteriler", "")
         self.musteri_filter.currentIndexChanged.connect(self._filter_stoklar)
         filter_layout.addWidget(self.musteri_filter)
-        
+
         self.kaplama_filter = QComboBox()
-        self.kaplama_filter.setStyleSheet(f"QComboBox {{ {input_style} min-width: 130px; }}")
+        self.kaplama_filter.setStyleSheet(input_style)
+        self.kaplama_filter.setFixedHeight(brand.sp(36))
+        self.kaplama_filter.setMinimumWidth(brand.sp(150))
         self.kaplama_filter.addItem("Tüm Kaplamalar", "")
         self.kaplama_filter.currentIndexChanged.connect(self._filter_stoklar)
         filter_layout.addWidget(self.kaplama_filter)
-        
+
         self.hat_filter = QComboBox()
-        self.hat_filter.setStyleSheet(f"QComboBox {{ {input_style} min-width: 130px; }}")
+        self.hat_filter.setStyleSheet(input_style)
+        self.hat_filter.setFixedHeight(brand.sp(36))
+        self.hat_filter.setMinimumWidth(brand.sp(150))
         self.hat_filter.addItem("Tüm Hatlar", "")
         self.hat_filter.currentIndexChanged.connect(self._filter_stoklar)
         filter_layout.addWidget(self.hat_filter)
-        
+
         filter_layout.addStretch()
         layout.addLayout(filter_layout)
-        
+
         # Tree Widget
         self.stok_tree = QTreeWidget()
         self.stok_tree.setColumnCount(7)
-        self.stok_tree.setHeaderLabels(["Ürün / Lot", "Stok Adı", "Müşteri", "Miktar", "Bara", "Kaplama", "Geliş Tarihi", "Seç"])
+        self.stok_tree.setHeaderLabels([
+            "Ürün / Lot", "Stok Adı", "Müşteri", "Miktar", "Bara",
+            "Kaplama", "Geliş Tarihi", "Seç"
+        ])
         self.stok_tree.setStyleSheet(f"""
-            QTreeWidget {{ background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; border-radius: 4px; }}
-            QTreeWidget::item {{ padding: 6px 4px; border-bottom: 1px solid {self.border}; }}
-            QTreeWidget::item:selected {{ background: {self.primary}; }}
-            QTreeWidget::item:hover {{ background: {self.bg_card}; }}
-            QHeaderView::section {{ background: {self.bg_card}; color: {self.text}; padding: 8px 4px; border: none; font-weight: bold; }}
+            QTreeWidget {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                outline: 0;
+            }}
+            QTreeWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_1}px;
+                border-bottom: 1px solid {brand.BORDER};
+            }}
+            QTreeWidget::item:hover {{
+                background: {brand.BG_HOVER};
+            }}
+            QTreeWidget::item:selected {{
+                background: {brand.PRIMARY_SOFT};
+                color: {brand.TEXT};
+            }}
+            QTreeWidget::branch {{
+                background: {brand.BG_INPUT};
+            }}
+            QHeaderView::section {{
+                background: {brand.BG_ELEVATED};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_2}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_CAPTION}px;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }}
         """)
-        
+        self.stok_tree.setFrameShape(QFrame.NoFrame)
+        self.stok_tree.setRootIsDecorated(True)
+        self.stok_tree.setUniformRowHeights(False)
+        self.stok_tree.setAlternatingRowColors(False)
+
         h = self.stok_tree.header()
         h.setSectionResizeMode(0, QHeaderView.Stretch)
         h.setSectionResizeMode(1, QHeaderView.Stretch)
         for i in range(2, 7):
             h.setSectionResizeMode(i, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(7, QHeaderView.Fixed)
-        self.stok_tree.setColumnWidth(7, 60)
+        self.stok_tree.setColumnWidth(7, brand.sp(60))
         self.stok_tree.itemExpanded.connect(self._on_item_expanded)
         self.stok_tree.itemCollapsed.connect(self._on_item_collapsed)
         layout.addWidget(self.stok_tree, 1)
-        
-        # ALT KISIM - TOPLAM BEKLEYEN + SEÇİM
-        bottom_frame = QFrame()
-        bottom_frame.setStyleSheet(f"QFrame {{ background: {self.bg_input}; border: 2px solid {self.warning}; border-radius: 8px; }}")
-        bottom_layout = QHBoxLayout(bottom_frame)
-        bottom_layout.setContentsMargins(16, 12, 16, 12)
-        
-        # TOPLAM BEKLEYEN
-        self.toplam_bekleyen_label = QLabel("📊 Toplam Bekleyen: 0 adet, 0 bara")
-        self.toplam_bekleyen_label.setStyleSheet(f"color: {self.warning}; font-size: 14px; font-weight: bold;")
-        bottom_layout.addWidget(self.toplam_bekleyen_label)
-        
-        bottom_layout.addStretch()
-        
-        # Seçili
-        self.secim_label = QLabel("Seçili: 0 lot, 0 bara")
-        self.secim_label.setStyleSheet(f"color: {self.text_muted}; font-size: 13px;")
-        bottom_layout.addWidget(self.secim_label)
-        
+
+        # ALT KISIM - KPI FOOTER
+        footer = QFrame()
+        footer.setStyleSheet(
+            f"QFrame {{"
+            f" background: {brand.BG_ELEVATED};"
+            f" border: 1px solid {brand.BORDER};"
+            f" border-radius: {brand.R_MD}px;"
+            f" }}"
+        )
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_3, brand.SP_3)
+        footer_layout.setSpacing(brand.SP_4)
+
+        # Toplam bekleyen KPI
+        kpi_col = QVBoxLayout()
+        kpi_col.setSpacing(0)
+        kpi_caption = QLabel("TOPLAM BEKLEYEN")
+        kpi_caption.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"letter-spacing: 0.5px; "
+            f"background: transparent;"
+        )
+        kpi_col.addWidget(kpi_caption)
+        self.toplam_bekleyen_label = QLabel("0 adet · 0 bara")
+        self.toplam_bekleyen_label.setStyleSheet(
+            f"color: {brand.WARNING}; "
+            f"font-size: {brand.FS_HEADING_SM}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"background: transparent;"
+        )
+        kpi_col.addWidget(self.toplam_bekleyen_label)
+        footer_layout.addLayout(kpi_col)
+
+        footer_layout.addStretch()
+
+        # Seçim KPI
+        sec_col = QVBoxLayout()
+        sec_col.setSpacing(0)
+        sec_caption = QLabel("SEÇİLİ")
+        sec_caption.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"letter-spacing: 0.5px; "
+            f"background: transparent;"
+        )
+        sec_col.addWidget(sec_caption)
+        self.secim_label = QLabel("0 lot · 0 bara")
+        self.secim_label.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_BODY_LG}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"background: transparent;"
+        )
+        sec_col.addWidget(self.secim_label)
+        footer_layout.addLayout(sec_col)
+
         # Ekle butonu
-        self.planla_btn = QPushButton("➕ Seçilenleri Ekle")
-        self.planla_btn.setStyleSheet(f"QPushButton {{ background: {self.primary}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold; }} QPushButton:hover {{ background: #5558e3; }} QPushButton:disabled {{ background: {self.border}; }}")
+        self.planla_btn = QPushButton("Planlamaya Ekle")
+        self.planla_btn.setCursor(Qt.PointingHandCursor)
+        self.planla_btn.setFixedHeight(brand.sp(44))
+        self.planla_btn.setStyleSheet(self._primary_btn_style())
         self.planla_btn.clicked.connect(self._add_to_planned)
         self.planla_btn.setEnabled(False)
-        bottom_layout.addWidget(self.planla_btn)
-        
-        layout.addWidget(bottom_frame)
+        footer_layout.addWidget(self.planla_btn)
+
+        layout.addWidget(footer)
         return frame
     
     def _create_planlanan_panel(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.bg_card}; border-radius: 8px; border: 2px solid {self.success}; }}")
-        frame.setMaximumHeight(320)
+        frame.setObjectName("card")
+        frame.setStyleSheet(self._card_style(brand.SUCCESS_SOFT))
+        frame.setMaximumHeight(brand.sp(360))
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
 
         # Başlık
-        header_layout = QHBoxLayout()
-        header = QLabel("🎯 Planlanan Ürünler")
-        header.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {self.success};")
-        header_layout.addWidget(header)
-        header_layout.addStretch()
-        self.planlanan_ozet_label = QLabel("0 ürün, 0 bara")
-        self.planlanan_ozet_label.setStyleSheet(f"color: {self.text}; font-weight: bold;")
-        header_layout.addWidget(self.planlanan_ozet_label)
-        temizle_btn = QPushButton("🗑️")
-        temizle_btn.setStyleSheet(f"QPushButton {{ background: {self.danger}; color: white; border: none; border-radius: 4px; padding: 4px 8px; }} QPushButton:hover {{ background: #dc2626; }}")
+        header_row = QHBoxLayout()
+        header_row.setSpacing(brand.SP_3)
+
+        header = QLabel("Planlanacak Lotlar")
+        header.setStyleSheet(
+            f"font-size: {brand.FS_BODY_LG}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"color: {brand.TEXT}; "
+            f"background: transparent;"
+        )
+        header_row.addWidget(header)
+
+        self.planlanan_ozet_label = QLabel("0 · 0 bara")
+        self.planlanan_ozet_label.setStyleSheet(
+            f"background: {brand.SUCCESS_SOFT}; "
+            f"color: {brand.SUCCESS}; "
+            f"border-radius: {brand.sp(10)}px; "
+            f"padding: {brand.SP_1}px {brand.SP_3}px; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
+        header_row.addWidget(self.planlanan_ozet_label)
+        header_row.addStretch()
+
+        temizle_btn = QPushButton("Temizle")
+        temizle_btn.setCursor(Qt.PointingHandCursor)
+        temizle_btn.setFixedHeight(brand.sp(28))
+        temizle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.ERROR_SOFT};
+                color: {brand.ERROR};
+                border: 1px solid transparent;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                font-size: {brand.FS_CAPTION}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.ERROR};
+                color: white;
+            }}
+        """)
         temizle_btn.clicked.connect(self._clear_planned)
-        header_layout.addWidget(temizle_btn)
-        layout.addLayout(header_layout)
+        header_row.addWidget(temizle_btn)
+        layout.addLayout(header_row)
 
         # Tablo
         self.planlanan_table = QTableWidget()
         self.planlanan_table.setColumnCount(6)
-        self.planlanan_table.setHorizontalHeaderLabels(["Stok Kodu", "Stok Adı", "Lot", "Miktar", "Bara", "X"])
-        self.planlanan_table.setStyleSheet(f"QTableWidget {{ background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; font-size: 11px; }} QHeaderView::section {{ background: {self.bg_card}; color: {self.text}; padding: 4px; border: none; font-size: 10px; }}")
+        self.planlanan_table.setHorizontalHeaderLabels(
+            ["Stok Kodu", "Stok Adı", "Lot", "Miktar", "Bara", ""]
+        )
+        self.planlanan_table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                gridline-color: {brand.BORDER};
+                font-size: {brand.FS_BODY_SM}px;
+                outline: 0;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_1}px {brand.SP_2}px;
+                background: transparent;
+            }}
+            QTableWidget::item:selected {{
+                background: {brand.PRIMARY_SOFT};
+                color: {brand.TEXT};
+            }}
+            QHeaderView::section {{
+                background: {brand.BG_ELEVATED};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_2}px {brand.SP_1}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-size: {brand.FS_CAPTION}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }}
+        """)
+        self.planlanan_table.setFrameShape(QFrame.NoFrame)
+        self.planlanan_table.setShowGrid(False)
         h = self.planlanan_table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(1, QHeaderView.Stretch)
@@ -245,100 +533,210 @@ class IsEmriPlanlamaPage(BasePage):
         h.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(5, QHeaderView.Fixed)
-        self.planlanan_table.setColumnWidth(5, 120)
+        self.planlanan_table.setColumnWidth(5, brand.sp(60))
         self.planlanan_table.verticalHeader().setVisible(False)
+        self.planlanan_table.verticalHeader().setDefaultSectionSize(brand.sp(36))
         layout.addWidget(self.planlanan_table, 1)
 
-        # Inline planlama ayarları
-        input_style = f"background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; border-radius: 4px; padding: 5px 8px;"
+        # Inline planlama ayarları (form satırı)
+        form_frame = QFrame()
+        form_frame.setStyleSheet(
+            f"QFrame {{"
+            f" background: {brand.BG_ELEVATED};"
+            f" border: 1px solid {brand.BORDER};"
+            f" border-radius: {brand.R_MD}px;"
+            f" }}"
+        )
+        form_layout = QVBoxLayout(form_frame)
+        form_layout.setContentsMargins(brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_3)
+        form_layout.setSpacing(brand.SP_2)
+
+        input_style = self._input_style()
+        label_style = (
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"background: transparent;"
+        )
 
         plan_row = QHBoxLayout()
-        plan_row.setSpacing(8)
+        plan_row.setSpacing(brand.SP_2)
 
-        plan_row.addWidget(QLabel("Hat:"))
-        self.plan_hat_combo = QComboBox()
-        self.plan_hat_combo.setStyleSheet(f"QComboBox {{ {input_style} min-width: 110px; }}")
+        def _labeled_combo(lbl_text: str, width: int) -> QVBoxLayout:
+            col = QVBoxLayout()
+            col.setSpacing(brand.SP_1)
+            lbl = QLabel(lbl_text)
+            lbl.setStyleSheet(label_style)
+            col.addWidget(lbl)
+            combo = QComboBox()
+            combo.setStyleSheet(input_style)
+            combo.setFixedHeight(brand.sp(34))
+            combo.setMinimumWidth(width)
+            col.addWidget(combo)
+            return col, combo
+
+        col1, self.plan_hat_combo = _labeled_combo("HAT", brand.sp(130))
         self.plan_hat_combo.currentIndexChanged.connect(self._update_inline_kapasite)
-        plan_row.addWidget(self.plan_hat_combo)
+        plan_row.addLayout(col1)
 
-        plan_row.addWidget(QLabel("Vardiya:"))
-        self.plan_vardiya_combo = QComboBox()
-        self.plan_vardiya_combo.setStyleSheet(f"QComboBox {{ {input_style} min-width: 90px; }}")
+        col2, self.plan_vardiya_combo = _labeled_combo("VARDİYA", brand.sp(110))
         self.plan_vardiya_combo.currentIndexChanged.connect(self._update_inline_kapasite)
-        plan_row.addWidget(self.plan_vardiya_combo)
+        plan_row.addLayout(col2)
 
-        plan_row.addWidget(QLabel("Tarih:"))
-        self.plan_tarih_combo = QComboBox()
-        self.plan_tarih_combo.setStyleSheet(f"QComboBox {{ {input_style} min-width: 100px; }}")
+        col3, self.plan_tarih_combo = _labeled_combo("TARİH", brand.sp(120))
         bugun = date.today()
         yarin = bugun + timedelta(days=1)
-        self.plan_tarih_combo.addItem(f"BUGÜN ({bugun.strftime('%d.%m')})", bugun)
-        self.plan_tarih_combo.addItem(f"YARIN ({yarin.strftime('%d.%m')})", yarin)
+        self.plan_tarih_combo.addItem(f"Bugün · {bugun.strftime('%d.%m')}", bugun)
+        self.plan_tarih_combo.addItem(f"Yarın · {yarin.strftime('%d.%m')}", yarin)
         self.plan_tarih_combo.currentIndexChanged.connect(self._update_inline_kapasite)
-        plan_row.addWidget(self.plan_tarih_combo)
-
-        layout.addLayout(plan_row)
+        plan_row.addLayout(col3)
+        form_layout.addLayout(plan_row)
 
         # Kapasite bilgi + kaydet butonu
         bottom_row = QHBoxLayout()
+        bottom_row.setSpacing(brand.SP_3)
         self.inline_kapasite_label = QLabel("")
-        self.inline_kapasite_label.setStyleSheet(f"color: {self.text_muted}; font-size: 11px;")
+        self.inline_kapasite_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"background: transparent;"
+        )
         bottom_row.addWidget(self.inline_kapasite_label, 1)
 
-        self.planla_kaydet_btn = QPushButton("📅 Planla")
-        self.planla_kaydet_btn.setStyleSheet(f"QPushButton {{ background: {self.success}; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-weight: bold; font-size: 13px; }} QPushButton:hover {{ background: #1da34d; }} QPushButton:disabled {{ background: {self.border}; }}")
+        self.planla_kaydet_btn = QPushButton("Planla")
+        self.planla_kaydet_btn.setCursor(Qt.PointingHandCursor)
+        self.planla_kaydet_btn.setFixedHeight(brand.sp(36))
+        self.planla_kaydet_btn.setStyleSheet(self._success_btn_style())
         self.planla_kaydet_btn.clicked.connect(self._inline_planla)
         self.planla_kaydet_btn.setEnabled(False)
         bottom_row.addWidget(self.planla_kaydet_btn)
-        layout.addLayout(bottom_row)
+        form_layout.addLayout(bottom_row)
+
+        layout.addWidget(form_frame)
 
         return frame
     
     def _create_takvim_panel(self) -> QFrame:
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.bg_card}; border-radius: 8px; }}")
+        frame.setObjectName("card")
+        frame.setStyleSheet(self._card_style())
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
-        
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
+
         # Başlık ve hat seçimi
         header_layout = QHBoxLayout()
-        header = QLabel("📊 Kapasite (Bugün + Yarın)")
-        header.setStyleSheet(f"font-size: 13px; font-weight: bold; color: {self.text};")
-        header_layout.addWidget(header)
+        header_layout.setSpacing(brand.SP_3)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(0)
+        header = QLabel("Kapasite Takvimi")
+        header.setStyleSheet(
+            f"font-size: {brand.FS_BODY_LG}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"color: {brand.TEXT}; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(header)
+        self.kapasite_label = QLabel("Kapasite: -")
+        self.kapasite_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(self.kapasite_label)
+        header_layout.addLayout(title_col)
         header_layout.addStretch()
+
         self.takvim_hat_combo = QComboBox()
-        self.takvim_hat_combo.setStyleSheet(f"QComboBox {{ background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; border-radius: 4px; padding: 4px 8px; min-width: 100px; }}")
+        self.takvim_hat_combo.setStyleSheet(self._input_style())
+        self.takvim_hat_combo.setFixedHeight(brand.sp(34))
+        self.takvim_hat_combo.setMinimumWidth(brand.sp(130))
         self.takvim_hat_combo.currentIndexChanged.connect(self._load_takvim)
         self.takvim_hat_combo.currentIndexChanged.connect(self._load_planlanmis_isler)
         header_layout.addWidget(self.takvim_hat_combo)
         layout.addLayout(header_layout)
-        
-        self.kapasite_label = QLabel("Kapasite: -")
-        self.kapasite_label.setStyleSheet(f"color: {self.text_muted}; font-size: 11px;")
-        layout.addWidget(self.kapasite_label)
-        
+
         # Takvim container
         self.takvim_container = QVBoxLayout()
-        self.takvim_container.setSpacing(6)
+        self.takvim_container.setSpacing(brand.SP_2)
         layout.addLayout(self.takvim_container)
-        
-        # Planlanmış işler
+
+        # Ayırıcı
+        separator = QFrame()
+        separator.setFixedHeight(1)
+        separator.setStyleSheet(f"background: {brand.BORDER};")
+        layout.addWidget(separator)
+
+        # Planlanmış işler başlığı
         plan_header = QHBoxLayout()
-        plan_label = QLabel("📋 Planlanmış İşler")
-        plan_label.setStyleSheet(f"font-size: 12px; font-weight: bold; color: {self.text};")
+        plan_header.setSpacing(brand.SP_2)
+        plan_label = QLabel("Planlanmış İşler")
+        plan_label.setStyleSheet(
+            f"font-size: {brand.FS_BODY}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"color: {brand.TEXT}; "
+            f"background: transparent;"
+        )
         plan_header.addWidget(plan_label)
+
+        self.plan_ozet_label = QLabel("0 iş · 0 bara")
+        self.plan_ozet_label.setStyleSheet(
+            f"background: {brand.BG_ELEVATED}; "
+            f"color: {brand.TEXT_MUTED}; "
+            f"border-radius: {brand.sp(10)}px; "
+            f"padding: {brand.SP_1}px {brand.SP_3}px; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_MEDIUM};"
+        )
+        plan_header.addWidget(self.plan_ozet_label)
         plan_header.addStretch()
-        self.plc_gonder_btn = QPushButton("🔐 PLC Gönder")
-        self.plc_gonder_btn.setStyleSheet(f"QPushButton {{ background: {self.primary}; color: white; border: none; border-radius: 4px; padding: 5px 12px; font-size: 11px; }} QPushButton:hover {{ background: #5558e3; }}")
+
+        self.plc_gonder_btn = QPushButton("PLC Gönder")
+        self.plc_gonder_btn.setCursor(Qt.PointingHandCursor)
+        self.plc_gonder_btn.setFixedHeight(brand.sp(32))
+        self.plc_gonder_btn.setStyleSheet(self._primary_btn_style())
         self.plc_gonder_btn.clicked.connect(self._plc_gonder_sifreli)
         plan_header.addWidget(self.plc_gonder_btn)
         layout.addLayout(plan_header)
-        
+
         self.plan_table = QTableWidget()
         self.plan_table.setColumnCount(7)
-        self.plan_table.setHorizontalHeaderLabels(["✓", "İş Emri", "Stok Kodu", "Bara", "Vardiya", "Durum", "PLC"])
-        self.plan_table.setStyleSheet(f"QTableWidget {{ background: {self.bg_input}; color: {self.text}; border: 1px solid {self.border}; font-size: 10px; }} QHeaderView::section {{ background: {self.bg_card}; color: {self.text}; padding: 4px; border: none; font-size: 9px; }}")
+        self.plan_table.setHorizontalHeaderLabels(
+            ["", "İş Emri", "Stok Kodu", "Bara", "Vardiya", "Durum", "PLC"]
+        )
+        self.plan_table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                gridline-color: {brand.BORDER};
+                font-size: {brand.FS_CAPTION}px;
+                outline: 0;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_1}px {brand.SP_2}px;
+                background: transparent;
+            }}
+            QTableWidget::item:selected {{
+                background: {brand.PRIMARY_SOFT};
+                color: {brand.TEXT};
+            }}
+            QHeaderView::section {{
+                background: {brand.BG_ELEVATED};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_2}px {brand.SP_1}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-size: {brand.FS_CAPTION}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+            }}
+        """)
+        self.plan_table.setFrameShape(QFrame.NoFrame)
+        self.plan_table.setShowGrid(False)
         h = self.plan_table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Fixed)
         h.setSectionResizeMode(1, QHeaderView.ResizeToContents)
@@ -347,16 +745,13 @@ class IsEmriPlanlamaPage(BasePage):
         h.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         h.setSectionResizeMode(6, QHeaderView.Fixed)
-        self.plan_table.setColumnWidth(0, 30)
-        self.plan_table.setColumnWidth(3, 45)
-        self.plan_table.setColumnWidth(6, 35)
+        self.plan_table.setColumnWidth(0, brand.sp(32))
+        self.plan_table.setColumnWidth(3, brand.sp(52))
+        self.plan_table.setColumnWidth(6, brand.sp(40))
         self.plan_table.verticalHeader().setVisible(False)
+        self.plan_table.verticalHeader().setDefaultSectionSize(brand.sp(32))
         layout.addWidget(self.plan_table, 1)
-        
-        self.plan_ozet_label = QLabel("0 iş, 0 bara")
-        self.plan_ozet_label.setStyleSheet(f"color: {self.text_muted}; font-size: 10px;")
-        layout.addWidget(self.plan_ozet_label)
-        
+
         return frame
 
     def _load_data(self):
@@ -521,7 +916,10 @@ class IsEmriPlanlamaPage(BasePage):
                     self.stok_data[stok_kodu] = {'stok_kodu': stok_kodu, 'stok_adi': row[3] or "-", 'musteri': row[7], 'kaplama': row[6], 'lots': []}
                 self.stok_data[stok_kodu]['lots'].append(lot_data)
             
-            self.toplam_bekleyen_label.setText(f"📊 Toplam Bekleyen: {self.toplam_bekleyen_miktar:,.0f} adet, {self.toplam_bekleyen_bara:,.2f} bara")
+            self.toplam_bekleyen_label.setText(
+                f"{self.toplam_bekleyen_miktar:,.0f} adet · {self.toplam_bekleyen_bara:,.2f} bara"
+            )
+            self.stok_count_badge.setText(f"{len(self.stok_data)} ürün")
             self._populate_tree()
             
             if close_conn:
@@ -536,9 +934,10 @@ class IsEmriPlanlamaPage(BasePage):
             toplam_miktar = sum(l['miktar'] for l in lots)
             toplam_bara = sum(l['bara'] for l in lots)
             lot_sayisi = len(lots)
-            
+
             parent = QTreeWidgetItem()
-            parent.setText(0, f"📦 {stok_kodu}" + (f" ({lot_sayisi} lot)" if lot_sayisi > 1 else ""))
+            suffix = f"  ·  {lot_sayisi} lot" if lot_sayisi > 1 else ""
+            parent.setText(0, f"{stok_kodu}{suffix}")
             parent.setText(1, data['stok_adi'] or "-")
             parent.setToolTip(1, data['stok_adi'] or "")
             parent.setText(2, (data['musteri'] or "-")[:20])
@@ -546,25 +945,25 @@ class IsEmriPlanlamaPage(BasePage):
             parent.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
             parent.setText(4, f"{toplam_bara:,.2f}")
             parent.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
-            parent.setForeground(4, QBrush(QColor(self.primary)))
+            parent.setForeground(4, QBrush(QColor(brand.PRIMARY)))
             parent.setText(5, data['kaplama'] or "-")
             parent.setText(6, lots[0]['giris_tarihi'] if lots else "-")
             parent.setData(0, Qt.UserRole, {'type': 'parent', 'stok_kodu': stok_kodu})
-            
+
             font = QFont()
             font.setBold(True)
             parent.setFont(0, font)
             parent.setFont(4, font)
-            
+
             for lot in lots:
                 child = QTreeWidgetItem(parent)
-                child.setText(0, f"   └ {lot['lot_no']}")
-                child.setForeground(0, QBrush(QColor(self.text_muted)))
+                child.setText(0, f"    └  {lot['lot_no']}")
+                child.setForeground(0, QBrush(QColor(brand.TEXT_DIM)))
                 child.setText(3, f"{lot['miktar']:,.0f}")
                 child.setTextAlignment(3, Qt.AlignRight | Qt.AlignVCenter)
                 child.setText(4, f"{lot['bara']:,.2f}")
                 child.setTextAlignment(4, Qt.AlignRight | Qt.AlignVCenter)
-                child.setForeground(4, QBrush(QColor(self.primary)))
+                child.setForeground(4, QBrush(QColor(brand.PRIMARY)))
                 child.setText(6, lot['giris_tarihi'])
                 child.setData(0, Qt.UserRole, {'type': 'lot', 'lot_data': lot})
 
@@ -594,14 +993,10 @@ class IsEmriPlanlamaPage(BasePage):
         self.stok_tree.collapseAll()
 
     def _on_item_expanded(self, item):
-        data = item.data(0, Qt.UserRole)
-        if data and data.get('type') == 'parent':
-            item.setText(0, item.text(0).replace("📦", "📂"))
+        pass
 
     def _on_item_collapsed(self, item):
-        data = item.data(0, Qt.UserRole)
-        if data and data.get('type') == 'parent':
-            item.setText(0, item.text(0).replace("📂", "📦"))
+        pass
 
     def _filter_stoklar(self):
         self._load_stoklar_grouped()
@@ -628,7 +1023,7 @@ class IsEmriPlanlamaPage(BasePage):
         for i in range(self.stok_tree.topLevelItemCount()):
             check_items(self.stok_tree.topLevelItem(i))
         
-        self.secim_label.setText(f"Seçili: {len(self.selected_lots)} lot, {toplam_bara:,.2f} bara")
+        self.secim_label.setText(f"{len(self.selected_lots)} lot · {toplam_bara:,.2f} bara")
         self.planla_btn.setEnabled(len(self.selected_lots) > 0)
 
     def _add_to_planned(self):
@@ -643,19 +1038,60 @@ class IsEmriPlanlamaPage(BasePage):
         if added > 0:
             self._update_planlanan_table()
             self._clear_selections()
-            self._auto_select_inline_hat()
             QMessageBox.information(self, "✓", f"{added} lot eklendi.")
 
     def _auto_select_inline_hat(self):
-        """Planlanan lotların varsayılan hat bilgisine göre hat combo'yu otomatik seç"""
-        hat_ids = [l.get('varsayilan_hat_id') for l in self.planned_lots if l.get('varsayilan_hat_id')]
-        if hat_ids:
+        """
+        Planlanan lotlardaki varsayilan_hat_id'ye göre hat combo'yu otomatik seçer
+        ve kullanıcı değiştirmesin diye kilitler. Personel sadece vardiya seçmeli.
+        - Lot yoksa: combo enabled, ipucu yok
+        - Lot var ve tüm lotların varsayilan hat'i bulunabiliyor: seç + disable (locked)
+        - Lot var ama hiçbir lot'un varsayilan hat'i yok: enabled bırak (kullanıcı seçsin)
+        """
+        try:
+            self.plan_hat_combo.blockSignals(True)
+
+            if not self.planned_lots:
+                self.plan_hat_combo.setEnabled(True)
+                self.plan_hat_combo.setToolTip("")
+                return
+
+            hat_ids = [l.get('varsayilan_hat_id') for l in self.planned_lots
+                       if l.get('varsayilan_hat_id')]
+            if not hat_ids:
+                # Hiçbir lot için varsayılan hat yok → kullanıcı elle seçsin
+                self.plan_hat_combo.setEnabled(True)
+                self.plan_hat_combo.setToolTip("Lotlarda varsayılan hat tanımlı değil, elle seçin")
+                return
+
             from collections import Counter
-            en_cok = Counter(hat_ids).most_common(1)[0][0]
+            en_cok_hat_id = Counter(hat_ids).most_common(1)[0][0]
+
+            # Combo'da eşleşen index'i bul
+            found = False
             for i in range(self.plan_hat_combo.count()):
-                if self.plan_hat_combo.itemData(i) == en_cok:
+                if self.plan_hat_combo.itemData(i) == en_cok_hat_id:
                     self.plan_hat_combo.setCurrentIndex(i)
+                    found = True
                     break
+
+            if found:
+                # Otomatik seçildi → kilitle
+                self.plan_hat_combo.setEnabled(False)
+                hat_ad = self.plan_hat_combo.currentText()
+                self.plan_hat_combo.setToolTip(
+                    f"Lot'un varsayılan hattı: {hat_ad}\nDeğiştirmek için yönetici yetkisi gerekir."
+                )
+            else:
+                # Lot'un hat_id'si var ama combo'da bulunamadı (hat pasif/silinmiş olabilir)
+                self.plan_hat_combo.setEnabled(True)
+                self.plan_hat_combo.setToolTip(
+                    "Lot'un varsayılan hattı aktif hat listesinde bulunamadı, elle seçin"
+                )
+        finally:
+            self.plan_hat_combo.blockSignals(False)
+            # Seçim değiştiği için kapasiteyi de güncelle
+            self._update_inline_kapasite()
 
     def _clear_selections(self):
         def uncheck(item):
@@ -680,22 +1116,47 @@ class IsEmriPlanlamaPage(BasePage):
             self.planlanan_table.setItem(i, 0, QTableWidgetItem(lot.get('stok_kodu', '-')[:20]))
             self.planlanan_table.setItem(i, 1, QTableWidgetItem(lot.get('stok_adi', '-')))
             self.planlanan_table.setItem(i, 2, QTableWidgetItem(lot.get('lot_no', '-')))
-            self.planlanan_table.setItem(i, 3, QTableWidgetItem(f"{lot.get('miktar', 0):,.0f}"))
+            miktar_item = QTableWidgetItem(f"{lot.get('miktar', 0):,.0f}")
+            miktar_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.planlanan_table.setItem(i, 3, miktar_item)
             bara = lot.get('bara', 0)
             toplam_bara += bara
             bara_item = QTableWidgetItem(f"{bara}")
-            bara_item.setForeground(QColor(self.primary))
+            bara_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            bara_item.setForeground(QColor(brand.PRIMARY))
             self.planlanan_table.setItem(i, 4, bara_item)
 
-            widget = self.create_action_buttons([
-                ("🗑️", "Kaldir", lambda c, lid=lot['id']: self._remove_from_planned(lid), "delete"),
-            ])
-            self.planlanan_table.setCellWidget(i, 5, widget)
-            self.planlanan_table.setRowHeight(i, 42)
-        
-        self.planlanan_ozet_label.setText(f"{len(self.planned_lots)} ürün, {toplam_bara:,.2f} bara")
+            remove_btn = QPushButton("×")
+            remove_btn.setCursor(Qt.PointingHandCursor)
+            remove_btn.setFixedSize(brand.sp(24), brand.sp(24))
+            remove_btn.setToolTip("Kaldır")
+            remove_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: transparent;
+                    color: {brand.TEXT_DIM};
+                    border: none;
+                    border-radius: {brand.sp(12)}px;
+                    font-size: {brand.FS_BODY_LG}px;
+                    font-weight: {brand.FW_BOLD};
+                }}
+                QPushButton:hover {{
+                    background: {brand.ERROR};
+                    color: white;
+                }}
+            """)
+            remove_btn.clicked.connect(lambda c, lid=lot['id']: self._remove_from_planned(lid))
+            btn_wrapper = QWidget()
+            btn_wrapper.setStyleSheet("background: transparent;")
+            btn_layout = QHBoxLayout(btn_wrapper)
+            btn_layout.setContentsMargins(0, 0, 0, 0)
+            btn_layout.setAlignment(Qt.AlignCenter)
+            btn_layout.addWidget(remove_btn)
+            self.planlanan_table.setCellWidget(i, 5, btn_wrapper)
+
+        self.planlanan_ozet_label.setText(f"{len(self.planned_lots)} ürün · {toplam_bara:,.2f} bara")
         self.planla_kaydet_btn.setEnabled(len(self.planned_lots) > 0)
-        self._update_inline_kapasite()
+        # Hat combo'yu otomatik seç + kilitle (personel sadece vardiya seçmeli)
+        self._auto_select_inline_hat()
 
     def _remove_from_planned(self, lot_id):
         self.planned_lots = [l for l in self.planned_lots if l['id'] != lot_id]
@@ -729,15 +1190,26 @@ class IsEmriPlanlamaPage(BasePage):
             yeni = mevcut + toplam_bara
             kalan = kapasite - mevcut
 
+            base_style = f"font-size: {brand.FS_CAPTION}px; background: transparent;"
             if toplam_bara > 0 and yeni > kapasite:
-                self.inline_kapasite_label.setText(f"⚠️ Kapasite aşılacak! {mevcut}/{kapasite} + {toplam_bara:.1f}")
-                self.inline_kapasite_label.setStyleSheet(f"color: #ef4444; font-size: 11px; font-weight: bold;")
+                self.inline_kapasite_label.setText(
+                    f"Kapasite aşılıyor · {mevcut}/{kapasite} + {toplam_bara:.1f}"
+                )
+                self.inline_kapasite_label.setStyleSheet(
+                    f"color: {brand.ERROR}; font-weight: {brand.FW_SEMIBOLD}; {base_style}"
+                )
             elif toplam_bara > 0:
-                self.inline_kapasite_label.setText(f"✓ {mevcut}/{kapasite} bara dolu, +{toplam_bara:.1f} eklenecek")
-                self.inline_kapasite_label.setStyleSheet(f"color: {self.success}; font-size: 11px;")
+                self.inline_kapasite_label.setText(
+                    f"{mevcut}/{kapasite} dolu · +{toplam_bara:.1f} eklenecek"
+                )
+                self.inline_kapasite_label.setStyleSheet(
+                    f"color: {brand.SUCCESS}; font-weight: {brand.FW_MEDIUM}; {base_style}"
+                )
             else:
                 self.inline_kapasite_label.setText(f"{mevcut}/{kapasite} bara dolu")
-                self.inline_kapasite_label.setStyleSheet(f"color: {self.text_muted}; font-size: 11px;")
+                self.inline_kapasite_label.setStyleSheet(
+                    f"color: {brand.TEXT_DIM}; {base_style}"
+                )
         except Exception as e:
             print(f"Inline kapasite hatası: {e}")
 
@@ -810,24 +1282,24 @@ class IsEmriPlanlamaPage(BasePage):
             child = self.takvim_container.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
-        
+
         hat_id = self.takvim_hat_combo.currentData()
         if not hat_id:
             return
-        
+
         hat = next((h for h in self.hatlar if h['id'] == hat_id), None)
         kapasite = hat['kapasite'] if hat else 350
-        self.kapasite_label.setText(f"Kapasite: {kapasite} bara/vardiya")
-        
+        self.kapasite_label.setText(f"Vardiya başına {kapasite} bara kapasite")
+
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # Sadece BUGÜN ve YARIN
+
             for day_offset in range(2):
                 current_date = date.today() + timedelta(days=day_offset)
-                gun_adi = "BUGÜN" if day_offset == 0 else "YARIN"
-                
+                gun_adi = "Bugün" if day_offset == 0 else "Yarın"
+                accent = brand.PRIMARY if day_offset == 0 else brand.INFO
+
                 cursor.execute("""
                     SELECT v.kod, ISNULL(SUM(p.planlanan_bara), 0)
                     FROM tanim.vardiyalar v
@@ -835,30 +1307,105 @@ class IsEmriPlanlamaPage(BasePage):
                     WHERE v.aktif_mi = 1 GROUP BY v.id, v.kod ORDER BY v.id
                 """, (hat_id, current_date))
                 vardiya_data = cursor.fetchall()
-                
-                day_frame = QFrame()
-                border_color = self.primary if day_offset == 0 else self.success
-                day_frame.setStyleSheet(f"QFrame {{ background: {self.bg_input}; border: 2px solid {border_color}; border-radius: 6px; padding: 4px; }}")
-                day_layout = QHBoxLayout(day_frame)
-                day_layout.setContentsMargins(8, 4, 8, 4)
-                day_layout.setSpacing(8)
-                
-                date_label = QLabel(f"{gun_adi}\n{current_date.strftime('%d.%m')}")
-                date_label.setStyleSheet(f"color: {border_color}; font-weight: bold; font-size: 10px;")
-                day_layout.addWidget(date_label)
-                
+
+                day_card = QFrame()
+                day_card.setStyleSheet(
+                    f"QFrame {{"
+                    f" background: {brand.BG_ELEVATED};"
+                    f" border: 1px solid {brand.BORDER};"
+                    f" border-left: 3px solid {accent};"
+                    f" border-radius: {brand.R_MD}px;"
+                    f" }}"
+                )
+                card_layout = QVBoxLayout(day_card)
+                card_layout.setContentsMargins(brand.SP_3, brand.SP_2, brand.SP_3, brand.SP_2)
+                card_layout.setSpacing(brand.SP_1)
+
+                # Başlık satırı
+                title_row = QHBoxLayout()
+                title_row.setSpacing(brand.SP_2)
+                day_label = QLabel(gun_adi.upper())
+                day_label.setStyleSheet(
+                    f"color: {accent}; "
+                    f"font-size: {brand.FS_CAPTION}px; "
+                    f"font-weight: {brand.FW_BOLD}; "
+                    f"letter-spacing: 0.6px; "
+                    f"background: transparent;"
+                )
+                title_row.addWidget(day_label)
+                date_label = QLabel(current_date.strftime('%d.%m.%Y'))
+                date_label.setStyleSheet(
+                    f"color: {brand.TEXT_DIM}; "
+                    f"font-size: {brand.FS_CAPTION}px; "
+                    f"background: transparent;"
+                )
+                title_row.addWidget(date_label)
+                title_row.addStretch()
+                card_layout.addLayout(title_row)
+
+                # Vardiya satırı
+                shifts_row = QHBoxLayout()
+                shifts_row.setSpacing(brand.SP_3)
                 for vdata in vardiya_data:
                     v_kod, v_bara = vdata[0], int(vdata[1] or 0)
                     doluluk = (v_bara / kapasite * 100) if kapasite > 0 else 0
-                    bar_color = self.danger if doluluk >= 100 else self.warning if doluluk >= 80 else self.success if doluluk > 0 else self.border
-                    
-                    v_label = QLabel(f"{v_kod}\n{v_bara}/{kapasite}")
-                    v_label.setStyleSheet(f"color: {bar_color}; font-size: 9px; font-weight: bold;")
-                    day_layout.addWidget(v_label)
-                
-                day_layout.addStretch()
-                self.takvim_container.addWidget(day_frame)
-            
+                    if doluluk >= 100:
+                        bar_color = brand.ERROR
+                    elif doluluk >= 80:
+                        bar_color = brand.WARNING
+                    elif doluluk > 0:
+                        bar_color = brand.SUCCESS
+                    else:
+                        bar_color = brand.BORDER_HARD
+
+                    shift_col = QVBoxLayout()
+                    shift_col.setSpacing(brand.sp(2))
+
+                    head_row = QHBoxLayout()
+                    head_row.setSpacing(brand.SP_2)
+                    v_lbl = QLabel(v_kod)
+                    v_lbl.setStyleSheet(
+                        f"color: {brand.TEXT}; "
+                        f"font-size: {brand.FS_CAPTION}px; "
+                        f"font-weight: {brand.FW_SEMIBOLD}; "
+                        f"background: transparent;"
+                    )
+                    head_row.addWidget(v_lbl)
+                    head_row.addStretch()
+                    val_lbl = QLabel(f"{v_bara}/{kapasite}")
+                    val_lbl.setStyleSheet(
+                        f"color: {bar_color}; "
+                        f"font-size: {brand.FS_CAPTION}px; "
+                        f"font-weight: {brand.FW_SEMIBOLD}; "
+                        f"background: transparent;"
+                    )
+                    head_row.addWidget(val_lbl)
+                    shift_col.addLayout(head_row)
+
+                    # Progress bar
+                    bar = QProgressBar()
+                    bar.setRange(0, max(kapasite, 1))
+                    bar.setValue(min(v_bara, kapasite))
+                    bar.setTextVisible(False)
+                    bar.setFixedHeight(brand.sp(6))
+                    bar.setStyleSheet(f"""
+                        QProgressBar {{
+                            background: {brand.BG_INPUT};
+                            border: none;
+                            border-radius: {brand.sp(3)}px;
+                        }}
+                        QProgressBar::chunk {{
+                            background: {bar_color};
+                            border-radius: {brand.sp(3)}px;
+                        }}
+                    """)
+                    shift_col.addWidget(bar)
+
+                    shifts_row.addLayout(shift_col, 1)
+
+                card_layout.addLayout(shifts_row)
+                self.takvim_container.addWidget(day_card)
+
             conn.close()
         except Exception as e:
             print(f"Takvim hatası: {e}")
@@ -901,24 +1448,25 @@ class IsEmriPlanlamaPage(BasePage):
                 cb_layout.setAlignment(Qt.AlignCenter)
                 cb_layout.setContentsMargins(0, 0, 0, 0)
                 self.plan_table.setCellWidget(i, 0, cb_widget)
-                self.plan_table.setRowHeight(i, 42)
-                
+
                 self.plan_table.setItem(i, 1, QTableWidgetItem(str(row[1] or "")[-8:]))
                 self.plan_table.setItem(i, 2, QTableWidgetItem(str(row[2] or "")[:15]))
                 bara = int(row[3] or 0)
                 toplam_bara += bara
                 bara_item = QTableWidgetItem(str(bara))
-                bara_item.setForeground(QColor(self.primary))
+                bara_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                bara_item.setForeground(QColor(brand.PRIMARY))
                 self.plan_table.setItem(i, 3, bara_item)
                 self.plan_table.setItem(i, 4, QTableWidgetItem(str(row[4] or "")))
                 durum_item = QTableWidgetItem(str(row[5] or "")[:8])
-                durum_item.setForeground(QColor(self.success if row[5] == 'URETIMDE' else self.warning))
+                durum_item.setForeground(QColor(brand.SUCCESS if row[5] == 'URETIMDE' else brand.WARNING))
                 self.plan_table.setItem(i, 5, durum_item)
                 plc_item = QTableWidgetItem("✓" if row[6] else "")
-                plc_item.setForeground(QColor(self.success))
+                plc_item.setTextAlignment(Qt.AlignCenter)
+                plc_item.setForeground(QColor(brand.SUCCESS))
                 self.plan_table.setItem(i, 6, plc_item)
-            
-            self.plan_ozet_label.setText(f"{len(rows)} iş, {toplam_bara:,.2f} bara")
+
+            self.plan_ozet_label.setText(f"{len(rows)} iş · {toplam_bara:,.2f} bara")
         except Exception as e:
             print(f"Planlanmış işler hatası: {e}")
 
@@ -968,8 +1516,8 @@ class PlanlamaDialog(QDialog):
         self.hatlar = hatlar
         self.vardiyalar = vardiyalar
         self.theme = theme
-        self.setWindowTitle("📅 Planlama")
-        self.setMinimumSize(450, 350)
+        self.setWindowTitle("Planlama")
+        self.setMinimumSize(brand.sp(480), brand.sp(380))
         self.setModal(True)
         self._setup_ui()
         self._auto_select_hat()
@@ -987,62 +1535,131 @@ class PlanlamaDialog(QDialog):
                     break
 
     def _setup_ui(self):
-        bg = self.theme.get('bg_card', '#242938')
-        inp = self.theme.get('bg_input', '#1e2330')
-        txt = self.theme.get('text', '#ffffff')
-        brd = self.theme.get('border', '#3d4454')
-        suc = self.theme.get('success', '#22c55e')
-        pri = self.theme.get('primary', '#6366f1')
-        
-        self.setStyleSheet(f"QDialog {{ background: {bg}; }} QLabel {{ color: {txt}; }} QComboBox {{ background: {inp}; color: {txt}; border: 1px solid {brd}; border-radius: 4px; padding: 8px; }}")
-        
+        self.setStyleSheet(f"""
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(24)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                selection-background-color: {brand.PRIMARY};
+            }}
+        """)
+
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
         toplam_bara = sum(l.get('bara', 0) for l in self.lots)
-        ozet = QLabel(f"📦 {len(self.lots)} lot, {toplam_bara:,.2f} bara")
-        ozet.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {pri};")
+        ozet = QLabel(f"{len(self.lots)} lot · {toplam_bara:,.2f} bara")
+        ozet.setStyleSheet(
+            f"font-size: {brand.FS_HEADING}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"color: {brand.PRIMARY}; "
+            f"background: transparent;"
+        )
         layout.addWidget(ozet)
-        
+
         form = QGridLayout()
-        form.setSpacing(12)
-        
-        form.addWidget(QLabel("Hat:"), 0, 0)
+        form.setSpacing(brand.SP_3)
+        form.setHorizontalSpacing(brand.SP_4)
+
+        label_style = (
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"background: transparent;"
+        )
+        lbl_hat = QLabel("Hat")
+        lbl_hat.setStyleSheet(label_style)
+        form.addWidget(lbl_hat, 0, 0)
         self.hat_combo = QComboBox()
+        self.hat_combo.setFixedHeight(brand.sp(36))
         for h in self.hatlar:
-            self.hat_combo.addItem(f"{h['kod']} - {h['ad']}", h['id'])
+            self.hat_combo.addItem(f"{h['kod']} · {h['ad']}", h['id'])
         self.hat_combo.currentIndexChanged.connect(self._update_kapasite)
         form.addWidget(self.hat_combo, 0, 1)
-        
-        form.addWidget(QLabel("Vardiya:"), 1, 0)
+
+        lbl_v = QLabel("Vardiya")
+        lbl_v.setStyleSheet(label_style)
+        form.addWidget(lbl_v, 1, 0)
         self.vardiya_combo = QComboBox()
+        self.vardiya_combo.setFixedHeight(brand.sp(36))
         for v in self.vardiyalar:
             self.vardiya_combo.addItem(f"{v['kod']} ({v['baslangic']}-{v['bitis']})", v['id'])
         self.vardiya_combo.currentIndexChanged.connect(self._update_kapasite)
         form.addWidget(self.vardiya_combo, 1, 1)
-        
-        form.addWidget(QLabel("Tarih:"), 2, 0)
+
+        lbl_t = QLabel("Tarih")
+        lbl_t.setStyleSheet(label_style)
+        form.addWidget(lbl_t, 2, 0)
         self.tarih_combo = QComboBox()
+        self.tarih_combo.setFixedHeight(brand.sp(36))
         bugun = date.today()
         yarin = bugun + timedelta(days=1)
-        self.tarih_combo.addItem(f"BUGÜN - {bugun.strftime('%d.%m.%Y')}", bugun)
-        self.tarih_combo.addItem(f"YARIN - {yarin.strftime('%d.%m.%Y')}", yarin)
+        self.tarih_combo.addItem(f"Bugün · {bugun.strftime('%d.%m.%Y')}", bugun)
+        self.tarih_combo.addItem(f"Yarın · {yarin.strftime('%d.%m.%Y')}", yarin)
         self.tarih_combo.currentIndexChanged.connect(self._update_kapasite)
         form.addWidget(self.tarih_combo, 2, 1)
-        
+
         layout.addLayout(form)
-        
+
         self.kapasite_label = QLabel("")
+        self.kapasite_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent;"
+        )
         layout.addWidget(self.kapasite_label)
-        
+
+        layout.addStretch()
+
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(brand.SP_2)
         btn_layout.addStretch()
         iptal = QPushButton("İptal")
-        iptal.setStyleSheet(f"QPushButton {{ background: {brd}; color: {txt}; border: none; border-radius: 6px; padding: 10px 20px; }}")
+        iptal.setCursor(Qt.PointingHandCursor)
+        iptal.setFixedHeight(brand.sp(40))
+        iptal.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
+        """)
         iptal.clicked.connect(self.reject)
         btn_layout.addWidget(iptal)
-        kaydet = QPushButton("✓ Planla")
-        kaydet.setStyleSheet(f"QPushButton {{ background: {suc}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold; }}")
+
+        kaydet = QPushButton("Planla")
+        kaydet.setCursor(Qt.PointingHandCursor)
+        kaydet.setFixedHeight(brand.sp(40))
+        kaydet.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.SUCCESS};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: #059669; }}
+        """)
         kaydet.clicked.connect(self._save)
         btn_layout.addWidget(kaydet)
         layout.addLayout(btn_layout)
@@ -1068,12 +1685,21 @@ class PlanlamaDialog(QDialog):
             yeni = mevcut + toplam_bara
             kalan = kapasite - mevcut
             
+            base = (
+                f"font-size: {brand.FS_BODY_SM}px; "
+                f"font-weight: {brand.FW_SEMIBOLD}; "
+                f"background: transparent;"
+            )
             if yeni > kapasite:
-                self.kapasite_label.setText(f"⚠️ Kapasite aşılacak! {mevcut}/{kapasite} + {toplam_bara} = {yeni}")
-                self.kapasite_label.setStyleSheet("color: #ef4444; font-weight: bold;")
+                self.kapasite_label.setText(
+                    f"Kapasite aşılacak · {mevcut}/{kapasite} + {toplam_bara} = {yeni}"
+                )
+                self.kapasite_label.setStyleSheet(f"color: {brand.ERROR}; {base}")
             else:
-                self.kapasite_label.setText(f"✓ Mevcut: {mevcut}/{kapasite}, Eklenecek: {toplam_bara}, Kalan: {kalan - toplam_bara}")
-                self.kapasite_label.setStyleSheet(f"color: {self.theme.get('success', '#22c55e')}; font-weight: bold;")
+                self.kapasite_label.setText(
+                    f"Mevcut {mevcut}/{kapasite} · Eklenecek {toplam_bara} · Kalan {kalan - toplam_bara}"
+                )
+                self.kapasite_label.setStyleSheet(f"color: {brand.SUCCESS}; {base}")
         except Exception as e:
             print(f"Kapasite hatası: {e}")
 

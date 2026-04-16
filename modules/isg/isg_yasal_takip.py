@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class YasalTakipDialog(QDialog):
@@ -33,11 +34,11 @@ class YasalTakipDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit, QSpinBox {{
-                background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px; color: {self.theme.get('text')};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -83,7 +84,7 @@ class YasalTakipDialog(QDialog):
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         layout.addLayout(btn_layout)
@@ -180,26 +181,26 @@ class ISGYasalTakipPage(BasePage):
         layout.setSpacing(12)
         
         header = QLabel("⚖️ Yasal Takip")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("➕ Yeni Gereklilik")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
         
         btn_tamamla = QPushButton("✓ Tamamlandı")
-        btn_tamamla.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_tamamla.setStyleSheet(f"background: {brand.PRIMARY}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_tamamla.clicked.connect(self._tamamla)
         toolbar_layout.addWidget(btn_tamamla)
         
         btn_geciken = QPushButton("⚠️ Süresi Geçenler")
-        btn_geciken.setStyleSheet(f"background: {self.theme.get('warning')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_geciken.setStyleSheet(f"background: {brand.WARNING}; color: white; padding: 8px 16px; border-radius: 6px;")
         btn_geciken.clicked.connect(self._show_geciken)
         toolbar_layout.addWidget(btn_geciken)
         
@@ -217,9 +218,9 @@ class ISGYasalTakipPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px; font-weight: bold; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(1, QHeaderView.Stretch)
@@ -257,13 +258,13 @@ class ISGYasalTakipPage(BasePage):
                 if j == 5:
                     item = QTableWidgetItem(str(val) if val is not None else "")
                     if val is not None and val < 0:
-                        item.setForeground(QColor(self.theme.get('danger')))
+                        item.setForeground(QColor(brand.ERROR))
                         item.setText(f"{val} (GECİKMİŞ)")
                         geciken += 1
                     elif val is not None and val <= 30:
-                        item.setForeground(QColor(self.theme.get('warning')))
+                        item.setForeground(QColor(brand.WARNING))
                     else:
-                        item.setForeground(QColor(self.theme.get('success')))
+                        item.setForeground(QColor(brand.SUCCESS))
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

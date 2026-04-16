@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 class ZimmetTeslimDialog(QDialog):
@@ -27,7 +28,7 @@ class ZimmetTeslimDialog(QDialog):
         self.theme = theme
         self.personel_id = personel_id
         self.setWindowTitle("Zimmet Teslim")
-        self.setMinimumSize(750, 650)
+        self.setMinimumSize(brand.sp(750), brand.sp(650))
         self._malzeme_rows = []
         self._zimmet_turleri = []
         self._setup_ui()
@@ -35,25 +36,31 @@ class ZimmetTeslimDialog(QDialog):
 
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; font-family: {brand.FONT_FAMILY}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit, QSpinBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
-            QCheckBox {{ color: {self.theme.get('text')}; }}
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus, QSpinBox:focus {{
+                border-color: {brand.PRIMARY};
+            }}
+            QCheckBox {{ color: {brand.TEXT}; }}
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_3)
 
         # Baslik
         title = QLabel("Zimmet Teslim (Coklu Malzeme)")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
+        title.setStyleSheet(
+            f"font-size: {brand.FS_HEADING}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.PRIMARY};"
+        )
         layout.addWidget(title)
 
         # Ust form: Personel + Tarih
@@ -71,51 +78,58 @@ class ZimmetTeslimDialog(QDialog):
 
         # Malzeme secim tablosu
         lbl = QLabel("Teslim edilecek malzemeleri secin:")
-        lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
         layout.addWidget(lbl)
 
         self.malzeme_table = QTableWidget()
         self.malzeme_table.setColumnCount(5)
         self.malzeme_table.setHorizontalHeaderLabels(["Sec", "Malzeme", "Miktar", "Beden", "Seri No"])
         self.malzeme_table.verticalHeader().setVisible(False)
+        self.malzeme_table.setShowGrid(False)
+        self.malzeme_table.setAlternatingRowColors(True)
         self.malzeme_table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
             }}
-            QTableWidget::item {{ padding: 4px; }}
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                padding: 8px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
-                font-weight: bold;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """)
         h = self.malzeme_table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.Fixed)
-        h.resizeSection(0, 40)
+        h.resizeSection(0, brand.sp(40))
         h.setSectionResizeMode(1, QHeaderView.Stretch)
         h.setSectionResizeMode(2, QHeaderView.Fixed)
-        h.resizeSection(2, 70)
+        h.resizeSection(2, brand.sp(70))
         h.setSectionResizeMode(3, QHeaderView.Fixed)
-        h.resizeSection(3, 80)
+        h.resizeSection(3, brand.sp(80))
         h.setSectionResizeMode(4, QHeaderView.Fixed)
-        h.resizeSection(4, 140)
+        h.resizeSection(4, brand.sp(140))
         layout.addWidget(self.malzeme_table, 1)
 
         # Secim ozet
         self.lbl_secim = QLabel("0 malzeme secili")
-        self.lbl_secim.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.lbl_secim.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
         layout.addWidget(self.lbl_secim)
 
         # Aciklama
         self.txt_aciklama = QTextEdit()
-        self.txt_aciklama.setMaximumHeight(50)
+        self.txt_aciklama.setMaximumHeight(brand.sp(50))
         self.txt_aciklama.setPlaceholderText("Genel not (opsiyonel)...")
         layout.addWidget(self.txt_aciklama)
 
@@ -123,14 +137,19 @@ class ZimmetTeslimDialog(QDialog):
         btn_layout = QHBoxLayout()
 
         tumunu_sec = QPushButton("Tumunu Sec")
+        tumunu_sec.setCursor(Qt.PointingHandCursor)
+        tumunu_sec.setFixedHeight(brand.sp(38))
         tumunu_sec.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 16px;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
         """)
         tumunu_sec.clicked.connect(self._tumunu_sec)
         btn_layout.addWidget(tumunu_sec)
@@ -138,28 +157,37 @@ class ZimmetTeslimDialog(QDialog):
         btn_layout.addStretch()
 
         cancel_btn = QPushButton("Iptal")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(brand.sp(38))
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 10px 24px;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
         """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
         save_btn = QPushButton("Teslim Et")
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFixedHeight(brand.sp(38))
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 24px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
+            QPushButton:hover {{ background: #059669; }}
         """)
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
@@ -168,6 +196,7 @@ class ZimmetTeslimDialog(QDialog):
 
     def _load_data(self):
         """Verileri yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -192,12 +221,17 @@ class ZimmetTeslimDialog(QDialog):
                 ORDER BY kategori, ad
             """)
             self._zimmet_turleri = cursor.fetchall()
-            conn.close()
 
             self._fill_malzeme_table()
 
         except Exception as e:
             print(f"Veri yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _fill_malzeme_table(self):
         """Malzeme tablosunu doldur"""
@@ -252,7 +286,7 @@ class ZimmetTeslimDialog(QDialog):
                 'txt_seri': txt,
             })
 
-            self.malzeme_table.setRowHeight(i, 36)
+            self.malzeme_table.setRowHeight(i, brand.sp(42))
 
     def _update_secim_sayisi(self):
         secili = sum(1 for r in self._malzeme_rows if r['chk'].isChecked())
@@ -266,17 +300,18 @@ class ZimmetTeslimDialog(QDialog):
 
     def _save(self):
         """Secili malzemeleri toplu teslim et"""
+        personel_id = self.cmb_personel.currentData()
+        if not personel_id:
+            QMessageBox.warning(self, "Uyari", "Lutfen personel secin.")
+            return
+
+        secili = [r for r in self._malzeme_rows if r['chk'].isChecked()]
+        if not secili:
+            QMessageBox.warning(self, "Uyari", "Lutfen en az bir malzeme secin.")
+            return
+
+        conn = None
         try:
-            personel_id = self.cmb_personel.currentData()
-            if not personel_id:
-                QMessageBox.warning(self, "Uyari", "Lutfen personel secin.")
-                return
-
-            secili = [r for r in self._malzeme_rows if r['chk'].isChecked()]
-            if not secili:
-                QMessageBox.warning(self, "Uyari", "Lutfen en az bir malzeme secin.")
-                return
-
             teslim_tarihi = self.dt_teslim.date().toPython()
             aciklama = self.txt_aciklama.toPlainText() or None
             ts = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -309,7 +344,6 @@ class ZimmetTeslimDialog(QDialog):
             conn.commit()
             LogManager.log_insert('ik', 'ik.zimmetler', None,
                                   f'Toplu zimmet teslim: {eklenen} kalem')
-            conn.close()
 
             malzeme_list = ", ".join(r['tur_ad'] for r in secili)
             QMessageBox.information(self, "Basarili",
@@ -318,6 +352,12 @@ class ZimmetTeslimDialog(QDialog):
 
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Kayit hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 class IKZimmetPage(BasePage):
@@ -330,100 +370,107 @@ class IKZimmetPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
+
         # Header
-        header = QHBoxLayout()
-        
-        title = QLabel("📦 Zimmet Takip")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
-        header.addWidget(title)
-        
-        header.addStretch()
-        
+        header = self.create_page_header(
+            "Zimmet Takip",
+            "KKD ve ekipman zimmet yonetimi"
+        )
+
         # PDF Form butonu
-        pdf_btn = QPushButton("📄 Zimmet Formu")
+        pdf_btn = QPushButton("Zimmet Formu")
+        pdf_btn.setCursor(Qt.PointingHandCursor)
+        pdf_btn.setFixedHeight(brand.sp(38))
         pdf_btn.setStyleSheet(self._button_style())
         pdf_btn.clicked.connect(self._print_form)
         header.addWidget(pdf_btn)
-        
+
         # Yeni teslim butonu
-        new_btn = QPushButton("➕ Yeni Teslim")
+        new_btn = QPushButton("Yeni Teslim")
+        new_btn.setCursor(Qt.PointingHandCursor)
+        new_btn.setFixedHeight(brand.sp(38))
         new_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
+            QPushButton:hover {{ background: #059669; }}
         """)
         new_btn.clicked.connect(self._new_teslim)
         header.addWidget(new_btn)
-        
+
         layout.addLayout(header)
-        
-        # Özet kartları
-        ozet_frame = QFrame()
-        ozet_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
-        ozet_layout = QHBoxLayout(ozet_frame)
-        ozet_layout.setContentsMargins(16, 16, 16, 16)
-        
-        self.kart_teslim = self._create_ozet_kart("📦", "Teslim Edilen", "0", self.theme.get('primary'))
-        ozet_layout.addWidget(self.kart_teslim)
-        
-        self.kart_iade = self._create_ozet_kart("↩️", "İade Edilen", "0", self.theme.get('success'))
-        ozet_layout.addWidget(self.kart_iade)
-        
-        self.kart_yenileme = self._create_ozet_kart("⚠️", "Yenileme Bekleyen", "0", self.theme.get('warning'))
-        ozet_layout.addWidget(self.kart_yenileme)
-        
-        self.kart_kayip = self._create_ozet_kart("❌", "Kayıp/Hasarlı", "0", self.theme.get('danger'))
-        ozet_layout.addWidget(self.kart_kayip)
-        
-        layout.addWidget(ozet_frame)
+
+        # KPI kartlari
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(brand.SP_4)
+
+        self.kart_teslim = self.create_stat_card("TESLIM EDILEN", "0", color=brand.PRIMARY)
+        kpi_row.addWidget(self.kart_teslim)
+
+        self.kart_iade = self.create_stat_card("IADE EDILEN", "0", color=brand.SUCCESS)
+        kpi_row.addWidget(self.kart_iade)
+
+        self.kart_yenileme = self.create_stat_card("YENILEME BEKLEYEN", "0", color=brand.WARNING)
+        kpi_row.addWidget(self.kart_yenileme)
+
+        self.kart_kayip = self.create_stat_card("KAYIP / HASARLI", "0", color=brand.ERROR)
+        kpi_row.addWidget(self.kart_kayip)
+
+        layout.addLayout(kpi_row)
         
         # Filtreler
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: {brand.R_LG}px;")
         filter_layout = QHBoxLayout(filter_frame)
-        filter_layout.setContentsMargins(16, 12, 16, 12)
-        
+        filter_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+
         # Arama
-        filter_layout.addWidget(QLabel("Ara:"))
+        lbl_ara = QLabel("Ara:")
+        lbl_ara.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
+        filter_layout.addWidget(lbl_ara)
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Personel adı, zimmet türü...")
+        self.search_input.setPlaceholderText("Personel adi, zimmet turu...")
         self.search_input.setStyleSheet(self._input_style())
-        self.search_input.setMinimumWidth(200)
+        self.search_input.setMinimumWidth(brand.sp(200))
         self.search_input.returnPressed.connect(self._load_data)
         filter_layout.addWidget(self.search_input)
-        
+
         # Durum filtresi
-        filter_layout.addWidget(QLabel("Durum:"))
+        lbl_dur = QLabel("Durum:")
+        lbl_dur.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
+        filter_layout.addWidget(lbl_dur)
         self.status_combo = QComboBox()
         self.status_combo.setStyleSheet(self._combo_style())
-        self.status_combo.addItem("Tümü", None)
-        self.status_combo.addItem("📦 Teslim Edildi", "TESLIM")
-        self.status_combo.addItem("↩️ İade Edildi", "IADE")
-        self.status_combo.addItem("❌ Kayıp", "KAYIP")
-        self.status_combo.addItem("⚠️ Hasarlı", "HASARLI")
+        self.status_combo.addItem("Tumu", None)
+        self.status_combo.addItem("Teslim Edildi", "TESLIM")
+        self.status_combo.addItem("Iade Edildi", "IADE")
+        self.status_combo.addItem("Kayip", "KAYIP")
+        self.status_combo.addItem("Hasarli", "HASARLI")
         self.status_combo.currentIndexChanged.connect(self._load_data)
         filter_layout.addWidget(self.status_combo)
-        
+
         # Kategori filtresi
-        filter_layout.addWidget(QLabel("Kategori:"))
+        lbl_kat = QLabel("Kategori:")
+        lbl_kat.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
+        filter_layout.addWidget(lbl_kat)
         self.kategori_combo = QComboBox()
         self.kategori_combo.setStyleSheet(self._combo_style())
-        self.kategori_combo.addItem("Tümü", None)
-        self.kategori_combo.addItem("🦺 KKD", "KKD")
-        self.kategori_combo.addItem("🔧 Ekipman", "EKIPMAN")
-        self.kategori_combo.addItem("🚗 Araç", "ARAC")
-        self.kategori_combo.addItem("📁 Diğer", "DIGER")
+        self.kategori_combo.addItem("Tumu", None)
+        self.kategori_combo.addItem("KKD", "KKD")
+        self.kategori_combo.addItem("Ekipman", "EKIPMAN")
+        self.kategori_combo.addItem("Arac", "ARAC")
+        self.kategori_combo.addItem("Diger", "DIGER")
         self.kategori_combo.currentIndexChanged.connect(self._load_data)
         filter_layout.addWidget(self.kategori_combo)
-        
+
         filter_layout.addStretch()
 
         # Disa Aktar
@@ -434,37 +481,12 @@ class IKZimmetPage(BasePage):
         # Tab widget
         tabs = QTabWidget()
         tabs.setStyleSheet(self._tab_style())
-        
-        tabs.addTab(self._create_aktif_tab(), "📦 Aktif Zimmetler")
-        tabs.addTab(self._create_yenileme_tab(), "⚠️ Yenileme Bekleyenler")
-        tabs.addTab(self._create_gecmis_tab(), "📋 Tüm Geçmiş")
-        
+
+        tabs.addTab(self._create_aktif_tab(), "Aktif Zimmetler")
+        tabs.addTab(self._create_yenileme_tab(), "Yenileme Bekleyenler")
+        tabs.addTab(self._create_gecmis_tab(), "Tum Gecmis")
+
         layout.addWidget(tabs, 1)
-    
-    def _create_ozet_kart(self, icon: str, baslik: str, deger: str, renk: str) -> QFrame:
-        """Özet kartı"""
-        frame = QFrame()
-        frame.setStyleSheet(f"""
-            QFrame {{
-                background: {self.theme.get('bg_main')};
-                border: 1px solid {renk};
-                border-radius: 8px;
-            }}
-        """)
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(4)
-        
-        header = QLabel(f"{icon} {baslik}")
-        header.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
-        layout.addWidget(header)
-        
-        value = QLabel(deger)
-        value.setObjectName("value")
-        value.setStyleSheet(f"color: {renk}; font-size: 24px; font-weight: bold;")
-        layout.addWidget(value)
-        
-        return frame
     
     def _create_aktif_tab(self) -> QWidget:
         """Aktif zimmetler sekmesi"""
@@ -480,15 +502,18 @@ class IKZimmetPage(BasePage):
         ])
         self.aktif_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.aktif_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.aktif_table.setColumnWidth(0, 140)
-        self.aktif_table.setColumnWidth(3, 80)
-        self.aktif_table.setColumnWidth(4, 100)
-        self.aktif_table.setColumnWidth(5, 60)
-        self.aktif_table.setColumnWidth(6, 60)
-        self.aktif_table.setColumnWidth(7, 100)
-        self.aktif_table.setColumnWidth(8, 120)
+        self.aktif_table.setColumnWidth(0, brand.sp(140))
+        self.aktif_table.setColumnWidth(3, brand.sp(80))
+        self.aktif_table.setColumnWidth(4, brand.sp(100))
+        self.aktif_table.setColumnWidth(5, brand.sp(60))
+        self.aktif_table.setColumnWidth(6, brand.sp(60))
+        self.aktif_table.setColumnWidth(7, brand.sp(100))
+        self.aktif_table.setColumnWidth(8, brand.sp(120))
         self.aktif_table.setStyleSheet(self._table_style())
         self.aktif_table.verticalHeader().setVisible(False)
+        self.aktif_table.setShowGrid(False)
+        self.aktif_table.setAlternatingRowColors(True)
+        self.aktif_table.verticalHeader().setDefaultSectionSize(brand.sp(42))
         self.aktif_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         
         layout.addWidget(self.aktif_table)
@@ -506,11 +531,14 @@ class IKZimmetPage(BasePage):
             "Personel", "Zimmet Türü", "Teslim Tarihi", "Yenileme Tarihi",
             "Gecikme (Gün)", "Durum", "İşlem"
         ])
-        self.yenileme_table.setColumnWidth(6, 120)
+        self.yenileme_table.setColumnWidth(6, brand.sp(120))
         self.yenileme_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.yenileme_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.yenileme_table.setStyleSheet(self._table_style())
         self.yenileme_table.verticalHeader().setVisible(False)
+        self.yenileme_table.setShowGrid(False)
+        self.yenileme_table.setAlternatingRowColors(True)
+        self.yenileme_table.verticalHeader().setDefaultSectionSize(brand.sp(42))
         
         layout.addWidget(self.yenileme_table)
         return widget
@@ -531,91 +559,105 @@ class IKZimmetPage(BasePage):
         self.gecmis_table.horizontalHeader().setSectionResizeMode(7, QHeaderView.Stretch)
         self.gecmis_table.setStyleSheet(self._table_style())
         self.gecmis_table.verticalHeader().setVisible(False)
-        
+        self.gecmis_table.setShowGrid(False)
+        self.gecmis_table.setAlternatingRowColors(True)
+        self.gecmis_table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+
         layout.addWidget(self.gecmis_table)
         return widget
     
     def _input_style(self):
         return f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 12px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}
         """
-    
+
     def _combo_style(self):
         return f"""
             QComboBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
         """
-    
+
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px 16px;
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                min-height: {brand.sp(38)}px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('bg_hover')}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
         """
-    
+
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
             }}
             QTableWidget::item {{
-                padding: 8px;
-                border-bottom: 1px solid {self.theme.get('border')};
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
             }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                padding: 10px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_4}px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
-                font-weight: bold;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """
-    
+
     def _tab_style(self):
         return f"""
-            QTabWidget::pane {{ 
-                border: 1px solid {self.theme.get('border')}; 
-                background: {self.theme.get('bg_card')}; 
-                border-radius: 8px; 
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                background: {brand.BG_CARD};
+                border-radius: {brand.R_LG}px;
             }}
-            QTabBar::tab {{ 
-                background: {self.theme.get('bg_input')}; 
-                color: {self.theme.get('text')}; 
-                padding: 10px 20px; 
-                border: 1px solid {self.theme.get('border')}; 
-                border-bottom: none; 
-                border-radius: 6px 6px 0 0; 
-                margin-right: 2px; 
+            QTabBar::tab {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                padding: {brand.SP_3}px {brand.SP_5}px;
+                border: 1px solid {brand.BORDER};
+                border-bottom: none;
+                border-radius: {brand.R_SM}px {brand.R_SM}px 0 0;
+                margin-right: {brand.SP_1}px;
+                font-size: {brand.FS_BODY}px;
             }}
-            QTabBar::tab:selected {{ 
-                background: {self.theme.get('bg_card')}; 
-                border-bottom: 2px solid {self.theme.get('primary')}; 
+            QTabBar::tab:selected {{
+                background: {brand.BG_CARD};
+                border-bottom: 2px solid {brand.PRIMARY};
             }}
         """
     
     def _load_data(self):
-        """Zimmet verilerini yükle"""
+        """Zimmet verilerini yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -659,11 +701,11 @@ class IKZimmetPage(BasePage):
             cursor.execute("SELECT COUNT(*) FROM ik.zimmetler WHERE durum IN ('KAYIP', 'HASARLI')")
             kayip = cursor.fetchone()[0]
             
-            # Kartları güncelle
-            self.kart_teslim.findChild(QLabel, "value").setText(str(teslim))
-            self.kart_iade.findChild(QLabel, "value").setText(str(iade))
-            self.kart_yenileme.findChild(QLabel, "value").setText(str(yenileme))
-            self.kart_kayip.findChild(QLabel, "value").setText(str(kayip))
+            # Kartlari guncelle
+            self.kart_teslim.findChild(QLabel, "stat_value").setText(str(teslim))
+            self.kart_iade.findChild(QLabel, "stat_value").setText(str(iade))
+            self.kart_yenileme.findChild(QLabel, "stat_value").setText(str(yenileme))
+            self.kart_kayip.findChild(QLabel, "stat_value").setText(str(kayip))
             
             # Aktif zimmetler
             cursor.execute(f"""
@@ -703,17 +745,16 @@ class IKZimmetPage(BasePage):
                     yenileme_str = row[8].strftime('%d.%m.%Y')
                     yenileme_item = QTableWidgetItem(yenileme_str)
                     if row[8] <= date.today():
-                        yenileme_item.setForeground(QColor(self.theme.get('danger')))
+                        yenileme_item.setForeground(QColor(brand.ERROR))
                     self.aktif_table.setItem(row_idx, 7, yenileme_item)
                 else:
                     self.aktif_table.setItem(row_idx, 7, QTableWidgetItem('-'))
                 
-                # İade butonu
+                # Iade butonu
                 widget = self.create_action_buttons([
-                    ("↩️", "İade Al", lambda checked, zid=row[0]: self._iade_zimmet(zid), "delete"),
+                    ("Iade", "Iade Al", lambda checked, zid=row[0]: self._iade_zimmet(zid), "delete"),
                 ])
                 self.aktif_table.setCellWidget(row_idx, 8, widget)
-                self.aktif_table.setRowHeight(row_idx, 42)
             
             # Yenileme bekleyenler
             self._load_yenileme_data(cursor)
@@ -721,12 +762,16 @@ class IKZimmetPage(BasePage):
             # Geçmiş
             self._load_gecmis_data(cursor, where_clause, params)
             
-            conn.close()
-            
         except Exception as e:
             import traceback
             traceback.print_exc()
-            QMessageBox.critical(self, "Hata", f"Veri yüklenemedi: {e}")
+            QMessageBox.critical(self, "Hata", f"Veri yuklenemedi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _load_yenileme_data(self, cursor):
         """Yenileme bekleyenleri yükle"""
@@ -767,26 +812,25 @@ class IKZimmetPage(BasePage):
                 gecikme = (today - row[3]).days
                 gecikme_item = QTableWidgetItem(str(gecikme) if gecikme > 0 else "0")
                 if gecikme > 0:
-                    gecikme_item.setForeground(QColor(self.theme.get('danger')))
+                    gecikme_item.setForeground(QColor(brand.ERROR))
                 self.yenileme_table.setItem(row_idx, 4, gecikme_item)
             
             # Durum
             if row[3] and row[3] < today:
-                durum = "⚠️ GECİKMİŞ"
+                durum = "GECIKMIS"
                 durum_item = QTableWidgetItem(durum)
-                durum_item.setForeground(QColor(self.theme.get('danger')))
+                durum_item.setForeground(QColor(brand.ERROR))
             else:
-                durum = "⏳ Yaklaşıyor"
+                durum = "Yaklasiyor"
                 durum_item = QTableWidgetItem(durum)
-                durum_item.setForeground(QColor(self.theme.get('warning')))
+                durum_item.setForeground(QColor(brand.WARNING))
             self.yenileme_table.setItem(row_idx, 5, durum_item)
-            
+
             # Yenile butonu
             widget = self.create_action_buttons([
-                ("🔄", "Yenile", lambda checked, zid=row[4]: self._yenile_zimmet(zid), "success"),
+                ("Yenile", "Yenile", lambda checked, zid=row[4]: self._yenile_zimmet(zid), "success"),
             ])
             self.yenileme_table.setCellWidget(row_idx, 6, widget)
-            self.yenileme_table.setRowHeight(row_idx, 42)
     
     def _load_gecmis_data(self, cursor, where_clause, params):
         """Geçmiş verileri yükle"""
@@ -821,11 +865,11 @@ class IKZimmetPage(BasePage):
             
             durum_item = QTableWidgetItem(row[6] or '')
             if row[6] == 'TESLIM':
-                durum_item.setForeground(QColor(self.theme.get('primary')))
+                durum_item.setForeground(QColor(brand.PRIMARY))
             elif row[6] == 'IADE':
-                durum_item.setForeground(QColor(self.theme.get('success')))
+                durum_item.setForeground(QColor(brand.SUCCESS))
             elif row[6] in ('KAYIP', 'HASARLI'):
-                durum_item.setForeground(QColor(self.theme.get('danger')))
+                durum_item.setForeground(QColor(brand.ERROR))
             self.gecmis_table.setItem(row_idx, 6, durum_item)
             
             self.gecmis_table.setItem(row_idx, 7, QTableWidgetItem(row[7] or ''))
@@ -838,58 +882,72 @@ class IKZimmetPage(BasePage):
     
     def _iade_zimmet(self, zimmet_id: int):
         """Zimmet iade al"""
-        reply = QMessageBox.question(self, "Onay", "Bu zimmet iade alınacak. Devam edilsin mi?")
+        reply = QMessageBox.question(self, "Onay", "Bu zimmet iade alinacak. Devam edilsin mi?")
         if reply == QMessageBox.Yes:
+            conn = None
             try:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute("""
-                    UPDATE ik.zimmetler 
+                    UPDATE ik.zimmetler
                     SET durum = 'IADE', iade_tarihi = GETDATE(), guncelleme_tarihi = GETDATE()
                     WHERE id = ?
                 """, (zimmet_id,))
                 conn.commit()
                 LogManager.log_update('ik', 'ik.zimmetler', zimmet_id, 'Zimmet iade alindi')
-                conn.close()
 
                 self._load_data()
-                QMessageBox.information(self, "Başarılı", "Zimmet iade alındı.")
+                QMessageBox.information(self, "Basarili", "Zimmet iade alindi.")
             except Exception as e:
-                QMessageBox.critical(self, "Hata", f"İade hatası: {e}")
+                QMessageBox.critical(self, "Hata", f"Iade hatasi: {e}")
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
     
     def _yenile_zimmet(self, zimmet_id: int):
-        """Zimmeti yenile - yeni teslim oluştur"""
+        """Zimmeti yenile - yeni teslim olustur"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # Eski zimmeti al
+
             cursor.execute("""
                 SELECT personel_id, zimmet_turu_id, beden FROM ik.zimmetler WHERE id = ?
             """, (zimmet_id,))
             row = cursor.fetchone()
-            
+
             if row:
-                # Eskiyi iade et
                 cursor.execute("""
-                    UPDATE ik.zimmetler 
+                    UPDATE ik.zimmetler
                     SET durum = 'IADE', iade_tarihi = GETDATE(), guncelleme_tarihi = GETDATE()
                     WHERE id = ?
                 """, (zimmet_id,))
-                
+
                 conn.commit()
                 LogManager.log_update('ik', 'ik.zimmetler', zimmet_id, 'Zimmet yenileme icin iade edildi')
-                conn.close()
 
-                # Yeni teslim dialog'u aç
-                dialog = ZimmetTeslimDialog(self.theme, personel_id=row[0], parent=self)
+                personel_id = row[0]
+                # Connection'i kapat, dialog acmadan once
+                conn.close()
+                conn = None
+
+                dialog = ZimmetTeslimDialog(self.theme, personel_id=personel_id, parent=self)
                 if dialog.exec():
                     self._load_data()
                 else:
                     self._load_data()
-            
+
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Yenileme hatası: {e}")
+            QMessageBox.critical(self, "Hata", f"Yenileme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _print_form(self):
         """Zimmet formu yazdır - secili personelin aktif zimmetleri"""
@@ -904,13 +962,12 @@ class IKZimmetPage(BasePage):
         if not zimmet_id:
             return
 
+        conn = None
         try:
-            # Zimmet'ten personel_id bul
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT personel_id FROM ik.zimmetler WHERE id = ?", (zimmet_id,))
             prow = cursor.fetchone()
-            conn.close()
 
             if not prow:
                 QMessageBox.warning(self, "Uyari", "Zimmet kaydi bulunamadi.")
@@ -926,3 +983,9 @@ class IKZimmetPage(BasePage):
             import traceback
             traceback.print_exc()
             QMessageBox.critical(self, "Hata", f"PDF olusturma hatasi:\n{e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass

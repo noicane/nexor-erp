@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class OlayDialog(QDialog):
@@ -34,18 +35,18 @@ class OlayDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QDateTimeEdit, QTextEdit, QSpinBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
-            QCheckBox {{ color: {self.theme.get('text')}; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
+            QCheckBox {{ color: {brand.TEXT}; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -147,12 +148,12 @@ class OlayDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 24px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 24px; border-radius: 6px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -308,16 +309,16 @@ class ISGOlayKayitlariPage(BasePage):
         layout.setSpacing(12)
         
         header = QLabel("🚨 Olay Kayıtları (Kaza / Ramak Kala)")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(16, 12, 16, 12)
         
         btn_yeni = QPushButton("➕ Yeni Olay")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
         
@@ -325,12 +326,12 @@ class ISGOlayKayitlariPage(BasePage):
         
         self.cmb_tip = QComboBox()
         self.cmb_tip.addItems(["Tümü", "IS_KAZASI", "RAMAK_KALA", "MESLEK_HASTALIGI"])
-        self.cmb_tip.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text')};")
+        self.cmb_tip.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};")
         self.cmb_tip.currentIndexChanged.connect(self._filter)
         toolbar_layout.addWidget(self.cmb_tip)
         
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 12px; color: {self.theme.get('text')};")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 12px; color: {brand.TEXT};")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -343,9 +344,9 @@ class ISGOlayKayitlariPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px; font-weight: bold; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(4, QHeaderView.Stretch)
@@ -354,7 +355,7 @@ class ISGOlayKayitlariPage(BasePage):
         layout.addWidget(self.table)
         
         self.lbl_stat = QLabel()
-        self.lbl_stat.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_stat.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.lbl_stat)
     
     def _load_data(self):
@@ -377,16 +378,16 @@ class ISGOlayKayitlariPage(BasePage):
     
     def _display_data(self, rows):
         self.table.setRowCount(len(rows))
-        tip_colors = {'IS_KAZASI': self.theme.get('danger'), 'RAMAK_KALA': self.theme.get('warning')}
+        tip_colors = {'IS_KAZASI': brand.ERROR, 'RAMAK_KALA': brand.WARNING}
         
         for i, row in enumerate(rows):
             for j, val in enumerate(row):
                 if j == 2:
                     item = QTableWidgetItem(str(val) if val else "")
-                    item.setForeground(QColor(tip_colors.get(val, self.theme.get('text'))))
+                    item.setForeground(QColor(tip_colors.get(val, brand.TEXT)))
                 elif j == 6 and val:
                     item = QTableWidgetItem(str(val))
-                    item.setForeground(QColor(self.theme.get('danger')))
+                    item.setForeground(QColor(brand.ERROR))
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

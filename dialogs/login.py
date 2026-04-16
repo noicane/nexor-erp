@@ -17,6 +17,7 @@ from core.database import get_db_connection
 from core.log_manager import LogManager
 from core.yetki_manager import YetkiManager
 from core.rfid_reader import RFIDCardReader
+from core.nexor_brand import brand
 from config import RFID_LOGIN_ENABLED
 from version import VERSION
 
@@ -45,9 +46,10 @@ class NexorLoginDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NEXOR ERP — Giriş")
-        # RFID varsa biraz daha yüksek
-        h = 600 if RFID_LOGIN_ENABLED else 520
-        self.setFixedSize(440, h)
+        # Boyut scale'e gore responsive
+        w = brand.sp(480)
+        h = brand.sp(620 if RFID_LOGIN_ENABLED else 540)
+        self.setFixedSize(w, h)
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
@@ -95,216 +97,322 @@ class NexorLoginDialog(QDialog):
 
     def _setup_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(20, 20, 20, 20)
+        outer.setContentsMargins(brand.sp(16), brand.sp(16), brand.sp(16), brand.sp(16))
 
-        # Ana kart
+        # ========== ANA KART ==========
         card = QFrame()
         card.setObjectName("loginCard")
-        card.setStyleSheet("""
-            #loginCard {
-                background: #1A1A2E;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 16px;
-            }
+        card.setStyleSheet(f"""
+            QFrame#loginCard {{
+                background: {brand.BG_ELEVATED};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_XL}px;
+            }}
+            QFrame#loginCard QLabel {{
+                background: transparent;
+                border: none;
+            }}
         """)
 
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(40, 40, 40, 36)
+        layout.setContentsMargins(
+            brand.SP_10, brand.sp(36), brand.SP_10, brand.SP_8
+        )
         layout.setSpacing(0)
 
-        # ── Üst kırmızı accent çizgi ──
+        # ---------- ÜST KIRMIZI ACCENT ÇİZGİ ----------
         accent = QFrame()
-        accent.setFixedHeight(3)
-        accent.setStyleSheet("""
+        accent.setFixedHeight(brand.sp(3))
+        accent.setStyleSheet(f"""
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                stop:0 #E2130D, stop:1 #FF4136);
-            border-radius: 1px;
+                stop:0 {brand.PRIMARY}, stop:1 #FF4136);
+            border: none; border-radius: 1px;
         """)
         layout.addWidget(accent)
-        layout.addSpacing(28)
+        layout.addSpacing(brand.SP_8)
 
-        # ── REDLINE / NEXOR / ERP YÖNETİM SİSTEMLERİ ──
+        # ---------- LOGO / MARKA ----------
         redline = QLabel("REDLINE")
         redline.setAlignment(Qt.AlignCenter)
-        redline.setStyleSheet("color: #718096; font-size: 11px; letter-spacing: 3px;")
+        redline.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"letter-spacing: 4px; font-weight: {brand.FW_MEDIUM};"
+        )
         layout.addWidget(redline)
+
+        layout.addSpacing(brand.SP_1)
 
         nexor = QLabel("NEXOR")
         nexor.setAlignment(Qt.AlignCenter)
-        nexor.setStyleSheet("color: #E8E8E8; font-size: 30px; font-weight: bold;")
+        nexor.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.fs(36)}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.5px;"
+        )
         layout.addWidget(nexor)
 
         subtitle = QLabel("ERP YÖNETİM SİSTEMLERİ")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("color: #E2130D; font-size: 10px; letter-spacing: 2px; font-weight: 600;")
+        subtitle.setStyleSheet(
+            f"color: {brand.PRIMARY}; "
+            f"font-size: {brand.fs(10)}px; "
+            f"letter-spacing: 3px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
         layout.addWidget(subtitle)
-        layout.addSpacing(32)
+        layout.addSpacing(brand.SP_8)
 
-        # ── RFID Kart Okuyucu Bölümü ──
+        # ---------- RFID BÖLÜMÜ ----------
         if RFID_LOGIN_ENABLED:
-            self.lbl_rfid_status = QLabel("\U0001F4B3  Kartınızı okutunuz...")
-            self.lbl_rfid_status.setAlignment(Qt.AlignCenter)
-            self.lbl_rfid_status.setStyleSheet("""
-                color: #718096;
-                font-size: 13px;
-                letter-spacing: 0.5px;
-                padding: 8px 0;
+            rfid_box = QFrame()
+            rfid_box.setObjectName("rfidBox")
+            rfid_box.setStyleSheet(f"""
+                QFrame#rfidBox {{
+                    background: {brand.BG_INPUT};
+                    border: 1px dashed {brand.BORDER_HARD};
+                    border-radius: {brand.R_MD}px;
+                }}
+                QFrame#rfidBox QLabel {{ background: transparent; border: none; }}
             """)
-            layout.addWidget(self.lbl_rfid_status)
-            layout.addSpacing(12)
+            rfid_lay = QVBoxLayout(rfid_box)
+            rfid_lay.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+            rfid_lay.setSpacing(brand.SP_1)
+
+            self.lbl_rfid_status = QLabel("Kartınızı okuyucuya yaklaştırın")
+            self.lbl_rfid_status.setAlignment(Qt.AlignCenter)
+            self.lbl_rfid_status.setStyleSheet(
+                f"color: {brand.TEXT_MUTED}; "
+                f"font-size: {brand.FS_BODY_SM}px; "
+                f"font-weight: {brand.FW_MEDIUM};"
+            )
+            rfid_lay.addWidget(self.lbl_rfid_status)
+
+            rfid_hint = QLabel("Kart ile hızlı giriş")
+            rfid_hint.setAlignment(Qt.AlignCenter)
+            rfid_hint.setStyleSheet(
+                f"color: {brand.TEXT_DIM}; font-size: {brand.FS_CAPTION}px;"
+            )
+            rfid_lay.addWidget(rfid_hint)
+
+            layout.addWidget(rfid_box)
+            layout.addSpacing(brand.SP_4)
 
             # "VEYA" ayırıcı
             veya_layout = QHBoxLayout()
-            veya_line_left = QFrame()
-            veya_line_left.setFixedHeight(1)
-            veya_line_left.setStyleSheet("background: rgba(255,255,255,0.08);")
-            veya_layout.addWidget(veya_line_left)
+            veya_layout.setSpacing(brand.SP_3)
+            line_left = QFrame()
+            line_left.setFixedHeight(1)
+            line_left.setStyleSheet(f"background: {brand.BORDER};")
+            veya_layout.addWidget(line_left, 1)
 
             veya_label = QLabel("VEYA")
             veya_label.setAlignment(Qt.AlignCenter)
-            veya_label.setStyleSheet("""
-                color: #4A5568; font-size: 10px;
-                letter-spacing: 2px; font-weight: 600;
-                padding: 0 16px;
-            """)
+            veya_label.setStyleSheet(
+                f"color: {brand.TEXT_DIM}; "
+                f"font-size: {brand.fs(10)}px; "
+                f"letter-spacing: 2px; "
+                f"font-weight: {brand.FW_SEMIBOLD};"
+            )
             veya_layout.addWidget(veya_label)
 
-            veya_line_right = QFrame()
-            veya_line_right.setFixedHeight(1)
-            veya_line_right.setStyleSheet("background: rgba(255,255,255,0.08);")
-            veya_layout.addWidget(veya_line_right)
+            line_right = QFrame()
+            line_right.setFixedHeight(1)
+            line_right.setStyleSheet(f"background: {brand.BORDER};")
+            veya_layout.addWidget(line_right, 1)
 
             layout.addLayout(veya_layout)
-            layout.addSpacing(16)
+            layout.addSpacing(brand.SP_4)
 
-        # ── Kullanıcı Adı ──
+        # ---------- KULLANICI ADI ----------
         user_label = QLabel("KULLANICI ADI")
-        user_label.setStyleSheet("""
-            color: #718096; font-size: 10px;
-            font-weight: 600; letter-spacing: 1px;
-        """)
+        user_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.fs(10)}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"letter-spacing: 1.2px;"
+        )
         layout.addWidget(user_label)
-        layout.addSpacing(6)
+        layout.addSpacing(brand.SP_2)
 
         self.username = QLineEdit()
         self.username.setPlaceholderText("Kullanıcı adınızı girin")
         self.username.setStyleSheet(self._input_style())
-        self.username.setFixedHeight(44)
+        self.username.setFixedHeight(brand.sp(44))
         layout.addWidget(self.username)
-        layout.addSpacing(16)
+        layout.addSpacing(brand.SP_4)
 
-        # ── Şifre ──
+        # ---------- ŞİFRE ----------
         pass_label = QLabel("ŞİFRE")
-        pass_label.setStyleSheet("""
-            color: #718096; font-size: 10px;
-            font-weight: 600; letter-spacing: 1px;
-        """)
+        pass_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.fs(10)}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"letter-spacing: 1.2px;"
+        )
         layout.addWidget(pass_label)
-        layout.addSpacing(6)
+        layout.addSpacing(brand.SP_2)
 
         self.password = QLineEdit()
-        self.password.setPlaceholderText("Şifrenizi girin")
+        self.password.setPlaceholderText("••••••••")
         self.password.setEchoMode(QLineEdit.Password)
         self.password.setStyleSheet(self._input_style())
-        self.password.setFixedHeight(44)
+        self.password.setFixedHeight(brand.sp(44))
         self.password.returnPressed.connect(self._on_login)
         layout.addWidget(self.password)
-        layout.addSpacing(12)
+        layout.addSpacing(brand.SP_3)
 
-        # ── Beni hatırla ──
+        # ---------- BENİ HATIRLA ----------
         self.remember_cb = QCheckBox("Beni hatırla")
-        self.remember_cb.setStyleSheet("""
-            QCheckBox {
-                color: #A0AEC0;
-                font-size: 12px;
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
-                width: 16px; height: 16px;
-                border: 1px solid rgba(255,255,255,0.1);
-                border-radius: 4px;
-                background: rgba(255,255,255,0.05);
-            }
-            QCheckBox::indicator:checked {
-                background: #E2130D;
-                border-color: #E2130D;
-            }
+        self.remember_cb.setStyleSheet(f"""
+            QCheckBox {{
+                color: {brand.TEXT_MUTED};
+                font-size: {brand.FS_BODY_SM}px;
+                spacing: {brand.SP_2}px;
+                background: transparent;
+            }}
+            QCheckBox::indicator {{
+                width: {brand.sp(16)}px;
+                height: {brand.sp(16)}px;
+                border: 1px solid {brand.BORDER_HARD};
+                border-radius: {brand.sp(4)}px;
+                background: {brand.BG_INPUT};
+            }}
+            QCheckBox::indicator:checked {{
+                background: {brand.PRIMARY};
+                border-color: {brand.PRIMARY};
+                image: none;
+            }}
+            QCheckBox::indicator:hover {{
+                border-color: {brand.PRIMARY};
+            }}
         """)
         layout.addWidget(self.remember_cb)
-        layout.addSpacing(20)
+        layout.addSpacing(brand.SP_3)
 
-        # ── Hata mesajı ──
+        # ---------- HATA MESAJI ----------
         self.lbl_error = QLabel("")
         self.lbl_error.setAlignment(Qt.AlignCenter)
-        self.lbl_error.setStyleSheet("color: #E2130D; font-size: 12px;")
+        self.lbl_error.setStyleSheet(
+            f"color: {brand.ERROR}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"padding: {brand.SP_2}px; "
+            f"background: {brand.ERROR_SOFT}; "
+            f"border: 1px solid rgba(239,68,68,0.25); "
+            f"border-radius: {brand.R_SM}px;"
+        )
         self.lbl_error.hide()
         layout.addWidget(self.lbl_error)
-        layout.addSpacing(8)
+        layout.addSpacing(brand.SP_3)
 
-        # ── Giriş butonu ──
+        # ---------- GİRİŞ BUTONU ----------
         self.login_btn = QPushButton("Giriş Yap")
         self.login_btn.setCursor(Qt.PointingHandCursor)
-        self.login_btn.setFixedHeight(44)
-        self.login_btn.setStyleSheet("""
-            QPushButton {
-                background: #E2130D;
+        self.login_btn.setFixedHeight(brand.sp(46))
+        self.login_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 600;
-            }
-            QPushButton:hover {
-                background: #FF2D20;
-            }
-            QPushButton:pressed {
-                background: #C20F0A;
-            }
-            QPushButton:disabled {
-                background: #2D3748;
-                color: #4A5568;
-            }
+                border-radius: {brand.R_MD}px;
+                font-size: {brand.FS_BODY_LG}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{
+                background: #E43737;
+            }}
+            QPushButton:pressed {{
+                background: {brand.PRIMARY_HOVER};
+            }}
+            QPushButton:disabled {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DISABLED};
+            }}
         """)
         self.login_btn.clicked.connect(self._on_login)
         layout.addWidget(self.login_btn)
 
         layout.addStretch()
 
-        # ── Footer ──
+        # ---------- FOOTER ----------
         version_lbl = QLabel(f"v{VERSION}")
         version_lbl.setAlignment(Qt.AlignCenter)
-        version_lbl.setStyleSheet("color: #2D3748; font-size: 10px; letter-spacing: 1px;")
+        version_lbl.setStyleSheet(
+            f"color: {brand.TEXT_DISABLED}; "
+            f"font-size: {brand.fs(10)}px; "
+            f"letter-spacing: 1px;"
+        )
         layout.addWidget(version_lbl)
-        layout.addSpacing(4)
+        layout.addSpacing(brand.SP_1)
 
-        footer = QLabel("Powered by <span style='color: #E2130D;'>Redline Creative Solutions</span>")
+        footer = QLabel(
+            f"Powered by <span style='color: {brand.PRIMARY};'>"
+            f"Redline Creative Solutions</span>"
+        )
         footer.setAlignment(Qt.AlignCenter)
-        footer.setStyleSheet("color: #4A5568; font-size: 9px;")
+        footer.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; font-size: {brand.fs(9)}px;"
+        )
         layout.addWidget(footer)
 
         outer.addWidget(card)
 
         # Enter ile username → password'a geç
         self.username.returnPressed.connect(lambda: self.password.setFocus())
-        self.username.setFocus()
+
+        # ---------- BENİ HATIRLA YÜKLEME ----------
+        self._load_remembered()
 
     def _input_style(self):
-        return """
-            QLineEdit {
-                background: rgba(255, 255, 255, 0.05);
-                color: #E8E8E8;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 8px;
-                padding: 12px 16px;
-                font-size: 13px;
-            }
-            QLineEdit:focus {
-                border-color: #E2130D;
-            }
-            QLineEdit::placeholder {
-                color: #4A5568;
-            }
+        return f"""
+            QLineEdit {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                selection-background-color: {brand.PRIMARY};
+            }}
+            QLineEdit:focus {{
+                border-color: {brand.PRIMARY};
+                background: {brand.BG_HOVER};
+            }}
+            QLineEdit:hover:!focus {{
+                border-color: {brand.BORDER_HARD};
+            }}
         """
+
+    # ------------------------------------------------------------------
+    # BENI HATIRLA
+    # ------------------------------------------------------------------
+
+    def _load_remembered(self):
+        """Daha once 'Beni Hatirla' isaretlendiyse kullanici adini yukle."""
+        try:
+            from core.external_config import config_manager
+            saved_user = config_manager.get('login.remembered_user', '')
+            if saved_user:
+                self.username.setText(str(saved_user))
+                self.remember_cb.setChecked(True)
+                self.password.setFocus()
+            else:
+                self.username.setFocus()
+        except Exception:
+            self.username.setFocus()
+
+    def _save_remembered(self, username: str):
+        """Basarili giriste kullanici adini kaydet (sifre ASLA kaydedilmez)."""
+        try:
+            from core.external_config import config_manager
+            if self.remember_cb.isChecked():
+                config_manager.set('login.remembered_user', username or '')
+            else:
+                config_manager.set('login.remembered_user', '')
+            config_manager.save()
+        except Exception as e:
+            print(f"[Login] Beni hatirla kaydedilemedi: {e}")
 
     # ------------------------------------------------------------------
     # RFID Kart ile Giriş
@@ -315,22 +423,19 @@ class NexorLoginDialog(QDialog):
         if not RFID_LOGIN_ENABLED or not hasattr(self, 'lbl_rfid_status'):
             return
         if reading:
-            self.lbl_rfid_status.setText("\U0001F4B3  Kart okunuyor...")
-            self.lbl_rfid_status.setStyleSheet("""
-                color: #E2130D;
-                font-size: 13px;
-                font-weight: bold;
-                letter-spacing: 0.5px;
-                padding: 8px 0;
-            """)
+            self.lbl_rfid_status.setText("Kart okunuyor...")
+            self.lbl_rfid_status.setStyleSheet(
+                f"color: {brand.PRIMARY}; "
+                f"font-size: {brand.FS_BODY_SM}px; "
+                f"font-weight: {brand.FW_BOLD};"
+            )
         else:
-            self.lbl_rfid_status.setText("\U0001F4B3  Kartınızı okutunuz...")
-            self.lbl_rfid_status.setStyleSheet("""
-                color: #718096;
-                font-size: 13px;
-                letter-spacing: 0.5px;
-                padding: 8px 0;
-            """)
+            self.lbl_rfid_status.setText("Kartınızı okuyucuya yaklaştırın")
+            self.lbl_rfid_status.setStyleSheet(
+                f"color: {brand.TEXT_MUTED}; "
+                f"font-size: {brand.FS_BODY_SM}px; "
+                f"font-weight: {brand.FW_MEDIUM};"
+            )
 
     def _on_card_detected(self, card_id: str):
         """Kart algılandığında kimlik doğrulama yap."""
@@ -406,6 +511,9 @@ class NexorLoginDialog(QDialog):
 
             # Yetkileri yükle
             YetkiManager.set_current_user(user.id, user.rol_id)
+
+            # Kart ile girdi - kullanici adini beni hatirla'ya yaz (isaret ediliyorsa)
+            self._save_remembered(user.kullanici_adi)
 
             self.accept()
 
@@ -539,6 +647,9 @@ class NexorLoginDialog(QDialog):
 
             # Yetkileri yükle
             YetkiManager.set_current_user(user.id, user.rol_id)
+
+            # Beni Hatirla kaydet
+            self._save_remembered(user.kullanici_adi)
 
             self.accept()
 

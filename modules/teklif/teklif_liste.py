@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QLineEdit, QComboBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QDateEdit, QMessageBox,
-    QMenu, QDialog
+    QMenu, QDialog, QWidget
 )
 from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor, QAction
@@ -24,6 +24,7 @@ from PySide6.QtGui import QColor, QAction
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 from config import DEFAULT_PAGE_SIZE
 
 
@@ -58,59 +59,97 @@ class TeklifListePage(BasePage):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(20)
+        layout.setContentsMargins(brand.SP_8, brand.SP_8, brand.SP_8, brand.SP_8)
+        layout.setSpacing(brand.SP_6)
 
         layout.addWidget(self._create_header())
         layout.addLayout(self._create_stat_cards())
         layout.addWidget(self._create_toolbar())
         self.table = self._create_table()
-        layout.addWidget(self.table)
+        layout.addWidget(self.table, 1)
         layout.addWidget(self._create_bottom_bar())
 
     # ── HEADER ──
-    def _create_header(self) -> QFrame:
-        t = self.theme
-        frame = QFrame()
-        frame.setFrameShape(QFrame.StyledPanel)
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(20, 16, 20, 16)
+    def _create_header(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        h_layout = QHBoxLayout(wrapper)
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_layout.setSpacing(brand.SP_4)
 
-        title_section = QVBoxLayout()
-        title_section.setSpacing(4)
-        title_row = QHBoxLayout()
-        icon = QLabel("📝")
-        icon.setStyleSheet("font-size: 24px;")
-        title_row.addWidget(icon)
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+
         title = QLabel("Teklifler")
-        title.setStyleSheet(f"color: {t['text']}; font-size: 20px; font-weight: 600;")
-        title_row.addWidget(title)
-        title_row.addStretch()
-        title_section.addLayout(title_row)
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_TITLE_LG}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.4px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(title)
+
         subtitle = QLabel("Kaplama tekliflerini görüntüleyin ve yönetin")
-        subtitle.setStyleSheet(f"color: {t['text_secondary']}; font-size: 12px;")
-        title_section.addWidget(subtitle)
-        layout.addLayout(title_section)
-        layout.addStretch()
+        subtitle.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY}px; "
+            f"background: transparent;"
+        )
+        title_col.addWidget(subtitle)
 
-        sablon_btn = self.create_primary_button("📋 Şablondan Oluştur")
+        h_layout.addLayout(title_col)
+        h_layout.addStretch()
+
+        sablon_btn = QPushButton("Şablondan Oluştur")
+        sablon_btn.setCursor(Qt.PointingHandCursor)
+        sablon_btn.setFixedHeight(brand.sp(40))
+        sablon_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
+        """)
         sablon_btn.clicked.connect(self._yeni_teklif_sablondan)
-        layout.addWidget(sablon_btn)
+        h_layout.addWidget(sablon_btn)
 
-        new_btn = self.create_success_button("➕ Yeni Teklif")
+        new_btn = QPushButton("+ Yeni Teklif")
+        new_btn.setCursor(Qt.PointingHandCursor)
+        new_btn.setFixedHeight(brand.sp(40))
+        new_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         new_btn.clicked.connect(self._yeni_teklif)
-        layout.addWidget(new_btn)
-        return frame
+        h_layout.addWidget(new_btn)
+        return wrapper
 
     # ── İSTATİSTİK KARTLARI ──
     def _create_stat_cards(self) -> QHBoxLayout:
         row = QHBoxLayout()
         row.setSpacing(16)
 
-        self.stat_toplam = self.create_stat_card("Toplam Teklif", "0", "📝", self.theme['primary'])
-        self.stat_bekleyen = self.create_stat_card("Bekleyen", "0", "⏳", self.theme['warning'])
-        self.stat_onaylanan = self.create_stat_card("Onaylanan", "0", "✅", self.theme['success'])
-        self.stat_bu_ay = self.create_stat_card("Bu Ay Teklif", "0", "📅", self.theme['info'])
+        self.stat_toplam = self.create_stat_card("Toplam Teklif", "0", "📝", brand.PRIMARY)
+        self.stat_bekleyen = self.create_stat_card("Bekleyen", "0", "⏳", brand.WARNING)
+        self.stat_onaylanan = self.create_stat_card("Onaylanan", "0", "✅", brand.SUCCESS)
+        self.stat_bu_ay = self.create_stat_card("Bu Ay Teklif", "0", "📅", brand.INFO)
 
         row.addWidget(self.stat_toplam)
         row.addWidget(self.stat_bekleyen)
@@ -126,65 +165,114 @@ class TeklifListePage(BasePage):
                 break
 
     # ── FİLTRE ÇUBUĞU ──
-    def _create_toolbar(self) -> QFrame:
-        t = self.theme
-        frame = QFrame()
-        frame.setFrameShape(QFrame.StyledPanel)
-        layout = QHBoxLayout(frame)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(12)
+    def _create_toolbar(self) -> QWidget:
+        wrapper = QWidget()
+        wrapper.setStyleSheet("background: transparent;")
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(brand.SP_3)
 
-        lbl = QLabel("🔍 Arama:")
-        lbl.setStyleSheet(f"font-weight: 600; font-size: 12px;")
-        layout.addWidget(lbl)
+        input_style = f"""
+            QLineEdit, QDateEdit {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus, QDateEdit:focus {{
+                border-color: {brand.PRIMARY};
+                background: {brand.BG_HOVER};
+            }}
+        """
+        combo_style = f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_3}px;
+                color: {brand.TEXT};
+                min-width: {brand.sp(140)}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:hover {{ border-color: {brand.BORDER_HARD}; }}
+            QComboBox::drop-down {{ border: none; width: {brand.sp(28)}px; }}
+            QComboBox QAbstractItemView {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+                selection-background-color: {brand.PRIMARY};
+                outline: 0;
+                padding: {brand.SP_1}px;
+            }}
+        """
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Teklif no, müşteri, proje...")
-        self.search_input.setFixedWidth(200)
+        self.search_input.setPlaceholderText("Ara (teklif no, müşteri, proje)")
+        self.search_input.setFixedHeight(brand.sp(40))
+        self.search_input.setMinimumWidth(brand.sp(260))
+        self.search_input.setStyleSheet(input_style)
         self.search_input.returnPressed.connect(self._load_data)
         layout.addWidget(self.search_input)
-
-        lbl2 = QLabel("📅 Tarih:")
-        lbl2.setStyleSheet(f"font-weight: 600; font-size: 12px;")
-        layout.addWidget(lbl2)
 
         self.tarih_bas = QDateEdit()
         self.tarih_bas.setDate(QDate.currentDate().addMonths(-3))
         self.tarih_bas.setCalendarPopup(True)
-        self.tarih_bas.setFixedWidth(120)
+        self.tarih_bas.setFixedHeight(brand.sp(40))
+        self.tarih_bas.setFixedWidth(brand.sp(130))
+        self.tarih_bas.setStyleSheet(input_style)
         self.tarih_bas.dateChanged.connect(self._filter_changed)
         layout.addWidget(self.tarih_bas)
 
-        layout.addWidget(QLabel("-"))
+        sep = QLabel("—")
+        sep.setStyleSheet(f"color: {brand.TEXT_DIM};")
+        layout.addWidget(sep)
 
         self.tarih_bit = QDateEdit()
         self.tarih_bit.setDate(QDate.currentDate().addDays(30))
         self.tarih_bit.setCalendarPopup(True)
-        self.tarih_bit.setFixedWidth(120)
+        self.tarih_bit.setFixedHeight(brand.sp(40))
+        self.tarih_bit.setFixedWidth(brand.sp(130))
+        self.tarih_bit.setStyleSheet(input_style)
         self.tarih_bit.dateChanged.connect(self._filter_changed)
         layout.addWidget(self.tarih_bit)
 
-        lbl3 = QLabel("Durum:")
-        lbl3.setStyleSheet(f"font-weight: 600; font-size: 12px;")
-        layout.addWidget(lbl3)
-
         self.durum_combo = QComboBox()
-        self.durum_combo.addItem("Tümü", "")
+        self.durum_combo.addItem("Tüm Durumlar", "")
         for key, val in DURUM_METINLER.items():
             self.durum_combo.addItem(val, key)
+        self.durum_combo.setFixedHeight(brand.sp(40))
+        self.durum_combo.setStyleSheet(combo_style)
         self.durum_combo.currentIndexChanged.connect(self._filter_changed)
         layout.addWidget(self.durum_combo)
 
-        search_btn = self.create_primary_button("🔍 Ara")
+        search_btn = QPushButton("Ara")
+        search_btn.setCursor(Qt.PointingHandCursor)
+        search_btn.setFixedHeight(brand.sp(40))
+        search_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.BORDER_HARD};
+            }}
+        """)
         search_btn.clicked.connect(self._load_data)
         layout.addWidget(search_btn)
 
         layout.addStretch()
-        return frame
+        return wrapper
 
     # ── TABLO ──
     def _create_table(self) -> QTableWidget:
-        t = self.theme
         table = QTableWidget()
         table.setColumnCount(7)
         table.setHorizontalHeaderLabels([
@@ -195,17 +283,50 @@ class TeklifListePage(BasePage):
         header = table.horizontalHeader()
         header.setSectionResizeMode(3, QHeaderView.Stretch)
         header.setSectionResizeMode(4, QHeaderView.Stretch)
-        table.setColumnWidth(0, 130)
-        table.setColumnWidth(1, 60)
-        table.setColumnWidth(2, 90)
-        table.setColumnWidth(5, 130)
-        table.setColumnWidth(6, 100)
+        table.setColumnWidth(0, brand.sp(140))
+        table.setColumnWidth(1, brand.sp(60))
+        table.setColumnWidth(2, brand.sp(100))
+        table.setColumnWidth(5, brand.sp(140))
+        table.setColumnWidth(6, brand.sp(110))
 
         table.setSelectionBehavior(QAbstractItemView.SelectRows)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        table.setShowGrid(False)
+        table.setAlternatingRowColors(False)
         table.verticalHeader().setVisible(False)
-        table.setAlternatingRowColors(True)
+        table.verticalHeader().setDefaultSectionSize(brand.sp(44))
+        table.setFrameShape(QFrame.NoFrame)
+        table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: 0;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QTableWidget::item {{
+                padding: 0 {brand.SP_4}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+            }}
+            QTableWidget::item:selected {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT};
+            }}
+            QHeaderView::section {{
+                background: transparent;
+                color: {brand.TEXT_DIM};
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border: none;
+                border-bottom: 1px solid {brand.BORDER};
+                font-size: {brand.FS_CAPTION}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+            }}
+        """)
         table.doubleClicked.connect(self._open_detail)
         table.setContextMenuPolicy(Qt.CustomContextMenu)
         table.customContextMenuRequested.connect(self._show_context_menu)
@@ -213,28 +334,68 @@ class TeklifListePage(BasePage):
 
     # ── ALT ÇUBUK ──
     def _create_bottom_bar(self) -> QFrame:
-        t = self.theme
         frame = QFrame()
-        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setFixedHeight(brand.sp(56))
+        frame.setStyleSheet(f"""
+            QFrame {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+            }}
+        """)
         layout = QHBoxLayout(frame)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(brand.SP_5, 0, brand.SP_5, 0)
 
         self.stat_label = QLabel("Yükleniyor...")
-        self.stat_label.setStyleSheet(f"color: {t['text_secondary']}; font-size: 12px;")
+        self.stat_label.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"background: transparent; border: none;"
+        )
         layout.addWidget(self.stat_label)
         layout.addStretch()
 
-        self.prev_btn = QPushButton("◀ Önceki")
+        page_btn_style = f"""
+            QPushButton {{
+                background: transparent;
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{
+                background: {brand.BG_HOVER};
+                border-color: {brand.PRIMARY};
+            }}
+            QPushButton:disabled {{
+                color: {brand.TEXT_DISABLED};
+                border-color: {brand.BORDER};
+            }}
+        """
+
+        self.prev_btn = QPushButton("‹  Önceki")
         self.prev_btn.setCursor(Qt.PointingHandCursor)
+        self.prev_btn.setFixedHeight(brand.sp(36))
+        self.prev_btn.setStyleSheet(page_btn_style)
         self.prev_btn.clicked.connect(self._prev_page)
         layout.addWidget(self.prev_btn)
 
         self.page_label = QLabel("1 / 1")
-        self.page_label.setStyleSheet(f"color: {t['text']}; padding: 0 12px; font-weight: 600;")
+        self.page_label.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"padding: 0 {brand.SP_4}px; "
+            f"font-size: {brand.FS_BODY_SM}px; "
+            f"font-weight: {brand.FW_MEDIUM}; "
+            f"background: transparent; border: none;"
+        )
         layout.addWidget(self.page_label)
 
-        self.next_btn = QPushButton("Sonraki ▶")
+        self.next_btn = QPushButton("Sonraki  ›")
         self.next_btn.setCursor(Qt.PointingHandCursor)
+        self.next_btn.setFixedHeight(brand.sp(36))
+        self.next_btn.setStyleSheet(page_btn_style)
         self.next_btn.clicked.connect(self._next_page)
         layout.addWidget(self.next_btn)
         return frame
@@ -332,7 +493,6 @@ class TeklifListePage(BasePage):
             self.table.setRowCount(0)
 
     def _populate_table(self, items):
-        t = self.theme
         self.table.clearSelection()
         self.table.setRowCount(0)
         self.table.setRowCount(len(items))
@@ -380,7 +540,7 @@ class TeklifListePage(BasePage):
                 if hasattr(g, 'date'):
                     g = g.date()
                 if g < date.today():
-                    gecerlilik_item.setForeground(QColor(t['error']))
+                    gecerlilik_item.setForeground(QColor(brand.ERROR))
             self.table.setItem(row, 6, gecerlilik_item)
 
     # ── SAYFALAMA ──
@@ -418,9 +578,9 @@ class TeklifListePage(BasePage):
 
         menu = QMenu(self)
         menu.setStyleSheet(f"""
-            QMenu {{ background: {self.theme['bg_card']}; border: 1px solid {self.theme['border']}; border-radius: 8px; padding: 6px; }}
-            QMenu::item {{ padding: 10px 20px; border-radius: 4px; color: {self.theme['text']}; }}
-            QMenu::item:selected {{ background: {self.theme['bg_hover']}; }}
+            QMenu {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; padding: 6px; }}
+            QMenu::item {{ padding: 10px 20px; border-radius: 4px; color: {brand.TEXT}; }}
+            QMenu::item:selected {{ background: {brand.BG_HOVER}; }}
         """)
 
         ac = menu.addAction("📋 Detay Aç")
@@ -466,9 +626,9 @@ class TeklifListePage(BasePage):
             # Şablon seçim menüsü
             menu = QMenu(self)
             menu.setStyleSheet(f"""
-                QMenu {{ background: {self.theme['bg_card']}; border: 1px solid {self.theme['border']}; border-radius: 8px; padding: 6px; }}
-                QMenu::item {{ padding: 10px 20px; border-radius: 4px; color: {self.theme['text']}; }}
-                QMenu::item:selected {{ background: {self.theme['bg_hover']}; }}
+                QMenu {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; padding: 6px; }}
+                QMenu::item {{ padding: 10px 20px; border-radius: 4px; color: {brand.TEXT}; }}
+                QMenu::item:selected {{ background: {brand.BG_HOVER}; }}
             """)
             for s in sablonlar:
                 action = menu.addAction(f"📋 {s[1]}")

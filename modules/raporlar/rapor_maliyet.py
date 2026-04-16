@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QFrame
 from PySide6.QtCore import Qt
 
 from components.base_page import BasePage
+from core.nexor_brand import brand
 
 
 class RaporMaliyetPage(BasePage):
@@ -22,7 +23,7 @@ class RaporMaliyetPage(BasePage):
         # Icon
         icon_frame = QFrame()
         icon_frame.setFixedSize(80, 80)
-        icon_frame.setStyleSheet(f"background: {self.theme['gradient_css']}; border-radius: 20px;")
+        icon_frame.setStyleSheet(f"background: {brand.PRIMARY_SOFT}; border-radius: 20px;")
         i_layout = QVBoxLayout(icon_frame)
         i_layout.setContentsMargins(0, 0, 0, 0)
         i_label = QLabel("📈")
@@ -41,11 +42,11 @@ class RaporMaliyetPage(BasePage):
         # Başlık
         t_label = QLabel("Maliyet Raporları")
         t_label.setAlignment(Qt.AlignCenter)
-        t_label.setStyleSheet(f"color: {self.theme['text']}; font-size: 24px; font-weight: bold;")
+        t_label.setStyleSheet(f"color: {brand.TEXT}; font-size: 24px; font-weight: bold;")
         layout.addWidget(t_label)
         
         # Alt metin
         d_label = QLabel("Bu sayfa yapım aşamasında...")
         d_label.setAlignment(Qt.AlignCenter)
-        d_label.setStyleSheet(f"color: {self.theme['text_secondary']};")
+        d_label.setStyleSheet(f"color: {brand.TEXT_MUTED};")
         layout.addWidget(d_label)

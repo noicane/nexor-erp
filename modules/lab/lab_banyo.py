@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Banyo Tanımları
-uretim.banyo_tanimlari tablosu için CRUD
+NEXOR ERP - Banyo Tanimlari
+=============================
+El Kitabi v3 uyumlu: brand token, emoji-free, responsive
+uretim.banyo_tanimlari tablosu icin CRUD
 """
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
@@ -16,25 +18,27 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 class BanyoDialog(QDialog):
-    """Banyo Tanımı Ekleme/Düzenleme"""
-    
+    """Banyo Tanimi Ekleme/Duzenleme — el kitabi uyumlu"""
+
     def __init__(self, theme: dict, banyo_id: int = None, parent=None):
         super().__init__(parent)
         self.theme = theme
         self.banyo_id = banyo_id
         self.data = {}
-        
-        self.setWindowTitle("Yeni Banyo" if not banyo_id else "Banyo Düzenle")
-        self.setMinimumSize(850, 700)
-        
+
+        self.setWindowTitle("Yeni Banyo" if not banyo_id else "Banyo Duzenle")
+        self.setMinimumSize(brand.sp(850), brand.sp(700))
+
         if banyo_id:
             self._load_data()
         self._setup_ui()
-    
+
     def _load_data(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -42,34 +46,80 @@ class BanyoDialog(QDialog):
             row = cursor.fetchone()
             if row:
                 self.data = dict(zip([d[0] for d in cursor.description], row))
-            conn.close()
         except Exception as e:
             QMessageBox.warning(self, "Hata", str(e))
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
-            QLineEdit, QDoubleSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 6px; color: {self.theme['text']};
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme['border']}; background: {self.theme['bg_card_solid']}; }}
-            QTabBar::tab {{ background: {self.theme['bg_input']}; padding: 8px 16px; color: {self.theme['text']}; }}
-            QTabBar::tab:selected {{ background: {self.theme['bg_card_solid']}; border-bottom: 2px solid {self.theme['primary']}; }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
+            QLineEdit, QDoubleSpinBox, QComboBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus, QDoubleSpinBox:focus, QComboBox:focus {{
+                border-color: {brand.PRIMARY};
+            }}
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                background: {brand.BG_CARD};
+                border-radius: {brand.R_LG}px;
+            }}
+            QTabBar::tab {{
+                background: {brand.BG_INPUT};
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QTabBar::tab:selected {{
+                background: {brand.BG_CARD};
+                border-bottom: 2px solid {brand.PRIMARY};
+            }}
         """)
-        
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        
-        title = QLabel("🧪 " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
-        layout.addWidget(title)
-        
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
+        # -- Header --
+        header = QHBoxLayout()
+        header.setSpacing(brand.SP_3)
+
+        accent = QFrame()
+        accent.setFixedSize(brand.SP_1, brand.sp(32))
+        accent.setStyleSheet(f"background: {brand.PRIMARY}; border-radius: 2px;")
+        header.addWidget(accent)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+        title = QLabel(self.windowTitle())
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_HEADING}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
+        title_col.addWidget(title)
+        header.addLayout(title_col)
+        header.addStretch()
+        layout.addLayout(header)
+
         tabs = QTabWidget()
         tabs.addTab(self._create_genel_tab(), "Genel")
         tabs.addTab(self._create_parametre_tab(), "Parametreler")
-        tabs.addTab(self._create_plc_tab(), "PLC Eşleştirme")
+        tabs.addTab(self._create_plc_tab(), "PLC Eslestirme")
 
         # TDS sekmesi
         from modules.lab.lab_banyo_tds import BanyoTDSTab
@@ -77,69 +127,111 @@ class BanyoDialog(QDialog):
         tabs.addTab(self.tds_tab, "TDS")
 
         layout.addWidget(tabs, 1)
-        
+
+        # -- Alt butonlar --
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(brand.SP_3)
         btn_layout.addStretch()
-        cancel_btn = QPushButton("İptal")
+
+        cancel_btn = QPushButton("Iptal")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(brand.sp(38))
+        cancel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
+        """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
-        save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+
+        save_btn = QPushButton("Kaydet")
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFixedHeight(brand.sp(38))
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
-    
+
     def _create_genel_tab(self):
         widget = QWidget()
         form = QFormLayout(widget)
-        form.setContentsMargins(16, 16, 16, 16)
-        form.setSpacing(10)
-        
+        form.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        form.setSpacing(brand.SP_3)
+
         self.kod_input = QLineEdit(self.data.get('kod', ''))
-        self.kod_input.setPlaceholderText("Örn: E-KTL-01")
+        self.kod_input.setPlaceholderText("Orn: E-KTL-01")
         form.addRow("Kod *:", self.kod_input)
-        
+
         self.ad_input = QLineEdit(self.data.get('ad', ''))
-        self.ad_input.setPlaceholderText("Örn: Kataforez Banyosu 1")
+        self.ad_input.setPlaceholderText("Orn: Kataforez Banyosu 1")
         form.addRow("Ad *:", self.ad_input)
-        
+
         self.hat_combo = QComboBox()
-        self.hat_combo.addItem("-- Seçiniz --", None)
+        self.hat_combo.addItem("-- Seciniz --", None)
         self._load_hatlar()
         form.addRow("Hat *:", self.hat_combo)
-        
+
         self.pozisyon_combo = QComboBox()
-        self.pozisyon_combo.addItem("-- Seçiniz --", None)
+        self.pozisyon_combo.addItem("-- Seciniz --", None)
         self.hat_combo.currentIndexChanged.connect(self._load_pozisyonlar)
         form.addRow("Pozisyon:", self.pozisyon_combo)
-        
+
         self.banyo_tipi_combo = QComboBox()
-        self.banyo_tipi_combo.addItem("-- Seçiniz --", None)
+        self.banyo_tipi_combo.addItem("-- Seciniz --", None)
         self._load_banyo_tipleri()
         form.addRow("Banyo Tipi *:", self.banyo_tipi_combo)
-        
+
         self.hacim_input = QDoubleSpinBox()
         self.hacim_input.setRange(0, 999999)
         self.hacim_input.setSuffix(" lt")
         self.hacim_input.setValue(self.data.get('hacim_lt', 0) or 0)
         form.addRow("Hacim:", self.hacim_input)
-        
+
         self.aktif_combo = QComboBox()
-        self.aktif_combo.addItem("✓ Aktif", True)
-        self.aktif_combo.addItem("✗ Pasif", False)
+        self.aktif_combo.addItem("Aktif", True)
+        self.aktif_combo.addItem("Pasif", False)
         self.aktif_combo.setCurrentIndex(0 if self.data.get('aktif_mi', True) else 1)
         form.addRow("Durum:", self.aktif_combo)
-        
+
         return widget
-    
+
     def _create_param_row(self, label, prefix, data_prefix, range_min, range_max, decimals=2):
-        """Parametre satırı oluştur (Min/Hedef/Max)"""
+        """Parametre satiri olustur (Min/Hedef/Max)"""
         frame = QFrame()
-        frame.setStyleSheet(f"background: {self.theme['bg_card_solid']}; border: 1px solid {self.theme['border']}; border-radius: 8px;")
+        frame.setStyleSheet(
+            f"background: {brand.BG_CARD}; "
+            f"border: 1px solid {brand.BORDER}; "
+            f"border-radius: {brand.R_LG}px;"
+        )
         frame_layout = QVBoxLayout(frame)
-        frame_layout.setContentsMargins(10, 6, 10, 6)
-        frame_layout.setSpacing(4)
-        frame_layout.addWidget(QLabel(label))
+        frame_layout.setContentsMargins(brand.SP_3, brand.SP_2, brand.SP_3, brand.SP_2)
+        frame_layout.setSpacing(brand.SP_1)
+
+        lbl = QLabel(label)
+        lbl.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_BODY}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
+        frame_layout.addWidget(lbl)
 
         grid = QHBoxLayout()
         spin_min = QDoubleSpinBox(); spin_min.setRange(range_min, range_max); spin_min.setDecimals(decimals)
@@ -167,51 +259,46 @@ class BanyoDialog(QDialog):
 
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(8)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_2)
 
         # TDS'den Parametre Alma Toolbar
         tds_toolbar = QHBoxLayout()
-        tds_import_btn = QPushButton("📥 TDS'den Parametreleri Al (AI Destekli)")
-        tds_import_btn.setStyleSheet(
-            f"background: {self.theme['primary']}; color: white; border: none; "
-            f"padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 13px;")
+        tds_import_btn = QPushButton("TDS'den Parametreleri Al (AI Destekli)")
+        tds_import_btn.setCursor(Qt.PointingHandCursor)
+        tds_import_btn.setFixedHeight(brand.sp(38))
+        tds_import_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         tds_import_btn.clicked.connect(self._tds_parametre_al)
         tds_toolbar.addWidget(tds_import_btn)
         tds_toolbar.addStretch()
         layout.addLayout(tds_toolbar)
 
-        # Sıcaklık
-        layout.addWidget(self._create_param_row("🌡️ Sıcaklık (°C)", "sic", "sicaklik", 0, 500, 1))
-
-        # pH
-        layout.addWidget(self._create_param_row("🧪 pH", "ph", "ph", 0, 14, 2))
-
-        # İletkenlik
-        layout.addWidget(self._create_param_row("⚡ İletkenlik (mS/cm)", "iletkenlik", "iletkenlik", 0, 99999, 2))
-
-        # Katı Madde
-        layout.addWidget(self._create_param_row("📦 Katı Madde (%)", "kati_madde", "kati_madde", 0, 100, 2))
-
-        # P/B Oranı
-        layout.addWidget(self._create_param_row("⚖️ P/B Oranı", "pb_orani", "pb_orani", 0, 100, 2))
-
-        # Solvent
-        layout.addWidget(self._create_param_row("💧 Solvent (%)", "solvent", "solvent", 0, 100, 2))
-
-        # MEQ
-        layout.addWidget(self._create_param_row("📊 MEQ (meq/100g)", "meq", "meq", 0, 999, 2))
-
-        # Toplam Asit
-        layout.addWidget(self._create_param_row("🔬 Toplam Asit (ml)", "toplam_asit", "toplam_asit", 0, 9999, 4))
-
-        # Serbest Asit
-        layout.addWidget(self._create_param_row("🧫 Serbest Asit (ml)", "serbest_asit", "serbest_asit", 0, 9999, 4))
+        # Parametreler
+        layout.addWidget(self._create_param_row("Sicaklik (C)", "sic", "sicaklik", 0, 500, 1))
+        layout.addWidget(self._create_param_row("pH", "ph", "ph", 0, 14, 2))
+        layout.addWidget(self._create_param_row("Iletkenlik (mS/cm)", "iletkenlik", "iletkenlik", 0, 99999, 2))
+        layout.addWidget(self._create_param_row("Kati Madde (%)", "kati_madde", "kati_madde", 0, 100, 2))
+        layout.addWidget(self._create_param_row("P/B Orani", "pb_orani", "pb_orani", 0, 100, 2))
+        layout.addWidget(self._create_param_row("Solvent (%)", "solvent", "solvent", 0, 100, 2))
+        layout.addWidget(self._create_param_row("MEQ (meq/100g)", "meq", "meq", 0, 999, 2))
+        layout.addWidget(self._create_param_row("Toplam Asit (ml)", "toplam_asit", "toplam_asit", 0, 9999, 4))
+        layout.addWidget(self._create_param_row("Serbest Asit (ml)", "serbest_asit", "serbest_asit", 0, 9999, 4))
 
         layout.addStretch()
         scroll.setWidget(widget)
         return scroll
-    
+
     def _create_plc_tab(self):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -219,77 +306,94 @@ class BanyoDialog(QDialog):
 
         widget = QWidget()
         form = QFormLayout(widget)
-        form.setContentsMargins(16, 16, 16, 16)
-        form.setSpacing(10)
+        form.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        form.setSpacing(brand.SP_3)
 
         self.sql_sic_input = QLineEdit(self.data.get('sql_sicaklik_tag', '') or '')
-        self.sql_sic_input.setPlaceholderText("PLC Sıcaklık Tag Adı")
-        form.addRow("Sıcaklık Tag:", self.sql_sic_input)
+        self.sql_sic_input.setPlaceholderText("PLC Sicaklik Tag Adi")
+        form.addRow("Sicaklik Tag:", self.sql_sic_input)
 
         self.sql_ph_input = QLineEdit(self.data.get('sql_ph_tag', '') or '')
-        self.sql_ph_input.setPlaceholderText("PLC pH Tag Adı")
+        self.sql_ph_input.setPlaceholderText("PLC pH Tag Adi")
         form.addRow("pH Tag:", self.sql_ph_input)
 
         self.sql_akim_input = QLineEdit(self.data.get('sql_akim_tag', '') or '')
-        self.sql_akim_input.setPlaceholderText("PLC Akım Tag Adı")
-        form.addRow("Akım Tag:", self.sql_akim_input)
+        self.sql_akim_input.setPlaceholderText("PLC Akim Tag Adi")
+        form.addRow("Akim Tag:", self.sql_akim_input)
 
         scroll.setWidget(widget)
         return scroll
-    
+
     def _load_hatlar(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, kod, ad FROM tanim.uretim_hatlari WHERE aktif_mi=1 AND silindi_mi=0 ORDER BY sira_no, kod")
             for row in cursor.fetchall():
                 self.hat_combo.addItem(f"{row[1]} - {row[2]}", row[0])
-            conn.close()
             if self.data.get('hat_id'):
                 idx = self.hat_combo.findData(self.data['hat_id'])
-                if idx >= 0: self.hat_combo.setCurrentIndex(idx)
-        except Exception: pass
-    
+                if idx >= 0:
+                    self.hat_combo.setCurrentIndex(idx)
+        except Exception:
+            pass
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _load_pozisyonlar(self):
         self.pozisyon_combo.clear()
-        self.pozisyon_combo.addItem("-- Seçiniz --", None)
+        self.pozisyon_combo.addItem("-- Seciniz --", None)
         hat_id = self.hat_combo.currentData()
-        print(f"🔍 DEBUG: Hat ID seçildi: {hat_id}")
-        if not hat_id: 
-            print("⚠️  DEBUG: Hat ID None, pozisyonlar yüklenmedi")
+        if not hat_id:
             return
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, pozisyon_no, ad FROM tanim.hat_pozisyonlar WHERE hat_id=? AND aktif_mi=1 AND silindi_mi=0 ORDER BY sira_no", (hat_id,))
             rows = cursor.fetchall()
-            print(f"✅ DEBUG: {len(rows)} pozisyon bulundu")
             for row in rows:
                 label = f"Poz {row[1]}: {row[2]}"
                 self.pozisyon_combo.addItem(label, row[0])
-                print(f"   - {label} (ID: {row[0]})")
-            conn.close()
             if self.data.get('pozisyon_id'):
                 idx = self.pozisyon_combo.findData(self.data['pozisyon_id'])
-                if idx >= 0: 
+                if idx >= 0:
                     self.pozisyon_combo.setCurrentIndex(idx)
-                    print(f"✅ DEBUG: Pozisyon seçildi: {self.data['pozisyon_id']}")
         except Exception as e:
-            print(f"❌ DEBUG HATA: {e}")
-    
+            print(f"[lab_banyo] Pozisyon yuklenemedi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _load_banyo_tipleri(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, ad, kategori FROM tanim.banyo_tipleri WHERE aktif_mi=1 ORDER BY kategori, ad")
             for row in cursor.fetchall():
                 self.banyo_tipi_combo.addItem(f"{row[1]} ({row[2]})", row[0])
-            conn.close()
             if self.data.get('banyo_tipi_id'):
                 idx = self.banyo_tipi_combo.findData(self.data['banyo_tipi_id'])
-                if idx >= 0: self.banyo_tipi_combo.setCurrentIndex(idx)
-        except Exception: pass
-    
+                if idx >= 0:
+                    self.banyo_tipi_combo.setCurrentIndex(idx)
+        except Exception:
+            pass
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _tds_parametre_al(self):
         """TDS'den AI destekli parametre alma diyalogu ac"""
         if not self.banyo_id:
@@ -302,7 +406,6 @@ class BanyoDialog(QDialog):
 
     def _parametreleri_uygula(self, parametreler: list):
         """AI onerdigi parametreleri spinbox'lara uygula"""
-        # Parametre kodu -> spinbox prefix haritalama
         param_spin_map = {
             "sicaklik": "sic",
             "ph": "ph",
@@ -342,7 +445,7 @@ class BanyoDialog(QDialog):
             f"Kaydetmek icin 'Kaydet' butonuna basin.")
 
     def _spin_val(self, spin):
-        """SpinBox değerini al, 0 ise None döndür"""
+        """SpinBox degerini al, 0 ise None dondur"""
         v = spin.value()
         return v if v else None
 
@@ -353,9 +456,10 @@ class BanyoDialog(QDialog):
         banyo_tipi_id = self.banyo_tipi_combo.currentData()
 
         if not kod or not ad or not hat_id or not banyo_tipi_id:
-            QMessageBox.warning(self, "Uyarı", "Kod, Ad, Hat ve Banyo Tipi zorunludur!")
+            QMessageBox.warning(self, "Uyari", "Kod, Ad, Hat ve Banyo Tipi zorunludur!")
             return
 
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -363,15 +467,15 @@ class BanyoDialog(QDialog):
             params = (
                 kod, ad, hat_id, self.pozisyon_combo.currentData(), banyo_tipi_id,
                 self.hacim_input.value() or None,
-                # Sıcaklık
+                # Sicaklik
                 self._spin_val(self.sic_min), self._spin_val(self.sic_max), self._spin_val(self.sic_hedef),
                 # pH
                 self._spin_val(self.ph_min), self._spin_val(self.ph_max), self._spin_val(self.ph_hedef),
-                # İletkenlik
+                # Iletkenlik
                 self._spin_val(self.iletkenlik_min), self._spin_val(self.iletkenlik_max), self._spin_val(self.iletkenlik_hedef),
-                # Katı Madde
+                # Kati Madde
                 self._spin_val(self.kati_madde_min), self._spin_val(self.kati_madde_max), self._spin_val(self.kati_madde_hedef),
-                # P/B Oranı
+                # P/B Orani
                 self._spin_val(self.pb_orani_min), self._spin_val(self.pb_orani_max), self._spin_val(self.pb_orani_hedef),
                 # Solvent
                 self._spin_val(self.solvent_min), self._spin_val(self.solvent_max), self._spin_val(self.solvent_hedef),
@@ -420,7 +524,7 @@ class BanyoDialog(QDialog):
                     aktif_mi)
                     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", params)
 
-            # Yeni kayıtta oluşan ID'yi al
+            # Yeni kayitta olusan ID'yi al
             if not self.banyo_id:
                 cursor.execute("SELECT SCOPE_IDENTITY()")
                 new_id = cursor.fetchone()
@@ -429,20 +533,25 @@ class BanyoDialog(QDialog):
 
             conn.commit()
             LogManager.log_insert('lab', 'uretim.banyo_tanimlari', None, 'Yeni kayit eklendi')
-            conn.close()
 
-            # TDS tab'a banyo_id ilet (yeni kayıt sonrası)
+            # TDS tab'a banyo_id ilet (yeni kayit sonrasi)
             if hasattr(self, 'tds_tab') and self.banyo_id:
                 self.tds_tab.set_banyo_id(self.banyo_id)
 
-            QMessageBox.information(self, "Başarılı", "Kaydedildi!")
+            QMessageBox.information(self, "Basarili", "Kaydedildi!")
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 class TDSParametreAlDialog(QDialog):
-    """TDS'den AI destekli parametre alma diyalogu"""
+    """TDS'den AI destekli parametre alma diyalogu — el kitabi uyumlu"""
 
     def __init__(self, theme: dict, banyo_id: int, parent=None):
         super().__init__(parent)
@@ -452,51 +561,102 @@ class TDSParametreAlDialog(QDialog):
         self.ai_sonuc = None
 
         self.setWindowTitle("TDS'den Parametre Al - AI Destekli")
-        self.setMinimumSize(1000, 700)
+        self.setMinimumSize(brand.sp(1000), brand.sp(700))
         self._setup_ui()
         self._load_tds_listesi()
 
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
+            }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
             QLineEdit, QComboBox, QTextEdit {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 6px; color: {self.theme['text']};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus, QComboBox:focus, QTextEdit:focus {{
+                border-color: {brand.PRIMARY};
             }}
             QGroupBox {{
-                color: {self.theme['text']}; font-weight: bold;
-                border: 1px solid {self.theme['border']}; border-radius: 8px;
-                margin-top: 10px; padding-top: 14px; background: {self.theme['bg_card_solid']};
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                margin-top: {brand.SP_5}px;
+                padding: {brand.SP_5}px;
+                padding-top: {brand.SP_8}px;
+                background: {brand.BG_CARD};
             }}
-            QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 4px; }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: {brand.SP_4}px;
+                top: {brand.SP_2}px;
+                padding: 0 {brand.SP_2}px;
+                color: {brand.TEXT_MUTED};
+                background: {brand.BG_MAIN};
+            }}
         """)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
 
-        # Baslik
-        title = QLabel("📥 TDS'den Kontrol Parametreleri Al")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
-        layout.addWidget(title)
+        # Header
+        header = QHBoxLayout()
+        header.setSpacing(brand.SP_3)
+
+        accent = QFrame()
+        accent.setFixedSize(brand.SP_1, brand.sp(32))
+        accent.setStyleSheet(f"background: {brand.PRIMARY}; border-radius: 2px;")
+        header.addWidget(accent)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(brand.SP_1)
+        title = QLabel("TDS'den Kontrol Parametreleri Al")
+        title.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_HEADING}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
+        title_col.addWidget(title)
 
         desc = QLabel("TDS'deki parametreleri AI analizi ile optimize ederek banyo kartina aktarin.")
-        desc.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 12px;")
-        layout.addWidget(desc)
+        desc.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY_SM}px;")
+        title_col.addWidget(desc)
+        header.addLayout(title_col)
+        header.addStretch()
+        layout.addLayout(header)
 
         # TDS Secim
         tds_bar = QHBoxLayout()
         tds_bar.addWidget(QLabel("TDS Kaydi:"))
         self.tds_combo = QComboBox()
-        self.tds_combo.setMinimumWidth(350)
+        self.tds_combo.setMinimumWidth(brand.sp(350))
         self.tds_combo.currentIndexChanged.connect(self._on_tds_changed)
         tds_bar.addWidget(self.tds_combo, 1)
 
         self.analiz_btn = QPushButton("AI Analiz Baslat")
-        self.analiz_btn.setStyleSheet(
-            f"background: {self.theme['primary']}; color: white; border: none; "
-            f"padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        self.analiz_btn.setCursor(Qt.PointingHandCursor)
+        self.analiz_btn.setFixedHeight(brand.sp(38))
+        self.analiz_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_4}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         self.analiz_btn.clicked.connect(self._ai_analiz_baslat)
         self.analiz_btn.setEnabled(False)
         tds_bar.addWidget(self.analiz_btn)
@@ -504,7 +664,7 @@ class TDSParametreAlDialog(QDialog):
 
         # Durum gostergesi
         self.durum_label = QLabel("")
-        self.durum_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-style: italic;")
+        self.durum_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-style: italic;")
         layout.addWidget(self.durum_label)
 
         # Parametre Tablosu
@@ -521,27 +681,45 @@ class TDSParametreAlDialog(QDialog):
             "Durum"
         ])
         self.param_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        self.param_table.setColumnWidth(1, 65)
-        self.param_table.setColumnWidth(2, 70)
-        self.param_table.setColumnWidth(3, 75)
-        self.param_table.setColumnWidth(4, 70)
-        self.param_table.setColumnWidth(5, 70)
-        self.param_table.setColumnWidth(6, 70)
-        self.param_table.setColumnWidth(7, 70)
-        self.param_table.setColumnWidth(8, 120)
-        self.param_table.setColumnWidth(9, 70)
-        self.param_table.setColumnWidth(10, 70)
+        self.param_table.setColumnWidth(1, brand.sp(65))
+        self.param_table.setColumnWidth(2, brand.sp(70))
+        self.param_table.setColumnWidth(3, brand.sp(75))
+        self.param_table.setColumnWidth(4, brand.sp(70))
+        self.param_table.setColumnWidth(5, brand.sp(70))
+        self.param_table.setColumnWidth(6, brand.sp(70))
+        self.param_table.setColumnWidth(7, brand.sp(70))
+        self.param_table.setColumnWidth(8, brand.sp(120))
+        self.param_table.setColumnWidth(9, brand.sp(70))
+        self.param_table.setColumnWidth(10, brand.sp(70))
         self.param_table.verticalHeader().setVisible(False)
+        self.param_table.setShowGrid(False)
+        self.param_table.setAlternatingRowColors(True)
         self.param_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.param_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.param_table.verticalHeader().setDefaultSectionSize(brand.sp(42))
         self.param_table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme['bg_card_solid']}; border: none;
-                            gridline-color: {self.theme['border']}; color: {self.theme['text']}; }}
-            QTableWidget::item {{ padding: 4px; }}
-            QTableWidget::item:selected {{ background: {self.theme['primary']}33; }}
-            QHeaderView::section {{ background: {self.theme['bg_main']}; color: {self.theme['text']};
-                                    padding: 6px; border: none;
-                                    border-bottom: 2px solid {self.theme['primary']}; font-weight: bold; }}
+            QTableWidget {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
+            QHeaderView::section {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
+                border: none;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
         """)
         param_layout.addWidget(self.param_table)
         layout.addWidget(param_group, 1)
@@ -551,40 +729,71 @@ class TDSParametreAlDialog(QDialog):
         ai_layout = QVBoxLayout(ai_group)
         self.ai_yorum_text = QTextEdit()
         self.ai_yorum_text.setReadOnly(True)
-        self.ai_yorum_text.setMaximumHeight(120)
-        self.ai_yorum_text.setStyleSheet(
-            f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; "
-            f"border-radius: 6px; color: {self.theme['text']}; padding: 8px;")
+        self.ai_yorum_text.setMaximumHeight(brand.sp(120))
+        self.ai_yorum_text.setStyleSheet(f"""
+            QTextEdit {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_MD}px;
+                color: {brand.TEXT};
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QTextEdit:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
         self.ai_yorum_text.setPlaceholderText("AI analizi baslatildiginda degerlendirme burada gosterilecek...")
         ai_layout.addWidget(self.ai_yorum_text)
         layout.addWidget(ai_group)
 
         # Butonlar
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(brand.SP_3)
 
         self.mod_label = QLabel("Uygulama modu:")
-        self.mod_label.setStyleSheet(f"color: {self.theme['text']};")
+        self.mod_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
         btn_layout.addWidget(self.mod_label)
 
         self.mod_combo = QComboBox()
         self.mod_combo.addItem("AI Onerisi (Optimize)", "ai")
         self.mod_combo.addItem("TDS Degerleri (Orijinal)", "tds")
-        self.mod_combo.setMinimumWidth(200)
+        self.mod_combo.setMinimumWidth(brand.sp(200))
         btn_layout.addWidget(self.mod_combo)
 
         btn_layout.addStretch()
 
         cancel_btn = QPushButton("Iptal")
-        cancel_btn.setStyleSheet(
-            f"padding: 10px 20px; border-radius: 6px; "
-            f"border: 1px solid {self.theme['border']}; color: {self.theme['text']};")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(brand.sp(38))
+        cancel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
+            }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
+        """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
 
         self.uygula_btn = QPushButton("Parametreleri Uygula")
-        self.uygula_btn.setStyleSheet(
-            f"background: {self.theme.get('success', '#10B981')}; color: white; border: none; "
-            f"padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 13px;")
+        self.uygula_btn.setCursor(Qt.PointingHandCursor)
+        self.uygula_btn.setFixedHeight(brand.sp(38))
+        self.uygula_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.SUCCESS};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: #059669; }}
+        """)
         self.uygula_btn.clicked.connect(self._uygula)
         self.uygula_btn.setEnabled(False)
         btn_layout.addWidget(self.uygula_btn)
@@ -594,6 +803,7 @@ class TDSParametreAlDialog(QDialog):
         """Banyoya ait TDS kayitlarini yukle"""
         self.tds_combo.clear()
         self.tds_combo.addItem("-- TDS Seciniz --", None)
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -608,13 +818,18 @@ class TDSParametreAlDialog(QDialog):
                 if row[4]:
                     label += f" [{row[4]}]"
                 self.tds_combo.addItem(label, row[0])
-            conn.close()
 
             if self.tds_combo.count() <= 1:
-                self.durum_label.setText("Bu banyo icin tanimli TDS kaydı bulunamadi.")
-                self.durum_label.setStyleSheet(f"color: #F59E0B; font-style: italic;")
+                self.durum_label.setText("Bu banyo icin tanimli TDS kaydi bulunamadi.")
+                self.durum_label.setStyleSheet(f"color: {brand.WARNING}; font-style: italic;")
         except Exception as e:
             self.durum_label.setText(f"TDS listesi yuklenemedi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _on_tds_changed(self):
         """TDS secimi degistiginde"""
@@ -629,6 +844,7 @@ class TDSParametreAlDialog(QDialog):
     def _load_tds_parametreleri(self, tds_id: int):
         """Secilen TDS'in parametrelerini tabloya yukle (sadece TDS degerleri)"""
         self.param_table.setRowCount(0)
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -640,32 +856,34 @@ class TDSParametreAlDialog(QDialog):
                 ORDER BY sira_no, parametre_kodu
             """, (tds_id,))
             rows = cursor.fetchall()
-            conn.close()
 
             self.param_table.setRowCount(len(rows))
             for i, row in enumerate(rows):
-                self.param_table.setItem(i, 0, QTableWidgetItem(row[1] or row[0]))  # Ad veya Kod
+                self.param_table.setItem(i, 0, QTableWidgetItem(row[1] or row[0]))
                 self.param_table.setItem(i, 1, QTableWidgetItem(row[2] or ''))
 
-                # UserRole'da parametre kodunu sakla
                 item0 = self.param_table.item(i, 0)
                 item0.setData(Qt.UserRole, row[0])
 
-                # TDS degerleri
                 self.param_table.setItem(i, 2, QTableWidgetItem(f"{row[3]:.2f}" if row[3] else '-'))
                 self.param_table.setItem(i, 3, QTableWidgetItem(f"{row[4]:.2f}" if row[4] else '-'))
                 self.param_table.setItem(i, 4, QTableWidgetItem(f"{row[5]:.2f}" if row[5] else '-'))
 
-                # Gercek, Trend, AI kolonlari bos
                 for col in range(5, 11):
                     self.param_table.setItem(i, col, QTableWidgetItem("-"))
 
             self.uygula_btn.setEnabled(len(rows) > 0)
             self.durum_label.setText(f"{len(rows)} parametre yuklendi. AI analizi icin butona basin.")
-            self.durum_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-style: italic;")
+            self.durum_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-style: italic;")
 
         except Exception as e:
             QMessageBox.warning(self, "Hata", f"Parametreler yuklenemedi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _ai_analiz_baslat(self):
         """AI destekli parametre optimizasyonu baslat"""
@@ -674,13 +892,15 @@ class TDSParametreAlDialog(QDialog):
             return
 
         self.durum_label.setText("AI analizi calisiyor...")
-        self.durum_label.setStyleSheet(f"color: {self.theme['primary']}; font-style: italic; font-weight: bold;")
+        self.durum_label.setStyleSheet(
+            f"color: {brand.PRIMARY}; font-style: italic; "
+            f"font-weight: {brand.FW_SEMIBOLD};")
         self.analiz_btn.setEnabled(False)
 
+        conn = None
         try:
             from core.ai_analiz_service import AIAnalizService
 
-            # TDS parametreleri al
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
@@ -713,7 +933,6 @@ class TDSParametreAlDialog(QDialog):
             """, (self.banyo_id,))
             row = cursor.fetchone()
             if row:
-                # Kolon adini parametre koduna maple
                 kolon_map = {
                     "sicaklik": "sicaklik", "ph": "ph", "iletkenlik": "iletkenlik",
                     "kati_madde_yuzde": "kati_madde", "pb_orani": "pb_orani",
@@ -745,8 +964,6 @@ class TDSParametreAlDialog(QDialog):
                     if deger is not None:
                         veri_serisi.append({"parametre": param, "tarih": row[0], "deger": float(deger)})
 
-            conn.close()
-
             # AI analiz calistir
             service = AIAnalizService()
             self.ai_sonuc = service.parametre_optimizasyonu(
@@ -760,11 +977,10 @@ class TDSParametreAlDialog(QDialog):
             if ai_yorum:
                 self.ai_yorum_text.setPlainText(ai_yorum)
             else:
-                # Kural tabanli ozet
                 ozet_satirlari = []
                 for p in self.ai_sonuc.get("parametreler", []):
                     if p.get("aciklama"):
-                        ozet_satirlari.append(f"• {p['parametre_adi']}: {p['aciklama']}")
+                        ozet_satirlari.append(f"- {p['parametre_adi']}: {p['aciklama']}")
                 if ozet_satirlari:
                     self.ai_yorum_text.setPlainText(
                         "Kural Tabanli AI Degerlendirmesi:\n\n" + "\n".join(ozet_satirlari))
@@ -778,49 +994,51 @@ class TDSParametreAlDialog(QDialog):
 
             if kritik > 0:
                 durum_txt = f"AI analizi tamamlandi - {kritik} KRITIK, {uyari} UYARI, {normal} NORMAL"
-                self.durum_label.setStyleSheet(f"color: #E2130D; font-weight: bold;")
+                self.durum_label.setStyleSheet(f"color: {brand.ERROR}; font-weight: {brand.FW_SEMIBOLD};")
             elif uyari > 0:
                 durum_txt = f"AI analizi tamamlandi - {uyari} UYARI, {normal} NORMAL"
-                self.durum_label.setStyleSheet(f"color: #F59E0B; font-weight: bold;")
+                self.durum_label.setStyleSheet(f"color: {brand.WARNING}; font-weight: {brand.FW_SEMIBOLD};")
             else:
                 durum_txt = f"AI analizi tamamlandi - Tum parametreler uygun"
-                self.durum_label.setStyleSheet(f"color: #10B981; font-weight: bold;")
+                self.durum_label.setStyleSheet(f"color: {brand.SUCCESS}; font-weight: {brand.FW_SEMIBOLD};")
             self.durum_label.setText(durum_txt)
 
         except Exception as e:
             QMessageBox.critical(self, "AI Analiz Hatasi", str(e))
             self.durum_label.setText(f"Hata: {e}")
-            self.durum_label.setStyleSheet(f"color: #E2130D; font-style: italic;")
+            self.durum_label.setStyleSheet(f"color: {brand.ERROR}; font-style: italic;")
         finally:
             self.analiz_btn.setEnabled(True)
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     def _tabloyu_guncelle(self, parametreler: list):
         """AI sonuclariyla tabloyu guncelle"""
         self.param_table.setRowCount(len(parametreler))
 
         durum_renk = {
-            "NORMAL": "#10B981",
-            "UYARI": "#F59E0B",
-            "KRITIK": "#E2130D",
-            "BILGI_YOK": "#6B7280",
+            "NORMAL": brand.SUCCESS,
+            "UYARI": brand.WARNING,
+            "KRITIK": brand.ERROR,
+            "BILGI_YOK": brand.TEXT_DIM,
         }
         trend_ikon = {
-            "artan": "↗ Artan",
-            "azalan": "↘ Azalan",
-            "stabil": "→ Stabil",
-            "veri_yok": "- Veri Yok",
+            "artan": "Artan",
+            "azalan": "Azalan",
+            "stabil": "Stabil",
+            "veri_yok": "Veri Yok",
         }
 
         for i, p in enumerate(parametreler):
-            # Parametre adi
             item0 = QTableWidgetItem(p.get("parametre_adi", ""))
             item0.setData(Qt.UserRole, p.get("parametre_kodu", ""))
             self.param_table.setItem(i, 0, item0)
 
-            # Birim
             self.param_table.setItem(i, 1, QTableWidgetItem(p.get("birim", "")))
 
-            # TDS degerleri
             self.param_table.setItem(i, 2, QTableWidgetItem(
                 f"{p['tds_min']:.2f}" if p.get('tds_min') else '-'))
             self.param_table.setItem(i, 3, QTableWidgetItem(
@@ -828,23 +1046,20 @@ class TDSParametreAlDialog(QDialog):
             self.param_table.setItem(i, 4, QTableWidgetItem(
                 f"{p['tds_max']:.2f}" if p.get('tds_max') else '-'))
 
-            # Gercek deger
             gercek_item = QTableWidgetItem(
                 f"{p['gercek']:.2f}" if p.get('gercek') is not None else '-')
             self.param_table.setItem(i, 5, gercek_item)
 
-            # Trend
             trend = p.get("trend", "veri_yok")
             trend_item = QTableWidgetItem(trend_ikon.get(trend, trend))
             if trend == "artan":
-                trend_item.setForeground(QColor("#F59E0B"))
+                trend_item.setForeground(QColor(brand.WARNING))
             elif trend == "azalan":
-                trend_item.setForeground(QColor("#3B82F6"))
+                trend_item.setForeground(QColor(brand.INFO))
             elif trend == "stabil":
-                trend_item.setForeground(QColor("#10B981"))
+                trend_item.setForeground(QColor(brand.SUCCESS))
             self.param_table.setItem(i, 6, trend_item)
 
-            # AI onerilen degerler
             ai_min_item = QTableWidgetItem(
                 f"{p['onerilen_min']:.2f}" if p.get('onerilen_min') else '-')
             ai_min_item.setForeground(QColor("#8B5CF6"))
@@ -860,10 +1075,9 @@ class TDSParametreAlDialog(QDialog):
             ai_max_item.setForeground(QColor("#8B5CF6"))
             self.param_table.setItem(i, 9, ai_max_item)
 
-            # Durum
             durum = p.get("durum", "BILGI_YOK")
             durum_item = QTableWidgetItem(durum)
-            durum_item.setForeground(QColor(durum_renk.get(durum, "#ffffff")))
+            durum_item.setForeground(QColor(durum_renk.get(durum, brand.TEXT)))
             self.param_table.setItem(i, 10, durum_item)
 
     def _uygula(self):
@@ -873,7 +1087,6 @@ class TDSParametreAlDialog(QDialog):
         if self.ai_sonuc and mod == "ai":
             self.secilen_parametreler = self.ai_sonuc.get("parametreler", [])
         else:
-            # TDS orijinal degerleri kullan
             self.secilen_parametreler = []
             for i in range(self.param_table.rowCount()):
                 item0 = self.param_table.item(i, 0)
@@ -914,109 +1127,181 @@ class TDSParametreAlDialog(QDialog):
 
 
 class LabBanyoPage(BasePage):
-    """Banyo Tanımları Listesi"""
-    
+    """Banyo Tanimlari Listesi — el kitabi uyumlu sayfa"""
+
     def __init__(self, theme: dict):
         super().__init__(theme)
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)
-    
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
-        
-        header = QHBoxLayout()
-        title = QLabel("🧪 Banyo Tanımları")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 24px; font-weight: bold;")
-        header.addWidget(title)
-        header.addStretch()
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
+
+        # -- 1. Header --
+        header = self.create_page_header(
+            "Banyo Tanimlari",
+            "Uretim hatti banyo tanimlari ve parametreleri"
+        )
         self.stat_label = QLabel("")
-        self.stat_label.setStyleSheet(f"color: {self.theme['text_muted']};")
+        self.stat_label.setStyleSheet(
+            f"color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY_SM}px;")
         header.addWidget(self.stat_label)
+
+        btn_yenile = self.create_primary_button("Yenile")
+        btn_yenile.clicked.connect(self._load_data)
+        header.addWidget(btn_yenile)
+
         layout.addLayout(header)
-        
+
+        # -- 2. Toolbar --
         toolbar = QHBoxLayout()
+        toolbar.setSpacing(brand.SP_3)
+
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Ara")
-        self.search_input.setStyleSheet(f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};")
-        self.search_input.setMaximumWidth(200)
+        self.search_input.setPlaceholderText("Ara...")
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
+        self.search_input.setMaximumWidth(brand.sp(200))
         self.search_input.returnPressed.connect(self._load_data)
         toolbar.addWidget(self.search_input)
-        
+
         self.hat_combo = QComboBox()
-        self.hat_combo.addItem("Tüm Hatlar", None)
+        self.hat_combo.addItem("Tum Hatlar", None)
         self._load_hat_filter()
-        self.hat_combo.setStyleSheet(f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']}; min-width: 120px;")
+        self.hat_combo.setStyleSheet(f"""
+            QComboBox {{
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                min-width: {brand.sp(120)}px;
+            }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
         self.hat_combo.currentIndexChanged.connect(self._load_data)
         toolbar.addWidget(self.hat_combo)
         toolbar.addStretch()
-        
-        add_btn = QPushButton("➕ Yeni Banyo")
-        add_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;")
+
+        add_btn = QPushButton("Yeni Banyo")
+        add_btn.setCursor(Qt.PointingHandCursor)
+        add_btn.setFixedHeight(brand.sp(38))
+        add_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY};
+                color: white;
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         add_btn.clicked.connect(self._add_new)
         toolbar.addWidget(add_btn)
         layout.addLayout(toolbar)
-        
+
+        # -- 3. Tablo --
         self.table = QTableWidget()
-        self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme['bg_card_solid']}; border: 1px solid {self.theme['border']}; border-radius: 8px; gridline-color: {self.theme['border']}; color: {self.theme['text']}; }}
-            QTableWidget::item {{ padding: 6px; }}
-            QTableWidget::item:selected {{ background: {self.theme['primary']}; }}
-            QHeaderView::section {{ background: {self.theme['bg_main']}; color: {self.theme['text']}; padding: 8px; border: none; border-bottom: 2px solid {self.theme['primary']}; font-weight: bold; }}
-        """)
         self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels(["ID", "Kod", "Ad", "Hat", "Tip", "Hacim", "Sıcaklık", "pH", "İşlem"])
+        self.table.setHorizontalHeaderLabels(["ID", "Kod", "Ad", "Hat", "Tip", "Hacim", "Sicaklik", "pH", "Islem"])
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.table.setColumnWidth(0, 60)
-        self.table.setColumnWidth(1, 100)
-        self.table.setColumnWidth(3, 100)
-        self.table.setColumnWidth(4, 100)
-        self.table.setColumnWidth(5, 80)
-        self.table.setColumnWidth(6, 80)
-        self.table.setColumnWidth(7, 60)
-        self.table.setColumnWidth(8, 120)
+        self.table.setColumnWidth(0, brand.sp(60))
+        self.table.setColumnWidth(1, brand.sp(100))
+        self.table.setColumnWidth(3, brand.sp(100))
+        self.table.setColumnWidth(4, brand.sp(100))
+        self.table.setColumnWidth(5, brand.sp(80))
+        self.table.setColumnWidth(6, brand.sp(80))
+        self.table.setColumnWidth(7, brand.sp(60))
+        self.table.setColumnWidth(8, brand.sp(120))
         self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
+            QHeaderView::section {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border: none;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+        """)
         layout.addWidget(self.table, 1)
-    
+
     def _load_hat_filter(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("SELECT id, kod FROM tanim.uretim_hatlari WHERE aktif_mi=1 AND silindi_mi=0 ORDER BY sira_no")
             for row in cursor.fetchall():
                 self.hat_combo.addItem(row[1], row[0])
-            conn.close()
-        except Exception: pass
-    
+        except Exception:
+            pass
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _load_data(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             sql = """SELECT b.id, b.kod, b.ad, h.kod, bt.ad, b.hacim_lt, b.sicaklik_hedef, b.ph_hedef
                      FROM uretim.banyo_tanimlari b
                      JOIN tanim.uretim_hatlari h ON b.hat_id=h.id
                      JOIN tanim.banyo_tipleri bt ON b.banyo_tipi_id=bt.id
                      WHERE b.aktif_mi=1"""
             params = []
-            
+
             search = self.search_input.text().strip()
             if search:
                 sql += " AND (b.kod LIKE ? OR b.ad LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%"])
-            
+
             hat_id = self.hat_combo.currentData()
             if hat_id:
                 sql += " AND b.hat_id=?"
                 params.append(hat_id)
-            
+
             sql += " ORDER BY h.sira_no, b.kod"
             cursor.execute(sql, params)
             rows = cursor.fetchall()
-            conn.close()
-            
+
             self.table.setRowCount(len(rows))
             for i, row in enumerate(rows):
                 self.table.setItem(i, 0, QTableWidgetItem(str(row[0])))
@@ -1025,39 +1310,50 @@ class LabBanyoPage(BasePage):
                 self.table.setItem(i, 3, QTableWidgetItem(row[3] or ''))
                 self.table.setItem(i, 4, QTableWidgetItem(row[4] or ''))
                 self.table.setItem(i, 5, QTableWidgetItem(f"{row[5]:.0f}" if row[5] else '-'))
-                self.table.setItem(i, 6, QTableWidgetItem(f"{row[6]:.0f}°C" if row[6] else '-'))
+                self.table.setItem(i, 6, QTableWidgetItem(f"{row[6]:.0f} C" if row[6] else '-'))
                 self.table.setItem(i, 7, QTableWidgetItem(f"{row[7]:.1f}" if row[7] else '-'))
-                
+
                 widget = self.create_action_buttons([
-                    ("✏️", "Duzenle", lambda checked, rid=row[0]: self._edit_item(rid), "edit"),
-                    ("🗑️", "Sil", lambda checked, rid=row[0]: self._delete_item(rid), "delete"),
+                    ("Duzenle", "Duzenle", lambda checked, rid=row[0]: self._edit_item(rid), "edit"),
+                    ("Sil", "Sil", lambda checked, rid=row[0]: self._delete_item(rid), "delete"),
                 ])
                 self.table.setCellWidget(i, 8, widget)
-                self.table.setRowHeight(i, 42)
-            
+
             self.stat_label.setText(f"Toplam: {len(rows)} banyo")
         except Exception as e:
             QMessageBox.warning(self, "Hata", str(e))
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _add_new(self):
         dlg = BanyoDialog(self.theme, parent=self)
         if dlg.exec() == QDialog.Accepted:
             self._load_data()
-    
+
     def _edit_item(self, bid):
         dlg = BanyoDialog(self.theme, bid, parent=self)
         if dlg.exec() == QDialog.Accepted:
             self._load_data()
-    
+
     def _delete_item(self, bid):
-        if QMessageBox.question(self, "Onay", "Bu banyoyu silmek istediğinize emin misiniz?") == QMessageBox.Yes:
+        if QMessageBox.question(self, "Onay", "Bu banyoyu silmek istediginize emin misiniz?") == QMessageBox.Yes:
+            conn = None
             try:
                 conn = get_db_connection()
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM uretim.banyo_tanimlari WHERE id=?", (bid,))
                 conn.commit()
                 LogManager.log_delete('lab', 'uretim.banyo_tanimlari', None, 'Kayit silindi')
-                conn.close()
                 self._load_data()
             except Exception as e:
                 QMessageBox.critical(self, "Hata", str(e))
+            finally:
+                if conn:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass

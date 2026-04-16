@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor, QFont
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 # Sevke hazır durumlar
 SEVK_HAZIR_DURUMLAR = ('KONTROL_EDILDI', 'ONAYLANDI', 'SEVKE_HAZIR')
@@ -50,13 +51,13 @@ class SevkYeniPage(BasePage):
         header = QHBoxLayout()
         
         title = QLabel("🚚 Yeni Sevkiyat")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text', '#fff')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         
         header.addStretch()
         
         self.saat_label = QLabel()
-        self.saat_label.setStyleSheet(f"color: {self.theme.get('text_muted', '#8a94a6')}; font-size: 18px; font-weight: bold;")
+        self.saat_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 18px; font-weight: bold;")
         header.addWidget(self.saat_label)
         
         # Temizle butonu
@@ -80,8 +81,8 @@ class SevkYeniPage(BasePage):
         barkod_frame = QFrame()
         barkod_frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_card', '#242938')};
-                border: 2px solid {self.theme.get('primary', '#6366f1')};
+                background: {brand.BG_CARD};
+                border: 2px solid {brand.PRIMARY};
                 border-radius: 12px;
             }}
         """)
@@ -90,22 +91,22 @@ class SevkYeniPage(BasePage):
         barkod_layout.setSpacing(12)
         
         barkod_title = QLabel("📷 BARKOD OKUT")
-        barkod_title.setStyleSheet(f"color: {self.theme.get('primary', '#6366f1')}; font-weight: bold; font-size: 16px;")
+        barkod_title.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; font-size: 16px;")
         barkod_layout.addWidget(barkod_title)
         
         self.barkod_input = QLineEdit()
         self.barkod_input.setPlaceholderText("Lot barkodunu okutun veya girin...")
         self.barkod_input.setStyleSheet(f"""
             QLineEdit {{
-                background: {self.theme.get('bg_main', '#1a1f2e')};
-                border: 2px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_MAIN};
+                border: 2px solid {brand.BORDER};
                 border-radius: 8px;
                 padding: 16px;
                 font-size: 18px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
             QLineEdit:focus {{
-                border-color: {self.theme.get('primary', '#6366f1')};
+                border-color: {brand.PRIMARY};
             }}
         """)
         self.barkod_input.returnPressed.connect(self._barkod_okut)
@@ -113,7 +114,7 @@ class SevkYeniPage(BasePage):
         
         # Son okutulan bilgisi
         self.son_okutma_label = QLabel("Son okutma: -")
-        self.son_okutma_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.son_okutma_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         barkod_layout.addWidget(self.son_okutma_label)
         
         sol_layout.addWidget(barkod_frame)
@@ -122,8 +123,8 @@ class SevkYeniPage(BasePage):
         arac_frame = QFrame()
         arac_frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_card', '#242938')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 12px;
             }}
         """)
@@ -132,7 +133,7 @@ class SevkYeniPage(BasePage):
         arac_layout.setSpacing(12)
         
         arac_title = QLabel("🚛 ARAÇ BİLGİLERİ")
-        arac_title.setStyleSheet(f"color: {self.theme.get('text', '#fff')}; font-weight: bold; font-size: 14px;")
+        arac_title.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; font-size: 14px;")
         arac_layout.addWidget(arac_title)
         
         arac_grid = QGridLayout()
@@ -165,7 +166,7 @@ class SevkYeniPage(BasePage):
         
         # Not
         not_label = QLabel("Not:")
-        not_label.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        not_label.setStyleSheet(f"color: {brand.TEXT_DIM};")
         arac_layout.addWidget(not_label)
         
         self.not_input = QTextEdit()
@@ -180,8 +181,8 @@ class SevkYeniPage(BasePage):
         hazir_frame = QFrame()
         hazir_frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_card', '#242938')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 12px;
             }}
         """)
@@ -191,26 +192,26 @@ class SevkYeniPage(BasePage):
 
         hazir_header = QHBoxLayout()
         hazir_title = QLabel("SEVKE HAZIR ÜRÜNLER")
-        hazir_title.setStyleSheet(f"color: {self.theme.get('success', '#22c55e')}; font-weight: bold; font-size: 13px;")
+        hazir_title.setStyleSheet(f"color: {brand.SUCCESS}; font-weight: bold; font-size: 13px;")
         hazir_header.addWidget(hazir_title)
         hazir_header.addStretch()
 
         self.hazir_count_label = QLabel("0 lot")
-        self.hazir_count_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        self.hazir_count_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 11px;")
         hazir_header.addWidget(self.hazir_count_label)
 
         hazir_yenile_btn = QPushButton("Yenile")
         hazir_yenile_btn.setFixedHeight(26)
         hazir_yenile_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
                 padding: 2px 10px;
                 font-size: 11px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('bg_hover', '#3d4454')}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
         """)
         hazir_yenile_btn.clicked.connect(self._load_hazir_urunler)
         hazir_header.addWidget(hazir_yenile_btn)
@@ -222,11 +223,11 @@ class SevkYeniPage(BasePage):
         self.hazir_search.setFixedHeight(28)
         self.hazir_search.setStyleSheet(f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
                 padding: 4px 8px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
                 font-size: 11px;
             }}
         """)
@@ -248,21 +249,21 @@ class SevkYeniPage(BasePage):
         self.hazir_table.verticalHeader().setVisible(False)
         self.hazir_table.setStyleSheet(f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_main', '#1a1f2e')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background-color: {brand.BG_MAIN};
+                border: 1px solid {brand.BORDER};
                 border-radius: 4px;
-                gridline-color: {self.theme.get('border', '#3d4454')};
-                color: {self.theme.get('text', '#fff')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
                 font-size: 11px;
             }}
             QTableWidget::item {{ padding: 3px; }}
-            QTableWidget::item:selected {{ background-color: {self.theme.get('primary', '#6366f1')}; }}
+            QTableWidget::item:selected {{ background-color: {brand.PRIMARY}; }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
+                background-color: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 4px;
                 border: none;
-                border-bottom: 1px solid {self.theme.get('border', '#3d4454')};
+                border-bottom: 1px solid {brand.BORDER};
                 font-size: 11px;
                 font-weight: bold;
             }}
@@ -274,7 +275,7 @@ class SevkYeniPage(BasePage):
         ekle_btn.setCursor(Qt.PointingHandCursor)
         ekle_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -282,7 +283,7 @@ class SevkYeniPage(BasePage):
                 font-weight: bold;
                 font-size: 12px;
             }}
-            QPushButton:hover {{ background: {self.theme.get('success_hover', '#16a34a')}; }}
+            QPushButton:hover {{ background: {'#059669'}; }}
         """)
         ekle_btn.clicked.connect(self._hazir_secilenleri_ekle)
         hazir_layout.addWidget(ekle_btn)
@@ -299,13 +300,13 @@ class SevkYeniPage(BasePage):
         # Başlık ve özet
         sag_header = QHBoxLayout()
         sag_title = QLabel("📋 OKUTULAN PAKETLER")
-        sag_title.setStyleSheet(f"color: {self.theme.get('success', '#22c55e')}; font-weight: bold; font-size: 14px;")
+        sag_title.setStyleSheet(f"color: {brand.SUCCESS}; font-weight: bold; font-size: 14px;")
         sag_header.addWidget(sag_title)
         
         sag_header.addStretch()
         
         self.ozet_label = QLabel("0 paket, 0 adet")
-        self.ozet_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-weight: bold;")
+        self.ozet_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-weight: bold;")
         sag_header.addWidget(self.ozet_label)
         
         sag_layout.addLayout(sag_header)
@@ -334,16 +335,16 @@ class SevkYeniPage(BasePage):
         
         # Müşteri bazlı özet
         musteri_frame = QFrame()
-        musteri_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px; padding: 8px;")
+        musteri_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 8px;")
         musteri_layout = QVBoxLayout(musteri_frame)
         musteri_layout.setContentsMargins(12, 8, 12, 8)
         
         musteri_title = QLabel("👥 MÜŞTERİ BAZLI ÖZET")
-        musteri_title.setStyleSheet(f"color: {self.theme.get('warning', '#f59e0b')}; font-weight: bold;")
+        musteri_title.setStyleSheet(f"color: {brand.WARNING}; font-weight: bold;")
         musteri_layout.addWidget(musteri_title)
         
         self.musteri_ozet_label = QLabel("-")
-        self.musteri_ozet_label.setStyleSheet(f"color: {self.theme.get('text')}; font-size: 12px;")
+        self.musteri_ozet_label.setStyleSheet(f"color: {brand.TEXT}; font-size: 12px;")
         self.musteri_ozet_label.setWordWrap(True)
         musteri_layout.addWidget(self.musteri_ozet_label)
         
@@ -368,7 +369,7 @@ class SevkYeniPage(BasePage):
         self.sevk_btn = QPushButton("✅ Sevkiyat Oluştur")
         self.sevk_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -377,11 +378,11 @@ class SevkYeniPage(BasePage):
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('success_hover', '#16a34a')};
+                background: {'#059669'};
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover', '#3d4454')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.sevk_btn.clicked.connect(self._sevkiyat_olustur)
@@ -401,50 +402,50 @@ class SevkYeniPage(BasePage):
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px 20px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover', '#3d4454')};
+                background: {brand.BG_HOVER};
             }}
         """
     
     def _input_style(self):
         return f"""
             QLineEdit, QComboBox, QTextEdit {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """
     
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_card', '#242938')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background-color: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', '#3d4454')};
-                color: {self.theme.get('text', '#ffffff')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{
                 padding: 6px;
-                border-bottom: 1px solid {self.theme.get('border', '#3d4454')};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#6366f1')};
+                background-color: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('success', '#22c55e')};
+                border-bottom: 2px solid {brand.SUCCESS};
                 font-weight: bold;
             }}
         """
@@ -579,7 +580,7 @@ class SevkYeniPage(BasePage):
             self.hazir_table.setCellWidget(i, 0, cb_widget)
 
             lot_item = QTableWidgetItem(d['lot_no'])
-            lot_item.setForeground(QColor(self.theme.get('info', '#3b82f6')))
+            lot_item.setForeground(QColor(brand.INFO))
             self.hazir_table.setItem(i, 1, lot_item)
 
             self.hazir_table.setItem(i, 2, QTableWidgetItem(d['musteri'][:20]))
@@ -656,7 +657,7 @@ class SevkYeniPage(BasePage):
             # Hazır listesini güncelle (eklenenler çıkarılacak)
             self._display_hazir_urunler(self._hazir_data if hasattr(self, '_hazir_data') else [])
             self.son_okutma_label.setText(f"{eklenen} lot listeden eklendi")
-            self.son_okutma_label.setStyleSheet(f"color: {self.theme.get('success')}; font-size: 12px;")
+            self.son_okutma_label.setStyleSheet(f"color: {brand.SUCCESS}; font-size: 12px;")
         else:
             QMessageBox.information(self, "Bilgi", "Eklenecek lot seçilmedi veya seçilenler zaten ekli.")
 
@@ -738,7 +739,7 @@ class SevkYeniPage(BasePage):
             self.son_okutma_label.setText(
                 f"✓ {lot_no} - {paket['musteri'][:20]} - {paket['miktar']:,.0f} ad"
             )
-            self.son_okutma_label.setStyleSheet(f"color: {self.theme.get('success')}; font-size: 12px;")
+            self.son_okutma_label.setStyleSheet(f"color: {brand.SUCCESS}; font-size: 12px;")
             
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Veritabanı hatası: {e}")
@@ -783,7 +784,7 @@ class SevkYeniPage(BasePage):
             
             # Tüm hücreleri birleştir etkisi için başlık
             header_item = QTableWidgetItem(f"📦 {musteri} - {grup['toplam_lot']} lot, {grup['toplam_adet']:,.0f} adet")
-            header_item.setBackground(QColor(self.theme.get('primary', '#6366f1')))
+            header_item.setBackground(QColor(brand.PRIMARY))
             header_item.setForeground(QColor('#ffffff'))
             font = header_item.font()
             font.setBold(True)
@@ -793,7 +794,7 @@ class SevkYeniPage(BasePage):
             # Diğer sütunları boş ama aynı renkte yap
             for col in range(1, 7):
                 empty_item = QTableWidgetItem('')
-                empty_item.setBackground(QColor(self.theme.get('primary', '#6366f1')))
+                empty_item.setBackground(QColor(brand.PRIMARY))
                 self.table.setItem(row_idx, col, empty_item)
             
             # İrsaliye Oluştur butonu
@@ -817,7 +818,7 @@ class SevkYeniPage(BasePage):
                 
                 # Lot No
                 item = QTableWidgetItem(paket['lot_no'])
-                item.setForeground(QColor(self.theme.get('info', '#3b82f6')))
+                item.setForeground(QColor(brand.INFO))
                 self.table.setItem(row_idx, 1, item)
                 
                 # Müşteri (boş - grup başlığında var)
@@ -1075,7 +1076,7 @@ class SevkYeniPage(BasePage):
             paket = self.okutulan_paketler.pop(idx)
             self._refresh_table()
             self.son_okutma_label.setText(f"✗ {paket['lot_no']} silindi")
-            self.son_okutma_label.setStyleSheet(f"color: {self.theme.get('warning')}; font-size: 12px;")
+            self.son_okutma_label.setStyleSheet(f"color: {brand.WARNING}; font-size: 12px;")
     
     def _temizle(self):
         """Formu temizle"""
@@ -1096,7 +1097,7 @@ class SevkYeniPage(BasePage):
         self._refresh_table()
         self._load_hazir_urunler()
         self.son_okutma_label.setText("Son okutma: -")
-        self.son_okutma_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.son_okutma_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         self.barkod_input.setFocus()
     
     def _sevkiyat_olustur(self):

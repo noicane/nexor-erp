@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 # ==================== HAT BÖLÜMLERİ ====================
@@ -48,11 +49,11 @@ class HatBolumDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QTextEdit, QSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -61,7 +62,7 @@ class HatBolumDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("🏭 " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -125,7 +126,7 @@ class HatBolumDialog(QDialog):
         btn_layout.addWidget(cancel_btn)
         
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         
@@ -199,11 +200,11 @@ class UretimHatDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
         """)
         
@@ -212,7 +213,7 @@ class UretimHatDialog(QDialog):
         layout.setSpacing(12)
         
         title = QLabel("🔧 " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         form = QFormLayout()
@@ -298,7 +299,7 @@ class UretimHatDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
@@ -402,22 +403,22 @@ class HatPozisyonDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 6px; color: {self.theme['text']};
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 6px; color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme['border']}; background: {self.theme['bg_card_solid']}; }}
-            QTabBar::tab {{ background: {self.theme['bg_input']}; padding: 8px 16px; color: {self.theme['text']}; }}
-            QTabBar::tab:selected {{ background: {self.theme['bg_card_solid']}; border-bottom: 2px solid {self.theme['primary']}; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; background: {brand.BG_CARD}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; padding: 8px 16px; color: {brand.TEXT}; }}
+            QTabBar::tab:selected {{ background: {brand.BG_CARD}; border-bottom: 2px solid {brand.PRIMARY}; }}
         """)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         
         title = QLabel("📍 " + self.windowTitle())
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {brand.TEXT};")
         layout.addWidget(title)
         
         tabs = QTabWidget()
@@ -432,7 +433,7 @@ class HatPozisyonDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         layout.addLayout(btn_layout)
@@ -522,7 +523,7 @@ class HatPozisyonDialog(QDialog):
         
         # Sıcaklık
         sic_frame = QFrame()
-        sic_frame.setStyleSheet(f"background: {self.theme['bg_card_solid']}; border: 1px solid {self.theme['border']}; border-radius: 8px;")
+        sic_frame.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px;")
         sic_layout = QVBoxLayout(sic_frame)
         sic_layout.addWidget(QLabel("🌡️ Sıcaklık (°C)"))
         sic_grid = QHBoxLayout()
@@ -537,7 +538,7 @@ class HatPozisyonDialog(QDialog):
         
         # pH
         ph_frame = QFrame()
-        ph_frame.setStyleSheet(f"background: {self.theme['bg_card_solid']}; border: 1px solid {self.theme['border']}; border-radius: 8px;")
+        ph_frame.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px;")
         ph_layout = QVBoxLayout(ph_frame)
         ph_layout.addWidget(QLabel("🧪 pH"))
         ph_grid = QHBoxLayout()
@@ -552,7 +553,7 @@ class HatPozisyonDialog(QDialog):
         
         # Akım
         akim_frame = QFrame()
-        akim_frame.setStyleSheet(f"background: {self.theme['bg_card_solid']}; border: 1px solid {self.theme['border']}; border-radius: 8px;")
+        akim_frame.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px;")
         akim_layout = QVBoxLayout(akim_frame)
         akim_layout.addWidget(QLabel("⚡ Akım (A)"))
         akim_grid = QHBoxLayout()
@@ -694,7 +695,7 @@ class TanimHatPage(BasePage):
         # Header
         header = QHBoxLayout()
         title = QLabel("⚙️ Hat Tanımları")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 24px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 24px; font-weight: bold;")
         header.addWidget(title)
         header.addStretch()
         layout.addLayout(header)
@@ -702,9 +703,9 @@ class TanimHatPage(BasePage):
         # Tabs
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(f"""
-            QTabWidget::pane {{ border: 1px solid {self.theme['border']}; background: {self.theme['bg_card_solid']}; border-radius: 8px; }}
-            QTabBar::tab {{ background: {self.theme['bg_input']}; color: {self.theme['text']}; padding: 10px 20px; margin-right: 2px; border-radius: 4px 4px 0 0; }}
-            QTabBar::tab:selected {{ background: {self.theme['bg_card_solid']}; border-bottom: 2px solid {self.theme['primary']}; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; background: {brand.BG_CARD}; border-radius: 8px; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 20px; margin-right: 2px; border-radius: 4px 4px 0 0; }}
+            QTabBar::tab:selected {{ background: {brand.BG_CARD}; border-bottom: 2px solid {brand.PRIMARY}; }}
         """)
         
         self.tabs.addTab(self._create_bolumler_tab(), "🏭 Hat Bölümleri")
@@ -1071,18 +1072,18 @@ class TanimHatPage(BasePage):
                 QMessageBox.critical(self, "Hata", str(e))
     
     def _input_style(self):
-        return f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']};"
+        return f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT};"
     
     def _combo_style(self):
-        return f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 8px; color: {self.theme['text']}; min-width: 120px;"
+        return f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT}; min-width: 120px;"
     
     def _primary_btn_style(self):
-        return f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;"
+        return f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;"
     
     def _table_style(self):
         return f"""
-            QTableWidget {{ background: {self.theme['bg_card_solid']}; border: 1px solid {self.theme['border']}; border-radius: 8px; gridline-color: {self.theme['border']}; color: {self.theme['text']}; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 8px; gridline-color: {brand.BORDER}; color: {brand.TEXT}; }}
             QTableWidget::item {{ padding: 6px; }}
-            QTableWidget::item:selected {{ background: {self.theme['primary']}; }}
-            QHeaderView::section {{ background: {self.theme['bg_main']}; color: {self.theme['text']}; padding: 8px; border: none; border-bottom: 2px solid {self.theme['primary']}; font-weight: bold; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_MAIN}; color: {brand.TEXT}; padding: 8px; border: none; border-bottom: 2px solid {brand.PRIMARY}; font-weight: bold; }}
         """

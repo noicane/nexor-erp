@@ -24,6 +24,7 @@ from PySide6.QtGui import QColor, QFont
 from components.base_page import BasePage
 from core.database import execute_query
 from modules.aksiyonlar.aksiyon_detay_dialog import AksiyonDetayDialog
+from core.nexor_brand import brand
 
 
 class AksiyonListePage(BasePage):
@@ -58,11 +59,11 @@ class AksiyonListePage(BasePage):
         self.stats_layout = QHBoxLayout()
         self.stats_layout.setSpacing(16)
 
-        self.card_toplam = self.create_stat_card("Toplam", "0", color=self.theme['info'])
-        self.card_bekliyor = self.create_stat_card("Bekliyor", "0", color=self.theme['warning'])
-        self.card_devam = self.create_stat_card("Devam Ediyor", "0", color=self.theme['info'])
-        self.card_geciken = self.create_stat_card("Geciken", "0", color=self.theme['error'])
-        self.card_tamamlandi = self.create_stat_card("Tamamlandı", "0", color=self.theme['success'])
+        self.card_toplam = self.create_stat_card("Toplam", "0", color=brand.INFO)
+        self.card_bekliyor = self.create_stat_card("Bekliyor", "0", color=brand.WARNING)
+        self.card_devam = self.create_stat_card("Devam Ediyor", "0", color=brand.INFO)
+        self.card_geciken = self.create_stat_card("Geciken", "0", color=brand.ERROR)
+        self.card_tamamlandi = self.create_stat_card("Tamamlandı", "0", color=brand.SUCCESS)
 
         self.stats_layout.addWidget(self.card_toplam)
         self.stats_layout.addWidget(self.card_bekliyor)
@@ -78,7 +79,7 @@ class AksiyonListePage(BasePage):
 
         # Durum filtresi
         lbl_durum = QLabel("Durum:")
-        lbl_durum.setStyleSheet(f"color: {self.theme['text_secondary']}; font-weight: 500;")
+        lbl_durum.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-weight: 500;")
         self.cmb_durum = QComboBox()
         self.cmb_durum.addItems([
             "Tümü",
@@ -95,7 +96,7 @@ class AksiyonListePage(BasePage):
 
         # Öncelik filtresi
         lbl_oncelik = QLabel("Öncelik:")
-        lbl_oncelik.setStyleSheet(f"color: {self.theme['text_secondary']}; font-weight: 500;")
+        lbl_oncelik.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-weight: 500;")
         self.cmb_oncelik = QComboBox()
         self.cmb_oncelik.addItems([
             "Tümü",
@@ -110,7 +111,7 @@ class AksiyonListePage(BasePage):
 
         # Kategori filtresi
         lbl_kategori = QLabel("Kategori:")
-        lbl_kategori.setStyleSheet(f"color: {self.theme['text_secondary']}; font-weight: 500;")
+        lbl_kategori.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-weight: 500;")
         self.cmb_kategori = QComboBox()
         self.cmb_kategori.addItems([
             "Tümü",
@@ -125,7 +126,7 @@ class AksiyonListePage(BasePage):
 
         # Modül filtresi
         lbl_modul = QLabel("Modül:")
-        lbl_modul.setStyleSheet(f"color: {self.theme['text_secondary']}; font-weight: 500;")
+        lbl_modul.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-weight: 500;")
         self.cmb_modul = QComboBox()
         self.cmb_modul.addItems([
             "Tümü",
@@ -316,7 +317,7 @@ class AksiyonListePage(BasePage):
             gecikme = row_data.get('gecikme_gun', 0) or 0
             if gecikme > 0:
                 item = QTableWidgetItem(str(int(gecikme)))
-                item.setForeground(QColor(self.theme['error']))
+                item.setForeground(QColor(brand.ERROR))
                 font = QFont()
                 font.setBold(True)
                 item.setFont(font)
@@ -387,24 +388,24 @@ class AksiyonListePage(BasePage):
     def get_oncelik_color(self, oncelik: str) -> str:
         """Öncelik rengi"""
         colors = {
-            'KRITIK': self.theme['error'],
-            'YUKSEK': self.theme['warning'],
-            'NORMAL': self.theme['info'],
-            'DUSUK': self.theme['text_muted']
+            'KRITIK': brand.ERROR,
+            'YUKSEK': brand.WARNING,
+            'NORMAL': brand.INFO,
+            'DUSUK': brand.TEXT_DIM
         }
-        return colors.get(oncelik, self.theme['text'])
+        return colors.get(oncelik, brand.TEXT)
 
     def get_durum_color(self, durum: str) -> str:
         """Durum rengi"""
         colors = {
-            'BEKLIYOR': self.theme['info'],
-            'DEVAM_EDIYOR': self.theme['warning'],
-            'TAMAMLANDI': self.theme['success'],
-            'DOGRULANDI': self.theme['success'],
-            'GECIKTI': self.theme['error'],
-            'IPTAL': self.theme['text_muted']
+            'BEKLIYOR': brand.INFO,
+            'DEVAM_EDIYOR': brand.WARNING,
+            'TAMAMLANDI': brand.SUCCESS,
+            'DOGRULANDI': brand.SUCCESS,
+            'GECIKTI': brand.ERROR,
+            'IPTAL': brand.TEXT_DIM
         }
-        return colors.get(durum, self.theme['text'])
+        return colors.get(durum, brand.TEXT)
 
     def open_new_aksiyon(self):
         """Yeni aksiyon oluştur"""

@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor, QFont
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class KriterEkleDialog(QDialog):
@@ -39,22 +40,22 @@ class KriterEkleDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background-color: {self.theme.get('bg_main', '#1a1f2e')}; }}
-            QLabel {{ color: {self.theme.get('text', '#fff')}; }}
+            QDialog {{ background-color: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QGroupBox {{ 
-                color: {self.theme.get('text', '#fff')}; font-weight: bold; 
-                border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 8px; 
+                color: {brand.TEXT}; font-weight: bold; 
+                border: 1px solid {brand.BORDER}; border-radius: 8px; 
                 margin-top: 12px; padding-top: 8px;
             }}
-            QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 8px; color: {self.theme.get('primary', '#6366f1')}; }}
+            QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 8px; color: {brand.PRIMARY}; }}
             QLineEdit, QTextEdit, QComboBox, QSpinBox, QDoubleSpinBox {{
-                background: {self.theme.get('bg_input', '#2d3548')}; 
-                border: 1px solid {self.theme.get('border', '#3d4454')};
-                border-radius: 6px; padding: 8px; color: {self.theme.get('text', '#fff')};
+                background: {brand.BG_INPUT}; 
+                border: 1px solid {brand.BORDER};
+                border-radius: 6px; padding: 8px; color: {brand.TEXT};
             }}
-            QCheckBox {{ color: {self.theme.get('text', '#fff')}; spacing: 8px; }}
-            QCheckBox::indicator {{ width: 20px; height: 20px; border-radius: 4px; border: 2px solid {self.theme.get('border', '#3d4454')}; }}
-            QCheckBox::indicator:checked {{ background: {self.theme.get('primary', '#6366f1')}; border-color: {self.theme.get('primary', '#6366f1')}; }}
+            QCheckBox {{ color: {brand.TEXT}; spacing: 8px; }}
+            QCheckBox::indicator {{ width: 20px; height: 20px; border-radius: 4px; border: 2px solid {brand.BORDER}; }}
+            QCheckBox::indicator:checked {{ background: {brand.PRIMARY}; border-color: {brand.PRIMARY}; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -171,12 +172,12 @@ class KriterEkleDialog(QDialog):
         btn_layout.addStretch()
         
         cancel_btn = QPushButton("İptal")
-        cancel_btn.setStyleSheet(f"background: {self.theme.get('bg_input', '#2d3548')}; color: {self.theme.get('text', '#fff')}; border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 6px; padding: 10px 24px;")
+        cancel_btn.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 10px 24px;")
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
         
         save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme.get('primary', '#6366f1')}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;")
+        save_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;")
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
         
@@ -262,32 +263,32 @@ class GirisKaliteKriterleriPage(BasePage):
         # Başlık
         header = QHBoxLayout()
         title = QLabel("📋 Giriş Kalite Kriterleri Tanımları")
-        title.setStyleSheet(f"color: {self.theme.get('text', '#fff')}; font-size: 22px; font-weight: bold;")
+        title.setStyleSheet(f"color: {brand.TEXT}; font-size: 22px; font-weight: bold;")
         header.addWidget(title)
         header.addStretch()
         
         add_btn = QPushButton("➕ Yeni Kriter")
-        add_btn.setStyleSheet(f"background: {self.theme.get('success', '#22c55e')}; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-weight: bold;")
+        add_btn.setStyleSheet(f"background: {brand.SUCCESS}; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-weight: bold;")
         add_btn.clicked.connect(self._add_kriter)
         header.addWidget(add_btn)
         layout.addLayout(header)
         
         # Filtre
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card', '#242938')}; border-radius: 10px; padding: 12px; }}")
+        filter_frame.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border-radius: 10px; padding: 12px; }}")
         filter_layout = QHBoxLayout(filter_frame)
         filter_layout.setSpacing(12)
         
         filter_layout.addWidget(QLabel("🔍"))
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Kriter adı ara...")
-        self.search_input.setStyleSheet(f"background: {self.theme.get('bg_input', '#2d3548')}; border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 6px; padding: 8px 12px; color: {self.theme.get('text', '#fff')}; min-width: 200px;")
+        self.search_input.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 12px; color: {brand.TEXT}; min-width: 200px;")
         self.search_input.textChanged.connect(self._load_data)
         filter_layout.addWidget(self.search_input)
         
         filter_layout.addWidget(QLabel("Kategori:"))
         self.kategori_filter = QComboBox()
-        self.kategori_filter.setStyleSheet(f"background: {self.theme.get('bg_input', '#2d3548')}; border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text', '#fff')}; min-width: 150px;")
+        self.kategori_filter.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT}; min-width: 150px;")
         self.kategori_filter.addItem("Tümü", "")
         self.kategori_filter.addItem("Görsel Kontrol", "GORSEL")
         self.kategori_filter.addItem("Boyut Ölçüm", "BOYUT")
@@ -301,7 +302,7 @@ class GirisKaliteKriterleriPage(BasePage):
         
         filter_layout.addWidget(QLabel("Durum:"))
         self.durum_filter = QComboBox()
-        self.durum_filter.setStyleSheet(f"background: {self.theme.get('bg_input', '#2d3548')}; border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text', '#fff')}; min-width: 100px;")
+        self.durum_filter.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT}; min-width: 100px;")
         self.durum_filter.addItem("Tümü", "")
         self.durum_filter.addItem("Aktif", "1")
         self.durum_filter.addItem("Pasif", "0")
@@ -311,7 +312,7 @@ class GirisKaliteKriterleriPage(BasePage):
         filter_layout.addStretch()
         
         refresh_btn = QPushButton("🔄 Yenile")
-        refresh_btn.setStyleSheet(f"background: {self.theme.get('bg_input', '#2d3548')}; color: {self.theme.get('text', '#fff')}; border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 6px; padding: 8px 16px;")
+        refresh_btn.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px 16px;")
         refresh_btn.clicked.connect(self._load_data)
         filter_layout.addWidget(refresh_btn)
         layout.addWidget(filter_frame)
@@ -320,7 +321,7 @@ class GirisKaliteKriterleriPage(BasePage):
         stats_layout = QHBoxLayout()
         stats_layout.setSpacing(16)
         self.stat_widgets = {}
-        for key, label, color in [("toplam", "📋 Toplam Kriter", self.theme.get('primary', '#6366f1')), ("aktif", "✅ Aktif", self.theme.get('success', '#22c55e')), ("kritik", "⚠️ Kritik", self.theme.get('warning', '#f59e0b')), ("zorunlu", "🔒 Zorunlu", self.theme.get('info', '#3b82f6'))]:
+        for key, label, color in [("toplam", "📋 Toplam Kriter", brand.PRIMARY), ("aktif", "✅ Aktif", brand.SUCCESS), ("kritik", "⚠️ Kritik", brand.WARNING), ("zorunlu", "🔒 Zorunlu", brand.INFO)]:
             card = QFrame()
             card.setStyleSheet(f"QFrame {{ background: {color}15; border: 1px solid {color}50; border-radius: 10px; padding: 16px; }}")
             card_layout = QVBoxLayout(card)
@@ -330,7 +331,7 @@ class GirisKaliteKriterleriPage(BasePage):
             value_label.setAlignment(Qt.AlignCenter)
             card_layout.addWidget(value_label)
             title_label = QLabel(label)
-            title_label.setStyleSheet(f"color: {self.theme.get('text_secondary', '#9ca3af')}; font-size: 12px;")
+            title_label.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px;")
             title_label.setAlignment(Qt.AlignCenter)
             card_layout.addWidget(title_label)
             self.stat_widgets[key] = value_label
@@ -355,11 +356,11 @@ class GirisKaliteKriterleriPage(BasePage):
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card', '#242938')}; border: 1px solid {self.theme.get('border', '#3d4454')}; border-radius: 10px; gridline-color: {self.theme.get('border', '#3d4454')}; color: {self.theme.get('text', '#fff')}; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: 10px; gridline-color: {brand.BORDER}; color: {brand.TEXT}; }}
             QTableWidget::item {{ padding: 8px; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary', '#6366f1')}30; }}
-            QTableWidget::item:alternate {{ background: {self.theme.get('bg_hover', '#2d3548')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_hover', '#2d3548')}; color: {self.theme.get('text', '#fff')}; padding: 12px; border: none; font-weight: bold; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}30; }}
+            QTableWidget::item:alternate {{ background: {brand.BG_HOVER}; }}
+            QHeaderView::section {{ background: {brand.BG_HOVER}; color: {brand.TEXT}; padding: 12px; border: none; font-weight: bold; }}
         """)
         self.table.verticalHeader().setVisible(False)
         layout.addWidget(self.table)
@@ -432,7 +433,7 @@ class GirisKaliteKriterleriPage(BasePage):
                     item = QTableWidgetItem("✅" if val else ("❌" if col == 7 else ""))
                     item.setTextAlignment(Qt.AlignCenter)
                     if col == 7 and not val:
-                        item.setForeground(QColor(self.theme.get('error', '#ef4444')))
+                        item.setForeground(QColor(brand.ERROR))
                     self.table.setItem(i, col, item)
                 
                 widget = self.create_action_buttons([

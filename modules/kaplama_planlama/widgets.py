@@ -19,6 +19,7 @@ from PySide6.QtGui import (
     QPainterPath, QLinearGradient, QRadialGradient,
     QConicalGradient, QPaintEvent, QMouseEvent
 )
+from core.nexor_brand import brand
 
 
 # ── Stil Sabitleri ──
@@ -545,8 +546,8 @@ class HatIstatistikCard(QFrame):
         self.setFrameShape(QFrame.StyledPanel)
         self.setStyleSheet(f"""
             QFrame[frameShape="StyledPanel"] {{
-                background: {self.s['card_bg']};
-                border: 1px solid {self.s['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: {CARD_RADIUS}px;
             }}
         """)

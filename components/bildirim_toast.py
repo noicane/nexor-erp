@@ -28,12 +28,14 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QColor
 
+from core.nexor_brand import brand
+
 
 _ONEM_COLORS = {
-    'KRITIK': '#ef4444',
+    'KRITIK': brand.ERROR,
     'YUKSEK': '#f97316',
-    'NORMAL': '#3b82f6',
-    'DUSUK': '#6b7280',
+    'NORMAL': brand.INFO,
+    'DUSUK': brand.TEXT_DIM,
 }
 
 _ONEM_ICONS = {
@@ -68,16 +70,15 @@ class ToastWidget(QFrame):
         self._setup_timer()
 
     def _setup_ui(self):
-        t = self.theme
         onem = self.bildirim.get('onem', 'NORMAL')
-        border_color = _ONEM_COLORS.get(onem, '#3b82f6')
+        border_color = _ONEM_COLORS.get(onem, brand.INFO)
 
         self.setStyleSheet(f"""
             ToastWidget {{
-                background: {t.get('bg_card', '#1E1E1E')};
-                border: 1px solid {t.get('border', '#2A2A2A')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-left: 4px solid {border_color};
-                border-radius: 10px;
+                border-radius: {brand.R_MD}px;
             }}
         """)
 
@@ -89,26 +90,26 @@ class ToastWidget(QFrame):
         self.setGraphicsEffect(shadow)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(14, 12, 14, 12)
-        layout.setSpacing(6)
+        layout.setContentsMargins(brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_3)
+        layout.setSpacing(brand.sp(6))
 
         # Üst satır: modül + önem + kapatma butonu
         header = QHBoxLayout()
-        header.setSpacing(6)
+        header.setSpacing(brand.sp(6))
 
         modul = self.bildirim.get('modul', '')
         modul_icon = _MODUL_ICONS.get(modul, '📋')
         lbl_modul = QLabel(f"{modul_icon} {modul}")
         lbl_modul.setStyleSheet(f"""
-            color: {t.get('text_muted', '#666')};
-            font-size: 11px; background: transparent;
+            color: {brand.TEXT_DIM};
+            font-size: {brand.FS_CAPTION}px; background: transparent;
         """)
         header.addWidget(lbl_modul)
         header.addStretch()
 
         onem_icon = _ONEM_ICONS.get(onem, '🔵')
         lbl_onem = QLabel(f"{onem_icon} {onem}")
-        lbl_onem.setStyleSheet(f"color: {border_color}; font-size: 10px; font-weight: bold; background: transparent;")
+        lbl_onem.setStyleSheet(f"color: {border_color}; font-size: {brand.fs(10)}px; font-weight: {brand.FW_BOLD}; background: transparent;")
         header.addWidget(lbl_onem)
 
         btn_close = QPushButton("✕")
@@ -117,9 +118,9 @@ class ToastWidget(QFrame):
         btn_close.setStyleSheet(f"""
             QPushButton {{
                 background: transparent; border: none;
-                color: {t.get('text_muted', '#666')}; font-size: 14px;
+                color: {brand.TEXT_DIM}; font-size: {brand.fs(14)}px;
             }}
-            QPushButton:hover {{ color: {t.get('text', '#FFF')}; }}
+            QPushButton:hover {{ color: {brand.TEXT}; }}
         """)
         btn_close.clicked.connect(self._close)
         header.addWidget(btn_close)
@@ -128,7 +129,7 @@ class ToastWidget(QFrame):
 
         # Başlık
         lbl_baslik = QLabel(self.bildirim.get('baslik', ''))
-        lbl_baslik.setStyleSheet(f"color: {t.get('text', '#FFF')}; font-size: 13px; font-weight: bold; background: transparent;")
+        lbl_baslik.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY}px; font-weight: {brand.FW_BOLD}; background: transparent;")
         lbl_baslik.setWordWrap(True)
         layout.addWidget(lbl_baslik)
 
@@ -138,7 +139,7 @@ class ToastWidget(QFrame):
             mesaj = mesaj[:117] + '...'
         if mesaj:
             lbl_mesaj = QLabel(mesaj)
-            lbl_mesaj.setStyleSheet(f"color: {t.get('text_secondary', '#AAA')}; font-size: 12px; background: transparent;")
+            lbl_mesaj.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px; background: transparent;")
             lbl_mesaj.setWordWrap(True)
             layout.addWidget(lbl_mesaj)
 
@@ -183,9 +184,9 @@ class ToastManager:
         self.theme = theme
         self._active_toasts: list[ToastWidget] = []
         self._max_toasts = 4
-        self._toast_spacing = 10
-        self._margin_bottom = 20
-        self._margin_right = 20
+        self._toast_spacing = brand.SP_3
+        self._margin_bottom = brand.SP_5
+        self._margin_right = brand.SP_5
 
     def show_toast(
         self,

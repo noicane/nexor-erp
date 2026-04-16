@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class IzinTuruDialog(QDialog):
@@ -34,18 +35,18 @@ class IzinTuruDialog(QDialog):
     
     def setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QSpinBox, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
             QGroupBox {{
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
                 margin-top: 12px;
                 padding-top: 12px;
@@ -73,7 +74,7 @@ class IzinTuruDialog(QDialog):
         # Ücretli mi
         self.chk_ucretli = QCheckBox("Ücretli İzin")
         self.chk_ucretli.setChecked(True)
-        self.chk_ucretli.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.chk_ucretli.setStyleSheet(f"color: {brand.TEXT};")
         form_layout.addRow("", self.chk_ucretli)
         
         # Max gün
@@ -100,7 +101,7 @@ class IzinTuruDialog(QDialog):
         renk_layout.addWidget(self.btn_renk)
         
         self.lbl_renk = QLabel(self.renk_kodu)
-        self.lbl_renk.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.lbl_renk.setStyleSheet(f"color: {brand.TEXT};")
         renk_layout.addWidget(self.lbl_renk)
         renk_layout.addStretch()
         form_layout.addRow("Renk:", renk_layout)
@@ -114,7 +115,7 @@ class IzinTuruDialog(QDialog):
         # Aktif
         self.chk_aktif = QCheckBox("Aktif")
         self.chk_aktif.setChecked(True)
-        self.chk_aktif.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.chk_aktif.setStyleSheet(f"color: {brand.TEXT};")
         form_layout.addRow("", self.chk_aktif)
         
         form_group.setLayout(form_layout)
@@ -125,11 +126,11 @@ class IzinTuruDialog(QDialog):
         btn_layout.addStretch()
         
         btn_kaydet = QPushButton("Kaydet")
-        btn_kaydet.setStyleSheet(f"background-color: {self.theme.get('success')}; color: white; padding: 8px 20px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background-color: {brand.SUCCESS}; color: white; padding: 8px 20px; border-radius: 6px;")
         btn_kaydet.clicked.connect(self.kaydet)
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 20px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 8px 20px; border-radius: 6px;")
         btn_iptal.clicked.connect(self.reject)
         
         btn_layout.addWidget(btn_kaydet)
@@ -237,34 +238,34 @@ class TanimIzinTurleriPage(BasePage):
         
         # Başlık
         header = QLabel("🏖️ İzin Türleri Tanımları")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')}; padding: 10px;")
+        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT}; padding: 10px;")
         layout.addWidget(header)
         
         # Toolbar
         toolbar_frame = QFrame()
-        toolbar_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar = QHBoxLayout(toolbar_frame)
         toolbar.setContentsMargins(16, 12, 16, 12)
         
         btn_ekle = QPushButton("➕ Yeni İzin Türü")
-        btn_ekle.setStyleSheet(f"background-color: {self.theme.get('success')}; color: white; padding: 8px 15px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background-color: {brand.SUCCESS}; color: white; padding: 8px 15px; border-radius: 6px;")
         btn_ekle.clicked.connect(self._yeni_izin_turu)
         toolbar.addWidget(btn_ekle)
         
         btn_duzenle = QPushButton("✏️ Düzenle")
-        btn_duzenle.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 15px; border-radius: 6px;")
+        btn_duzenle.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 8px 15px; border-radius: 6px;")
         btn_duzenle.clicked.connect(self._duzenle)
         toolbar.addWidget(btn_duzenle)
         
         btn_sil = QPushButton("🗑️ Sil")
-        btn_sil.setStyleSheet(f"background-color: {self.theme.get('danger')}; color: white; padding: 8px 15px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background-color: {brand.ERROR}; color: white; padding: 8px 15px; border-radius: 6px;")
         btn_sil.clicked.connect(self._sil)
         toolbar.addWidget(btn_sil)
         
         toolbar.addStretch()
         
         btn_yenile = QPushButton("🔄 Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 15px; border-radius: 6px;")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 8px 15px; border-radius: 6px;")
         btn_yenile.clicked.connect(self._load_data)
         toolbar.addWidget(btn_yenile)
         
@@ -281,25 +282,25 @@ class TanimIzinTurleriPage(BasePage):
         self.table.setColumnHidden(0, True)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{
                 padding: 8px;
-                border-bottom: 1px solid {self.theme.get('border')};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """)

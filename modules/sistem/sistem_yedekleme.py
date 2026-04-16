@@ -17,6 +17,7 @@ import os
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class YedeklemeThread(QThread):
@@ -87,11 +88,11 @@ class SistemYedeklemePage(BasePage):
         
         # Başlık
         header = QFrame()
-        header.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;padding:16px;}}")
+        header.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;padding:16px;}}")
         hl = QHBoxLayout(header)
         
         title = QLabel("💾 Sistem Yedekleme")
-        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{self.theme.get('text', '#ffffff')};")
+        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{brand.TEXT};")
         hl.addWidget(title)
         hl.addStretch()
         
@@ -102,7 +103,7 @@ class SistemYedeklemePage(BasePage):
         yedek_group.setStyleSheet(f"""
             QGroupBox {{
                 font-weight: bold;
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -129,7 +130,7 @@ class SistemYedeklemePage(BasePage):
         btn_dizin_sec.clicked.connect(self.dizin_sec)
         btn_dizin_sec.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -153,7 +154,7 @@ class SistemYedeklemePage(BasePage):
         yedek_layout.addWidget(self.progress)
         
         self.lbl_durum = QLabel("")
-        self.lbl_durum.setStyleSheet(f"color: {self.theme.get('text_muted', '#64748b')};")
+        self.lbl_durum.setStyleSheet(f"color: {brand.TEXT_MUTED};")
         yedek_layout.addWidget(self.lbl_durum)
         
         # Butonlar
@@ -162,7 +163,7 @@ class SistemYedeklemePage(BasePage):
         self.btn_yedekle = QPushButton("💾 Yedek Al")
         self.btn_yedekle.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -186,7 +187,7 @@ class SistemYedeklemePage(BasePage):
         oto_group.setStyleSheet(f"""
             QGroupBox {{
                 font-weight: bold;
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -211,7 +212,7 @@ class SistemYedeklemePage(BasePage):
         btn_ayar_kaydet.clicked.connect(self.ayarlari_kaydet)
         btn_ayar_kaydet.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -229,7 +230,7 @@ class SistemYedeklemePage(BasePage):
         liste_group.setStyleSheet(f"""
             QGroupBox {{
                 font-weight: bold;
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 10px;
@@ -244,7 +245,7 @@ class SistemYedeklemePage(BasePage):
         btn_yenile.clicked.connect(self.load_yedekler)
         btn_yenile.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -257,7 +258,7 @@ class SistemYedeklemePage(BasePage):
         btn_geri_yukle = QPushButton("📥 Geri Yükle")
         btn_geri_yukle.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('warning', '#f59e0b')};
+                background: {brand.WARNING};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -271,7 +272,7 @@ class SistemYedeklemePage(BasePage):
         btn_sil = QPushButton("🗑️ Sil")
         btn_sil.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('error', '#ef4444')};
+                background: {brand.ERROR};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -304,21 +305,21 @@ class SistemYedeklemePage(BasePage):
         # Tablo stili
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_card', '#1e293b')};
-                color: {self.theme.get('text', '#ffffff')};
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                background-color: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                gridline-color: {brand.BORDER};
             }}
             QTableWidget::item {{
                 padding: 8px;
             }}
             QTableWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#3b82f6')};
+                background-color: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_main', '#0f172a')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_MAIN};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
                 font-weight: bold;
@@ -401,11 +402,11 @@ class SistemYedeklemePage(BasePage):
             self.txt_yedek_adi.setText(f"Redline NexorERP_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak")
             self.load_yedekler()
             self.lbl_durum.setText("Yedekleme başarıyla tamamlandı.")
-            self.lbl_durum.setStyleSheet(f"color: {self.theme.get('success', '#22c55e')};")
+            self.lbl_durum.setStyleSheet(f"color: {brand.SUCCESS};")
         else:
             QMessageBox.critical(self, "Hata", f"Yedekleme hatası:\n\n{result}")
             self.lbl_durum.setText(f"Hata: {result}")
-            self.lbl_durum.setStyleSheet(f"color: {self.theme.get('error', '#ef4444')};")
+            self.lbl_durum.setStyleSheet(f"color: {brand.ERROR};")
     
     def load_yedekler(self):
         """Mevcut yedekleri listele"""

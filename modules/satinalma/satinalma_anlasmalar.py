@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class FiyatDialog(QDialog):
@@ -36,13 +37,13 @@ class FiyatDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QDoubleSpinBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px;
+                color: {brand.TEXT};
             }}
         """)
         
@@ -93,12 +94,12 @@ class FiyatDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_5}px; border-radius: {brand.R_SM}px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 20px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_3}px {brand.SP_5}px; border-radius: {brand.R_SM}px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -210,17 +211,17 @@ class AndasmaDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit, QDoubleSpinBox, QSpinBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px; padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px;
+                color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_5}px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -277,23 +278,23 @@ class AndasmaDialog(QDialog):
         
         toolbar = QHBoxLayout()
         btn_ekle = QPushButton("➕ Fiyat Ekle")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_ekle.clicked.connect(self._add_fiyat)
         toolbar.addWidget(btn_ekle)
         
         btn_duzenle = QPushButton("✏️ Düzenle")
-        btn_duzenle.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 16px; border-radius: 6px;")
+        btn_duzenle.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_duzenle.clicked.connect(self._edit_fiyat)
         toolbar.addWidget(btn_duzenle)
         
         btn_sil = QPushButton("🗑️ Sil")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_sil.clicked.connect(self._delete_fiyat)
         toolbar.addWidget(btn_sil)
         toolbar.addStretch()
         
         self.lbl_fiyat_sayisi = QLabel("0 ürün")
-        self.lbl_fiyat_sayisi.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_fiyat_sayisi.setStyleSheet(f"color: {brand.TEXT_DIM};")
         toolbar.addWidget(self.lbl_fiyat_sayisi)
         fiyat_layout.addLayout(toolbar)
         
@@ -302,7 +303,7 @@ class AndasmaDialog(QDialog):
         self.table_fiyatlar.setHorizontalHeaderLabels(["ID", "Ürün", "Birim Fiyat", "Min. Miktar", "Geç. Başlangıç", "Geç. Bitiş"])
         self.table_fiyatlar.setColumnHidden(0, True)
         self.table_fiyatlar.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table_fiyatlar.setStyleSheet(f"QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; }}")
+        self.table_fiyatlar.setStyleSheet(f"QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; }}")
         header = self.table_fiyatlar.horizontalHeader()
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         self.table_fiyatlar.setColumnWidth(2, 100)
@@ -320,12 +321,12 @@ class AndasmaDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 24px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -497,20 +498,20 @@ class TedarikciAnlasmalariPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
         
         header = QLabel("📜 Tedarikçi Anlaşmaları")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: {brand.FS_HEADING_LG}px; font-weight: {brand.FW_BOLD}; color: {brand.TEXT};")
         layout.addWidget(header)
         
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: {brand.R_MD}px;")
         toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(16, 12, 16, 12)
+        toolbar_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
         
         btn_yeni = QPushButton("➕ Yeni Anlaşma")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px; font-weight: bold;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px; font-weight: {brand.FW_BOLD};")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
 
@@ -518,12 +519,12 @@ class TedarikciAnlasmalariPage(BasePage):
         
         self.cmb_durum = QComboBox()
         self.cmb_durum.addItems(["Tümü", "AKTIF", "PASIF", "SURESI_DOLDU"])
-        self.cmb_durum.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text')};")
+        self.cmb_durum.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px; color: {brand.TEXT};")
         self.cmb_durum.currentIndexChanged.connect(self._filter)
         toolbar_layout.addWidget(self.cmb_durum)
         
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 16px; color: {self.theme.get('text')};")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_4}px; color: {brand.TEXT};")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -536,9 +537,9 @@ class TedarikciAnlasmalariPage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_MD}px; color: {brand.TEXT}; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px; font-weight: {brand.FW_BOLD}; }}
         """)
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
@@ -553,7 +554,7 @@ class TedarikciAnlasmalariPage(BasePage):
         layout.addWidget(self.table)
         
         self.lbl_stat = QLabel()
-        self.lbl_stat.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_stat.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.lbl_stat)
     
     def _load_data(self):
@@ -585,11 +586,11 @@ class TedarikciAnlasmalariPage(BasePage):
                 elif j == 7:  # Durum
                     item = QTableWidgetItem(str(val) if val else "")
                     if val == "AKTIF":
-                        item.setForeground(QColor(self.theme.get('success')))
+                        item.setForeground(QColor(brand.SUCCESS))
                     elif val == "SURESI_DOLDU":
-                        item.setForeground(QColor(self.theme.get('danger')))
+                        item.setForeground(QColor(brand.ERROR))
                     else:
-                        item.setForeground(QColor(self.theme.get('text_muted')))
+                        item.setForeground(QColor(brand.TEXT_DIM))
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

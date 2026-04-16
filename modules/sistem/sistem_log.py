@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class LogDetayDialog(QDialog):
@@ -106,11 +107,11 @@ class SistemLogPage(BasePage):
         
         # Başlık
         header = QFrame()
-        header.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;padding:16px;}}")
+        header.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;padding:16px;}}")
         hl = QHBoxLayout(header)
         
         title = QLabel("📋 Sistem İşlem Logları")
-        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{self.theme.get('text', '#ffffff')};")
+        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{brand.TEXT};")
         hl.addWidget(title)
         hl.addStretch()
         
@@ -119,7 +120,7 @@ class SistemLogPage(BasePage):
         btn_refresh.clicked.connect(self.load_data)
         btn_refresh.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -134,7 +135,7 @@ class SistemLogPage(BasePage):
         
         # Filtre alanı
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;padding:12px;}}")
+        filter_frame.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;padding:12px;}}")
         filter_layout = QHBoxLayout(filter_frame)
         
         # Tarih aralığı
@@ -177,7 +178,7 @@ class SistemLogPage(BasePage):
         btn_filtrele.clicked.connect(self.load_data)
         btn_filtrele.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -191,7 +192,7 @@ class SistemLogPage(BasePage):
         btn_temizle.clicked.connect(self.temizle_filtre)
         btn_temizle.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('warning', '#f59e0b')};
+                background: {brand.WARNING};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -219,21 +220,21 @@ class SistemLogPage(BasePage):
         # Tablo stili
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_card', '#1e293b')};
-                color: {self.theme.get('text', '#ffffff')};
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                background-color: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                gridline-color: {brand.BORDER};
             }}
             QTableWidget::item {{
                 padding: 8px;
             }}
             QTableWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#3b82f6')};
+                background-color: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_main', '#0f172a')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_MAIN};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
                 font-weight: bold;

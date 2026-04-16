@@ -16,6 +16,7 @@ from PySide6.QtGui import QColor, QFont
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class RotaAdimDialog(QDialog):
@@ -36,9 +37,9 @@ class RotaAdimDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
-            QComboBox, QSpinBox {{ background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
+            QComboBox, QSpinBox {{ background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT}; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -68,11 +69,11 @@ class RotaAdimDialog(QDialog):
         form.addRow("Çıkış Depo:", self.cikis_depo_combo)
         
         self.ara_kalite_check = QCheckBox("Ara kalite kontrol")
-        self.ara_kalite_check.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.ara_kalite_check.setStyleSheet(f"color: {brand.TEXT};")
         form.addRow("", self.ara_kalite_check)
         
         self.final_check = QCheckBox("Final (son) adım")
-        self.final_check.setStyleSheet(f"color: {self.theme.get('text')};")
+        self.final_check.setStyleSheet(f"color: {brand.TEXT};")
         form.addRow("", self.final_check)
         
         self.bekleme_input = QSpinBox()
@@ -87,12 +88,12 @@ class RotaAdimDialog(QDialog):
         btn_layout.addStretch()
         
         iptal_btn = QPushButton("İptal")
-        iptal_btn.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 20px;")
+        iptal_btn.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 10px 20px;")
         iptal_btn.clicked.connect(self.reject)
         btn_layout.addWidget(iptal_btn)
         
         kaydet_btn = QPushButton("💾 Kaydet")
-        kaydet_btn.setStyleSheet(f"background: {self.theme.get('success')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
+        kaydet_btn.setStyleSheet(f"background: {brand.SUCCESS}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
         kaydet_btn.clicked.connect(self._save)
         btn_layout.addWidget(kaydet_btn)
         
@@ -179,9 +180,9 @@ class RotaDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
-            QLineEdit, QTextEdit, QSpinBox {{ background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
+            QLineEdit, QTextEdit, QSpinBox {{ background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 8px; color: {brand.TEXT}; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -224,12 +225,12 @@ class RotaDialog(QDialog):
         btn_layout.addStretch()
         
         iptal_btn = QPushButton("İptal")
-        iptal_btn.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 20px;")
+        iptal_btn.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 10px 20px;")
         iptal_btn.clicked.connect(self.reject)
         btn_layout.addWidget(iptal_btn)
         
         kaydet_btn = QPushButton("💾 Kaydet")
-        kaydet_btn.setStyleSheet(f"background: {self.theme.get('success')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
+        kaydet_btn.setStyleSheet(f"background: {brand.SUCCESS}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
         kaydet_btn.clicked.connect(self._save)
         btn_layout.addWidget(kaydet_btn)
         
@@ -285,17 +286,17 @@ class TanimRotaPage(BasePage):
         # Header
         header = QHBoxLayout()
         title = QLabel("🔄 Rota Tanımları")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         header.addStretch()
         
         yeni_btn = QPushButton("➕ Yeni Rota")
-        yeni_btn.setStyleSheet(f"background: {self.theme.get('success')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
+        yeni_btn.setStyleSheet(f"background: {brand.SUCCESS}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
         yeni_btn.clicked.connect(self._yeni_rota)
         header.addWidget(yeni_btn)
         
         refresh_btn = QPushButton("🔄")
-        refresh_btn.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 14px;")
+        refresh_btn.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; padding: 10px 14px;")
         refresh_btn.clicked.connect(self._load_rotalar)
         header.addWidget(refresh_btn)
         
@@ -336,7 +337,7 @@ class TanimRotaPage(BasePage):
         
         self.adim_ekle_btn = QPushButton("➕ Adım")
         self.adim_ekle_btn.setEnabled(False)
-        self.adim_ekle_btn.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 4px; padding: 6px 12px;")
+        self.adim_ekle_btn.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: 4px; padding: 6px 12px;")
         self.adim_ekle_btn.clicked.connect(self._yeni_adim)
         sag_header.addWidget(self.adim_ekle_btn)
         
@@ -357,14 +358,14 @@ class TanimRotaPage(BasePage):
         layout.addWidget(splitter, 1)
         
         self.info_label = QLabel("")
-        self.info_label.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.info_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         layout.addWidget(self.info_label)
     
     def _style_table(self, t):
         t.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; gridline-color: {self.theme.get('border')}; }}
+            QTableWidget {{ background: {brand.BG_CARD}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: 6px; gridline-color: {brand.BORDER}; }}
             QTableWidget::item {{ padding: 6px; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px; border: none; font-weight: bold; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 8px; border: none; font-weight: bold; }}
         """)
         t.verticalHeader().setVisible(False)
         t.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -462,7 +463,7 @@ class TanimRotaPage(BasePage):
                 self.adim_table.setItem(i, 1, sira)
                 
                 proses = QTableWidgetItem(f"{r[2]} - {r[3]}")
-                proses.setForeground(QColor(self.theme.get('primary')))
+                proses.setForeground(QColor(brand.PRIMARY))
                 self.adim_table.setItem(i, 2, proses)
                 
                 self.adim_table.setItem(i, 3, QTableWidgetItem(r[4] or '-'))
@@ -475,7 +476,7 @@ class TanimRotaPage(BasePage):
                 final = QTableWidgetItem("✓" if r[7] else "-")
                 final.setTextAlignment(Qt.AlignCenter)
                 if r[7]:
-                    final.setForeground(QColor(self.theme.get('success')))
+                    final.setForeground(QColor(brand.SUCCESS))
                 self.adim_table.setItem(i, 6, final)
                 
                 widget = self.create_action_buttons([

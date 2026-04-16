@@ -405,7 +405,14 @@ class MainWindow(QMainWindow):
             self.current_color = "nexor"
             self.expanded_mode = True
             self.logo_path = None
-        
+
+        # Nexor marka sistemi — mode senkronizasyonu
+        try:
+            from core.nexor_brand import brand
+            brand.set_mode(self.current_mode)
+        except Exception:
+            pass
+
         try:
             self.theme = build_theme(self.current_mode, self.current_color)
         except Exception as e:
@@ -515,7 +522,11 @@ class MainWindow(QMainWindow):
         
         # Stack (sayfalar)
         self.stack = QStackedWidget()
-        self.stack.setStyleSheet(f"background: {self.theme['bg_main']};")
+        try:
+            from core.nexor_brand import brand
+            self.stack.setStyleSheet(f"background: {brand.BG_MAIN};")
+        except Exception:
+            self.stack.setStyleSheet(f"background: {self.theme['bg_main']};")
         r_layout.addWidget(self.stack)
 
         # Minimize bar (dialog'lar icin)
@@ -908,18 +919,23 @@ class MainWindow(QMainWindow):
             if THEMED_MESSAGEBOX_AVAILABLE:
                 update_messagebox_theme(t)
             
-            # MainWindow stili
+            # MainWindow stili — brand sisteminden ana arka plan
+            try:
+                from core.nexor_brand import brand
+                bg = brand.BG_MAIN
+            except Exception:
+                bg = t.get('bg_main', '#0A0A0B')
+
             self.setStyleSheet(f"""
-                QMainWindow {{ 
-                    background-color: {t['bg_main']}; 
+                QMainWindow {{
+                    background-color: {bg};
                 }}
             """)
-            
-            # Sağ panel ve stack varsa onları da güncelle
+
             if hasattr(self, 'right_panel'):
-                self.right_panel.setStyleSheet(f"background-color: {t['bg_main']};")
+                self.right_panel.setStyleSheet(f"background-color: {bg};")
             if hasattr(self, 'stack'):
-                self.stack.setStyleSheet(f"background-color: {t['bg_main']};")
+                self.stack.setStyleSheet(f"background-color: {bg};")
         except Exception as e:
             logger.error("Tema uygulanamadı: %s", e)
             raise
@@ -987,7 +1003,31 @@ class MainWindow(QMainWindow):
             pass
 
     def _on_menu_clicked(self, menu_id: str):
-        """Menü tıklandığında"""
+        """Menü tıklandığında — şifre korumalı menü kontrolü dahil"""
+        # Sifre korumali parent menu kontrolu
+        parent_menu = next(
+            (m for m in MENU_STRUCTURE
+             if m.get('children') and any(ch['id'] == menu_id for ch in m['children'])),
+            None
+        )
+        if parent_menu and parent_menu.get('password'):
+            parent_id = parent_menu['id']
+            if not hasattr(self, '_unlocked_menus'):
+                self._unlocked_menus = set()
+            if parent_id not in self._unlocked_menus:
+                from PySide6.QtWidgets import QInputDialog, QLineEdit as QLE
+                pwd, ok = QInputDialog.getText(
+                    self, "Sifre Gerekli",
+                    f"'{parent_menu['label']}' menusune erisim icin sifre girin:",
+                    QLE.Password
+                )
+                if not ok or pwd != parent_menu['password']:
+                    return
+                self._unlocked_menus.add(parent_id)
+                # Sidebar'a da bildir
+                if hasattr(self, 'sidebar') and hasattr(self.sidebar, '_unlocked_menus'):
+                    self.sidebar._unlocked_menus.add(parent_id)
+
         try:
             self._show_page(menu_id)
         except Exception as e:
@@ -1067,6 +1107,13 @@ class MainWindow(QMainWindow):
             new_mode = "light" if self.current_mode == "dark" else "dark"
             self.current_mode = new_mode
 
+            # Nexor marka sistemine haber ver (renk tokenlari yeni moda gecer)
+            try:
+                from core.nexor_brand import brand
+                brand.set_mode(new_mode)
+            except Exception:
+                pass
+
             # Temayı yeniden oluştur
             self.theme = build_theme(self.current_mode, self.current_color)
 
@@ -1130,12 +1177,18 @@ class MainWindow(QMainWindow):
         """Ayarlar değiştiğinde (Sistem Ayarları sayfasından)"""
         try:
             needs_restart = (expanded != self.expanded_mode)
-            
+
             self.current_mode = mode
             self.current_color = color
             self.expanded_mode = expanded
             self.logo_path = logo if logo else None
-            
+
+            try:
+                from core.nexor_brand import brand
+                brand.set_mode(mode)
+            except Exception:
+                pass
+
             self.theme = build_theme(mode, color)
             self._apply_theme()
             
@@ -1251,9 +1304,16 @@ def main():
     try:
         app = QApplication(sys.argv)
         app.setFont(QFont("Segoe UI", 10))
-        
+
         # Fusion style - cross-platform tutarlılık için
         app.setStyle("Fusion")
+
+        # Nexor marka sistemini baslat (ekrani olcer, scale hesaplar, Inter yukler)
+        try:
+            from core.nexor_brand import brand
+            brand.init(app)
+        except Exception as brand_err:
+            print(f"[main] Brand init hatasi: {brand_err}")
         
         # Başlangıçta koyu tema palette (login için) - TÜM DURUMLAR
         from PySide6.QtGui import QPalette, QColor

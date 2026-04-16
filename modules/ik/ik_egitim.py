@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 class EgitimKayitDialog(QDialog):
@@ -26,33 +27,38 @@ class EgitimKayitDialog(QDialog):
         super().__init__(parent)
         self.theme = theme
         self.setWindowTitle("Eğitim Kaydı Ekle")
-        self.setMinimumSize(500, 450)
+        self.setMinimumSize(brand.sp(500), brand.sp(450))
         self._setup_ui()
         self._load_data()
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; font-family: {brand.FONT_FAMILY}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit, QSpinBox, QDoubleSpinBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus,
+            QSpinBox:focus, QDoubleSpinBox:focus {{ border-color: {brand.PRIMARY}; }}
         """)
-        
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        title = QLabel("📚 Eğitim Kaydı Ekle")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
+        layout.setContentsMargins(brand.SP_5, brand.SP_5, brand.SP_5, brand.SP_5)
+        layout.setSpacing(brand.SP_4)
+
+        title = QLabel("Egitim Kaydi Ekle")
+        title.setStyleSheet(
+            f"font-size: {brand.FS_HEADING}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.PRIMARY};"
+        )
         layout.addWidget(title)
-        
+
         form = QFormLayout()
-        form.setSpacing(12)
+        form.setSpacing(brand.SP_3)
         
         self.cmb_personel = QComboBox()
         form.addRow("Personel:", self.cmb_personel)
@@ -86,7 +92,7 @@ class EgitimKayitDialog(QDialog):
         form.addRow("Puan:", self.spn_puan)
         
         self.txt_not = QTextEdit()
-        self.txt_not.setMaximumHeight(60)
+        self.txt_not.setMaximumHeight(brand.sp(60))
         form.addRow("Notlar:", self.txt_not)
         
         layout.addLayout(form)
@@ -96,29 +102,38 @@ class EgitimKayitDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         
-        cancel_btn = QPushButton("İptal")
+        cancel_btn = QPushButton("Iptal")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setFixedHeight(brand.sp(38))
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 10px 24px;
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_MEDIUM};
             }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; border-color: {brand.BORDER_HARD}; }}
         """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
-        
-        save_btn = QPushButton("💾 Kaydet")
+
+        save_btn = QPushButton("Kaydet")
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setFixedHeight(brand.sp(38))
         save_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 24px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_6}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         save_btn.clicked.connect(self._save)
         btn_layout.addWidget(save_btn)
@@ -126,34 +141,40 @@ class EgitimKayitDialog(QDialog):
         layout.addLayout(btn_layout)
     
     def _load_data(self):
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("SELECT id, ad + ' ' + soyad FROM ik.personeller WHERE aktif_mi = 1 ORDER BY ad")
             for row in cursor.fetchall():
                 self.cmb_personel.addItem(row[1], row[0])
-            
+
             cursor.execute("SELECT id, egitim_adi FROM ik.egitimler WHERE aktif_mi = 1 ORDER BY egitim_adi")
             for row in cursor.fetchall():
                 self.cmb_egitim.addItem(row[1], row[0])
-            
-            conn.close()
         except Exception as e:
-            print(f"Veri yükleme hatası: {e}")
+            print(f"Veri yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _save(self):
+        personel_id = self.cmb_personel.currentData()
+        egitim_id = self.cmb_egitim.currentData()
+
+        if not personel_id or not egitim_id:
+            QMessageBox.warning(self, "Uyari", "Personel ve egitim secilmelidir.")
+            return
+
+        conn = None
         try:
-            personel_id = self.cmb_personel.currentData()
-            egitim_id = self.cmb_egitim.currentData()
-            
-            if not personel_id or not egitim_id:
-                QMessageBox.warning(self, "Uyarı", "Personel ve eğitim seçilmelidir.")
-                return
-            
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 INSERT INTO ik.egitim_kayitlari (
                     egitim_id, personel_id, egitim_tarihi, egitmen,
@@ -162,19 +183,24 @@ class EgitimKayitDialog(QDialog):
             """, (
                 egitim_id, personel_id, self.dt_tarih.date().toPython(),
                 self.txt_egitmen.text() or None, self.spn_sure.value(),
-                self.cmb_sonuc.currentText(), 
+                self.cmb_sonuc.currentText(),
                 self.spn_puan.value() if self.spn_puan.value() > 0 else None,
                 self.txt_not.toPlainText() or None
             ))
-            
+
             conn.commit()
             LogManager.log_insert('ik', 'ik.egitim_kayitlari', None, 'Egitim kaydi eklendi')
-            conn.close()
 
-            QMessageBox.information(self, "Başarılı", "Eğitim kaydı eklendi.")
+            QMessageBox.information(self, "Basarili", "Egitim kaydi eklendi.")
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, "Hata", f"Kayıt hatası: {e}")
+            QMessageBox.critical(self, "Hata", f"Kayit hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
 
 class IKEgitimPage(BasePage):
@@ -187,98 +213,101 @@ class IKEgitimPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
+
         # Header
-        header = QHBoxLayout()
-        
-        title = QLabel("📚 Eğitim Takip")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
-        header.addWidget(title)
-        
-        header.addStretch()
-        
-        new_btn = QPushButton("➕ Eğitim Kaydı Ekle")
+        header = self.create_page_header(
+            "Egitim Takip",
+            "Personel egitim kayitlari ve planlama"
+        )
+
+        new_btn = QPushButton("Egitim Kaydi Ekle")
+        new_btn.setCursor(Qt.PointingHandCursor)
+        new_btn.setFixedHeight(brand.sp(38))
         new_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-weight: bold;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         new_btn.clicked.connect(self._new_kayit)
         header.addWidget(new_btn)
-        
+
         layout.addLayout(header)
-        
-        # Özet kartları
-        ozet_frame = QFrame()
-        ozet_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
-        ozet_layout = QHBoxLayout(ozet_frame)
-        ozet_layout.setContentsMargins(16, 16, 16, 16)
-        
-        self.kart_egitim = self._create_ozet_kart("📚", "Toplam Eğitim", "0", self.theme.get('primary'))
-        ozet_layout.addWidget(self.kart_egitim)
-        
-        self.kart_katilim = self._create_ozet_kart("👥", "Katılımcı", "0", self.theme.get('success'))
-        ozet_layout.addWidget(self.kart_katilim)
-        
-        self.kart_saat = self._create_ozet_kart("⏱️", "Toplam Saat", "0", self.theme.get('info'))
-        ozet_layout.addWidget(self.kart_saat)
-        
-        self.kart_yaklasan = self._create_ozet_kart("📅", "Yenileme Bekleyen", "0", self.theme.get('warning'))
-        ozet_layout.addWidget(self.kart_yaklasan)
-        
-        layout.addWidget(ozet_frame)
+
+        # KPI kartlari
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(brand.SP_4)
+
+        self.kart_egitim = self.create_stat_card("TOPLAM EGITIM", "0", color=brand.PRIMARY)
+        kpi_row.addWidget(self.kart_egitim)
+
+        self.kart_katilim = self.create_stat_card("KATILIMCI", "0", color=brand.SUCCESS)
+        kpi_row.addWidget(self.kart_katilim)
+
+        self.kart_saat = self.create_stat_card("TOPLAM SAAT", "0", color=brand.INFO)
+        kpi_row.addWidget(self.kart_saat)
+
+        self.kart_yaklasan = self.create_stat_card("YENILEME BEKLEYEN", "0", color=brand.WARNING)
+        kpi_row.addWidget(self.kart_yaklasan)
+
+        layout.addLayout(kpi_row)
         
         # Filtreler
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: {brand.R_LG}px;")
         filter_layout = QHBoxLayout(filter_frame)
-        filter_layout.setContentsMargins(16, 12, 16, 12)
-        
-        filter_layout.addWidget(QLabel("Ara:"))
+        filter_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
+
+        lbl_ara = QLabel("Ara:")
+        lbl_ara.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
+        filter_layout.addWidget(lbl_ara)
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Personel adı, eğitim adı...")
+        self.search_input.setPlaceholderText("Personel adi, egitim adi...")
         self.search_input.setStyleSheet(self._input_style())
-        self.search_input.setMinimumWidth(200)
+        self.search_input.setMinimumWidth(brand.sp(200))
         self.search_input.returnPressed.connect(self._load_data)
         filter_layout.addWidget(self.search_input)
-        
-        filter_layout.addWidget(QLabel("Eğitim:"))
+
+        lbl_egt = QLabel("Egitim:")
+        lbl_egt.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY_SM}px;")
+        filter_layout.addWidget(lbl_egt)
         self.egitim_combo = QComboBox()
         self.egitim_combo.setStyleSheet(self._combo_style())
-        self.egitim_combo.setMinimumWidth(150)
-        self.egitim_combo.addItem("Tümü", None)
+        self.egitim_combo.setMinimumWidth(brand.sp(150))
+        self.egitim_combo.addItem("Tumu", None)
         self.egitim_combo.currentIndexChanged.connect(self._load_data)
         filter_layout.addWidget(self.egitim_combo)
-        
+
         filter_layout.addStretch()
-        
+
         layout.addWidget(filter_frame)
-        
+
         # Tab widget
         tabs = QTabWidget()
         tabs.setStyleSheet(self._tab_style())
-        
-        tabs.addTab(self._create_kayitlar_tab(), "📋 Eğitim Kayıtları")
-        tabs.addTab(self._create_yenileme_tab(), "⚠️ Yenileme Bekleyenler")
-        tabs.addTab(self._create_matris_tab(), "📊 Eğitim Matrisi")
-        
+
+        tabs.addTab(self._create_kayitlar_tab(), "Egitim Kayitlari")
+        tabs.addTab(self._create_yenileme_tab(), "Yenileme Bekleyenler")
+        tabs.addTab(self._create_matris_tab(), "Egitim Matrisi")
+
         layout.addWidget(tabs, 1)
-        
-        # Eğitimleri yükle
+
+        # Egitimleri yukle
         self._load_egitimler()
     
     def _create_ozet_kart(self, icon: str, baslik: str, deger: str, renk: str) -> QFrame:
         frame = QFrame()
         frame.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_main')};
+                background: {brand.BG_MAIN};
                 border: 1px solid {renk};
                 border-radius: 8px;
             }}
@@ -288,7 +317,7 @@ class IKEgitimPage(BasePage):
         layout.setSpacing(4)
         
         header = QLabel(f"{icon} {baslik}")
-        header.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        header.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 11px;")
         layout.addWidget(header)
         
         value = QLabel(deger)
@@ -340,8 +369,8 @@ class IKEgitimPage(BasePage):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 10, 0, 0)
         
-        info = QLabel("📊 Eğitim matrisi: Personel x Eğitim bazında tamamlanma durumu")
-        info.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px; padding: 10px;")
+        info = QLabel("Egitim matrisi: Personel x Egitim bazinda tamamlanma durumu")
+        info.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: 12px; padding: 10px;")
         layout.addWidget(info)
         
         self.matris_table = QTableWidget()
@@ -354,44 +383,44 @@ class IKEgitimPage(BasePage):
     def _input_style(self):
         return f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """
     
     def _combo_style(self):
         return f"""
             QComboBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """
     
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{
                 padding: 8px;
-                border-bottom: 1px solid {self.theme.get('border')};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """
@@ -399,22 +428,22 @@ class IKEgitimPage(BasePage):
     def _tab_style(self):
         return f"""
             QTabWidget::pane {{ 
-                border: 1px solid {self.theme.get('border')}; 
-                background: {self.theme.get('bg_card')}; 
+                border: 1px solid {brand.BORDER}; 
+                background: {brand.BG_CARD}; 
                 border-radius: 8px; 
             }}
             QTabBar::tab {{ 
-                background: {self.theme.get('bg_input')}; 
-                color: {self.theme.get('text')}; 
+                background: {brand.BG_INPUT}; 
+                color: {brand.TEXT}; 
                 padding: 10px 20px; 
-                border: 1px solid {self.theme.get('border')}; 
+                border: 1px solid {brand.BORDER}; 
                 border-bottom: none; 
                 border-radius: 6px 6px 0 0; 
                 margin-right: 2px; 
             }}
             QTabBar::tab:selected {{ 
-                background: {self.theme.get('bg_card')}; 
-                border-bottom: 2px solid {self.theme.get('primary')}; 
+                background: {brand.BG_CARD}; 
+                border-bottom: 2px solid {brand.PRIMARY}; 
             }}
         """
     
@@ -506,9 +535,9 @@ class IKEgitimPage(BasePage):
                 sonuc = row[5] or ''
                 sonuc_item = QTableWidgetItem(sonuc)
                 if sonuc == 'Başarılı':
-                    sonuc_item.setForeground(QColor(self.theme.get('success')))
+                    sonuc_item.setForeground(QColor(brand.SUCCESS))
                 elif sonuc == 'Başarısız':
-                    sonuc_item.setForeground(QColor(self.theme.get('danger')))
+                    sonuc_item.setForeground(QColor(brand.ERROR))
                 self.kayit_table.setItem(row_idx, 5, sonuc_item)
                 
                 self.kayit_table.setItem(row_idx, 6, QTableWidgetItem(str(row[6]) if row[6] else '-'))
@@ -563,18 +592,16 @@ class IKEgitimPage(BasePage):
                 gecikme = (today - row[3]).days
                 gecikme_item = QTableWidgetItem(str(gecikme) if gecikme > 0 else "0")
                 if gecikme > 0:
-                    gecikme_item.setForeground(QColor(self.theme.get('danger')))
+                    gecikme_item.setForeground(QColor(brand.ERROR))
                 self.yenileme_table.setItem(row_idx, 4, gecikme_item)
                 
                 # Durum
                 if gecikme > 0:
-                    durum = "⚠️ GECİKMİŞ"
-                    durum_item = QTableWidgetItem(durum)
-                    durum_item.setForeground(QColor(self.theme.get('danger')))
+                    durum_item = QTableWidgetItem("GECIKMIS")
+                    durum_item.setForeground(QColor(brand.ERROR))
                 else:
-                    durum = "⏳ Yaklaşıyor"
-                    durum_item = QTableWidgetItem(durum)
-                    durum_item.setForeground(QColor(self.theme.get('warning')))
+                    durum_item = QTableWidgetItem("Yaklasiyor")
+                    durum_item.setForeground(QColor(brand.WARNING))
                 self.yenileme_table.setItem(row_idx, 5, durum_item)
     
     def _new_kayit(self):

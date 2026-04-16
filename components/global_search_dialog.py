@@ -11,6 +11,7 @@ from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QShortcut, QKeySequence
 
 from core.menu_structure import MENU_STRUCTURE
+from core.nexor_brand import brand
 
 
 class GlobalSearchDialog(QDialog):
@@ -61,9 +62,9 @@ class GlobalSearchDialog(QDialog):
         container = QWidget()
         container.setStyleSheet(f"""
             QWidget#search_container {{
-                background: {t.get('bg_card', '#1E293B')};
-                border: 1px solid {t.get('border', '#334155')};
-                border-radius: 12px;
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
             }}
         """)
         container.setObjectName("search_container")
@@ -73,20 +74,20 @@ class GlobalSearchDialog(QDialog):
         main_layout.addWidget(container)
 
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(16, 16, 16, 12)
-        layout.setSpacing(8)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_3)
+        layout.setSpacing(brand.SP_2)
 
         # Arama input
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Sayfa ara... (ornek: personel, kalite, stok)")
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
-                background: {t.get('bg_main', '#0F1419')};
-                color: {t.get('text', '#E2E8F0')};
-                border: 2px solid {t.get('primary', '#DC2626')};
-                border-radius: 8px;
-                padding: 12px 16px;
-                font-size: 15px;
+                background: {brand.BG_MAIN};
+                color: {brand.TEXT};
+                border: 2px solid {brand.PRIMARY};
+                border-radius: {brand.R_MD}px;
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                font-size: {brand.FS_BODY_LG}px;
             }}
         """)
         self.search_input.textChanged.connect(self._on_search)
@@ -94,7 +95,7 @@ class GlobalSearchDialog(QDialog):
 
         # Ipucu
         hint = QLabel("Ctrl+K ile acin  |  Enter ile secin  |  Esc ile kapatin")
-        hint.setStyleSheet(f"color: {t.get('text_muted', '#64748B')}; font-size: 11px; padding: 0 4px;")
+        hint.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_CAPTION}px; padding: 0 {brand.SP_1}px;")
         layout.addWidget(hint)
 
         # Sonuc listesi
@@ -107,16 +108,16 @@ class GlobalSearchDialog(QDialog):
             }}
             QListWidget::item {{
                 background: transparent;
-                border-radius: 6px;
-                padding: 10px 12px;
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_3}px {brand.SP_3}px;
                 margin: 1px 0;
-                color: {t.get('text', '#E2E8F0')};
+                color: {brand.TEXT};
             }}
             QListWidget::item:selected {{
-                background: {t.get('bg_hover', '#334155')};
+                background: {brand.BG_HOVER};
             }}
             QListWidget::item:hover {{
-                background: {t.get('bg_hover', '#334155')};
+                background: {brand.BG_HOVER};
             }}
         """)
         self.result_list.itemActivated.connect(self._on_item_selected)

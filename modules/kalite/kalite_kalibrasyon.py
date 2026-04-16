@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor, QFont
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 class CihazDialog(QDialog):
@@ -28,7 +29,7 @@ class CihazDialog(QDialog):
         self.cihaz_id = cihaz_id
         self.cihaz = {}
         self.setWindowTitle("Ölçüm Cihazı" if not cihaz_id else "Cihaz Düzenle")
-        self.setMinimumSize(550, 500)
+        self.setMinimumSize(brand.sp(550), brand.sp(500))
         if cihaz_id:
             self._load_cihaz()
         self._setup_ui()
@@ -52,14 +53,14 @@ class CihazDialog(QDialog):
             print(f"Cihaz yukleme hatasi: {e}")
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main')}; }} QLabel {{ color: {self.theme.get('text')}; }}")
+        self.setStyleSheet(f"QDialog {{ background: {brand.BG_MAIN}; }} QLabel {{ color: {brand.TEXT}; }}")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
 
-        input_style = f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;"
+        input_style = f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;"
 
         form = QFormLayout()
-        form.setSpacing(10)
+        form.setSpacing(brand.SP_3)
 
         self.txt_kod = QLineEdit(self.cihaz.get('kod', ''))
         self.txt_kod.setStyleSheet(input_style)
@@ -114,7 +115,7 @@ class CihazDialog(QDialog):
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         btn_kaydet = QPushButton("Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 10px 24px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: {brand.R_SM}px; padding: {brand.SP_3}px {brand.SP_6}px; font-weight: {brand.FW_SEMIBOLD};")
         btn_kaydet.clicked.connect(self._kaydet)
         btn_layout.addWidget(btn_kaydet)
         layout.addLayout(btn_layout)
@@ -179,22 +180,22 @@ class KalibrasyonKayitDialog(QDialog):
         self.cihaz_id = cihaz_id
         self.cihaz_adi = cihaz_adi
         self.setWindowTitle("Kalibrasyon Kaydi Ekle")
-        self.setMinimumSize(500, 450)
+        self.setMinimumSize(brand.sp(500), brand.sp(450))
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main')}; }} QLabel {{ color: {self.theme.get('text')}; }}")
+        self.setStyleSheet(f"QDialog {{ background: {brand.BG_MAIN}; }} QLabel {{ color: {brand.TEXT}; }}")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
 
-        input_style = f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;"
+        input_style = f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;"
 
         title = QLabel(f"{self.cihaz_adi}")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.theme.get('primary')};")
+        title.setStyleSheet(f"font-size: {brand.FS_HEADING_SM}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};")
         layout.addWidget(title)
 
         form = QFormLayout()
-        form.setSpacing(12)
+        form.setSpacing(brand.SP_3)
 
         self.date_kalibrasyon = QDateEdit()
         self.date_kalibrasyon.setDate(QDate.currentDate())
@@ -248,7 +249,7 @@ class KalibrasyonKayitDialog(QDialog):
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         btn_kaydet = QPushButton("Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 10px 24px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: {brand.R_SM}px; padding: {brand.SP_3}px {brand.SP_6}px; font-weight: {brand.FW_SEMIBOLD};")
         btn_kaydet.clicked.connect(self._kaydet)
         btn_layout.addWidget(btn_kaydet)
         layout.addLayout(btn_layout)
@@ -341,85 +342,73 @@ class KaliteKalibrasyonPage(BasePage):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(14)
-
-        t = self.theme
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
 
         # === HEADER ===
-        header = QHBoxLayout()
-        title = QLabel("Kalibrasyon Yonetimi")
-        title.setStyleSheet(f"font-size: 22px; font-weight: bold; color: {t.get('text')};")
-        header.addWidget(title)
-        header.addStretch()
+        header = self.create_page_header("Kalibrasyon Yonetimi", "Olcum cihazlari kalibrasyon takibi")
 
-        btn_style = f"""
-            QPushButton {{
-                background: {t.get('bg_card')};
-                color: {t.get('text')};
-                border: 1px solid {t.get('border')};
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: 500;
-            }}
-            QPushButton:hover {{ background: {t.get('bg_hover')}; }}
-        """
-
-        btn_rapor = QPushButton("PDF Rapor")
-        btn_rapor.setStyleSheet(btn_style)
+        btn_rapor = self.create_primary_button("PDF Rapor")
         btn_rapor.clicked.connect(self._pdf_rapor)
         header.addWidget(btn_rapor)
 
-        btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(btn_style)
+        btn_yenile = self.create_primary_button("Yenile")
         btn_yenile.clicked.connect(self._load_data)
         header.addWidget(btn_yenile)
 
-        btn_yeni = QPushButton("+ Yeni Cihaz")
-        btn_yeni.setStyleSheet(f"background: {t.get('primary')}; color: white; border: none; border-radius: 6px; padding: 8px 18px; font-weight: bold;")
+        btn_yeni = self.create_success_button("+ Yeni Cihaz")
         btn_yeni.clicked.connect(self._yeni_cihaz)
         header.addWidget(btn_yeni)
 
         layout.addLayout(header)
 
-        # === ISTATISTIK KARTLARI ===
-        stat_layout = QHBoxLayout()
-        stat_layout.setSpacing(12)
-        self.stat_toplam = self._stat_card("Toplam Cihaz", "0", t.get('primary', '#3b82f6'))
-        self.stat_guncel = self._stat_card("Guncel", "0", t.get('success', '#22c55e'))
-        self.stat_yaklasan = self._stat_card("30 Gun Icinde", "0", t.get('warning', '#f59e0b'))
-        self.stat_geciken = self._stat_card("Suresi Gecmis", "0", t.get('error', '#ef4444'))
-        stat_layout.addWidget(self.stat_toplam)
-        stat_layout.addWidget(self.stat_guncel)
-        stat_layout.addWidget(self.stat_yaklasan)
-        stat_layout.addWidget(self.stat_geciken)
-        stat_layout.addStretch()
-        layout.addLayout(stat_layout)
+        # === KPI KARTLARI ===
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(brand.SP_4)
+        self.stat_toplam = self.create_stat_card("TOPLAM CIHAZ", "0", color=brand.PRIMARY)
+        self.stat_guncel = self.create_stat_card("GUNCEL", "0", color=brand.SUCCESS)
+        self.stat_yaklasan = self.create_stat_card("30 GUN ICINDE", "0", color=brand.WARNING)
+        self.stat_geciken = self.create_stat_card("SURESI GECMIS", "0", color=brand.ERROR)
+        kpi_row.addWidget(self.stat_toplam)
+        kpi_row.addWidget(self.stat_guncel)
+        kpi_row.addWidget(self.stat_yaklasan)
+        kpi_row.addWidget(self.stat_geciken)
+        kpi_row.addStretch()
+        layout.addLayout(kpi_row)
 
         # === FILTRE ===
         filtre = QHBoxLayout()
-        filtre.setSpacing(10)
+        filtre.setSpacing(brand.SP_3)
+
+        input_css = f"""
+            QLineEdit, QComboBox {{
+                background: {brand.BG_INPUT}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px; font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus, QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+        """
 
         self.txt_ara = QLineEdit()
         self.txt_ara.setPlaceholderText("Cihaz ara...")
-        self.txt_ara.setMaximumWidth(250)
-        self.txt_ara.setStyleSheet(f"background: {t.get('bg_input')}; color: {t.get('text')}; border: 1px solid {t.get('border')}; border-radius: 6px; padding: 8px;")
+        self.txt_ara.setMaximumWidth(brand.sp(250))
+        self.txt_ara.setStyleSheet(input_css)
         self.txt_ara.textChanged.connect(self._filtrele)
         filtre.addWidget(self.txt_ara)
 
         lbl = QLabel("Durum:")
-        lbl.setStyleSheet(f"color: {t.get('text_secondary')};")
+        lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY}px;")
         filtre.addWidget(lbl)
 
         self.cmb_kal_durum = QComboBox()
         self.cmb_kal_durum.addItems(['Tumu', 'Suresi Gecmis', '30 Gun Icinde', 'Guncel', 'Plansiz'])
-        self.cmb_kal_durum.setStyleSheet(f"background: {t.get('bg_input')}; color: {t.get('text')}; border: 1px solid {t.get('border')}; border-radius: 6px; padding: 6px 12px;")
+        self.cmb_kal_durum.setStyleSheet(input_css)
         self.cmb_kal_durum.currentIndexChanged.connect(self._filtrele)
         filtre.addWidget(self.cmb_kal_durum)
         filtre.addStretch()
 
         self.lbl_info = QLabel("")
-        self.lbl_info.setStyleSheet(f"color: {t.get('text_muted')}; font-size: 12px;")
+        self.lbl_info.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY_SM}px;")
         filtre.addWidget(self.lbl_info)
 
         layout.addLayout(filtre)
@@ -433,63 +422,43 @@ class KaliteKalibrasyonPage(BasePage):
             "Kalan Gun", "Yapan Firma", "Islem"
         ])
         self.table.setColumnHidden(0, True)
-        self.table.setColumnWidth(1, 100)
-        self.table.setColumnWidth(3, 150)
-        self.table.setColumnWidth(4, 110)
-        self.table.setColumnWidth(5, 120)
-        self.table.setColumnWidth(6, 130)
-        self.table.setColumnWidth(7, 90)
-        self.table.setColumnWidth(8, 130)
-        self.table.setColumnWidth(9, 170)
+        self.table.setColumnWidth(1, brand.sp(100))
+        self.table.setColumnWidth(3, brand.sp(150))
+        self.table.setColumnWidth(4, brand.sp(110))
+        self.table.setColumnWidth(5, brand.sp(120))
+        self.table.setColumnWidth(6, brand.sp(130))
+        self.table.setColumnWidth(7, brand.sp(90))
+        self.table.setColumnWidth(8, brand.sp(130))
+        self.table.setColumnWidth(9, brand.sp(170))
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {t.get('bg_card')};
-                color: {t.get('text')};
-                border: 1px solid {t.get('border')};
-                border-radius: 8px;
-                gridline-color: {t.get('border')};
+                background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px; outline: none;
             }}
-            QTableWidget::item {{ padding: 4px 8px; }}
-            QTableWidget::item:selected {{ background: {t.get('bg_selected', '#1E1215')}; }}
+            QTableWidget::item {{
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border-bottom: 1px solid {brand.BORDER}; color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
             QHeaderView::section {{
-                background: {t.get('bg_sidebar', '#0D1117')};
-                color: {t.get('text')};
-                padding: 10px 8px;
-                border: none;
-                border-bottom: 2px solid {t.get('border')};
-                font-weight: bold;
-                font-size: 12px;
+                background: {brand.BG_SURFACE}; color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_4}px; border: none;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};
             }}
         """)
         layout.addWidget(self.table, 1)
 
-    def _stat_card(self, title: str, value: str, color: str) -> QFrame:
-        card = QFrame()
-        card.setFixedSize(160, 72)
-        card.setStyleSheet(f"""
-            QFrame {{
-                background: {self.theme.get('bg_card')};
-                border-left: 3px solid {color};
-                border-radius: 8px;
-            }}
-        """)
-        lo = QVBoxLayout(card)
-        lo.setContentsMargins(14, 8, 14, 8)
-        lo.setSpacing(2)
-        lbl_t = QLabel(title)
-        lbl_t.setStyleSheet(f"color: {self.theme.get('text_secondary')}; font-size: 11px;")
-        lo.addWidget(lbl_t)
-        lbl_v = QLabel(value)
-        lbl_v.setObjectName("stat_value")
-        lbl_v.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
-        lo.addWidget(lbl_v)
-        return card
+    # KPI kartlari artik BasePage.create_stat_card kullaniliyor
 
     def _yeni_cihaz(self):
         dlg = CihazDialog(self.theme, parent=self)

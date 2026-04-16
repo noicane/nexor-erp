@@ -17,6 +17,7 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 # 8D Adımları
@@ -41,30 +42,45 @@ class Yeni8DDialog(QDialog):
         self.theme = theme
         self.uygunsuzluk_id = uygunsuzluk_id
         self.setWindowTitle("Yeni 8D Raporu")
-        self.setMinimumSize(750, 600)
+        self.setMinimumSize(brand.sp(750), brand.sp(600))
         self._setup_ui()
-    
+
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#0f172a')}; }}
-            QLabel {{ color: {self.theme.get('text', '#ffffff')}; }}
-            QGroupBox {{ 
-                color: {self.theme.get('primary', '#3b82f6')}; 
-                font-weight: bold; 
-                border: 1px solid {self.theme.get('border')}; 
-                border-radius: 8px; 
-                margin-top: 12px; 
-                padding-top: 12px;
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
+            }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
+            QGroupBox {{
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                margin-top: {brand.SP_5}px;
+                padding: {brand.SP_5}px;
+                padding-top: {brand.SP_8}px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: {brand.SP_4}px;
+                top: {brand.SP_2}px;
+                padding: 0 {brand.SP_2}px;
+                color: {brand.TEXT_MUTED};
+                background: {brand.BG_MAIN};
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
-        # Başlık
-        title = QLabel("📋 Yeni 8D Raporu Oluştur")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
+        # Baslik
+        title = QLabel("Yeni 8D Raporu Olustur")
+        title.setStyleSheet(
+            f"font-size: {brand.FS_HEADING}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};"
+        )
         layout.addWidget(title)
         
         # Kaynak seçimi
@@ -72,7 +88,7 @@ class Yeni8DDialog(QDialog):
         kaynak_form = QFormLayout()
         
         self.cmb_uygunsuzluk = QComboBox()
-        self.cmb_uygunsuzluk.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        self.cmb_uygunsuzluk.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;")
         self._load_uygunsuzluklar()
         if self.uygunsuzluk_id:
             for i in range(self.cmb_uygunsuzluk.count()):
@@ -91,7 +107,7 @@ class Yeni8DDialog(QDialog):
         d0_layout.addWidget(QLabel("Problem Özeti:"))
         self.txt_problem = QTextEdit()
         self.txt_problem.setMaximumHeight(80)
-        self.txt_problem.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        self.txt_problem.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;")
         self.txt_problem.setPlaceholderText("Problemi kısaca açıklayın...")
         d0_layout.addWidget(self.txt_problem)
         
@@ -103,7 +119,7 @@ class Yeni8DDialog(QDialog):
         d1_form = QFormLayout()
         
         self.cmb_lider = QComboBox()
-        self.cmb_lider.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        self.cmb_lider.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;")
         self._load_personel()
         d1_form.addRow("Ekip Lideri:", self.cmb_lider)
         
@@ -116,7 +132,7 @@ class Yeni8DDialog(QDialog):
         self.date_hedef = QDateEdit()
         self.date_hedef.setDate(QDate.currentDate().addDays(14))
         self.date_hedef.setCalendarPopup(True)
-        self.date_hedef.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        self.date_hedef.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;")
         tarih_layout.addWidget(self.date_hedef)
         tarih_layout.addStretch()
         layout.addLayout(tarih_layout)
@@ -128,12 +144,12 @@ class Yeni8DDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 24px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_3}px {brand.SP_6}px; font-weight: {brand.FW_SEMIBOLD};")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
-        btn_kaydet = QPushButton("🚀 8D Başlat")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;")
+        btn_kaydet = QPushButton("8D Baslat")
+        btn_kaydet.setStyleSheet(f"background: {brand.PRIMARY}; color: white; border: none; border-radius: {brand.R_SM}px; padding: {brand.SP_3}px {brand.SP_6}px; font-weight: {brand.FW_SEMIBOLD}; font-weight: bold;")
         btn_kaydet.clicked.connect(self._kaydet)
         btn_layout.addWidget(btn_kaydet)
         
@@ -290,19 +306,17 @@ class Detay8DDialog(QDialog):
         self.theme = theme
         self.uygunsuzluk_id = uygunsuzluk_id
         self.setWindowTitle("8D Raporu Detayı")
-        self.setMinimumSize(1000, 750)
+        self.setMinimumSize(brand.sp(1000), brand.sp(750))
         self._load_data()
         self._setup_ui()
-    
+
     def _load_data(self):
-        """Verileri yükle"""
         self.kayit = {}
         self.aksiyonlar = {}
-        
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
             cursor.execute("""
                 SELECT u.id, u.kayit_no, u.kayit_tipi, u.kayit_tarihi, u.hata_tanimi,
                        c.unvan, s.urun_adi, u.lot_no, u.durum,
@@ -313,7 +327,6 @@ class Detay8DDialog(QDialog):
                 LEFT JOIN ik.personeller p ON u.sorumlu_id = p.id
                 WHERE u.id = ?
             """, (self.uygunsuzluk_id,))
-            
             row = cursor.fetchone()
             if row:
                 self.kayit = {
@@ -321,7 +334,6 @@ class Detay8DDialog(QDialog):
                     'hata_tanimi': row[4], 'cari': row[5], 'urun': row[6], 'lot': row[7],
                     'durum': row[8], 'sorumlu': row[9], 'hedef': row[10]
                 }
-            
             cursor.execute("""
                 SELECT a.id, a.d_adimi, a.aciklama, a.durum, a.hedef_tarih,
                        a.tamamlanma_tarihi, p.ad + ' ' + p.soyad as sorumlu
@@ -330,7 +342,6 @@ class Detay8DDialog(QDialog):
                 WHERE a.uygunsuzluk_id = ? AND a.aksiyon_tipi = '8D'
                 ORDER BY a.d_adimi, a.olusturma_tarihi
             """, (self.uygunsuzluk_id,))
-            
             for row in cursor.fetchall():
                 d = row[1] or 0
                 if d not in self.aksiyonlar:
@@ -339,38 +350,54 @@ class Detay8DDialog(QDialog):
                     'id': row[0], 'aciklama': row[2], 'durum': row[3],
                     'hedef': row[4], 'tamamlanma': row[5], 'sorumlu': row[6]
                 })
-            
-            conn.close()
         except Exception as e:
-            print(f"Veri yükleme hatası: {e}")
-    
+            print(f"[kalite_8d] Veri yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try: conn.close()
+                except Exception: pass
+
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#0f172a')}; }}
-            QLabel {{ color: {self.theme.get('text', '#ffffff')}; }}
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
+            }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
         """)
-        
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-        
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_5)
+
         # Header
         header = QHBoxLayout()
-        title = QLabel(f"📋 8D Raporu - {self.kayit.get('kayit_no', '')}")
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme.get('primary')};")
+        header.setSpacing(brand.SP_3)
+        accent = QFrame()
+        accent.setFixedSize(brand.SP_1, brand.sp(32))
+        accent.setStyleSheet(f"background: {brand.PRIMARY}; border-radius: 2px;")
+        header.addWidget(accent)
+        title = QLabel(f"8D Raporu - {self.kayit.get('kayit_no', '')}")
+        title.setStyleSheet(
+            f"font-size: {brand.FS_HEADING}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};"
+        )
         header.addWidget(title)
         
         durum = self.kayit.get('durum', '')
-        durum_colors = {'AÇIK': self.theme.get('warning'), 'İŞLEMDE': self.theme.get('info'), 'KAPATILDI': self.theme.get('success')}
+        durum_colors = {'AÇIK': brand.WARNING, 'İŞLEMDE': brand.INFO, 'KAPATILDI': brand.SUCCESS}
         durum_lbl = QLabel(durum)
-        durum_lbl.setStyleSheet(f"background: {durum_colors.get(durum, '#666')}; color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold;")
+        durum_lbl.setStyleSheet(
+            f"background: {durum_colors.get(durum, brand.TEXT_DIM)}; color: white; "
+            f"padding: {brand.SP_1}px {brand.SP_3}px; border-radius: {brand.R_SM}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; font-size: {brand.FS_BODY_SM}px;"
+        )
         header.addWidget(durum_lbl)
         header.addStretch()
         layout.addLayout(header)
         
         # Problem özeti
         problem_card = QFrame()
-        problem_card.setStyleSheet(f"background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; padding: 12px;")
+        problem_card.setStyleSheet(f"background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_LG}px; padding: {brand.SP_3}px;")
         problem_layout = QVBoxLayout(problem_card)
         
         p_header = QHBoxLayout()
@@ -382,7 +409,7 @@ class Detay8DDialog(QDialog):
         
         problem_text = QLabel(f"Problem: {(self.kayit.get('hata_tanimi', '') or '')[:200]}")
         problem_text.setWordWrap(True)
-        problem_text.setStyleSheet(f"color: {self.theme.get('text_secondary')};")
+        problem_text.setStyleSheet(f"color: {brand.TEXT_MUTED};")
         problem_layout.addWidget(problem_text)
         
         layout.addWidget(problem_card)
@@ -394,70 +421,81 @@ class Detay8DDialog(QDialog):
         
         scroll_widget = QWidget()
         scroll_layout = QVBoxLayout(scroll_widget)
-        scroll_layout.setSpacing(12)
-        
+        scroll_layout.setSpacing(brand.SP_3)
+
         for d_num in range(9):
             d_code, d_title, d_desc = D_ADIMLARI[d_num]
-            
+
             adim_frame = QFrame()
-            adim_frame.setStyleSheet(f"QFrame {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; }}")
-            
+            adim_frame.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_LG}px; }}")
+
             adim_layout = QVBoxLayout(adim_frame)
-            adim_layout.setContentsMargins(16, 12, 16, 12)
+            adim_layout.setContentsMargins(brand.SP_4, brand.SP_3, brand.SP_4, brand.SP_3)
             
             baslik_layout = QHBoxLayout()
             
-            num_bg = self.theme.get('text_secondary')
+            num_bg = brand.TEXT_MUTED
             if d_num in self.aksiyonlar:
                 all_done = all(a.get('durum') == 'TAMAMLANDI' for a in self.aksiyonlar[d_num])
-                num_bg = self.theme.get('success') if all_done else self.theme.get('warning')
+                num_bg = brand.SUCCESS if all_done else brand.WARNING
             
             num_lbl = QLabel(d_code)
-            num_lbl.setStyleSheet(f"background: {num_bg}; color: white; padding: 4px 10px; border-radius: 4px; font-weight: bold;")
+            num_lbl.setStyleSheet(
+                f"background: {num_bg}; color: white; padding: {brand.SP_1}px {brand.SP_3}px; "
+                f"border-radius: {brand.R_SM}px; font-weight: {brand.FW_SEMIBOLD}; font-size: {brand.FS_BODY_SM}px;"
+            )
             baslik_layout.addWidget(num_lbl)
-            
+
             title_lbl = QLabel(d_title)
-            title_lbl.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 14px;")
+            title_lbl.setStyleSheet(f"color: {brand.TEXT}; font-weight: {brand.FW_SEMIBOLD}; font-size: {brand.FS_BODY_LG}px;")
             baslik_layout.addWidget(title_lbl)
             
             baslik_layout.addStretch()
             
             btn_ekle = QPushButton("Ekle")
-            btn_ekle.setFixedSize(60, 30)
-            btn_ekle.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 4px; font-size: 12px;")
+            btn_ekle.setFixedSize(brand.sp(60), brand.sp(28))
+            btn_ekle.setCursor(Qt.PointingHandCursor)
+            btn_ekle.setStyleSheet(
+                f"background: {brand.PRIMARY}; color: white; border: none; "
+                f"border-radius: {brand.R_SM}px; font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};"
+            )
             btn_ekle.clicked.connect(lambda _, d=d_num: self._aksiyon_ekle(d))
             baslik_layout.addWidget(btn_ekle)
             
             adim_layout.addLayout(baslik_layout)
             
             desc_lbl = QLabel(d_desc)
-            desc_lbl.setStyleSheet(f"color: {self.theme.get('text_secondary')}; font-size: 11px;")
+            desc_lbl.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_CAPTION}px;")
             adim_layout.addWidget(desc_lbl)
             
             if d_num in self.aksiyonlar:
                 for aksiyon in self.aksiyonlar[d_num]:
                     a_layout = QHBoxLayout()
                     
-                    durum_icon = "✓" if aksiyon.get('durum') == 'TAMAMLANDI' else "○"
-                    durum_color = self.theme.get('success') if aksiyon.get('durum') == 'TAMAMLANDI' else self.theme.get('warning')
+                    durum_icon = "+" if aksiyon.get('durum') == 'TAMAMLANDI' else "o"
+                    durum_color = brand.SUCCESS if aksiyon.get('durum') == 'TAMAMLANDI' else brand.WARNING
                     icon_lbl = QLabel(durum_icon)
-                    icon_lbl.setStyleSheet(f"color: {durum_color}; font-size: 14px;")
-                    icon_lbl.setFixedWidth(20)
+                    icon_lbl.setStyleSheet(f"color: {durum_color}; font-size: {brand.FS_BODY_LG}px; font-weight: {brand.FW_BOLD};")
+                    icon_lbl.setFixedWidth(brand.sp(20))
                     a_layout.addWidget(icon_lbl)
                     
                     a_lbl = QLabel((aksiyon.get('aciklama', '') or '')[:80])
-                    a_lbl.setStyleSheet(f"color: {self.theme.get('text')};")
+                    a_lbl.setStyleSheet(f"color: {brand.TEXT};")
                     a_layout.addWidget(a_lbl, 1)
                     
                     if aksiyon.get('sorumlu'):
                         s_lbl = QLabel(aksiyon.get('sorumlu'))
-                        s_lbl.setStyleSheet(f"color: {self.theme.get('text_secondary')}; font-size: 11px;")
+                        s_lbl.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_CAPTION}px;")
                         a_layout.addWidget(s_lbl)
                     
                     if aksiyon.get('durum') != 'TAMAMLANDI':
                         btn_tamam = QPushButton("Tamam")
-                        btn_tamam.setFixedSize(60, 28)
-                        btn_tamam.setStyleSheet(f"background: {self.theme.get('success')}; color: white; border: none; border-radius: 4px; font-size: 12px;")
+                        btn_tamam.setFixedSize(brand.sp(60), brand.sp(28))
+                        btn_tamam.setCursor(Qt.PointingHandCursor)
+                        btn_tamam.setStyleSheet(
+                            f"background: {brand.SUCCESS}; color: white; border: none; "
+                            f"border-radius: {brand.R_SM}px; font-size: {brand.FS_BODY_SM}px;"
+                        )
                         btn_tamam.clicked.connect(lambda _, aid=aksiyon['id']: self._tamamla(aid))
                         a_layout.addWidget(btn_tamam)
                     
@@ -474,7 +512,7 @@ class Detay8DDialog(QDialog):
         btn_layout.addStretch()
         
         btn_kapat = QPushButton("Kapat")
-        btn_kapat.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 10px 24px;")
+        btn_kapat.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_3}px {brand.SP_6}px; font-weight: {brand.FW_SEMIBOLD};")
         btn_kapat.clicked.connect(self.accept)
         btn_layout.addWidget(btn_kapat)
         
@@ -484,22 +522,23 @@ class Detay8DDialog(QDialog):
         """Belirli D adımına aksiyon ekle"""
         dlg = QDialog(self)
         dlg.setWindowTitle(f"D{d_adimi} - Aksiyon Ekle")
-        dlg.setMinimumSize(500, 300)
-        dlg.setStyleSheet(f"QDialog {{ background: {self.theme.get('bg_main')}; }} QLabel {{ color: {self.theme.get('text')}; }}")
-        
+        dlg.setMinimumSize(brand.sp(500), brand.sp(300))
+        dlg.setStyleSheet(f"QDialog {{ background: {brand.BG_MAIN}; font-family: {brand.FONT_FAMILY}; }} QLabel {{ color: {brand.TEXT}; background: transparent; }}")
+
         layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
         
         layout.addWidget(QLabel(f"D{d_adimi} - {D_ADIMLARI[d_adimi][1]}"))
         
         txt_aciklama = QTextEdit()
-        txt_aciklama.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        txt_aciklama.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;")
         txt_aciklama.setPlaceholderText("Aksiyonu açıklayın...")
         layout.addWidget(txt_aciklama)
         
         form = QFormLayout()
         cmb_sorumlu = QComboBox()
-        cmb_sorumlu.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        cmb_sorumlu.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;")
         cmb_sorumlu.addItem("-- Seçin --", None)
         try:
             conn = get_db_connection()
@@ -515,7 +554,7 @@ class Detay8DDialog(QDialog):
         date_hedef = QDateEdit()
         date_hedef.setDate(QDate.currentDate().addDays(7))
         date_hedef.setCalendarPopup(True)
-        date_hedef.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px;")
+        date_hedef.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;")
         form.addRow("Hedef Tarih:", date_hedef)
         
         layout.addLayout(form)
@@ -527,8 +566,13 @@ class Detay8DDialog(QDialog):
         btn_iptal.clicked.connect(dlg.reject)
         btn_layout.addWidget(btn_iptal)
         
-        btn_ekle = QPushButton("✓ Ekle")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 8px 16px;")
+        btn_ekle = QPushButton("Ekle")
+        btn_ekle.setCursor(Qt.PointingHandCursor)
+        btn_ekle.setStyleSheet(
+            f"background: {brand.PRIMARY}; color: white; border: none; "
+            f"border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_4}px; "
+            f"font-weight: {brand.FW_SEMIBOLD};"
+        )
         
         def kaydet():
             aciklama = txt_aciklama.toPlainText().strip()
@@ -593,93 +637,88 @@ class Kalite8DPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
+        layout.setContentsMargins(brand.SP_10, brand.SP_10, brand.SP_10, brand.SP_10)
+        layout.setSpacing(brand.SP_6)
+
         # Header
-        header = QHBoxLayout()
-        title = QLabel("✅ 8D / CAPA Yönetimi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text', '#fff')};")
-        header.addWidget(title)
-        header.addStretch()
-        
-        btn_yeni = QPushButton("➕ Yeni 8D Raporu")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold;")
+        header = self.create_page_header("8D / CAPA Yonetimi", "Problem cozme metodolojisi ve duzeltici faaliyetler")
+        btn_yeni = self.create_primary_button("Yeni 8D Raporu")
         btn_yeni.clicked.connect(self._yeni_8d)
         header.addWidget(btn_yeni)
-        
         layout.addLayout(header)
-        
-        # Bilgi kartı
-        info_card = QFrame()
-        info_card.setStyleSheet(f"background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; padding: 12px;")
-        info_layout = QHBoxLayout(info_card)
-        info_text = QLabel("📋 8D problem çözme metodolojisi ile sistematik kök neden analizi ve düzeltici faaliyetler yönetimi.")
-        info_text.setStyleSheet(f"color: {self.theme.get('text_secondary')};")
-        info_layout.addWidget(info_text)
-        layout.addWidget(info_card)
-        
-        # İstatistik kartları
-        stat_layout = QHBoxLayout()
-        
-        self.stat_aktif = self._create_stat_card("⚡ Aktif 8D", "0", self.theme.get('warning', '#f59e0b'))
-        stat_layout.addWidget(self.stat_aktif)
-        
-        self.stat_tamamlanan = self._create_stat_card("✅ Tamamlanan", "0", self.theme.get('success', '#22c55e'))
-        stat_layout.addWidget(self.stat_tamamlanan)
-        
-        self.stat_geciken = self._create_stat_card("⏰ Geciken", "0", self.theme.get('danger', '#ef4444'))
-        stat_layout.addWidget(self.stat_geciken)
-        
-        stat_layout.addStretch()
-        layout.addLayout(stat_layout)
-        
+
+        # KPI kartlari
+        kpi_row = QHBoxLayout()
+        kpi_row.setSpacing(brand.SP_4)
+        self.stat_aktif = self.create_stat_card("AKTIF 8D", "0", color=brand.WARNING)
+        kpi_row.addWidget(self.stat_aktif)
+        self.stat_tamamlanan = self.create_stat_card("TAMAMLANAN", "0", color=brand.SUCCESS)
+        kpi_row.addWidget(self.stat_tamamlanan)
+        self.stat_geciken = self.create_stat_card("GECIKEN", "0", color=brand.ERROR)
+        kpi_row.addWidget(self.stat_geciken)
+        kpi_row.addStretch()
+        layout.addLayout(kpi_row)
+
         # Filtre
         filtre_layout = QHBoxLayout()
-        filtre_layout.addWidget(QLabel("Durum:"))
+        filtre_layout.setSpacing(brand.SP_3)
+        filtre_lbl = QLabel("Durum:")
+        filtre_lbl.setStyleSheet(f"color: {brand.TEXT_MUTED}; font-size: {brand.FS_BODY}px;")
+        filtre_layout.addWidget(filtre_lbl)
         self.cmb_durum = QComboBox()
-        self.cmb_durum.addItems(['Tümü', 'AÇIK', 'İŞLEMDE', 'KAPATILDI'])
-        self.cmb_durum.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 6px 12px;")
+        self.cmb_durum.addItems(['Tumu', 'ACIK', 'ISLEMDE', 'KAPATILDI'])
+        self.cmb_durum.setStyleSheet(f"""
+            QComboBox {{
+                background: {brand.BG_INPUT}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px; font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
+        """)
         self.cmb_durum.currentIndexChanged.connect(self._load_data)
         filtre_layout.addWidget(self.cmb_durum)
         filtre_layout.addStretch()
-        
-        btn_yenile = QPushButton("🔄 Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 16px;")
+
+        btn_yenile = self.create_primary_button("Yenile")
         btn_yenile.clicked.connect(self._load_data)
         filtre_layout.addWidget(btn_yenile)
         layout.addLayout(filtre_layout)
-        
+
         # Tablo
         self.table = QTableWidget()
         self.table.setColumnCount(9)
-        self.table.setHorizontalHeaderLabels(["ID", "Kayıt No", "Problem", "Müşteri", "Durum", "İlerleme", "Ekip Lideri", "Hedef Tarih", "İşlem"])
-        self.table.setColumnWidth(8, 120)
+        self.table.setHorizontalHeaderLabels(["ID", "Kayit No", "Problem", "Musteri", "Durum", "Ilerleme", "Ekip Lideri", "Hedef Tarih", "Islem"])
+        self.table.setColumnWidth(8, brand.sp(120))
         self.table.setColumnHidden(0, True)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; color: {self.theme.get('text')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_sidebar')}; color: {self.theme.get('text')}; padding: 10px; border: none; font-weight: bold; }}
-        """)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.verticalHeader().setVisible(False)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px; outline: none;
+            }}
+            QTableWidget::item {{
+                padding: {brand.SP_3}px {brand.SP_4}px;
+                border-bottom: 1px solid {brand.BORDER}; color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
+            QHeaderView::section {{
+                background: {brand.BG_SURFACE}; color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px {brand.SP_4}px; border: none;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};
+            }}
+        """)
         self.table.doubleClicked.connect(self._on_double_click)
         layout.addWidget(self.table, 1)
-    
-    def _create_stat_card(self, title: str, value: str, color: str) -> QFrame:
-        card = QFrame()
-        card.setFixedSize(160, 70)
-        card.setStyleSheet(f"background: {self.theme.get('bg_card')}; border: 1px solid {color}; border-radius: 8px;")
-        layout = QVBoxLayout(card)
-        layout.setContentsMargins(12, 8, 12, 8)
-        lbl_title = QLabel(title)
-        lbl_title.setStyleSheet(f"color: {self.theme.get('text_secondary')}; font-size: 11px;")
-        layout.addWidget(lbl_title)
-        lbl_value = QLabel(value)
-        lbl_value.setObjectName("stat_value")
-        lbl_value.setStyleSheet(f"color: {color}; font-size: 20px; font-weight: bold;")
-        layout.addWidget(lbl_value)
-        return card
+
+    # BasePage.create_stat_card kullaniliyor, findChild("stat_value") ile guncellenir
     
     def _yeni_8d(self):
         dlg = Yeni8DDialog(self.theme, parent=self)
@@ -704,8 +743,8 @@ class Kalite8DPage(BasePage):
             cursor = conn.cursor()
             
             durum_filtre = self.cmb_durum.currentText()
-            where_clause = "" if durum_filtre == 'Tümü' else "AND u.durum = ?"
-            params = [] if durum_filtre == 'Tümü' else [durum_filtre]
+            where_clause = "" if durum_filtre == 'Tumu' else "AND u.durum = ?"
+            params = [] if durum_filtre == 'Tumu' else [durum_filtre]
             
             cursor.execute(f"""
                 SELECT u.id, u.kayit_no, LEFT(u.hata_tanimi, 50), c.unvan, u.durum,
@@ -730,7 +769,7 @@ class Kalite8DPage(BasePage):
                 
                 durum = row[4] or ''
                 durum_item = QTableWidgetItem(durum)
-                durum_colors = {'AÇIK': self.theme.get('warning'), 'İŞLEMDE': self.theme.get('info'), 'KAPATILDI': self.theme.get('success')}
+                durum_colors = {'AÇIK': brand.WARNING, 'İŞLEMDE': brand.INFO, 'KAPATILDI': brand.SUCCESS}
                 if durum in durum_colors:
                     durum_item.setForeground(QColor(durum_colors[durum]))
                 self.table.setItem(i, 4, durum_item)
@@ -738,7 +777,7 @@ class Kalite8DPage(BasePage):
                 ilerleme = f"{row[5] or 0}/{row[6] or 0}"
                 ilerleme_item = QTableWidgetItem(ilerleme)
                 if row[6] and row[5] == row[6]:
-                    ilerleme_item.setForeground(QColor(self.theme.get('success')))
+                    ilerleme_item.setForeground(QColor(brand.SUCCESS))
                 self.table.setItem(i, 5, ilerleme_item)
                 
                 self.table.setItem(i, 6, QTableWidgetItem(row[7] or ''))
@@ -747,14 +786,14 @@ class Kalite8DPage(BasePage):
                 hedef_str = hedef.strftime('%d.%m.%Y') if hedef else '-'
                 hedef_item = QTableWidgetItem(hedef_str)
                 if hedef and hedef < date.today() and durum != 'KAPATILDI':
-                    hedef_item.setForeground(QColor(self.theme.get('danger')))
+                    hedef_item.setForeground(QColor(brand.ERROR))
                 self.table.setItem(i, 7, hedef_item)
                 
                 widget = self.create_action_buttons([
-                    ("📋", "Detay", lambda checked, kid=row[0]: self._detay_goster(kid), "info"),
+                    ("Detay", "Detay Goster", lambda checked, kid=row[0]: self._detay_goster(kid), "info"),
                 ])
                 self.table.setCellWidget(i, 8, widget)
-                self.table.setRowHeight(i, 42)
+                self.table.setRowHeight(i, brand.sp(42))
             
             # İstatistikler
             cursor.execute("SELECT COUNT(DISTINCT u.id) FROM kalite.uygunsuzluklar u WHERE u.durum IN ('AÇIK', 'İŞLEMDE') AND EXISTS (SELECT 1 FROM kalite.uygunsuzluk_aksiyonlar WHERE uygunsuzluk_id = u.id AND aksiyon_tipi = '8D')")

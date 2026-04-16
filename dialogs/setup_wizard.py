@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, Signal, QThread
 from PySide6.QtGui import QFont
 
+from core.nexor_brand import brand
+
 # Import config manager
 try:
     from core.external_config import config_manager, CONFIG_FILE
@@ -42,77 +44,78 @@ class SetupWizard(QDialog):
         self.setFixedSize(500, 550)
         self.setModal(True)
         
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #1a1a2e;
-            }
-            QLabel {
-                color: #ffffff;
-                font-size: 12px;
-            }
-            QLabel#title {
-                font-size: 24px;
-                font-weight: bold;
-                color: #e94560;
-            }
-            QLabel#subtitle {
-                font-size: 12px;
-                color: #888888;
-            }
-            QLineEdit, QComboBox, QSpinBox {
-                background-color: #16213e;
-                border: 2px solid #0f3460;
-                border-radius: 6px;
-                padding: 10px;
-                color: #ffffff;
-                font-size: 13px;
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {brand.BG_CARD};
+            }}
+            QLabel {{
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QLabel#title {{
+                font-size: {brand.FS_TITLE}px;
+                font-weight: {brand.FW_BOLD};
+                color: {brand.PRIMARY};
+            }}
+            QLabel#subtitle {{
+                font-size: {brand.FS_BODY_SM}px;
+                color: {brand.TEXT_MUTED};
+            }}
+            QLineEdit, QComboBox, QSpinBox {{
+                background-color: {brand.BG_INPUT};
+                border: 2px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
                 min-height: 20px;
-            }
-            QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
-                border: 2px solid #e94560;
-            }
-            QCheckBox {
-                color: #ffffff;
-                font-size: 12px;
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
+            }}
+            QLineEdit:focus, QComboBox:focus, QSpinBox:focus {{
+                border: 2px solid {brand.PRIMARY};
+            }}
+            QCheckBox {{
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY_SM}px;
+                spacing: {brand.SP_2}px;
+            }}
+            QCheckBox::indicator {{
                 width: 20px;
                 height: 20px;
-                border-radius: 4px;
-                border: 2px solid #0f3460;
-                background-color: #16213e;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #e94560;
-                border-color: #e94560;
-            }
-            QPushButton {
-                background-color: #0f3460;
+                border-radius: {brand.SP_1}px;
+                border: 2px solid {brand.BORDER};
+                background-color: {brand.BG_INPUT};
+            }}
+            QCheckBox::indicator:checked {{
+                background-color: {brand.PRIMARY};
+                border-color: {brand.PRIMARY};
+            }}
+            QPushButton {{
+                background-color: {brand.BG_ELEVATED};
                 border: none;
-                border-radius: 6px;
-                padding: 12px 30px;
-                color: #ffffff;
-                font-weight: bold;
-                font-size: 13px;
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_3}px {brand.SP_8}px;
+                color: {brand.TEXT};
+                font-weight: {brand.FW_BOLD};
+                font-size: {brand.FS_BODY}px;
                 min-width: 120px;
-            }
-            QPushButton:hover {
-                background-color: #1a4a7a;
-            }
-            QPushButton#primaryBtn {
-                background-color: #e94560;
-            }
-            QPushButton#primaryBtn:hover {
-                background-color: #ff6b6b;
-            }
-            QPushButton#primaryBtn:disabled {
-                background-color: #555555;
-            }
-            QFrame#separator {
-                background-color: #0f3460;
+            }}
+            QPushButton:hover {{
+                background-color: {brand.BG_HOVER};
+            }}
+            QPushButton#primaryBtn {{
+                background-color: {brand.PRIMARY};
+                color: {brand.TEXT_INVERSE};
+            }}
+            QPushButton#primaryBtn:hover {{
+                background-color: {brand.PRIMARY_HOVER};
+            }}
+            QPushButton#primaryBtn:disabled {{
+                background-color: {brand.TEXT_DISABLED};
+            }}
+            QFrame#separator {{
+                background-color: {brand.BORDER};
                 max-height: 2px;
-            }
+            }}
         """)
         
         self._setup_ui()
@@ -121,8 +124,8 @@ class SetupWizard(QDialog):
     def _setup_ui(self):
         """UI olustur"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(15)
+        layout.setContentsMargins(brand.SP_8, brand.SP_8, brand.SP_8, brand.SP_8)
+        layout.setSpacing(brand.SP_4)
         
         # Baslik
         title = QLabel("NEXOR ERP")
@@ -281,7 +284,7 @@ class SetupWizard(QDialog):
             return
         
         self.lbl_status.setText("Baglanti test ediliyor...")
-        self.lbl_status.setStyleSheet("color: #888888;")
+        self.lbl_status.setStyleSheet("color: {brand.TEXT_MUTED};")
         self.btn_test.setEnabled(False)
         self.btn_save.setEnabled(False)
         
@@ -297,10 +300,10 @@ class SetupWizard(QDialog):
         
         if success:
             self.lbl_status.setText("Baglanti basarili!")
-            self.lbl_status.setStyleSheet("color: #4CAF50; font-weight: bold;")
+            self.lbl_status.setStyleSheet("color: {brand.SUCCESS}; font-weight: bold;")
         else:
             self.lbl_status.setText(f"Baglanti hatasi: {message}")
-            self.lbl_status.setStyleSheet("color: #e94560;")
+            self.lbl_status.setStyleSheet("color: {brand.ERROR};")
     
     def _validate_and_save_config(self) -> bool:
         """Config'i dogrula ve kaydet"""
@@ -350,7 +353,7 @@ class SetupWizard(QDialog):
         
         # Once test et
         self.lbl_status.setText("Baglanti test ediliyor...")
-        self.lbl_status.setStyleSheet("color: #888888;")
+        self.lbl_status.setStyleSheet("color: {brand.TEXT_MUTED};")
         self.btn_save.setEnabled(False)
         
         success, message = config_manager.test_connection()
@@ -364,7 +367,7 @@ class SetupWizard(QDialog):
                 self.btn_save.setEnabled(True)
         else:
             self.lbl_status.setText(f"Baglanti hatasi: {message}")
-            self.lbl_status.setStyleSheet("color: #e94560;")
+            self.lbl_status.setStyleSheet("color: {brand.ERROR};")
             self.btn_save.setEnabled(True)
             
             # Yine de kaydetmek istiyor mu?

@@ -18,28 +18,28 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 # Maliyet modulu sifre (ileride config'den alinabilir)
 MALIYET_SIFRE = "nexor2026"
 
 
 def get_modern_style(theme: dict) -> dict:
-    t = theme or {}
     return {
-        'card_bg': t.get('bg_card', '#151B23'),
-        'input_bg': t.get('bg_input', '#232C3B'),
-        'border': t.get('border', '#1E2736'),
-        'text': t.get('text', '#E8ECF1'),
-        'text_secondary': t.get('text_secondary', '#8896A6'),
-        'text_muted': t.get('text_muted', '#5C6878'),
-        'primary': t.get('primary', '#DC2626'),
-        'primary_hover': t.get('primary_hover', '#9B1818'),
-        'success': t.get('success', '#10B981'),
-        'warning': t.get('warning', '#F59E0B'),
-        'error': t.get('error', '#EF4444'),
-        'info': t.get('info', '#3B82F6'),
-        'bg_main': t.get('bg_main', '#0F1419'),
-        'border_light': t.get('border_light', '#2A3545'),
+        'card_bg': brand.BG_CARD,
+        'input_bg': brand.BG_INPUT,
+        'border': brand.BORDER,
+        'text': brand.TEXT,
+        'text_secondary': brand.TEXT_MUTED,
+        'text_muted': brand.TEXT_DIM,
+        'primary': brand.PRIMARY,
+        'primary_hover': brand.PRIMARY_HOVER,
+        'success': brand.SUCCESS,
+        'warning': brand.WARNING,
+        'danger': brand.ERROR,
+        'bg_main': brand.BG_MAIN,
+        'bg_hover': brand.BG_HOVER,
+        'border_light': brand.BORDER_HARD,
     }
 
 
@@ -880,7 +880,7 @@ class MaliyetPersonelPage(BasePage):
         frame = QFrame()
         frame.setFixedSize(130, 70)
         frame.setStyleSheet(f"""
-            QFrame {{ background: {self.s['card_bg']}; border: 1px solid {self.s['border']};
+            QFrame {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
                 border-left: 4px solid {color}; border-radius: 10px; }}
         """)
         shadow = QGraphicsDropShadowEffect()
@@ -893,7 +893,7 @@ class MaliyetPersonelPage(BasePage):
         fl.setContentsMargins(12, 8, 12, 8)
         fl.setSpacing(2)
         t = QLabel(title)
-        t.setStyleSheet(f"color: {self.s['text_muted']}; font-size: 11px; font-weight: 500;")
+        t.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 11px; font-weight: 500;")
         fl.addWidget(t)
         v = QLabel(value)
         v.setStyleSheet(f"color: {color}; font-size: 18px; font-weight: bold;")

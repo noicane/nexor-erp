@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 
 from components.base_page import BasePage
+from core.nexor_brand import brand
 
 
 MODULLER = [

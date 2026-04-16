@@ -18,6 +18,7 @@ from components.base_page import BasePage
 from components.dialog_minimize_bar import add_minimize_button
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 # ============================================================================
@@ -61,15 +62,15 @@ class IrsaliyeSecDialog(QDialog):
 
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
         """)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 
         title = QLabel("📄 Referans Çıkış İrsaliyesi Seçin")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.theme.get('primary')};")
+        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {brand.PRIMARY};")
         layout.addWidget(title)
 
         # Arama
@@ -78,11 +79,11 @@ class IrsaliyeSecDialog(QDialog):
         self.search_input.setPlaceholderText("İrsaliye no, müşteri ara...")
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """)
         self.search_input.textChanged.connect(self._filter)
@@ -100,21 +101,21 @@ class IrsaliyeSecDialog(QDialog):
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
                 font-weight: bold;
             }}
             QTableWidget::item:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
             }}
         """)
         self.table.doubleClicked.connect(self._sec)
@@ -127,9 +128,9 @@ class IrsaliyeSecDialog(QDialog):
         iptal_btn = QPushButton("İptal")
         iptal_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px 20px;
             }}
@@ -140,7 +141,7 @@ class IrsaliyeSecDialog(QDialog):
         sec_btn = QPushButton("Seç")
         sec_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -242,7 +243,7 @@ class SevkIadePage(BasePage):
         header = QHBoxLayout()
 
         title = QLabel("📦 İrsaliye İade Girişi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         header.addStretch()
 
@@ -264,21 +265,21 @@ class SevkIadePage(BasePage):
 
         # Referans irsaliye seçimi
         ref_frame = QFrame()
-        ref_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        ref_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         ref_layout = QVBoxLayout(ref_frame)
         ref_layout.setContentsMargins(16, 16, 16, 16)
         ref_layout.setSpacing(8)
 
         ref_header = QHBoxLayout()
         ref_title = QLabel("📄 Referans İrsaliye")
-        ref_title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 14px;")
+        ref_title.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; font-size: 14px;")
         ref_header.addWidget(ref_title)
         ref_header.addStretch()
 
         self.ref_sec_btn = QPushButton("İrsaliye Seç")
         self.ref_sec_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -299,10 +300,10 @@ class SevkIadePage(BasePage):
             ('musteri', 'Müşteri:'), ('adet', 'Toplam Adet:')
         ]):
             lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+            lbl.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
             ref_grid.addWidget(lbl, i, 0)
             val = QLabel("-")
-            val.setStyleSheet(f"color: {self.theme.get('text')}; font-weight: bold; font-size: 12px;")
+            val.setStyleSheet(f"color: {brand.TEXT}; font-weight: bold; font-size: 12px;")
             ref_grid.addWidget(val, i, 1)
             self.ref_labels[key] = val
         ref_layout.addLayout(ref_grid)
@@ -310,22 +311,22 @@ class SevkIadePage(BasePage):
 
         # İade bilgileri
         iade_frame = QFrame()
-        iade_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        iade_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         iade_layout = QVBoxLayout(iade_frame)
         iade_layout.setContentsMargins(16, 16, 16, 16)
         iade_layout.setSpacing(8)
 
         iade_title = QLabel("📝 İade Bilgileri")
-        iade_title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 14px;")
+        iade_title.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; font-size: 14px;")
         iade_layout.addWidget(iade_title)
 
         input_style = f"""
             QLineEdit, QTextEdit, QDateEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """
 
@@ -363,7 +364,7 @@ class SevkIadePage(BasePage):
         for i in range(5):
             lbl = form.itemAtPosition(i, 0)
             if lbl and lbl.widget():
-                lbl.widget().setStyleSheet(f"color: {self.theme.get('text')}; font-size: 12px;")
+                lbl.widget().setStyleSheet(f"color: {brand.TEXT}; font-size: 12px;")
 
         iade_layout.addLayout(form)
         sol_layout.addWidget(iade_frame)
@@ -378,14 +379,14 @@ class SevkIadePage(BasePage):
         sag_layout.setSpacing(12)
 
         satirlar_frame = QFrame()
-        satirlar_frame.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        satirlar_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         satirlar_layout = QVBoxLayout(satirlar_frame)
         satirlar_layout.setContentsMargins(16, 16, 16, 16)
         satirlar_layout.setSpacing(8)
 
         sat_header = QHBoxLayout()
         sat_title = QLabel("📋 İade Edilecek Kalemler")
-        sat_title.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold; font-size: 14px;")
+        sat_title.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; font-size: 14px;")
         sat_header.addWidget(sat_title)
 
         sat_header.addStretch()
@@ -413,15 +414,15 @@ class SevkIadePage(BasePage):
         self.satirlar_table.verticalHeader().setVisible(False)
         self.satirlar_table.setStyleSheet(f"""
             QTableWidget {{
-                background: {self.theme.get('bg_main')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_MAIN};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border')};
-                color: {self.theme.get('text')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
                 font-weight: bold;
@@ -433,7 +434,7 @@ class SevkIadePage(BasePage):
         toplam_layout = QHBoxLayout()
         toplam_layout.addStretch()
         self.toplam_label = QLabel("Seçili: 0 kalem, 0 adet")
-        self.toplam_label.setStyleSheet(f"color: {self.theme.get('primary')}; font-weight: bold;")
+        self.toplam_label.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold;")
         toplam_layout.addWidget(self.toplam_label)
         satirlar_layout.addLayout(toplam_layout)
 
@@ -446,7 +447,7 @@ class SevkIadePage(BasePage):
         self.kaydet_btn = QPushButton("💾 İade Kaydet")
         self.kaydet_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -455,8 +456,8 @@ class SevkIadePage(BasePage):
                 font-size: 14px;
             }}
             QPushButton:disabled {{
-                background: {self.theme.get('bg_hover')};
-                color: {self.theme.get('text_muted')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DIM};
             }}
         """)
         self.kaydet_btn.clicked.connect(self._kaydet)
@@ -476,14 +477,14 @@ class SevkIadePage(BasePage):
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover')};
+                background: {brand.BG_HOVER};
             }}
         """
 
@@ -570,11 +571,11 @@ class SevkIadePage(BasePage):
             spin.setValue(float(row[4] or 0))
             spin.setStyleSheet(f"""
                 QDoubleSpinBox {{
-                    background: {self.theme.get('bg_input')};
-                    border: 1px solid {self.theme.get('border')};
+                    background: {brand.BG_INPUT};
+                    border: 1px solid {brand.BORDER};
                     border-radius: 4px;
                     padding: 4px;
-                    color: {self.theme.get('text')};
+                    color: {brand.TEXT};
                 }}
             """)
             spin.valueChanged.connect(self._toplam_guncelle)
@@ -585,11 +586,11 @@ class SevkIadePage(BasePage):
             neden.setPlaceholderText("Neden...")
             neden.setStyleSheet(f"""
                 QLineEdit {{
-                    background: {self.theme.get('bg_input')};
-                    border: 1px solid {self.theme.get('border')};
+                    background: {brand.BG_INPUT};
+                    border: 1px solid {brand.BORDER};
                     border-radius: 4px;
                     padding: 4px;
-                    color: {self.theme.get('text')};
+                    color: {brand.TEXT};
                 }}
             """)
             self.satirlar_table.setCellWidget(idx, 6, neden)

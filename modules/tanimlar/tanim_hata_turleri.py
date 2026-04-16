@@ -14,6 +14,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 class HataTuruDialog(QDialog):
@@ -29,14 +30,14 @@ class HataTuruDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main', '#1a1f2e')}; }}
-            QLabel {{ color: {self.theme.get('text', '#fff')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QTextEdit, QComboBox, QSpinBox {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """)
         
@@ -114,9 +115,9 @@ class HataTuruDialog(QDialog):
         iptal_btn = QPushButton("İptal")
         iptal_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px 24px;
             }}
@@ -127,7 +128,7 @@ class HataTuruDialog(QDialog):
         kaydet_btn = QPushButton("💾 Kaydet")
         kaydet_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -177,7 +178,7 @@ class HataTurleriPage(BasePage):
         header = QHBoxLayout()
         
         title = QLabel("⚠️ Hata Türleri Tanımları")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text', '#fff')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         header.addStretch()
         
@@ -203,7 +204,7 @@ class HataTurleriPage(BasePage):
         add_btn = QPushButton("➕ Yeni Hata Türü")
         add_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -238,49 +239,49 @@ class HataTurleriPage(BasePage):
         
         # Alt bilgi
         self.info_label = QLabel("")
-        self.info_label.setStyleSheet(f"color: {self.theme.get('text_muted', '#8a94a6')};")
+        self.info_label.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.info_label)
     
     def _combo_style(self):
         return f"""
             QComboBox {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """
     
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover', '#3d4454')};
+                background: {brand.BG_HOVER};
             }}
         """
     
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background: {self.theme.get('bg_card', '#242938')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', '#3d4454')};
+                gridline-color: {brand.BORDER};
             }}
             QTableWidget::item {{
                 padding: 8px;
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_hover', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
                 font-weight: bold;

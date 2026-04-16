@@ -29,6 +29,7 @@ from components.base_page import BasePage
 
 # Varsayılan NAS yolu (config.json'dan)
 from config import NAS_PATHS
+from core.nexor_brand import brand
 DEFAULT_ROOT_PATH = NAS_PATHS["quality_path"]
 
 # ============================================================
@@ -160,28 +161,28 @@ class DokumantasyonYonetimiPage(BasePage):
         header_layout = QHBoxLayout()
         
         title = QLabel("📄 Dokümantasyon Yönetimi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header_layout.addWidget(title)
         
         header_layout.addStretch()
         
         # Kök dizin gösterimi
         self.lbl_root = QLabel(f"📂 {self.root_path}")
-        self.lbl_root.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 12px;")
+        self.lbl_root.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         header_layout.addWidget(self.lbl_root)
         
         btn_ayarlar = QPushButton("Ayarlar")
         btn_ayarlar.setToolTip("Kök dizini değiştir")
         btn_ayarlar.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_input')};
+                background: {brand.BG_INPUT};
             }}
         """)
         btn_ayarlar.clicked.connect(self._change_root_path)
@@ -191,7 +192,7 @@ class DokumantasyonYonetimiPage(BasePage):
         
         # Toolbar
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px;")
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(12, 8, 12, 8)
         
@@ -200,11 +201,11 @@ class DokumantasyonYonetimiPage(BasePage):
         self.txt_search.setPlaceholderText("🔍 Dosya ara...")
         self.txt_search.setStyleSheet(f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
                 min-width: 250px;
             }}
         """)
@@ -216,11 +217,11 @@ class DokumantasyonYonetimiPage(BasePage):
         self.cmb_filter.addItems(["Tümü", "PDF", "Word", "Excel", "Diğer"])
         self.cmb_filter.setStyleSheet(f"""
             QComboBox {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
                 min-width: 100px;
             }}
         """)
@@ -233,14 +234,14 @@ class DokumantasyonYonetimiPage(BasePage):
         btn_refresh = QPushButton("🔄 Yenile")
         btn_refresh.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 border: none;
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('border')};
+                background: {brand.BORDER};
             }}
         """)
         btn_refresh.clicked.connect(self._load_folders)
@@ -249,7 +250,7 @@ class DokumantasyonYonetimiPage(BasePage):
         btn_open_explorer = QPushButton("📂 Klasörü Aç")
         btn_open_explorer.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -257,7 +258,7 @@ class DokumantasyonYonetimiPage(BasePage):
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('primary_dark', '#1a56db')};
+                background: {brand.PRIMARY_HOVER};
             }}
         """)
         btn_open_explorer.clicked.connect(self._open_current_folder)
@@ -269,7 +270,7 @@ class DokumantasyonYonetimiPage(BasePage):
         splitter = QSplitter(Qt.Horizontal)
         splitter.setStyleSheet(f"""
             QSplitter::handle {{
-                background: {self.theme.get('border')};
+                background: {brand.BORDER};
                 width: 2px;
             }}
         """)
@@ -278,8 +279,8 @@ class DokumantasyonYonetimiPage(BasePage):
         left_panel = QFrame()
         left_panel.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
             }}
         """)
@@ -287,7 +288,7 @@ class DokumantasyonYonetimiPage(BasePage):
         left_layout.setContentsMargins(8, 8, 8, 8)
         
         lbl_folders = QLabel("📁 Süreç Klasörleri")
-        lbl_folders.setStyleSheet(f"font-weight: bold; color: {self.theme.get('text')}; padding: 4px;")
+        lbl_folders.setStyleSheet(f"font-weight: bold; color: {brand.TEXT}; padding: 4px;")
         left_layout.addWidget(lbl_folders)
         
         self.tree_folders = QTreeWidget()
@@ -296,18 +297,18 @@ class DokumantasyonYonetimiPage(BasePage):
             QTreeWidget {{
                 background: transparent;
                 border: none;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
             QTreeWidget::item {{
                 padding: 6px 4px;
                 border-radius: 4px;
             }}
             QTreeWidget::item:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
             }}
             QTreeWidget::item:hover:!selected {{
-                background: {self.theme.get('bg_input')};
+                background: {brand.BG_INPUT};
             }}
         """)
         self.tree_folders.itemClicked.connect(self._on_folder_clicked)
@@ -319,8 +320,8 @@ class DokumantasyonYonetimiPage(BasePage):
         right_panel = QFrame()
         right_panel.setStyleSheet(f"""
             QFrame {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
             }}
         """)
@@ -329,7 +330,7 @@ class DokumantasyonYonetimiPage(BasePage):
         
         # Dosya sayısı etiketi
         self.lbl_file_count = QLabel("📄 Dosyalar")
-        self.lbl_file_count.setStyleSheet(f"font-weight: bold; color: {self.theme.get('text')}; padding: 4px;")
+        self.lbl_file_count.setStyleSheet(f"font-weight: bold; color: {brand.TEXT}; padding: 4px;")
         right_layout.addWidget(self.lbl_file_count)
         
         self.table_files = QTableWidget()
@@ -343,22 +344,22 @@ class DokumantasyonYonetimiPage(BasePage):
             QTableWidget {{
                 background: transparent;
                 border: none;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{
                 padding: 8px 4px;
-                border-bottom: 1px solid {self.theme.get('border')};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
             }}
             QHeaderView::section {{
-                background: {self.theme.get('bg_input')};
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """)
@@ -388,7 +389,7 @@ class DokumantasyonYonetimiPage(BasePage):
         
         # Alt bilgi
         self.lbl_status = QLabel("Klasör seçin...")
-        self.lbl_status.setStyleSheet(f"color: {self.theme.get('text_muted')}; font-size: 11px;")
+        self.lbl_status.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 11px;")
         layout.addWidget(self.lbl_status)
     
     def _load_folders(self):
@@ -653,17 +654,17 @@ class DokumantasyonYonetimiPage(BasePage):
         menu = QMenu(self)
         menu.setStyleSheet(f"""
             QMenu {{
-                background: {self.theme.get('bg_card')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
                 padding: 4px;
             }}
             QMenu::item {{
                 padding: 8px 20px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
             QMenu::item:selected {{
-                background: {self.theme.get('primary')};
+                background: {brand.PRIMARY};
                 color: white;
                 border-radius: 4px;
             }}
@@ -712,27 +713,27 @@ class DokumantasyonYonetimiPage(BasePage):
         dialog = QDialog(self)
         dialog.setWindowTitle("Kök Dizin Ayarı")
         dialog.setMinimumWidth(500)
-        dialog.setStyleSheet(f"background: {self.theme.get('bg_main')};")
+        dialog.setStyleSheet(f"background: {brand.BG_MAIN};")
         
         layout = QVBoxLayout(dialog)
         
         group = QGroupBox("Doküman Kök Dizini")
-        group.setStyleSheet(f"color: {self.theme.get('text')};")
+        group.setStyleSheet(f"color: {brand.TEXT};")
         group_layout = QVBoxLayout(group)
         
         lbl = QLabel("Kalite dokümanlarının bulunduğu ana klasör yolunu girin:")
-        lbl.setStyleSheet(f"color: {self.theme.get('text')};")
+        lbl.setStyleSheet(f"color: {brand.TEXT};")
         group_layout.addWidget(lbl)
         
         path_layout = QHBoxLayout()
         txt_path = QLineEdit(self.root_path)
         txt_path.setStyleSheet(f"""
             QLineEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 10px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """)
         path_layout.addWidget(txt_path)
@@ -740,11 +741,11 @@ class DokumantasyonYonetimiPage(BasePage):
         btn_browse = QPushButton("Gozat")
         btn_browse.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
-                color: {self.theme.get('text')};
+                color: {brand.TEXT};
             }}
         """)
         btn_browse.clicked.connect(lambda: self._browse_folder(txt_path))
@@ -758,12 +759,12 @@ class DokumantasyonYonetimiPage(BasePage):
         btn_layout.addStretch()
         
         btn_cancel = QPushButton("İptal")
-        btn_cancel.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 24px; border-radius: 6px;")
+        btn_cancel.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: 10px 24px; border-radius: 6px;")
         btn_cancel.clicked.connect(dialog.reject)
         btn_layout.addWidget(btn_cancel)
         
         btn_save = QPushButton("💾 Kaydet")
-        btn_save.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px; font-weight: bold;")
+        btn_save.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: 10px 24px; border-radius: 6px; font-weight: bold;")
         btn_save.clicked.connect(lambda: self._save_root_path(dialog, txt_path.text()))
         btn_layout.addWidget(btn_save)
         

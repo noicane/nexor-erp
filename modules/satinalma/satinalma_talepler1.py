@@ -17,6 +17,7 @@ from PySide6.QtGui import QPainter, QFont, QTextDocument
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 from datetime import datetime
 
 
@@ -39,14 +40,14 @@ class TalepSatirDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px;
+                color: {brand.TEXT};
             }}
         """)
         
@@ -95,12 +96,12 @@ class TalepSatirDialog(QDialog):
         btn_layout.addStretch()
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_5}px; border-radius: {brand.R_SM}px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 20px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_3}px {brand.SP_5}px; border-radius: {brand.R_SM}px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
@@ -215,18 +216,18 @@ class TalepDialog(QDialog):
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background: {self.theme.get('bg_main')}; }}
-            QLabel {{ color: {self.theme.get('text')}; }}
+            QDialog {{ background: {brand.BG_MAIN}; }}
+            QLabel {{ color: {brand.TEXT}; }}
             QLineEdit, QComboBox, QDateEdit, QTextEdit {{
-                background: {self.theme.get('bg_input')};
-                border: 1px solid {self.theme.get('border')};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme.get('text')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px;
+                color: {brand.TEXT};
             }}
-            QTabWidget::pane {{ border: 1px solid {self.theme.get('border')}; }}
-            QTabBar::tab {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 20px; }}
-            QTabBar::tab:selected {{ background: {self.theme.get('primary')}; color: white; }}
+            QTabWidget::pane {{ border: 1px solid {brand.BORDER}; }}
+            QTabBar::tab {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_5}px; }}
+            QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}
         """)
         
         layout = QVBoxLayout(self)
@@ -297,23 +298,23 @@ class TalepDialog(QDialog):
         
         toolbar = QHBoxLayout()
         btn_ekle = QPushButton("➕ Kalem Ekle")
-        btn_ekle.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_ekle.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_ekle.clicked.connect(self._add_satir)
         toolbar.addWidget(btn_ekle)
         
         btn_duzenle = QPushButton("✏️ Düzenle")
-        btn_duzenle.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px 16px; border-radius: 6px;")
+        btn_duzenle.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_duzenle.clicked.connect(self._edit_satir)
         toolbar.addWidget(btn_duzenle)
         
         btn_sil = QPushButton("🗑️ Sil")
-        btn_sil.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_sil.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_sil.clicked.connect(self._delete_satir)
         toolbar.addWidget(btn_sil)
         
         toolbar.addStretch()
         self.lbl_toplam = QLabel("Tahmini Toplam: 0.00")
-        self.lbl_toplam.setStyleSheet(f"font-weight: bold; color: {self.theme.get('text')};")
+        self.lbl_toplam.setStyleSheet(f"font-weight: {brand.FW_BOLD}; color: {brand.TEXT};")
         toolbar.addWidget(self.lbl_toplam)
         kalem_layout.addLayout(toolbar)
         
@@ -323,8 +324,8 @@ class TalepDialog(QDialog):
         self.table_satirlar.setColumnHidden(0, True)
         self.table_satirlar.setSelectionBehavior(QTableWidget.SelectRows)
         self.table_satirlar.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; color: {self.theme.get('text')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 8px; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; color: {brand.TEXT}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_2}px; }}
         """)
         header = self.table_satirlar.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.Stretch)
@@ -344,22 +345,22 @@ class TalepDialog(QDialog):
         btn_layout.addStretch()
         
         btn_yazdir = QPushButton("🖨️ Yazdır")
-        btn_yazdir.setStyleSheet(f"background: {self.theme.get('info')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_yazdir.setStyleSheet(f"background: {brand.INFO}; color: white; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         btn_yazdir.clicked.connect(self._print_talep)
         btn_layout.addWidget(btn_yazdir)
         
         btn_iptal = QPushButton("İptal")
-        btn_iptal.setStyleSheet(f"background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px 24px; border-radius: 6px;")
+        btn_iptal.setStyleSheet(f"background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         btn_iptal.clicked.connect(self.reject)
         btn_layout.addWidget(btn_iptal)
         
         btn_kaydet = QPushButton("💾 Kaydet")
-        btn_kaydet.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        btn_kaydet.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         btn_kaydet.clicked.connect(self._save)
         btn_layout.addWidget(btn_kaydet)
         
         self.btn_onaya = QPushButton("📤 Onaya Gönder")
-        self.btn_onaya.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; padding: 10px 24px; border-radius: 6px;")
+        self.btn_onaya.setStyleSheet(f"background: {brand.PRIMARY}; color: white; padding: {brand.SP_3}px {brand.SP_6}px; border-radius: {brand.R_SM}px;")
         self.btn_onaya.clicked.connect(self._send_approval)
         self.btn_onaya.setVisible(False)  # İlk başta gizli
         btn_layout.addWidget(self.btn_onaya)
@@ -463,15 +464,15 @@ class TalepDialog(QDialog):
                 # Durum bilgilerini güncelle
                 durum = row[8] or "TASLAK"
                 self.lbl_durum.setText(durum)
-                self.lbl_durum.setStyleSheet(f"color: {self._get_durum_color(durum)}; font-weight: bold;")
+                self.lbl_durum.setStyleSheet(f"color: {self._get_durum_color(durum)}; font-weight: {brand.FW_BOLD};")
                 
                 amir_onay = row[9] or "-"
                 self.lbl_amir_onay.setText(amir_onay)
-                self.lbl_amir_onay.setStyleSheet(f"color: {self._get_onay_color(amir_onay)}; font-weight: bold;")
+                self.lbl_amir_onay.setStyleSheet(f"color: {self._get_onay_color(amir_onay)}; font-weight: {brand.FW_BOLD};")
                 
                 satinalma_onay = row[10] or "-"
                 self.lbl_satinalma_onay.setText(satinalma_onay)
-                self.lbl_satinalma_onay.setStyleSheet(f"color: {self._get_onay_color(satinalma_onay)}; font-weight: bold;")
+                self.lbl_satinalma_onay.setStyleSheet(f"color: {self._get_onay_color(satinalma_onay)}; font-weight: {brand.FW_BOLD};")
                 
                 # Onaya gönder butonunu göster/gizle
                 if durum == "TASLAK":
@@ -484,20 +485,20 @@ class TalepDialog(QDialog):
     
     def _get_durum_color(self, durum):
         colors = {
-            'TASLAK': self.theme.get('text_muted'),
-            'ONAY_BEKLIYOR': self.theme.get('warning'),
-            'AMIR_ONAYLADI': self.theme.get('info'),
-            'SATINALMA_ONAYLANDI': self.theme.get('success'),
-            'REDDEDILDI': self.theme.get('danger'),
+            'TASLAK': brand.TEXT_DIM,
+            'ONAY_BEKLIYOR': brand.WARNING,
+            'AMIR_ONAYLADI': brand.INFO,
+            'SATINALMA_ONAYLANDI': brand.SUCCESS,
+            'REDDEDILDI': brand.ERROR,
         }
-        return colors.get(durum, self.theme.get('text'))
+        return colors.get(durum, brand.TEXT)
     
     def _get_onay_color(self, onay):
         if onay == "ONAYLANDI":
-            return self.theme.get('success')
+            return brand.SUCCESS
         elif onay == "REDDEDILDI":
-            return self.theme.get('danger')
-        return self.theme.get('text_muted')
+            return brand.ERROR
+        return brand.TEXT_DIM
     
     def _load_satirlar(self):
         try:
@@ -787,9 +788,9 @@ class TalepDialog(QDialog):
                     }}
                     .header-table td {{
                         border: 2px solid #000;
-                        padding: 10px;
+                        padding: {brand.SP_3}px;
                         text-align: center;
-                        font-weight: bold;
+                        font-weight: {brand.FW_BOLD};
                     }}
                     .header-table .logo {{
                         width: 35%;
@@ -804,7 +805,7 @@ class TalepDialog(QDialog):
                         font-size: 10pt;
                     }}
                     .section-title {{
-                        font-weight: bold;
+                        font-weight: {brand.FW_BOLD};
                         font-size: 11pt;
                         margin-top: 15px;
                         margin-bottom: 5px;
@@ -824,7 +825,7 @@ class TalepDialog(QDialog):
                     }}
                     .content-table th {{
                         background-color: #f0f0f0;
-                        font-weight: bold;
+                        font-weight: {brand.FW_BOLD};
                         text-align: center;
                     }}
                     .content-table .sira {{
@@ -857,7 +858,7 @@ class TalepDialog(QDialog):
                         border: 1px solid #000;
                         padding: 40px 10px 10px 10px;
                         text-align: center;
-                        font-weight: bold;
+                        font-weight: {brand.FW_BOLD};
                         width: 33.33%;
                     }}
                     .footer {{
@@ -985,33 +986,33 @@ class SatinalmaTaleplerPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        layout.setSpacing(brand.SP_3)
         
         # Başlık
         header = QLabel("📋 Satınalma Talepleri")
-        header.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text')};")
+        header.setStyleSheet(f"font-size: {brand.FS_HEADING_LG}px; font-weight: {brand.FW_BOLD}; color: {brand.TEXT};")
         layout.addWidget(header)
         
         # Toolbar
         toolbar = QFrame()
-        toolbar.setStyleSheet(f"background: {self.theme.get('bg_card')}; border-radius: 8px; padding: 12px;")
+        toolbar.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: {brand.R_MD}px; padding: {brand.SP_3}px;")
         toolbar_layout = QHBoxLayout(toolbar)
         
         btn_yeni = QPushButton("➕ Yeni Talep")
-        btn_yeni.setStyleSheet(f"background: {self.theme.get('success')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_yeni.setStyleSheet(f"background: {brand.SUCCESS}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_yeni.clicked.connect(self._yeni)
         toolbar_layout.addWidget(btn_yeni)
 
         # Onay butonları - BU SAYFAYI GÖREBİLİYORSANIZ ZATEN YETKİNİZ VAR
         # Menü yetkileri zaten kontrol ediyor
         btn_onayla = QPushButton("✅ Onayla")
-        btn_onayla.setStyleSheet(f"background: {self.theme.get('primary')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_onayla.setStyleSheet(f"background: {brand.PRIMARY}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_onayla.clicked.connect(self._onayla)
         toolbar_layout.addWidget(btn_onayla)
 
         btn_reddet = QPushButton("❌ Reddet")
-        btn_reddet.setStyleSheet(f"background: {self.theme.get('danger')}; color: white; padding: 8px 16px; border-radius: 6px;")
+        btn_reddet.setStyleSheet(f"background: {brand.ERROR}; color: white; padding: {brand.SP_2}px {brand.SP_4}px; border-radius: {brand.R_SM}px;")
         btn_reddet.clicked.connect(self._reddet)
         toolbar_layout.addWidget(btn_reddet)
 
@@ -1020,12 +1021,12 @@ class SatinalmaTaleplerPage(BasePage):
         self.cmb_durum = QComboBox()
         self.cmb_durum.addItems(["Tümü", "TASLAK", "ONAY_BEKLIYOR", "AMIR_ONAYLADI", 
                                  "SATINALMA_ONAYLANDI", "REDDEDILDI"])
-        self.cmb_durum.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px; color: {self.theme.get('text')};")
+        self.cmb_durum.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px; color: {brand.TEXT};")
         self.cmb_durum.currentIndexChanged.connect(self._filter)
         toolbar_layout.addWidget(self.cmb_durum)
         
         btn_yenile = QPushButton("Yenile")
-        btn_yenile.setStyleSheet(f"background: {self.theme.get('bg_input')}; border: 1px solid {self.theme.get('border')}; border-radius: 6px; padding: 8px 16px; color: {self.theme.get('text')};")
+        btn_yenile.setStyleSheet(f"background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_4}px; color: {brand.TEXT};")
         btn_yenile.clicked.connect(self._load_data)
         toolbar_layout.addWidget(btn_yenile)
         
@@ -1040,10 +1041,10 @@ class SatinalmaTaleplerPage(BasePage):
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.verticalHeader().setVisible(False)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ background: {self.theme.get('bg_card')}; border: 1px solid {self.theme.get('border')}; border-radius: 8px; color: {self.theme.get('text')}; }}
-            QTableWidget::item {{ padding: 8px; }}
-            QTableWidget::item:selected {{ background: {self.theme.get('primary')}; }}
-            QHeaderView::section {{ background: {self.theme.get('bg_input')}; color: {self.theme.get('text')}; padding: 10px; border: none; font-weight: bold; }}
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; border-radius: {brand.R_MD}px; color: {brand.TEXT}; }}
+            QTableWidget::item {{ padding: {brand.SP_2}px; }}
+            QTableWidget::item:selected {{ background: {brand.PRIMARY}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; padding: {brand.SP_3}px; border: none; font-weight: {brand.FW_BOLD}; }}
         """)
         
         header = self.table.horizontalHeader()
@@ -1060,7 +1061,7 @@ class SatinalmaTaleplerPage(BasePage):
         layout.addWidget(self.table)
 
         self.lbl_stat = QLabel()
-        self.lbl_stat.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.lbl_stat.setStyleSheet(f"color: {brand.TEXT_DIM};")
         layout.addWidget(self.lbl_stat)
 
     def _load_data(self):
@@ -1090,11 +1091,11 @@ class SatinalmaTaleplerPage(BasePage):
         self.table.setRowCount(len(rows))
         
         durum_colors = {
-            'TASLAK': self.theme.get('text_muted'),
-            'ONAY_BEKLIYOR': self.theme.get('warning'),
-            'AMIR_ONAYLADI': self.theme.get('info'),
-            'SATINALMA_ONAYLANDI': self.theme.get('success'),
-            'REDDEDILDI': self.theme.get('danger'),
+            'TASLAK': brand.TEXT_DIM,
+            'ONAY_BEKLIYOR': brand.WARNING,
+            'AMIR_ONAYLADI': brand.INFO,
+            'SATINALMA_ONAYLANDI': brand.SUCCESS,
+            'REDDEDILDI': brand.ERROR,
         }
         
         for i, row in enumerate(rows):
@@ -1103,13 +1104,13 @@ class SatinalmaTaleplerPage(BasePage):
                     item = QTableWidgetItem(f"{val:,.2f}")
                 elif j == 6:  # Durum
                     item = QTableWidgetItem(str(val) if val else "")
-                    item.setForeground(QColor(durum_colors.get(val, self.theme.get('text'))))
+                    item.setForeground(QColor(durum_colors.get(val, brand.TEXT)))
                 elif j == 7:  # Amir onay
                     item = QTableWidgetItem(str(val) if val else "-")
                     if val == "ONAYLANDI":
-                        item.setForeground(QColor(self.theme.get('success')))
+                        item.setForeground(QColor(brand.SUCCESS))
                     elif val == "REDDEDILDI":
-                        item.setForeground(QColor(self.theme.get('danger')))
+                        item.setForeground(QColor(brand.ERROR))
                 else:
                     item = QTableWidgetItem(str(val) if val else "")
                 self.table.setItem(i, j, item)

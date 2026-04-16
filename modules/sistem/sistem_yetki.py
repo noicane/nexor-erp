@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection
+from core.nexor_brand import brand
 
 
 # Modül listesi
@@ -118,7 +119,7 @@ class IzinDialog(QDialog):
         btn_kaydet = QPushButton("💾 Kaydet")
         btn_kaydet.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 padding: 8px 20px;
                 border: none;
@@ -229,17 +230,17 @@ class SistemYetkiPage(BasePage):
         
         # Başlık
         header = QFrame()
-        header.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;padding:16px;}}")
+        header.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;padding:16px;}}")
         hl = QHBoxLayout(header)
         
         title = QLabel("🔐 İzin/Yetki Yönetimi")
-        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{self.theme.get('text', '#ffffff')};")
+        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{brand.TEXT};")
         hl.addWidget(title)
         hl.addStretch()
         
         # Modül filtresi
         lbl_modul = QLabel("Modül:")
-        lbl_modul.setStyleSheet(f"color:{self.theme.get('text', '#ffffff')};")
+        lbl_modul.setStyleSheet(f"color:{brand.TEXT};")
         hl.addWidget(lbl_modul)
         
         self.cmb_modul_filtre = QComboBox()
@@ -255,7 +256,7 @@ class SistemYetkiPage(BasePage):
         btn_yeni.clicked.connect(self.yeni_izin)
         btn_yeni.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -271,7 +272,7 @@ class SistemYetkiPage(BasePage):
         btn_toplu.clicked.connect(self.toplu_ekle)
         btn_toplu.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('warning', '#f59e0b')};
+                background: {brand.WARNING};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -287,7 +288,7 @@ class SistemYetkiPage(BasePage):
         btn_refresh.clicked.connect(self.load_data)
         btn_refresh.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('primary', '#3b82f6')};
+                background: {brand.PRIMARY};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -319,21 +320,21 @@ class SistemYetkiPage(BasePage):
         
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_card', '#1e293b')};
-                color: {self.theme.get('text', '#ffffff')};
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                background-color: {brand.BG_CARD};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                gridline-color: {brand.BORDER};
             }}
             QTableWidget::item {{
                 padding: 8px;
             }}
             QTableWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#3b82f6')};
+                background-color: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_main', '#0f172a')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_MAIN};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
                 font-weight: bold;
@@ -384,7 +385,7 @@ class SistemYetkiPage(BasePage):
             self.table.setItem(row_idx, 0, QTableWidgetItem(str(i.get('id', ''))))
             
             modul_item = QTableWidgetItem(i.get('modul', ''))
-            modul_item.setForeground(QColor(self.theme.get('primary', '#3b82f6')))
+            modul_item.setForeground(QColor(brand.PRIMARY))
             self.table.setItem(row_idx, 1, modul_item)
             
             self.table.setItem(row_idx, 2, QTableWidgetItem(i.get('kod', '')))
@@ -393,10 +394,10 @@ class SistemYetkiPage(BasePage):
             # Durum
             if i.get('aktif_mi'):
                 durum = "✅ Aktif"
-                durum_renk = self.theme.get('success', '#22c55e')
+                durum_renk = brand.SUCCESS
             else:
                 durum = "⏸️ Pasif"
-                durum_renk = self.theme.get('warning', '#f59e0b')
+                durum_renk = brand.WARNING
             
             durum_item = QTableWidgetItem(durum)
             durum_item.setForeground(QColor(durum_renk))

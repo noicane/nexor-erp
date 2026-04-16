@@ -16,6 +16,7 @@ from components.base_page import BasePage
 from core.database import get_db_connection
 from core.menu_structure import MENU_STRUCTURE
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 
 class SistemKullaniciYetkiPage(BasePage):
@@ -35,17 +36,17 @@ class SistemKullaniciYetkiPage(BasePage):
         
         # Başlık
         header = QFrame()
-        header.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;padding:16px;}}")
+        header.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;padding:16px;}}")
         hl = QHBoxLayout(header)
         
         title = QLabel("🔐 Kullanıcı Menü Yetkileri")
-        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{self.theme.get('text', '#ffffff')};")
+        title.setStyleSheet(f"font-size:20px;font-weight:bold;color:{brand.TEXT};")
         hl.addWidget(title)
         hl.addStretch()
         
         # Kullanıcı seçimi
         lbl_kullanici = QLabel("Kullanıcı:")
-        lbl_kullanici.setStyleSheet(f"color:{self.theme.get('text', '#ffffff')};font-weight:bold;")
+        lbl_kullanici.setStyleSheet(f"color:{brand.TEXT};font-weight:bold;")
         hl.addWidget(lbl_kullanici)
         
         self.cmb_kullanici = QComboBox()
@@ -53,11 +54,11 @@ class SistemKullaniciYetkiPage(BasePage):
         self.cmb_kullanici.currentIndexChanged.connect(self.on_kullanici_changed)
         self.cmb_kullanici.setStyleSheet(f"""
             QComboBox {{
-                background: {self.theme.get('bg_input', '#1e293b')};
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text', '#ffffff')};
+                color: {brand.TEXT};
             }}
         """)
         hl.addWidget(self.cmb_kullanici)
@@ -67,7 +68,7 @@ class SistemKullaniciYetkiPage(BasePage):
         btn_kaydet.clicked.connect(self.kaydet)
         btn_kaydet.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 6px;
@@ -85,36 +86,36 @@ class SistemKullaniciYetkiPage(BasePage):
         
         # Sol: Kullanıcı bilgisi ve hızlı işlemler
         left_widget = QFrame()
-        left_widget.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;}}")
+        left_widget.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;}}")
         left_layout = QVBoxLayout(left_widget)
         
         lbl_info = QLabel("👤 Seçili Kullanıcı")
-        lbl_info.setStyleSheet(f"font-size:14px;font-weight:bold;color:{self.theme.get('text', '#ffffff')};padding:10px;")
+        lbl_info.setStyleSheet(f"font-size:14px;font-weight:bold;color:{brand.TEXT};padding:10px;")
         left_layout.addWidget(lbl_info)
         
         self.lbl_kullanici_detay = QLabel("Kullanıcı seçiniz...")
-        self.lbl_kullanici_detay.setStyleSheet(f"color:{self.theme.get('text_secondary', '#94a3b8')};padding:10px;")
+        self.lbl_kullanici_detay.setStyleSheet(f"color:{brand.TEXT_MUTED};padding:10px;")
         self.lbl_kullanici_detay.setWordWrap(True)
         left_layout.addWidget(self.lbl_kullanici_detay)
         
         # Hızlı işlemler
         quick_group = QGroupBox("Hızlı İşlemler")
-        quick_group.setStyleSheet(f"QGroupBox{{color:{self.theme.get('text', '#ffffff')};font-weight:bold;border:1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};border-radius:6px;margin-top:10px;padding-top:10px;}}")
+        quick_group.setStyleSheet(f"QGroupBox{{color:{brand.TEXT};font-weight:bold;border:1px solid {brand.BORDER};border-radius:6px;margin-top:10px;padding-top:10px;}}")
         quick_layout = QVBoxLayout()
         
         btn_select_all = QPushButton("✅ Tümünü Seç")
         btn_select_all.clicked.connect(self.select_all)
-        btn_select_all.setStyleSheet(f"background:{self.theme.get('primary', '#3b82f6')};color:white;border:none;border-radius:4px;padding:8px;")
+        btn_select_all.setStyleSheet(f"background:{brand.PRIMARY};color:white;border:none;border-radius:4px;padding:8px;")
         quick_layout.addWidget(btn_select_all)
         
         btn_deselect_all = QPushButton("⬜ Tümünü Kaldır")
         btn_deselect_all.clicked.connect(self.deselect_all)
-        btn_deselect_all.setStyleSheet(f"background:{self.theme.get('warning', '#f59e0b')};color:white;border:none;border-radius:4px;padding:8px;")
+        btn_deselect_all.setStyleSheet(f"background:{brand.WARNING};color:white;border:none;border-radius:4px;padding:8px;")
         quick_layout.addWidget(btn_deselect_all)
         
         btn_select_view = QPushButton("👁️ Sadece Ana Menüler")
         btn_select_view.clicked.connect(self.select_main_only)
-        btn_select_view.setStyleSheet(f"background:{self.theme.get('info', '#06b6d4')};color:white;border:none;border-radius:4px;padding:8px;")
+        btn_select_view.setStyleSheet(f"background:{brand.INFO};color:white;border:none;border-radius:4px;padding:8px;")
         quick_layout.addWidget(btn_select_view)
         
         quick_group.setLayout(quick_layout)
@@ -122,7 +123,7 @@ class SistemKullaniciYetkiPage(BasePage):
         
         # İstatistik
         self.lbl_stats = QLabel("Seçili: 0 menü")
-        self.lbl_stats.setStyleSheet(f"color:{self.theme.get('text_secondary', '#94a3b8')};padding:10px;font-size:12px;")
+        self.lbl_stats.setStyleSheet(f"color:{brand.TEXT_MUTED};padding:10px;font-size:12px;")
         left_layout.addWidget(self.lbl_stats)
         
         left_layout.addStretch()
@@ -130,11 +131,11 @@ class SistemKullaniciYetkiPage(BasePage):
         
         # Sağ: Menü ağacı
         right_widget = QFrame()
-        right_widget.setStyleSheet(f"QFrame{{background:{self.theme.get('bg_card', '#1e293b')};border-radius:8px;}}")
+        right_widget.setStyleSheet(f"QFrame{{background:{brand.BG_CARD};border-radius:8px;}}")
         right_layout = QVBoxLayout(right_widget)
         
         lbl_menuler = QLabel("📋 Menüler")
-        lbl_menuler.setStyleSheet(f"font-size:14px;font-weight:bold;color:{self.theme.get('text', '#ffffff')};padding:10px;")
+        lbl_menuler.setStyleSheet(f"font-size:14px;font-weight:bold;color:{brand.TEXT};padding:10px;")
         right_layout.addWidget(lbl_menuler)
         
         self.tree_menuler = QTreeWidget()
@@ -143,20 +144,20 @@ class SistemKullaniciYetkiPage(BasePage):
         self.tree_menuler.itemChanged.connect(self.on_item_changed)
         self.tree_menuler.setStyleSheet(f"""
             QTreeWidget {{
-                background-color: {self.theme.get('bg_main', '#0f172a')};
-                color: {self.theme.get('text', '#ffffff')};
-                border: 1px solid {self.theme.get('border', 'rgba(51, 65, 85, 0.5)')};
+                background-color: {brand.BG_MAIN};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
             }}
             QTreeWidget::item {{
                 padding: 6px;
             }}
             QTreeWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#3b82f6')};
+                background-color: {brand.PRIMARY};
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_card', '#1e293b')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_CARD};
+                color: {brand.TEXT};
                 padding: 8px;
                 border: none;
                 font-weight: bold;

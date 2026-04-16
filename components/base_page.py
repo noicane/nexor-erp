@@ -8,11 +8,13 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QLineEdit, QComboBox, QTableWidget,
     QHeaderView, QScrollArea, QGroupBox, QFileDialog,
-    QMessageBox, QMenu
+    QMessageBox, QMenu, QSizePolicy
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QColor
 from datetime import datetime
+
+from core.nexor_brand import brand
 
 
 def create_action_buttons(theme: dict, buttons: list) -> QWidget:
@@ -32,6 +34,7 @@ def create_action_buttons(theme: dict, buttons: list) -> QWidget:
         "primary": theme.get('primary', '#DC2626'), "success": "#10B981",
         "danger": "#EF4444", "warning": "#F59E0B", "info": "#3B82F6",
         "secondary": "#64748B",
+        "message": "#25D366", "whatsapp": "#25D366",
     }
     hover_map = {
         "edit": "#1D4ED8", "delete": "#DC2626", "view": "#7C3AED",
@@ -39,12 +42,14 @@ def create_action_buttons(theme: dict, buttons: list) -> QWidget:
         "primary": theme.get('primary_hover', '#9B1818'), "success": "#059669",
         "danger": "#DC2626", "warning": "#D97706", "info": "#2563EB",
         "secondary": "#475569",
+        "message": "#1DA851", "whatsapp": "#1DA851",
     }
     label_map = {
         "edit": "Duzenle", "delete": "Sil", "view": "Detay",
         "print": "Yazdir", "photo": "Foto", "primary": "Islem",
         "success": "Onayla", "danger": "Sil", "warning": "Cikis",
         "info": "Detay", "secondary": "...",
+        "message": "WhatsApp", "whatsapp": "WhatsApp",
     }
 
     widget = QWidget()
@@ -750,113 +755,151 @@ class BasePage(QWidget):
     
     def create_stat_card(self, label: str, value: str, icon: str = None,
                          color: str = None) -> QFrame:
-        """Istatistik karti olustur (PRAXIS: sol accent cizgi + uppercase label)"""
-        t = self.theme
-        accent = color or t['primary']
+        """Brand-aware KPI karti (dashboard_v3 stilinde: baslik sol, icon sag).
+
+        Args:
+            label: Ust satir kaption (örn. 'TOPLAM TEKLIF')
+            value: Buyuk sayisal deger (örn. '1.284')
+            icon: Kullanilmiyor — geri uyumluluk icin parametre, emoji yok
+            color: Accent renk (None ise brand.PRIMARY)
+        """
+        accent = color or brand.PRIMARY
+        c = QColor(accent)
+        soft_bg = f"rgba({c.red()},{c.green()},{c.blue()},0.12)"
+        soft_border = f"rgba({c.red()},{c.green()},{c.blue()},0.35)"
 
         card = QFrame()
+        card.setObjectName("nxStatCard")
+        card.setFixedHeight(brand.sp(130))
+        card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         card.setStyleSheet(f"""
-            QFrame {{
-                background: {t['bg_card']};
-                border: 1px solid {t['border']};
-                border-left: 3px solid {accent};
-                border-radius: 10px;
+            QFrame#nxStatCard {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
             }}
-            QFrame:hover {{
-                border-color: {accent};
-                border-left: 3px solid {accent};
+            QFrame#nxStatCard:hover {{
+                border-color: {brand.BORDER_HARD};
             }}
+            QLabel {{ background: transparent; border: none; }}
         """)
 
-        layout = QHBoxLayout(card)
-        layout.setContentsMargins(16, 14, 16, 14)
-        layout.setSpacing(12)
+        outer = QVBoxLayout(card)
+        outer.setContentsMargins(brand.SP_5, brand.SP_4, brand.SP_5, brand.SP_4)
+        outer.setSpacing(brand.SP_3)
 
-        if icon:
-            icon_label = QLabel(icon)
-            icon_label.setStyleSheet(f"""
-                background: {t.get('bg_hover', t['bg_card'])};
-                padding: 8px;
-                border-radius: 8px;
-                font-size: 18px;
-                border: none;
-            """)
-            layout.addWidget(icon_label)
+        # Ust: baslik (sol) + accent pill (sag)
+        top = QHBoxLayout()
+        top.setSpacing(brand.SP_2)
+        top.setContentsMargins(0, 0, 0, 0)
 
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(2)
+        title_lbl = QLabel((label or '').upper())
+        title_lbl.setStyleSheet(
+            f"color: {brand.TEXT_MUTED}; "
+            f"font-size: {brand.FS_CAPTION}px; "
+            f"font-weight: {brand.FW_SEMIBOLD}; "
+            f"letter-spacing: 0.8px;"
+        )
+        top.addWidget(title_lbl, 1, Qt.AlignLeft | Qt.AlignVCenter)
 
-        lbl = QLabel(label.upper())
-        lbl.setStyleSheet(f"""
-            color: {t['text_muted']};
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            border: none;
-        """)
-        text_layout.addWidget(lbl)
+        accent_dot = QLabel()
+        accent_dot.setFixedSize(brand.sp(10), brand.sp(10))
+        accent_dot.setStyleSheet(
+            f"background: {accent}; "
+            f"border-radius: {brand.sp(5)}px; "
+            f"border: 2px solid {soft_bg};"
+        )
+        top.addWidget(accent_dot, 0, Qt.AlignRight | Qt.AlignVCenter)
 
+        outer.addLayout(top)
+        outer.addSpacing(brand.SP_1)
+
+        # Ana deger
         value_label = QLabel(value)
         value_label.setObjectName("stat_value")
-        value_label.setStyleSheet(f"""
-            color: {accent};
-            font-size: 22px;
-            font-weight: 700;
-            border: none;
-        """)
-        text_layout.addWidget(value_label)
+        value_label.setMinimumHeight(brand.sp(40))
+        value_label.setStyleSheet(
+            f"color: {brand.TEXT}; "
+            f"font-size: {brand.FS_DISPLAY}px; "
+            f"font-weight: {brand.FW_BOLD}; "
+            f"letter-spacing: -0.6px;"
+        )
+        outer.addWidget(value_label)
 
-        layout.addLayout(text_layout)
-        layout.addStretch()
+        outer.addStretch()
 
         return card
-    
+
+    def _brand_button_style(self, bg: str, hover_bg: str,
+                            fg: str = "white") -> str:
+        return f"""
+            QPushButton {{
+                background: {bg};
+                color: {fg};
+                border: none;
+                border-radius: {brand.R_SM}px;
+                padding: 0 {brand.SP_5}px;
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                min-height: {brand.sp(34)}px;
+            }}
+            QPushButton:hover {{ background: {hover_bg}; }}
+            QPushButton:disabled {{
+                background: {brand.BG_HOVER};
+                color: {brand.TEXT_DISABLED};
+            }}
+        """
+
     def create_primary_button(self, text: str) -> QPushButton:
-        """Primary buton olustur"""
         btn = QPushButton(text)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setProperty("class", "primary")
+        btn.setFixedHeight(brand.sp(38))
+        btn.setStyleSheet(
+            self._brand_button_style(brand.PRIMARY, brand.PRIMARY_HOVER)
+        )
         return btn
-    
+
     def create_success_button(self, text: str) -> QPushButton:
-        """Success buton olustur"""
         btn = QPushButton(text)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setProperty("class", "success")
+        btn.setFixedHeight(brand.sp(38))
+        btn.setStyleSheet(
+            self._brand_button_style(brand.SUCCESS, "#059669")
+        )
         return btn
-    
+
     def create_danger_button(self, text: str) -> QPushButton:
-        """Danger buton olustur"""
         btn = QPushButton(text)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setProperty("class", "danger")
+        btn.setFixedHeight(brand.sp(38))
+        btn.setStyleSheet(
+            self._brand_button_style(brand.ERROR, "#DC2626")
+        )
         return btn
-    
+
     def create_badge(self, text: str, variant: str = "default") -> QLabel:
-        """Badge olustur (success, warning, error, info, default)"""
-        t = self.theme
-        
-        colors = {
-            "success": (t['success_bg'], t['success_text']),
-            "warning": (t['warning_bg'], t['warning_text']),
-            "error": (t['error_bg'], t['error_text']),
-            "info": (t['info_bg'], t['info_text']),
-            "default": (t['badge_bg'], t['text_secondary']),
+        """Badge olustur — brand-aware soft pill."""
+        variant_colors = {
+            "success": brand.SUCCESS,
+            "warning": brand.WARNING,
+            "error":   brand.ERROR,
+            "info":    brand.INFO,
+            "default": brand.TEXT_MUTED,
         }
-        
-        bg, fg = colors.get(variant, colors["default"])
-        
+        color = variant_colors.get(variant, brand.TEXT_MUTED)
+        c = QColor(color)
+
         badge = QLabel(text)
-        badge.setStyleSheet(f"""
-            background: {bg};
-            color: {fg};
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-        """)
         badge.setAlignment(Qt.AlignCenter)
-        
+        badge.setStyleSheet(f"""
+            color: {color};
+            background: rgba({c.red()},{c.green()},{c.blue()},0.12);
+            border: 1px solid rgba({c.red()},{c.green()},{c.blue()},0.35);
+            border-radius: {brand.R_SM}px;
+            padding: {brand.SP_1}px {brand.SP_3}px;
+            font-size: {brand.FS_CAPTION}px;
+            font-weight: {brand.FW_SEMIBOLD};
+        """)
         return badge
     
     def create_section_title(self, text: str, icon: str = None) -> QLabel:

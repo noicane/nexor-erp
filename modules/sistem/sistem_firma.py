@@ -6,13 +6,14 @@ Programi kullanan firmanin bilgilerini yonetir (PDF ciktilari icin)
 import os
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
-    QLineEdit, QTextEdit, QFileDialog, QScrollArea, QWidget, QMessageBox
+    QLineEdit, QTextEdit, QFileDialog, QScrollArea, QWidget, QMessageBox, QComboBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
 
 from components.base_page import BasePage
 from core.firma_bilgileri import get_firma_bilgileri, set_firma_bilgileri
+from core.nexor_brand import brand
 
 
 class SistemFirmaPage(BasePage):
@@ -37,8 +38,8 @@ class SistemFirmaPage(BasePage):
         # Baslik
         header = QFrame()
         header.setStyleSheet(
-            f"background: {self.theme['bg_card']}; "
-            f"border: 1px solid {self.theme['border']}; border-radius: 12px;"
+            f"background: {brand.BG_CARD}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: 12px;"
         )
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(20, 16, 20, 16)
@@ -50,11 +51,11 @@ class SistemFirmaPage(BasePage):
         title_text = QVBoxLayout()
         title = QLabel("Firma Bilgileri")
         title.setStyleSheet(
-            f"color: {self.theme['text']}; font-size: 22px; font-weight: bold;"
+            f"color: {brand.TEXT}; font-size: 22px; font-weight: bold;"
         )
         subtitle = QLabel("PDF ve raporlarda gorunecek firma bilgilerini duzenleyin")
         subtitle.setStyleSheet(
-            f"color: {self.theme['text_secondary']}; font-size: 13px;"
+            f"color: {brand.TEXT_MUTED}; font-size: 13px;"
         )
         title_text.addWidget(title)
         title_text.addWidget(subtitle)
@@ -90,8 +91,8 @@ class SistemFirmaPage(BasePage):
         self.logo_preview.setFixedSize(200, 100)
         self.logo_preview.setAlignment(Qt.AlignCenter)
         self.logo_preview.setStyleSheet(
-            f"background: {self.theme['bg_input']}; "
-            f"border: 2px dashed {self.theme['border']}; border-radius: 8px;"
+            f"background: {brand.BG_INPUT}; "
+            f"border: 2px dashed {brand.BORDER}; border-radius: 8px;"
         )
         self.logo_preview.setText("Logo secilmedi")
         logo_layout.addWidget(self.logo_preview)
@@ -114,7 +115,7 @@ class SistemFirmaPage(BasePage):
 
         self.lbl_logo_path = QLabel("Logo secilmedi")
         self.lbl_logo_path.setStyleSheet(
-            f"color: {self.theme['text_muted']}; font-size: 12px;"
+            f"color: {brand.TEXT_MUTED}; font-size: 12px;"
         )
         btn_layout.addWidget(self.lbl_logo_path)
         btn_layout.addStretch()
@@ -122,6 +123,66 @@ class SistemFirmaPage(BasePage):
         logo_layout.addLayout(btn_layout)
         logo_group.layout().addLayout(logo_layout)
         layout.addWidget(logo_group)
+
+        # === PDF TEMA SECIMI ===
+        pdf_group = self._create_section(
+            "", "PDF Sablon Temasi", "Tum PDF ciktilarinda kullanilacak gorunum temasi"
+        )
+        pdf_layout = QVBoxLayout()
+        pdf_layout.setSpacing(brand.SP_3)
+
+        tema_row = QHBoxLayout()
+        tema_row.setSpacing(brand.SP_3)
+        tema_lbl = QLabel("Aktif Tema:")
+        tema_lbl.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY}px;")
+        tema_row.addWidget(tema_lbl)
+
+        self.cmb_pdf_tema = QComboBox()
+        self.cmb_pdf_tema.setStyleSheet(
+            f"QComboBox {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; "
+            f"padding: {brand.SP_2}px {brand.SP_3}px; font-size: {brand.FS_BODY}px; }}"
+        )
+        tema_isimleri = {
+            "kurumsal": "Kurumsal (Koyu header, kirmizi accent)",
+            "profesyonel": "Profesyonel (Mavi ton, modern)",
+            "minimal": "Minimal (Sade siyah-beyaz)",
+        }
+        from utils.pdf_template import get_available_themes, get_pdf_theme_name
+        for key in get_available_themes():
+            self.cmb_pdf_tema.addItem(tema_isimleri.get(key, key), key)
+        # Aktif temayi sec
+        aktif = get_pdf_theme_name()
+        for i in range(self.cmb_pdf_tema.count()):
+            if self.cmb_pdf_tema.itemData(i) == aktif:
+                self.cmb_pdf_tema.setCurrentIndex(i)
+                break
+        tema_row.addWidget(self.cmb_pdf_tema)
+
+        btn_onizle = QPushButton("Onizle")
+        btn_onizle.setCursor(Qt.PointingHandCursor)
+        btn_onizle.setStyleSheet(
+            f"QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px; "
+            f"padding: {brand.SP_2}px {brand.SP_4}px; font-size: {brand.FS_BODY}px; }}"
+            f"QPushButton:hover {{ border-color: {brand.PRIMARY}; }}"
+        )
+        btn_onizle.clicked.connect(self._preview_pdf_tema)
+        tema_row.addWidget(btn_onizle)
+        tema_row.addStretch()
+
+        pdf_layout.addLayout(tema_row)
+
+        tema_desc = QLabel(
+            "Kurumsal: Satis odakli firmalar icin koyu ve profesyonel\n"
+            "Profesyonel: Mavi tonlu, modern ve temiz gorunum\n"
+            "Minimal: Sade ve ekonomik baski icin uygun"
+        )
+        tema_desc.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_CAPTION}px;")
+        pdf_layout.addWidget(tema_desc)
+
+        pdf_group.layout().addLayout(pdf_layout)
+        layout.addWidget(pdf_group)
 
         # === KAYDET BUTONU ===
         save_layout = QHBoxLayout()
@@ -131,10 +192,10 @@ class SistemFirmaPage(BasePage):
         self.btn_kaydet.setFixedHeight(44)
         self.btn_kaydet.setMinimumWidth(160)
         self.btn_kaydet.setStyleSheet(
-            f"QPushButton {{ background: {self.theme.get('gradient_css', self.theme.get('primary', '#DC2626'))}; "
+            f"QPushButton {{ background: {brand.PRIMARY}; "
             f"color: white; border: none; border-radius: 10px; padding: 10px 32px; "
             f"font-weight: bold; font-size: 14px; }}"
-            f"QPushButton:hover {{ background: {self.theme.get('primary', '#DC2626')}; }}"
+            f"QPushButton:hover {{ background: {brand.PRIMARY}; }}"
         )
         self.btn_kaydet.clicked.connect(self._on_save)
         save_layout.addWidget(self.btn_kaydet)
@@ -150,8 +211,8 @@ class SistemFirmaPage(BasePage):
     def _create_section(self, icon: str, title: str, subtitle: str) -> QFrame:
         frame = QFrame()
         frame.setStyleSheet(
-            f"background: {self.theme['bg_card']}; "
-            f"border: 1px solid {self.theme['border']}; border-radius: 12px;"
+            f"background: {brand.BG_CARD}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: 12px;"
         )
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(20, 16, 20, 16)
@@ -166,11 +227,11 @@ class SistemFirmaPage(BasePage):
         title_layout.setSpacing(2)
         title_lbl = QLabel(title)
         title_lbl.setStyleSheet(
-            f"color: {self.theme['text']}; font-weight: bold; font-size: 15px;"
+            f"color: {brand.TEXT}; font-weight: bold; font-size: 15px;"
         )
         subtitle_lbl = QLabel(subtitle)
         subtitle_lbl.setStyleSheet(
-            f"color: {self.theme['text_muted']}; font-size: 12px;"
+            f"color: {brand.TEXT_MUTED}; font-size: 12px;"
         )
         title_layout.addWidget(title_lbl)
         title_layout.addWidget(subtitle_lbl)
@@ -184,18 +245,18 @@ class SistemFirmaPage(BasePage):
         lbl = QLabel(label_text)
         lbl.setFixedWidth(120)
         lbl.setStyleSheet(
-            f"color: {self.theme['text']}; font-size: 13px; font-weight: bold;"
+            f"color: {brand.TEXT}; font-size: 13px; font-weight: bold;"
         )
         row.addWidget(lbl)
 
         txt = QLineEdit()
         txt.setFixedHeight(36)
         txt.setStyleSheet(
-            f"QLineEdit {{ background: {self.theme['bg_input']}; "
-            f"color: {self.theme['text']}; "
-            f"border: 1px solid {self.theme['border']}; border-radius: 8px; "
+            f"QLineEdit {{ background: {brand.BG_INPUT}; "
+            f"color: {brand.TEXT}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: 8px; "
             f"padding: 4px 12px; font-size: 13px; }}"
-            f"QLineEdit:focus {{ border-color: {self.theme.get('primary', '#DC2626')}; }}"
+            f"QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}"
         )
         row.addWidget(txt)
         parent_layout.addLayout(row)
@@ -207,18 +268,18 @@ class SistemFirmaPage(BasePage):
         lbl = QLabel(label_text)
         lbl.setFixedWidth(120)
         lbl.setStyleSheet(
-            f"color: {self.theme['text']}; font-size: 13px; font-weight: bold;"
+            f"color: {brand.TEXT}; font-size: 13px; font-weight: bold;"
         )
         row.addWidget(lbl)
 
         txt = QTextEdit()
         txt.setFixedHeight(72)
         txt.setStyleSheet(
-            f"QTextEdit {{ background: {self.theme['bg_input']}; "
-            f"color: {self.theme['text']}; "
-            f"border: 1px solid {self.theme['border']}; border-radius: 8px; "
+            f"QTextEdit {{ background: {brand.BG_INPUT}; "
+            f"color: {brand.TEXT}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: 8px; "
             f"padding: 8px 12px; font-size: 13px; }}"
-            f"QTextEdit:focus {{ border-color: {self.theme.get('primary', '#DC2626')}; }}"
+            f"QTextEdit:focus {{ border-color: {brand.PRIMARY}; }}"
         )
         row.addWidget(txt)
         parent_layout.addLayout(row)
@@ -226,12 +287,12 @@ class SistemFirmaPage(BasePage):
 
     def _normal_btn_style(self) -> str:
         return (
-            f"QPushButton {{ background: {self.theme['bg_input']}; "
-            f"color: {self.theme['text']}; "
-            f"border: 1px solid {self.theme['border']}; border-radius: 8px; "
+            f"QPushButton {{ background: {brand.BG_INPUT}; "
+            f"color: {brand.TEXT}; "
+            f"border: 1px solid {brand.BORDER}; border-radius: 8px; "
             f"padding: 10px 16px; font-size: 13px; }}"
-            f"QPushButton:hover {{ border-color: {self.theme.get('primary', '#DC2626')}; "
-            f"background: {self.theme.get('bg_hover', self.theme['bg_input'])}; }}"
+            f"QPushButton:hover {{ border-color: {brand.PRIMARY}; "
+            f"background: {brand.BG_HOVER}; }}"
         )
 
     def _load_data(self):
@@ -285,10 +346,65 @@ class SistemFirmaPage(BasePage):
             return
 
         ok = set_firma_bilgileri(data)
+
+        # PDF tema kaydet
+        try:
+            from utils.pdf_template import set_pdf_theme_name
+            secilen_tema = self.cmb_pdf_tema.currentData()
+            if secilen_tema:
+                set_pdf_theme_name(secilen_tema)
+        except Exception as e:
+            print(f"[sistem_firma] PDF tema kaydetme hatasi: {e}")
+
         if ok:
-            QMessageBox.information(self, "Basarili", "Firma bilgileri kaydedildi.")
+            QMessageBox.information(self, "Basarili", "Firma bilgileri ve PDF tema ayarlari kaydedildi.")
         else:
             QMessageBox.critical(self, "Hata", "Firma bilgileri kaydedilemedi!")
+
+    def _preview_pdf_tema(self):
+        """Secili PDF temasinin onizlemesini olustur ve ac."""
+        try:
+            from utils.pdf_template import PDFTemplate
+            from reportlab.lib.units import mm
+
+            tema = self.cmb_pdf_tema.currentData() or "kurumsal"
+
+            tpl = PDFTemplate(
+                title="ORNEK FORM ONIZLEME",
+                form_no="DEMO-001",
+                filename=f"PDF_Onizleme_{tema}.pdf",
+                theme=tema,
+            )
+            y = tpl.content_top
+
+            y = tpl.section("PERSONEL BILGILERI", y)
+            y = tpl.field_row(y, "Ad Soyad", "Ahmet Yilmaz", "Sicil No", "NXR001")
+            y = tpl.field_row(y, "Departman", "Uretim", "Pozisyon", "Operator")
+
+            y = tpl.section("FORM DETAYLARI", y)
+            y = tpl.field_row(y, "Tarih", "16.04.2026", "Durum", "ONAYLANDI")
+            y = tpl.big_value(tpl.margin + 4*mm, y, "Toplam", "5 Gun", color=tpl.theme['success'])
+            y -= 6 * mm
+
+            y = tpl.section("KALEM LISTESI", y)
+            y = tpl.table(y,
+                ["#", "Malzeme", "Miktar", "Birim", "Tutar"],
+                [
+                    ["1", "Cinko Nikel Kimyasal", "100", "kg", "2.500,00"],
+                    ["2", "Kataforez Boyasi", "50", "lt", "1.750,00"],
+                    ["3", "Aski Teli 2mm", "500", "mt", "850,00"],
+                ],
+                col_widths=[15*mm, 60*mm, 25*mm, 20*mm, 35*mm]
+            )
+
+            y = tpl.section("ONAY VE IMZA", y)
+            tpl.signature_row(y, ["Hazirlayan", "Onaylayan", "Mudur"])
+
+            path = tpl.finish(open_file=True)
+            print(f"[sistem_firma] PDF onizleme: {path}")
+
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"PDF onizleme olusturulamadi:\n{e}")
 
     def update_theme(self, theme: dict):
         self.theme = theme

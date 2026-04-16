@@ -13,6 +13,7 @@ from PySide6.QtGui import (
     QPainterPath, QLinearGradient, QMouseEvent, QPaintEvent
 )
 from .models import PlanGorev, BARA_SAYISI, VARDIYA_SURE_DK, VARDIYA_SAYISI, GUN_SAYISI
+from core.nexor_brand import brand
 
 
 # ── Renk Sabitleri ──

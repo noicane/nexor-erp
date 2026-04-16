@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 
 from components.base_page import BasePage
+from core.nexor_brand import brand
 
 
 class SharedData:
@@ -126,13 +127,13 @@ class TabPart(QWidget):
         grp_info = create_group_box("2. Parça Bilgileri", self.theme)
         info_layout = QGridLayout(grp_info)
         info_layout.setSpacing(10)
-        lbl_s = f"color: {self.theme['text_secondary']};"
+        lbl_s = f"color: {brand.TEXT_MUTED};"
         info_layout.addWidget(QLabel("Parça Adı:", styleSheet=lbl_s), 0, 0)
         self.ed_name = QLineEdit()
         self.ed_name.setStyleSheet(input_style(self.theme))
         info_layout.addWidget(self.ed_name, 0, 1)
         self.lbl_area = QLabel("Yüzey Alanı: - m²")
-        self.lbl_area.setStyleSheet(f"color: {self.theme['primary']}; font-weight: bold; margin-top: 8px;")
+        self.lbl_area.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; margin-top: 8px;")
         info_layout.addWidget(self.lbl_area, 1, 0, 1, 2)
         left_layout.addWidget(grp_info)
         
@@ -148,7 +149,7 @@ class TabPart(QWidget):
         cost_row.addWidget(self.sp_cost)
         cost_layout.addLayout(cost_row)
         self.lbl_unit_cost = QLabel("Parça Maliyeti: 0.00 ₺")
-        self.lbl_unit_cost.setStyleSheet(f"color: {self.theme['success']}; font-size: 16px; font-weight: bold;")
+        self.lbl_unit_cost.setStyleSheet(f"color: {brand.SUCCESS}; font-size: 16px; font-weight: bold;")
         cost_layout.addWidget(self.lbl_unit_cost)
         left_layout.addWidget(grp_cost)
         left_layout.addStretch()
@@ -162,7 +163,7 @@ class TabPart(QWidget):
         else:
             lbl = QLabel("⚠️ PyVista yüklü değil")
             lbl.setAlignment(Qt.AlignCenter)
-            lbl.setStyleSheet(f"color: {self.theme['warning']};")
+            lbl.setStyleSheet(f"color: {brand.WARNING};")
             layout.addWidget(lbl, 1)
     
     def _load_part(self):
@@ -232,7 +233,7 @@ class TabHanger(QWidget):
         
         grp_mult = create_group_box("3. Parça Çoklama", self.theme)
         mult_layout = QGridLayout(grp_mult)
-        lbl_s = f"color: {self.theme['text_secondary']};"
+        lbl_s = f"color: {brand.TEXT_MUTED};"
         mult_layout.addWidget(QLabel("Adet:", styleSheet=lbl_s), 0, 0)
         self.sp_count = QSpinBox()
         self.sp_count.setRange(1, 50)
@@ -353,7 +354,7 @@ class TabRack(QWidget):
         
         grp_mult = create_group_box("3. Askı Çoklama", self.theme)
         mult_layout = QGridLayout(grp_mult)
-        lbl_s = f"color: {self.theme['text_secondary']};"
+        lbl_s = f"color: {brand.TEXT_MUTED};"
         mult_layout.addWidget(QLabel("Askı Adedi:", styleSheet=lbl_s), 0, 0)
         self.sp_count = QSpinBox()
         self.sp_count.setRange(1, 30)
@@ -373,10 +374,10 @@ class TabRack(QWidget):
         grp_cost = create_group_box("4. Maliyet Özeti", self.theme)
         cost_layout = QVBoxLayout(grp_cost)
         self.lbl_area_total = QLabel("Toplam Alan: - m²")
-        self.lbl_area_total.setStyleSheet(f"color: {self.theme['text']};")
+        self.lbl_area_total.setStyleSheet(f"color: {brand.TEXT};")
         cost_layout.addWidget(self.lbl_area_total)
         self.lbl_result_total = QLabel("Toplam Maliyet: - ₺")
-        self.lbl_result_total.setStyleSheet(f"color: {self.theme['success']}; font-size: 16px; font-weight: bold;")
+        self.lbl_result_total.setStyleSheet(f"color: {brand.SUCCESS}; font-size: 16px; font-weight: bold;")
         cost_layout.addWidget(self.lbl_result_total)
         left_layout.addWidget(grp_cost)
         
@@ -535,10 +536,10 @@ class BaraHesaplamaPage(BasePage):
         
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(f"""
-            QTabWidget::pane {{ background: {self.theme['bg_main']}; border: none; }}
-            QTabBar::tab {{ background: {self.theme['bg_card']}; color: {self.theme['text_secondary']}; padding: 12px 24px; margin-right: 2px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: bold; }}
-            QTabBar::tab:selected {{ background: {self.theme['bg_main']}; color: {self.theme['primary']}; }}
-            QTabBar::tab:hover:!selected {{ background: {self.theme['bg_hover']}; }}
+            QTabWidget::pane {{ background: {brand.BG_MAIN}; border: none; }}
+            QTabBar::tab {{ background: {brand.BG_CARD}; color: {brand.TEXT_MUTED}; padding: 12px 24px; margin-right: 2px; border-top-left-radius: 8px; border-top-right-radius: 8px; font-weight: bold; }}
+            QTabBar::tab:selected {{ background: {brand.BG_MAIN}; color: {brand.PRIMARY}; }}
+            QTabBar::tab:hover:!selected {{ background: {brand.BG_HOVER}; }}
         """)
         
         self.tab_part = TabPart(self.theme)

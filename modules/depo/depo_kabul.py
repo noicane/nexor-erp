@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-REDLINE NEXOR ERP - Mal Kabul Sayfası
-Gelen irsaliye kayıt, ürün kabul ve emanet stok işlemleri
--- Güncellenmiş: Lot yapısı ve stok.stok_bakiye entegrasyonu
+NEXOR ERP - Mal Kabul Sayfasi
+==============================
+El Kitabi v3 uyumlu: brand token, emoji-free, responsive
+Gelen irsaliye kayit, urun kabul ve emanet stok islemleri
+-- Guncellenmis: Lot yapisi ve stok.stok_bakiye entegrasyonu
 """
 import os
 from datetime import datetime, date
@@ -21,6 +23,7 @@ from components.base_page import BasePage, create_action_buttons
 from components.dialog_minimize_bar import add_minimize_button
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 from config import DEFAULT_PAGE_SIZE
 
 # Etiket yazdırma
@@ -55,49 +58,55 @@ def get_next_lot_sira(tarih: datetime = None) -> int:
     if tarih is None:
         tarih = datetime.now()
     
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         yil_ay = tarih.strftime("%y%m")
         like_pattern = f"LOT-{yil_ay}-%"
-        
+
         # Hem stok_bakiye hem de giris_irsaliye_satirlar'dan kontrol et
         cursor.execute("""
             SELECT MAX(sira) FROM (
                 SELECT CAST(
-                    CASE 
+                    CASE
                         WHEN LEN(lot_no) > 12 THEN SUBSTRING(lot_no, 10, 4)
                         WHEN LEN(lot_no) = 12 THEN SUBSTRING(lot_no, 10, 4)
                         ELSE '0'
                     END AS INT
                 ) as sira
-                FROM stok.stok_bakiye 
+                FROM stok.stok_bakiye
                 WHERE parent_lot_no LIKE ?
-                
+
                 UNION ALL
-                
+
                 SELECT CAST(
-                    CASE 
+                    CASE
                         WHEN LEN(lot_no) >= 12 THEN SUBSTRING(lot_no, 10, 4)
                         ELSE '0'
                     END AS INT
                 ) as sira
-                FROM siparis.giris_irsaliye_satirlar 
+                FROM siparis.giris_irsaliye_satirlar
                 WHERE lot_no LIKE ?
             ) t
         """, (like_pattern, like_pattern))
-        
+
         row = cursor.fetchone()
-        conn.close()
-        
+
         if row and row[0]:
             return int(row[0]) + 1
-        
+
         return 1
     except Exception as e:
-        print(f"Lot sıra bulma hatası: {e}")
+        print(f"Lot sira bulma hatasi: {e}")
         return 1
+    finally:
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 # ============================================================================
@@ -122,29 +131,51 @@ class PaletBolmeDialog(QDialog):
         self.theme = theme
         self.created_lots = []  # Oluşturulan lot numaraları
         
-        self.setWindowTitle("🏷️ Palet Bölme ve Etiket Yazdır")
-        self.setMinimumSize(680, 750)
-        self.resize(720, 820)
+        self.setWindowTitle("Palet Bolme ve Etiket Yazdir")
+        self.setMinimumSize(brand.sp(680), brand.sp(750))
+        self.resize(brand.sp(720), brand.sp(820))
 
         self._setup_ui()
         add_minimize_button(self)
 
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background-color: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
-            QGroupBox {{ 
-                color: {self.theme['text']}; font-weight: bold; 
-                border: 1px solid {self.theme['border']}; border-radius: 8px; 
-                margin-top: 12px; padding-top: 8px;
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
             }}
-            QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 8px; color: {self.theme['primary']}; }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
+            QGroupBox {{
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                margin-top: {brand.SP_5}px;
+                padding: {brand.SP_5}px;
+                padding-top: {brand.SP_8}px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: {brand.SP_4}px;
+                top: {brand.SP_2}px;
+                padding: 0 {brand.SP_2}px;
+                color: {brand.TEXT_MUTED};
+                background: {brand.BG_MAIN};
+            }}
             QSpinBox, QLineEdit, QComboBox {{
-                background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']};
-                border-radius: 6px; padding: 8px; color: {self.theme['text']}; font-size: 14px;
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QSpinBox:focus, QLineEdit:focus, QComboBox:focus {{
+                border-color: {brand.PRIMARY};
             }}
         """)
-        
+
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -154,13 +185,13 @@ class PaletBolmeDialog(QDialog):
         scroll.setStyleSheet("QScrollArea { border: none; }")
         scroll_widget = QWidget()
         layout = QVBoxLayout(scroll_widget)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
 
-        # ===== ÜRÜN BİLGİLERİ =====
-        info_group = QGroupBox("📦 Ürün Bilgileri")
+        # ===== URUN BILGILERI =====
+        info_group = QGroupBox("Urun Bilgileri")
         info_layout = QGridLayout(info_group)
-        info_layout.setSpacing(8)
+        info_layout.setSpacing(brand.SP_2)
         
         info_layout.addWidget(QLabel("Stok Kodu:"), 0, 0)
         info_layout.addWidget(QLabel(f"<b>{self.stok_kodu}</b>"), 0, 1)
@@ -175,20 +206,20 @@ class PaletBolmeDialog(QDialog):
         info_layout.addWidget(QLabel(self.kaplama or "-"), 3, 1)
         
         info_layout.addWidget(QLabel("Toplam Miktar:"), 4, 0)
-        miktar_label = QLabel(f"<b style='color: {self.theme['success']};'>{self.toplam_miktar:,.0f} {self.birim}</b>")
+        miktar_label = QLabel(f"<b style='color: {brand.SUCCESS};'>{self.toplam_miktar:,.0f} {self.birim}</b>")
         info_layout.addWidget(miktar_label, 4, 1)
         
         layout.addWidget(info_group)
         
-        # ===== PALET BÖLME =====
-        bolme_group = QGroupBox("📋 Palet Bölme")
+        # ===== PALET BOLME =====
+        bolme_group = QGroupBox("Palet Bolme")
         bolme_layout = QGridLayout(bolme_group)
-        bolme_layout.setSpacing(12)
+        bolme_layout.setSpacing(brand.SP_3)
         
         # Hedef Depo seçimi
         bolme_layout.addWidget(QLabel("Hedef Depo:"), 0, 0)
         self.depo_combo = QComboBox()
-        self.depo_combo.setMinimumWidth(200)
+        self.depo_combo.setMinimumWidth(brand.sp(200))
         bolme_layout.addWidget(self.depo_combo, 0, 1, 1, 3)
         self._load_depolar()
         
@@ -197,19 +228,28 @@ class PaletBolmeDialog(QDialog):
         self.kapasite_spin = QSpinBox()
         self.kapasite_spin.setRange(1, 999999)
         self.kapasite_spin.setValue(600)  # Varsayılan 600 adet/palet
-        self.kapasite_spin.setFixedWidth(120)
+        self.kapasite_spin.setFixedWidth(brand.sp(120))
         self.kapasite_spin.valueChanged.connect(self._hesapla_paletler)
         bolme_layout.addWidget(self.kapasite_spin, 1, 1)
         
         # Otomatik Hesapla butonu
-        hesapla_btn = QPushButton("🔄 Hesapla")
-        hesapla_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 4px; padding: 6px 12px;")
+        hesapla_btn = QPushButton("Hesapla")
+        hesapla_btn.setCursor(Qt.PointingHandCursor)
+        hesapla_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY}; color: white; border: none;
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;
+                font-size: {brand.FS_BODY_SM}px; font-weight: {brand.FW_SEMIBOLD};
+                min-height: {brand.sp(38)}px;
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         hesapla_btn.clicked.connect(self._hesapla_paletler)
         bolme_layout.addWidget(hesapla_btn, 1, 2)
         
         # Hesaplama sonucu
         self.hesap_label = QLabel("")
-        self.hesap_label.setStyleSheet(f"color: {self.theme['success']}; font-weight: bold;")
+        self.hesap_label.setStyleSheet(f"color: {brand.SUCCESS}; font-weight: {brand.FW_SEMIBOLD};")
         bolme_layout.addWidget(self.hesap_label, 1, 3)
         
         # Tam Palet Sayısı
@@ -217,33 +257,33 @@ class PaletBolmeDialog(QDialog):
         self.tam_palet_spin = QSpinBox()
         self.tam_palet_spin.setRange(0, 999)
         self.tam_palet_spin.setValue(0)
-        self.tam_palet_spin.setFixedWidth(80)
+        self.tam_palet_spin.setFixedWidth(brand.sp(80))
         self.tam_palet_spin.valueChanged.connect(self._update_preview)
         bolme_layout.addWidget(self.tam_palet_spin, 2, 1)
         
         self.tam_palet_info = QLabel("")
-        self.tam_palet_info.setStyleSheet(f"color: {self.theme['text']};")
+        self.tam_palet_info.setStyleSheet(f"color: {brand.TEXT};")
         bolme_layout.addWidget(self.tam_palet_info, 2, 2, 1, 2)
         
         # Bakiye Palet
         bolme_layout.addWidget(QLabel("Bakiye Palet:"), 3, 0)
         self.bakiye_check = QCheckBox("")
-        self.bakiye_check.setStyleSheet(f"color: {self.theme['text']};")
+        self.bakiye_check.setStyleSheet(f"color: {brand.TEXT};")
         self.bakiye_check.stateChanged.connect(self._update_preview)
         bolme_layout.addWidget(self.bakiye_check, 3, 1)
         
         self.bakiye_miktar_label = QLabel("")
-        self.bakiye_miktar_label.setStyleSheet(f"color: {self.theme['warning']}; font-weight: bold;")
+        self.bakiye_miktar_label.setStyleSheet(f"color: {brand.WARNING}; font-weight: {brand.FW_SEMIBOLD};")
         bolme_layout.addWidget(self.bakiye_miktar_label, 3, 2, 1, 2)
         
         # Toplam Özet
         ozet_frame = QFrame()
-        ozet_frame.setStyleSheet(f"background: {self.theme['bg_hover']}; border-radius: 6px; padding: 8px;")
+        ozet_frame.setStyleSheet(f"background: {brand.BG_HOVER}; border-radius: {brand.R_SM}px; padding: {brand.SP_2}px;")
         ozet_layout = QHBoxLayout(ozet_frame)
-        ozet_layout.setContentsMargins(12, 8, 12, 8)
-        
+        ozet_layout.setContentsMargins(brand.SP_3, brand.SP_2, brand.SP_3, brand.SP_2)
+
         self.ozet_label = QLabel("")
-        self.ozet_label.setStyleSheet(f"color: {self.theme['text']}; font-size: 13px;")
+        self.ozet_label.setStyleSheet(f"color: {brand.TEXT}; font-size: {brand.FS_BODY}px;")
         ozet_layout.addWidget(self.ozet_label)
         
         bolme_layout.addWidget(ozet_frame, 4, 0, 1, 4)
@@ -253,14 +293,14 @@ class PaletBolmeDialog(QDialog):
         self.lot_sira_spin = QSpinBox()
         self.lot_sira_spin.setRange(1, 9999)
         self.lot_sira_spin.setValue(get_next_lot_sira())
-        self.lot_sira_spin.setFixedWidth(100)
+        self.lot_sira_spin.setFixedWidth(brand.sp(100))
         self.lot_sira_spin.valueChanged.connect(self._update_preview)
         bolme_layout.addWidget(self.lot_sira_spin, 5, 1)
         
         # Lot önizleme
         bolme_layout.addWidget(QLabel("Lot Format:"), 6, 0)
         self.lot_preview = QLabel("")
-        self.lot_preview.setStyleSheet(f"font-family: monospace; color: {self.theme['text_muted']}; font-size: 13px;")
+        self.lot_preview.setStyleSheet(f"font-family: monospace; color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY}px;")
         bolme_layout.addWidget(self.lot_preview, 6, 1, 1, 3)
         
         layout.addWidget(bolme_group)
@@ -268,44 +308,26 @@ class PaletBolmeDialog(QDialog):
         # İlk hesaplamayı yap
         self._hesapla_paletler()
         
-        # ===== ETİKET ŞABLONU =====
-        etiket_group = QGroupBox("🏷️ Etiket Şablonu")
+        # ===== ETIKET SABLONU =====
+        etiket_group = QGroupBox("Etiket Sablonu")
         etiket_layout = QHBoxLayout(etiket_group)
-        
-        etiket_layout.addWidget(QLabel("Şablon:"))
+
+        etiket_layout.addWidget(QLabel("Sablon:"))
         self.sablon_combo = QComboBox()
-        self.sablon_combo.setMinimumWidth(250)
-        self.sablon_combo.setStyleSheet(f"""
-            QComboBox {{ 
-                background: {self.theme['bg_input']}; 
-                color: {self.theme['text']}; 
-                border: 1px solid {self.theme['border']}; 
-                border-radius: 6px; 
-                padding: 8px; 
-            }}
-        """)
+        self.sablon_combo.setMinimumWidth(brand.sp(250))
         self._load_sablonlar()
         etiket_layout.addWidget(self.sablon_combo)
         etiket_layout.addStretch()
         
         layout.addWidget(etiket_group)
         
-        # ===== YAZICI SEÇİMİ =====
-        yazici_group = QGroupBox("🖨️ Yazıcı Ayarları")
+        # ===== YAZICI SECIMI =====
+        yazici_group = QGroupBox("Yazici Ayarlari")
         yazici_layout = QHBoxLayout(yazici_group)
-        
-        yazici_layout.addWidget(QLabel("Yazıcı:"))
+
+        yazici_layout.addWidget(QLabel("Yazici:"))
         self.yazici_combo = QComboBox()
-        self.yazici_combo.setMinimumWidth(250)
-        self.yazici_combo.setStyleSheet(f"""
-            QComboBox {{ 
-                background: {self.theme['bg_input']}; 
-                color: {self.theme['text']}; 
-                border: 1px solid {self.theme['border']}; 
-                border-radius: 6px; 
-                padding: 8px; 
-            }}
-        """)
+        self.yazici_combo.setMinimumWidth(brand.sp(250))
         self._load_yazicilar()
         yazici_layout.addWidget(self.yazici_combo)
         
@@ -320,9 +342,17 @@ class PaletBolmeDialog(QDialog):
         
         # Yenile butonu
         refresh_btn = QPushButton("Yenile")
-        refresh_btn.setToolTip("Yazıcıları Yenile")
-        refresh_btn.setFixedSize(60, 36)
-        refresh_btn.setStyleSheet(f"background: {self.theme['bg_hover']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; font-size: 12px;")
+        refresh_btn.setToolTip("Yazicilari Yenile")
+        refresh_btn.setCursor(Qt.PointingHandCursor)
+        refresh_btn.setFixedSize(brand.sp(60), brand.sp(38))
+        refresh_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.BG_HOVER}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: {brand.R_SM}px;
+                font-size: {brand.FS_BODY_SM}px;
+            }}
+            QPushButton:hover {{ border-color: {brand.PRIMARY}; }}
+        """)
         refresh_btn.clicked.connect(self._load_yazicilar)
         yazici_layout.addWidget(refresh_btn)
         
@@ -330,34 +360,43 @@ class PaletBolmeDialog(QDialog):
         layout.addWidget(yazici_group)
         
         # ===== BUTONLAR =====
+        _btn_css = f"""
+            QPushButton {{
+                border-radius: {brand.R_SM}px;
+                min-height: {brand.sp(38)}px;
+                padding: 0 {brand.SP_5}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY}px;
+            }}
+        """
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        
-        preview_btn = QPushButton("👁️ Önizle")
+
+        preview_btn = QPushButton("Onizle")
         preview_btn.setCursor(Qt.PointingHandCursor)
-        preview_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.theme['bg_input']}; color: {self.theme['text']}; 
-                          border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 10px 20px; }}
-            QPushButton:hover {{ background: {self.theme['bg_hover']}; }}
+        preview_btn.setStyleSheet(_btn_css + f"""
+            QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT};
+                          border: 1px solid {brand.BORDER}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
         """)
         preview_btn.clicked.connect(self._onizle)
         btn_layout.addWidget(preview_btn)
-        
-        print_btn = QPushButton("🖨️ Kaydet ve Yazdır")
+
+        print_btn = QPushButton("Kaydet ve Yazdir")
         print_btn.setCursor(Qt.PointingHandCursor)
-        print_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.theme['success']}; color: white; border: none; 
-                          border-radius: 6px; padding: 10px 24px; font-weight: bold; font-size: 14px; }}
-            QPushButton:hover {{ background: #16a34a; }}
+        print_btn.setStyleSheet(_btn_css + f"""
+            QPushButton {{ background: {brand.SUCCESS}; color: white; border: none; }}
+            QPushButton:hover {{ background: {brand.SUCCESS}; }}
         """)
         print_btn.clicked.connect(self._kaydet_ve_yazdir)
         btn_layout.addWidget(print_btn)
-        
-        cancel_btn = QPushButton("İptal")
+
+        cancel_btn = QPushButton("Iptal")
         cancel_btn.setCursor(Qt.PointingHandCursor)
-        cancel_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.theme['bg_input']}; color: {self.theme['text']}; 
-                          border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 10px 20px; }}
+        cancel_btn.setStyleSheet(_btn_css + f"""
+            QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT};
+                          border: 1px solid {brand.BORDER}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
         """)
         cancel_btn.clicked.connect(self.close)
         btn_layout.addWidget(cancel_btn)
@@ -380,7 +419,7 @@ class PaletBolmeDialog(QDialog):
             # Godex yazıcıları öne al
             if godex_printers:
                 for p in godex_printers:
-                    self.yazici_combo.addItem(f"🏷️ {p}", p)
+                    self.yazici_combo.addItem(f"[Godex] {p}", p)
             
             # Diğer yazıcılar
             for p in all_printers:
@@ -397,68 +436,74 @@ class PaletBolmeDialog(QDialog):
             self.yazici_combo.addItem("PDF Dosyası Olarak Kaydet", "PDF_ONLY")
     
     def _load_sablonlar(self):
-        """Etiket şablonlarını yükle"""
+        """Etiket sablonlarini yukle"""
         self.sablon_combo.clear()
-        
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 SELECT id, sablon_kodu, sablon_adi, varsayilan_mi
                 FROM tanim.etiket_sablonlari
                 WHERE aktif_mi = 1 AND sablon_tipi = 'PALET'
                 ORDER BY varsayilan_mi DESC, sablon_adi
             """)
-            
+
             for row in cursor.fetchall():
-                varsayilan = " ⭐" if row[3] else ""
+                varsayilan = " (Varsayilan)" if row[3] else ""
                 self.sablon_combo.addItem(f"{row[2]}{varsayilan}", row[0])
-            
-            conn.close()
-            
+
             if self.sablon_combo.count() == 0:
-                self.sablon_combo.addItem("Varsayılan Şablon", None)
-                
+                self.sablon_combo.addItem("Varsayilan Sablon", None)
+
         except Exception as e:
-            print(f"Şablon yükleme hatası: {e}")
-            self.sablon_combo.addItem("Varsayılan Şablon", None)
+            print(f"Sablon yukleme hatasi: {e}")
+            self.sablon_combo.addItem("Varsayilan Sablon", None)
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _load_depolar(self):
-        """Depoları yükle"""
+        """Depolari yukle"""
         self.depo_combo.clear()
-        
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 SELECT id, kod, ad
                 FROM tanim.depolar
                 WHERE aktif_mi = 1 AND silindi_mi = 0
                 ORDER BY kod
             """)
-            
+
             kab_index = 0
             idx = 0
             for row in cursor.fetchall():
                 self.depo_combo.addItem(f"{row[1]} - {row[2]}", row[0])
-                # KAB-01 bulunca index'i kaydet
                 if row[1] == 'KAB-01':
                     kab_index = idx
                 idx += 1
-            
-            conn.close()
-            
-            # Varsayılan olarak KAB-01 seç
+
             if self.depo_combo.count() > 0:
                 self.depo_combo.setCurrentIndex(kab_index)
             else:
-                self.depo_combo.addItem("Kabul Alanı", 7)
-                
+                self.depo_combo.addItem("Kabul Alani", 7)
+
         except Exception as e:
-            print(f"Depo yükleme hatası: {e}")
-            self.depo_combo.addItem("Kabul Alanı", 7)
+            print(f"Depo yukleme hatasi: {e}")
+            self.depo_combo.addItem("Kabul Alani", 7)
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _hesapla_paletler(self):
         """Palet kapasitesine göre tam palet ve bakiye hesapla"""
@@ -486,7 +531,7 @@ class PaletBolmeDialog(QDialog):
             self.bakiye_check.setEnabled(False)
             self.bakiye_miktar_label.setText("Bakiye yok")
         
-        self.hesap_label.setText(f"✓ {tam_palet} tam" + (f" + 1 bakiye" if bakiye > 0 else ""))
+        self.hesap_label.setText(f"{tam_palet} tam" + (f" + 1 bakiye" if bakiye > 0 else ""))
         
         self._update_preview()
     
@@ -508,7 +553,7 @@ class PaletBolmeDialog(QDialog):
             ozet_parts.append(f"1 bakiye palet x {bakiye_miktar:,.0f} = {bakiye_miktar:,.0f}")
         
         self.ozet_label.setText(
-            f"📦 Toplam: {toplam_palet} palet, {toplam_adet:,.0f} {self.birim}\n" +
+            f"Toplam: {toplam_palet} palet, {toplam_adet:,.0f} {self.birim}\n" +
             " + ".join(ozet_parts)
         )
         
@@ -745,7 +790,7 @@ class PaletBolmeDialog(QDialog):
                     raise Exception(f"Stok girişi hatası: {sonuc.hata or sonuc.mesaj}")
                 
                 self.created_lots.append(palet_lot)
-                print(f"✓ Lot oluşturuldu: {palet_lot}, Bakiye ID: {sonuc.bakiye_id}, Hareket ID: {sonuc.hareket_id}")
+                print(f"Lot olusturuldu: {palet_lot}, Bakiye ID: {sonuc.bakiye_id}, Hareket ID: {sonuc.hareket_id}")
             
             # İrsaliye satırına ana lot numarasını kaydet
             cursor.execute("""
@@ -785,7 +830,7 @@ class PaletBolmeDialog(QDialog):
             else:
                 a4_etiket_pdf_olustur(output_path, etiketler)
             
-            # ✅✅✅ OBSERVER - EVENT KAYDI ✅✅✅
+            # OBSERVER - EVENT KAYDI
             try:
                 from utils.hareket_observer import HareketObserver
                 observer = HareketObserver(conn)
@@ -797,8 +842,8 @@ class PaletBolmeDialog(QDialog):
                         miktar=etiket['miktar']
                     )
             except Exception as e:
-                print(f"⚠️ Observer hatası (önemsiz): {e}")
-            # ✅✅✅ OBSERVER BİTTİ ✅✅✅
+                print(f"Observer hatasi (onemsiz): {e}")
+            # OBSERVER BITTI
             
             conn.commit()  # Tüm işlemler başarılıysa commit
             conn.close()
@@ -813,16 +858,16 @@ class PaletBolmeDialog(QDialog):
                     from utils.etiket_yazdir import godex_yazdir
                     yazdir_basarili = godex_yazdir(etiketler, yazici_name, yazici_mod)
                     if yazdir_basarili:
-                        yazici_mesaj = f"🖨️ Yazıcı: {yazici_name} ({yazici_mod})"
+                        yazici_mesaj = f"Yazici: {yazici_name} ({yazici_mod})"
                     else:
-                        yazici_mesaj = "⚠️ Yazıcıya gönderilemedi, PDF açılıyor"
+                        yazici_mesaj = "Yaziciya gonderilemedi, PDF aciliyor"
                         subprocess.Popen(['start', '', output_path], shell=True)
                 except ImportError:
-                    yazici_mesaj = "⚠️ win32print modülü yok, PDF açılıyor"
+                    yazici_mesaj = "win32print modulu yok, PDF aciliyor"
                     subprocess.Popen(['start', '', output_path], shell=True)
                 except Exception as e:
                     print(f"Godex yazdırma hatası: {e}")
-                    yazici_mesaj = f"⚠️ Yazdırma hatası: {str(e)[:30]}"
+                    yazici_mesaj = f"Yazdirma hatasi: {str(e)[:30]}"
                     subprocess.Popen(['start', '', output_path], shell=True)
             
             elif yazici_mod == "PDF" and yazici_name and yazici_name != "PDF_ONLY":
@@ -831,29 +876,29 @@ class PaletBolmeDialog(QDialog):
                     from utils.etiket_yazdir import pdf_yazdir
                     yazdir_basarili = pdf_yazdir(output_path, yazici_name)
                     if yazdir_basarili:
-                        yazici_mesaj = f"🖨️ PDF yazıcıya gönderildi: {yazici_name}"
+                        yazici_mesaj = f"PDF yaziciya gonderildi: {yazici_name}"
                     else:
-                        yazici_mesaj = "⚠️ PDF gönderilemedi, dosya açılıyor"
+                        yazici_mesaj = "PDF gonderilemedi, dosya aciliyor"
                         subprocess.Popen(['start', '', output_path], shell=True)
                 except Exception as e:
                     print(f"PDF yazdırma hatası: {e}")
                     subprocess.Popen(['start', '', output_path], shell=True)
-                    yazici_mesaj = "📄 PDF dosyası açıldı"
+                    yazici_mesaj = "PDF dosyasi acildi"
             else:
-                # Sadece PDF aç
+                # Sadece PDF ac
                 subprocess.Popen(['start', '', output_path], shell=True)
-                yazici_mesaj = "📄 PDF dosyası açıldı"
+                yazici_mesaj = "PDF dosyasi acildi"
             
             sablon_text = self.sablon_combo.currentText()
-            QMessageBox.information(self, "Başarılı", 
-                f"✅ Lotlar oluşturuldu ve kaydedildi!\n\n"
-                f"📦 Ana Lot: {ana_lot}\n"
-                f"📋 Palet Sayısı: {len(etiketler)}\n"
-                f"🏷️ Şablon: {sablon_text}\n"
-                f"📁 PDF: {output_path}\n"
+            QMessageBox.information(self, "Basarili",
+                f"Lotlar olusturuldu ve kaydedildi!\n\n"
+                f"Ana Lot: {ana_lot}\n"
+                f"Palet Sayisi: {len(etiketler)}\n"
+                f"Sablon: {sablon_text}\n"
+                f"PDF: {output_path}\n"
                 f"{yazici_mesaj}\n\n"
-                f"✓ Stok hareketleri kaydedildi\n"
-                f"⏳ Lotlar kalite onayı bekliyor.")
+                f"Stok hareketleri kaydedildi\n"
+                f"Lotlar kalite onayi bekliyor.")
             
             self.accept()  # Dialog'u kapat ve başarılı döndür
             
@@ -878,48 +923,58 @@ class UrunAramaDialog(QDialog):
         self.theme = theme
         self.selected_urun = None
         
-        self.setWindowTitle("🔍 Ürün Ara")
-        self.setMinimumSize(700, 500)
+        self.setWindowTitle("Urun Ara")
+        self.setMinimumSize(brand.sp(700), brand.sp(500))
         self._setup_ui()
         self._load_data()
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background-color: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
+            }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
             QLineEdit {{
-                background: {self.theme['bg_input']};
-                border: 1px solid {self.theme['border']};
-                border-radius: 6px;
-                padding: 10px;
-                color: {self.theme['text']};
-                font-size: 14px;
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
             }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}
             QTableWidget {{
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
-                border-radius: 8px;
-                gridline-color: {self.theme['border']};
-                color: {self.theme['text']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
             }}
-            QTableWidget::item {{ padding: 8px; }}
-            QTableWidget::item:selected {{ background: {self.theme['primary']}; }}
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
             QHeaderView::section {{
-                background: {self.theme['bg_hover']};
-                color: {self.theme['text']};
-                padding: 10px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
                 border: none;
-                font-weight: bold;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
-        # Başlık
-        title = QLabel(f"🔍 Ürün Ara - {self.cari_unvani}")
-        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {self.theme['text']};")
+        layout.setContentsMargins(brand.SP_6, brand.SP_6, brand.SP_6, brand.SP_6)
+        layout.setSpacing(brand.SP_3)
+
+        # Baslik
+        title = QLabel(f"Urun Ara - {self.cari_unvani}")
+        title.setStyleSheet(f"font-size: {brand.FS_HEADING_SM}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};")
         layout.addWidget(title)
         
         # Arama kutusu
@@ -937,35 +992,57 @@ class UrunAramaDialog(QDialog):
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
-        self.table.setColumnWidth(0, 120)
-        self.table.setColumnWidth(2, 120)
-        self.table.setColumnWidth(3, 80)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.table.setColumnWidth(0, brand.sp(120))
+        self.table.setColumnWidth(2, brand.sp(120))
+        self.table.setColumnWidth(3, brand.sp(80))
         self.table.doubleClicked.connect(self._select_and_close)
         layout.addWidget(self.table, 1)
-        
+
         # Butonlar
+        _btn_css_d = f"""
+            QPushButton {{
+                border-radius: {brand.R_SM}px;
+                min-height: {brand.sp(38)}px;
+                padding: 0 {brand.SP_5}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY}px;
+            }}
+        """
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
-        
-        cancel_btn = QPushButton("İptal")
-        cancel_btn.setStyleSheet(f"background: {self.theme['bg_input']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 10px 20px;")
+
+        cancel_btn = QPushButton("Iptal")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        cancel_btn.setStyleSheet(_btn_css_d + f"""
+            QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT};
+                          border: 1px solid {brand.BORDER}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
+        """)
         cancel_btn.clicked.connect(self.reject)
         btn_layout.addWidget(cancel_btn)
-        
-        select_btn = QPushButton("✓ Seç")
-        select_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;")
+
+        select_btn = QPushButton("Sec")
+        select_btn.setCursor(Qt.PointingHandCursor)
+        select_btn.setStyleSheet(_btn_css_d + f"""
+            QPushButton {{ background: {brand.PRIMARY}; color: white; border: none; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         select_btn.clicked.connect(self._select_and_close)
         btn_layout.addWidget(select_btn)
         
         layout.addLayout(btn_layout)
     
     def _load_data(self):
-        """Ürünleri yükle"""
+        """Urunleri yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 SELECT u.urun_kodu, u.urun_adi, kt.ad as kaplama, b.ad as birim
                 FROM stok.urunler u
@@ -975,14 +1052,18 @@ class UrunAramaDialog(QDialog):
                 WHERE c.unvan = ? AND u.aktif_mi = 1
                 ORDER BY u.urun_kodu
             """, (self.cari_unvani,))
-            
+
             self.all_data = cursor.fetchall()
-            conn.close()
-            
             self._display_data(self.all_data)
-            
+
         except Exception as e:
-            print(f"Ürün yükleme hatası: {e}")
+            print(f"Urun yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _display_data(self, data):
         """Verileri tabloda göster"""
@@ -1037,8 +1118,8 @@ class IrsaliyeDetayDialog(QDialog):
         self.combo_data = {}
         
         self.setWindowTitle("Yeni Giriş İrsaliyesi" if yeni_kayit else "İrsaliye Detay")
-        self.setMinimumSize(1100, 700)
-        self.resize(1200, 750)
+        self.setMinimumSize(brand.sp(1100), brand.sp(700))
+        self.resize(brand.sp(1200), brand.sp(750))
         
         self._load_combo_data()
         if not yeni_kayit:
@@ -1057,77 +1138,78 @@ class IrsaliyeDetayDialog(QDialog):
             'araclar': [(None, '-- Araç Seçin --')]
         }
         
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # Müşteriler - Cari tablosundan
+
             cursor.execute("SELECT DISTINCT c.unvan FROM stok.urunler u INNER JOIN musteri.cariler c ON u.cari_id = c.id WHERE c.unvan IS NOT NULL AND c.unvan <> '' AND c.aktif_mi = 1 AND u.aktif_mi = 1 ORDER BY c.unvan")
             rows = cursor.fetchall()
             if rows:
-                self.combo_data['cariler'] = [(None, '-- Müşteri Seçin --')] + [(r[0], r[0]) for r in rows]
-            
-            # Kaplama türleri - Kaplama türleri tablosundan
+                self.combo_data['cariler'] = [(None, '-- Musteri Secin --')] + [(r[0], r[0]) for r in rows]
+
             cursor.execute("SELECT DISTINCT kt.id, kt.ad FROM stok.urunler u INNER JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id WHERE kt.id IS NOT NULL AND kt.ad IS NOT NULL AND u.aktif_mi = 1 ORDER BY kt.ad")
             rows = cursor.fetchall()
             if rows:
                 self.combo_data['kaplamalar'] = [(None, '--')] + [(r[0], r[1]) for r in rows]
-            
-            # Personeller - ik.personeller tablosundan
+
             cursor.execute("""
-                SELECT id, ad + ' ' + soyad as ad_soyad 
-                FROM ik.personeller 
-                WHERE aktif_mi = 1 
+                SELECT id, ad + ' ' + soyad as ad_soyad
+                FROM ik.personeller
+                WHERE aktif_mi = 1
                 ORDER BY ad, soyad
             """)
             rows = cursor.fetchall()
             if rows:
                 self.combo_data['personeller'] = [(None, '-- Teslim Alan --')] + [(r[0], r[1]) for r in rows]
-            
-            # Şoförler - lojistik.soforler tablosundan
+
             try:
                 cursor.execute("""
                     SELECT id, ad_soyad, tc_kimlik_no
-                    FROM lojistik.soforler 
-                    WHERE aktif_mi = 1 
+                    FROM lojistik.soforler
+                    WHERE aktif_mi = 1
                     ORDER BY ad_soyad
                 """)
                 rows = cursor.fetchall()
                 if rows:
-                    self.combo_data['soforler'] = [(None, '-- Şoför Seçin --')] + [(r[0], f"{r[1]} ({r[2][-4:]})") for r in rows]
+                    self.combo_data['soforler'] = [(None, '-- Sofor Secin --')] + [(r[0], f"{r[1]} ({r[2][-4:]})") for r in rows]
             except Exception:
-                pass  # Tablo yoksa geç
-            
-            # Araçlar - lojistik.araclar tablosundan
+                pass
+
             try:
                 cursor.execute("""
                     SELECT id, plaka, arac_tipi
-                    FROM lojistik.araclar 
-                    WHERE aktif_mi = 1 
+                    FROM lojistik.araclar
+                    WHERE aktif_mi = 1
                     ORDER BY plaka
                 """)
                 rows = cursor.fetchall()
                 if rows:
-                    self.combo_data['araclar'] = [(None, '-- Araç Seçin --')] + [(r[0], f"{r[1]} ({r[2] or ''})") for r in rows]
+                    self.combo_data['araclar'] = [(None, '-- Arac Secin --')] + [(r[0], f"{r[1]} ({r[2] or ''})") for r in rows]
             except Exception:
-                pass  # Tablo yoksa geç
-            
-            conn.close()
+                pass
+
         except Exception as e:
-            print(f"Combo yükleme hatası: {e}")
+            print(f"Combo yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _load_data(self):
-        """İrsaliye verilerini yükle"""
+        """Irsaliye verilerini yukle"""
         if not self.irsaliye_id:
             return
-        
+
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # Ana irsaliye
+
             cursor.execute("""
-                SELECT id, irsaliye_no, cari_unvani, cari_irsaliye_no, tarih, 
+                SELECT id, irsaliye_no, cari_unvani, cari_irsaliye_no, tarih,
                        teslim_alan, arac_plaka, sofor_adi, durum, notlar
                 FROM siparis.giris_irsaliyeleri
                 WHERE id = ?
@@ -1146,15 +1228,14 @@ class IrsaliyeDetayDialog(QDialog):
                     'durum': row[8],
                     'notlar': row[9]
                 }
-            
-            # Satırlar
+
             cursor.execute("""
                 SELECT id, satir_no, stok_kodu, stok_adi, miktar, birim, kaplama, lot_no, termin_tarihi, kalite_durumu
                 FROM siparis.giris_irsaliye_satirlar
                 WHERE irsaliye_id = ?
                 ORDER BY satir_no
             """, (self.irsaliye_id,))
-            
+
             self.satirlar = []
             for row in cursor.fetchall():
                 self.satirlar.append({
@@ -1169,66 +1250,90 @@ class IrsaliyeDetayDialog(QDialog):
                     'termin_tarihi': row[8],
                     'kalite_durumu': row[9]
                 })
-            
-            conn.close()
+
         except Exception as e:
-            print(f"Veri yükleme hatası: {e}")
+            print(f"Veri yukleme hatasi: {e}")
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _setup_ui(self):
         self.setStyleSheet(f"""
-            QDialog {{ background-color: {self.theme['bg_main']}; }}
-            QLabel {{ color: {self.theme['text']}; }}
-            QGroupBox {{ 
-                color: {self.theme['text']}; 
-                font-weight: bold; 
-                border: 1px solid {self.theme['border']}; 
-                border-radius: 8px; 
-                margin-top: 12px; 
-                padding-top: 8px;
+            QDialog {{
+                background: {brand.BG_MAIN};
+                font-family: {brand.FONT_FAMILY};
             }}
-            QGroupBox::title {{ 
-                subcontrol-origin: margin; 
-                left: 12px; 
-                padding: 0 8px;
-                color: {self.theme['primary']};
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
+            QGroupBox {{
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                margin-top: {brand.SP_5}px;
+                padding: {brand.SP_5}px;
+                padding-top: {brand.SP_8}px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: {brand.SP_4}px;
+                top: {brand.SP_2}px;
+                padding: 0 {brand.SP_2}px;
+                color: {brand.TEXT_MUTED};
+                background: {brand.BG_MAIN};
             }}
             QLineEdit, QComboBox, QDateEdit, QSpinBox, QDoubleSpinBox, QTextEdit {{
-                background: {self.theme['bg_input']};
-                border: 1px solid {self.theme['border']};
-                border-radius: 6px;
-                padding: 8px;
-                color: {self.theme['text']};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px;
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT};
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QSpinBox:focus,
+            QDoubleSpinBox:focus, QTextEdit:focus {{
+                border-color: {brand.PRIMARY};
             }}
             QTableWidget {{
-                background: {self.theme['bg_card']};
-                border: 1px solid {self.theme['border']};
-                border-radius: 8px;
-                gridline-color: {self.theme['border']};
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
             }}
-            QTableWidget::item {{ padding: 6px; }}
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
             QHeaderView::section {{
-                background: {self.theme['bg_hover']};
-                color: {self.theme['text']};
-                padding: 8px;
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
                 border: none;
-                border-right: 1px solid {self.theme['border']};
-                font-weight: bold;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        
+
         # Header
         header = self._create_header()
         layout.addWidget(header)
-        
+
         # Content
         content = QWidget()
         c_layout = QVBoxLayout(content)
-        c_layout.setContentsMargins(16, 16, 16, 16)
-        c_layout.setSpacing(16)
+        c_layout.setContentsMargins(brand.SP_4, brand.SP_4, brand.SP_4, brand.SP_4)
+        c_layout.setSpacing(brand.SP_4)
         
         # Üst kısım - İrsaliye bilgileri
         info_group = self._create_info_group()
@@ -1248,32 +1353,43 @@ class IrsaliyeDetayDialog(QDialog):
             self._on_cari_changed()
     
     def _create_header(self) -> QFrame:
-        """Başlık ve durum"""
+        """Baslik ve durum"""
         frame = QFrame()
-        frame.setStyleSheet(f"QFrame {{ background: {self.theme['bg_card']}; padding: 16px; }}")
-        
+        frame.setStyleSheet(f"QFrame {{ background: {brand.BG_CARD}; padding: {brand.SP_4}px; }}")
+
         layout = QHBoxLayout(frame)
-        
-        title = QLabel("📥 " + ("Yeni Giriş İrsaliyesi" if self.yeni_kayit else f"İrsaliye: {self.irsaliye_data.get('irsaliye_no', '')}"))
-        title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {self.theme['text']};")
+
+        accent = QFrame()
+        accent.setFixedSize(brand.SP_1, brand.sp(32))
+        accent.setStyleSheet(f"background: {brand.PRIMARY}; border-radius: 2px;")
+        layout.addWidget(accent)
+
+        title = QLabel("Yeni Giris Irsaliyesi" if self.yeni_kayit else f"Irsaliye: {self.irsaliye_data.get('irsaliye_no', '')}")
+        title.setStyleSheet(f"font-size: {brand.FS_HEADING}px; font-weight: {brand.FW_SEMIBOLD}; color: {brand.TEXT};")
         layout.addWidget(title)
         
         layout.addStretch()
         
         if not self.yeni_kayit:
             durum = self.irsaliye_data.get('durum', 'TASLAK')
-            colors = {'TASLAK': '#f59e0b', 'ONAYLANDI': '#22c55e', 'IPTAL': '#ef4444'}
+            colors = {'TASLAK': brand.WARNING, 'ONAYLANDI': brand.SUCCESS, 'IPTAL': brand.ERROR}
             badge = QLabel(f"  {durum}  ")
-            badge.setStyleSheet(f"background: {colors.get(durum, '#888')}; color: white; padding: 6px 16px; border-radius: 12px; font-weight: bold;")
+            badge.setStyleSheet(f"""
+                background: {colors.get(durum, brand.TEXT_DIM)}; color: white;
+                padding: {brand.SP_2}px {brand.SP_4}px;
+                border-radius: {brand.R_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY_SM}px;
+            """)
             layout.addWidget(badge)
         
         return frame
     
     def _create_info_group(self) -> QGroupBox:
         """İrsaliye bilgileri"""
-        group = QGroupBox("İrsaliye Bilgileri")
+        group = QGroupBox("Irsaliye Bilgileri")
         layout = QGridLayout(group)
-        layout.setSpacing(12)
+        layout.setSpacing(brand.SP_3)
         
         # İrsaliye No
         layout.addWidget(QLabel("İrsaliye No:"), 0, 0)
@@ -1357,7 +1473,7 @@ class IrsaliyeDetayDialog(QDialog):
     
     def _create_satirlar_group(self) -> QGroupBox:
         """Satırlar tablosu"""
-        group = QGroupBox("İrsaliye Satırları")
+        group = QGroupBox("Irsaliye Satirlari")
         layout = QVBoxLayout(group)
         
         # Araç çubuğu
@@ -1366,17 +1482,25 @@ class IrsaliyeDetayDialog(QDialog):
         # Ürün seçimi
         toolbar.addWidget(QLabel("Ürün:"))
         self.urun_combo = QComboBox()
-        self.urun_combo.setMinimumWidth(300)
+        self.urun_combo.setMinimumWidth(brand.sp(300))
         self.urun_combo.setEditable(True)  # Arama yapılabilsin
         self.urun_combo.setInsertPolicy(QComboBox.NoInsert)
-        self.urun_combo.addItem("-- Önce müşteri seçin --", None)
+        self.urun_combo.addItem("-- Once musteri secin --", None)
         toolbar.addWidget(self.urun_combo)
         
         # Ürün Arama butonu
         search_urun_btn = QPushButton("Ara")
-        search_urun_btn.setFixedSize(50, 36)
-        search_urun_btn.setToolTip("Ürün Ara")
-        search_urun_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; font-size: 12px;")
+        search_urun_btn.setFixedSize(brand.sp(50), brand.sp(38))
+        search_urun_btn.setToolTip("Urun Ara")
+        search_urun_btn.setCursor(Qt.PointingHandCursor)
+        search_urun_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY}; color: white; border: none;
+                border-radius: {brand.R_SM}px; font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         search_urun_btn.clicked.connect(self._search_urun)
         toolbar.addWidget(search_urun_btn)
         
@@ -1389,8 +1513,16 @@ class IrsaliyeDetayDialog(QDialog):
         toolbar.addWidget(self.miktar_input)
         
         # Ekle butonu
-        add_btn = QPushButton("➕ Satır Ekle")
-        add_btn.setStyleSheet(f"background: {self.theme['success']}; color: white; border: none; border-radius: 6px; padding: 8px 16px; font-weight: bold;")
+        add_btn = QPushButton("Satir Ekle")
+        add_btn.setCursor(Qt.PointingHandCursor)
+        add_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.SUCCESS}; color: white; border: none;
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_4}px;
+                font-weight: {brand.FW_SEMIBOLD}; min-height: {brand.sp(38)}px;
+            }}
+            QPushButton:hover {{ background: {brand.SUCCESS}; }}
+        """)
         add_btn.clicked.connect(self._add_satir)
         toolbar.addWidget(add_btn)
         
@@ -1406,13 +1538,13 @@ class IrsaliyeDetayDialog(QDialog):
         self.satirlar_table.setColumnHidden(0, True)
         self.satirlar_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.satirlar_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.satirlar_table.setShowGrid(False)
+        self.satirlar_table.setAlternatingRowColors(True)
         self.satirlar_table.verticalHeader().setVisible(False)
-        
-        # İşlem sütunu genişliği - butonların sığması için
-        self.satirlar_table.setColumnWidth(9, 170)
-        
-        # Varsayılan satır yüksekliği
-        self.satirlar_table.verticalHeader().setDefaultSectionSize(40)
+        self.satirlar_table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+
+        # Islem sutunu genisligi
+        self.satirlar_table.setColumnWidth(9, brand.sp(170))
         
         # Mevcut satırları yükle
         if not self.yeni_kayit:
@@ -1423,21 +1555,43 @@ class IrsaliyeDetayDialog(QDialog):
         # Alt butonlar
         bottom = QHBoxLayout()
         
-        save_btn = QPushButton("💾 Kaydet")
-        save_btn.setStyleSheet(f"background: {self.theme['primary']}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;")
+        _btn_css_s = f"""
+            QPushButton {{
+                border-radius: {brand.R_SM}px;
+                min-height: {brand.sp(38)}px;
+                padding: 0 {brand.SP_6}px;
+                font-weight: {brand.FW_SEMIBOLD};
+                font-size: {brand.FS_BODY}px;
+            }}
+        """
+        save_btn = QPushButton("Kaydet")
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setStyleSheet(_btn_css_s + f"""
+            QPushButton {{ background: {brand.PRIMARY}; color: white; border: none; }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+        """)
         save_btn.clicked.connect(self._save)
         bottom.addWidget(save_btn)
-        
+
         if not self.yeni_kayit:
-            approve_btn = QPushButton("✅ Onayla")
-            approve_btn.setStyleSheet(f"background: {self.theme['success']}; color: white; border: none; border-radius: 6px; padding: 10px 24px; font-weight: bold;")
+            approve_btn = QPushButton("Onayla")
+            approve_btn.setCursor(Qt.PointingHandCursor)
+            approve_btn.setStyleSheet(_btn_css_s + f"""
+                QPushButton {{ background: {brand.SUCCESS}; color: white; border: none; }}
+                QPushButton:hover {{ background: {brand.SUCCESS}; }}
+            """)
             approve_btn.clicked.connect(self._approve)
             bottom.addWidget(approve_btn)
-        
+
         bottom.addStretch()
-        
+
         close_btn = QPushButton("Kapat")
-        close_btn.setStyleSheet(f"background: {self.theme['bg_input']}; color: {self.theme['text']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 10px 20px;")
+        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setStyleSheet(_btn_css_s + f"""
+            QPushButton {{ background: {brand.BG_INPUT}; color: {brand.TEXT};
+                          border: 1px solid {brand.BORDER}; }}
+            QPushButton:hover {{ background: {brand.BG_HOVER}; }}
+        """)
         close_btn.clicked.connect(self.close)
         bottom.addWidget(close_btn)
         
@@ -1446,18 +1600,19 @@ class IrsaliyeDetayDialog(QDialog):
         return group
     
     def _on_cari_changed(self):
-        """Müşteri değiştiğinde ürünleri yükle"""
+        """Musteri degistiginde urunleri yukle"""
         cari_unvani = self.cari_combo.currentData()
         self.urun_combo.clear()
-        
+
         if not cari_unvani:
-            self.urun_combo.addItem("-- Önce müşteri seçin --", None)
+            self.urun_combo.addItem("-- Once musteri secin --", None)
             return
-        
+
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             cursor.execute("""
                 SELECT u.urun_kodu, u.urun_adi, kt.ad as kaplama_tip_adi, b.ad as birim1, u.yuzey_alani_m2 as m2, u.agirlik_kg as agirlik
                 FROM stok.urunler u
@@ -1467,22 +1622,21 @@ class IrsaliyeDetayDialog(QDialog):
                 WHERE c.unvan = ? AND u.aktif_mi = 1
                 ORDER BY u.urun_kodu
             """, (cari_unvani,))
-            
+
             rows = cursor.fetchall()
-            conn.close()
-            
+
             if rows:
-                self.urun_combo.addItem("-- Ürün Seçin --", None)
+                self.urun_combo.addItem("-- Urun Secin --", None)
                 for row in rows:
                     stok_kodu = row[0] or ''
                     stok_adi = row[1] or ''
                     kaplama = row[2] or ''
                     birim = row[3] or 'ADET'
-                    
+
                     display_text = f"{stok_kodu} - {stok_adi}"
                     if kaplama:
                         display_text += f" [{kaplama}]"
-                    
+
                     urun_data = {
                         'stok_kodu': stok_kodu,
                         'stok_adi': stok_adi,
@@ -1493,11 +1647,17 @@ class IrsaliyeDetayDialog(QDialog):
                     }
                     self.urun_combo.addItem(display_text, urun_data)
             else:
-                self.urun_combo.addItem("-- Bu müşteriye ait ürün yok --", None)
-                
+                self.urun_combo.addItem("-- Bu musteriye ait urun yok --", None)
+
         except Exception as e:
-            print(f"Stok yükleme hatası: {e}")
-            self.urun_combo.addItem("-- Yükleme hatası --", None)
+            print(f"Stok yukleme hatasi: {e}")
+            self.urun_combo.addItem("-- Yukleme hatasi --", None)
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
     
     def _load_satirlar(self):
         """Satırları tabloya yükle"""
@@ -1523,17 +1683,17 @@ class IrsaliyeDetayDialog(QDialog):
             # İşlem butonları - row index'ini closure'da doğru yakalamak için
             self._add_row_buttons(i)
             
-            # Satır yüksekliğini ayarla (butonların görünmesi için)
-            self.satirlar_table.setRowHeight(i, 40)
+            # Satir yuksekligi
+            self.satirlar_table.setRowHeight(i, brand.sp(42))
     
     def _add_row_buttons(self, row: int):
         """Satır için işlem butonlarını ekle"""
         widget = create_action_buttons(self.theme, [
-            ("🏷️", "Palet Böl ve Etiket Yazdır", lambda checked, r=row: self._etiket_yazdir(r), "success"),
-            ("🗑️", "Satırı Sil", lambda checked, r=row: self._delete_satir(r), "delete"),
+            ("Etiket", "Palet Bol ve Etiket Yazdir", lambda checked, r=row: self._etiket_yazdir(r), "success"),
+            ("Sil", "Satiri Sil", lambda checked, r=row: self._delete_satir(r), "delete"),
         ])
         self.satirlar_table.setCellWidget(row, 9, widget)
-        self.satirlar_table.setRowHeight(row, 42)
+        self.satirlar_table.setRowHeight(row, brand.sp(42))
 
     def _add_satir(self):
         """Yeni satır ekle"""
@@ -1563,8 +1723,8 @@ class IrsaliyeDetayDialog(QDialog):
         # İşlem butonları
         self._add_row_buttons(row)
         
-        # Satır yüksekliğini ayarla
-        self.satirlar_table.setRowHeight(row, 40)
+        # Satir yuksekligi
+        self.satirlar_table.setRowHeight(row, brand.sp(42))
         
         # Miktar sıfırla
         self.miktar_input.setValue(0)
@@ -1829,7 +1989,7 @@ class IrsaliyeDetayDialog(QDialog):
                 # COMMIT
                 conn.commit()
                 LogManager.log_insert('depo', 'siparis.giris_irsaliye_satirlar', None, 'Irsaliye kaydi olustu')
-                print(f"[SAVE DEBUG] ✅ conn.commit() başarılı! irsaliye_id={self.irsaliye_id}")
+                print(f"[SAVE DEBUG] conn.commit() basarili! irsaliye_id={self.irsaliye_id}")
                 
                 # Satırları yeniden yükle (ID'leri almak için)
                 self._load_data()
@@ -1844,7 +2004,7 @@ class IrsaliyeDetayDialog(QDialog):
                 
             except Exception as e:
                 # ROLLBACK
-                print(f"[SAVE DEBUG] ❌ HATA: {e}")
+                print(f"[SAVE DEBUG] HATA: {e}")
                 import traceback
                 traceback.print_exc()
                 
@@ -2001,45 +2161,54 @@ class DepoKabulPage(BasePage):
     
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-        
-        # Başlık
-        header = QHBoxLayout()
-        title = QLabel("📥 Mal Kabul - Giriş İrsaliyeleri")
-        title.setStyleSheet(f"color: {self.theme['text']}; font-size: 20px; font-weight: bold;")
-        header.addWidget(title)
-        header.addStretch()
-        
+        layout.setContentsMargins(brand.SP_10, brand.SP_6, brand.SP_10, brand.SP_6)
+        layout.setSpacing(brand.SP_4)
+
+        # Baslik
+        header = self.create_page_header("Mal Kabul", "Giris Irsaliyeleri")
+        layout.addLayout(header)
+
+        # Ust bar: stat + yeni buton
+        top_bar = QHBoxLayout()
         self.stat_label = QLabel("")
-        self.stat_label.setStyleSheet(f"color: {self.theme['text_muted']}; font-size: 13px;")
-        header.addWidget(self.stat_label)
-        
-        new_btn = QPushButton("➕ Yeni İrsaliye")
+        self.stat_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: {brand.FS_BODY}px;")
+        top_bar.addWidget(self.stat_label)
+        top_bar.addStretch()
+
+        new_btn = QPushButton("Yeni Irsaliye")
         new_btn.setCursor(Qt.PointingHandCursor)
         new_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.theme['success']}; color: white; border: none; 
-                          border-radius: 6px; padding: 10px 20px; font-weight: bold; font-size: 13px; }}
-            QPushButton:hover {{ background: #16a34a; }}
+            QPushButton {{
+                background: {brand.SUCCESS}; color: white; border: none;
+                border-radius: {brand.R_SM}px; min-height: {brand.sp(38)}px;
+                padding: 0 {brand.SP_5}px;
+                font-weight: {brand.FW_SEMIBOLD}; font-size: {brand.FS_BODY}px;
+            }}
+            QPushButton:hover {{ background: {brand.SUCCESS}; }}
         """)
         new_btn.clicked.connect(self._new_irsaliye)
-        header.addWidget(new_btn)
-        
-        layout.addLayout(header)
+        top_bar.addWidget(new_btn)
+
+        layout.addLayout(top_bar)
         
         # Filtreler
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme['bg_card']}; border-radius: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: {brand.R_LG}px;")
         f_layout = QHBoxLayout(filter_frame)
-        f_layout.setContentsMargins(12, 12, 12, 12)
-        f_layout.setSpacing(12)
-        
+        f_layout.setContentsMargins(brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_3)
+        f_layout.setSpacing(brand.SP_3)
+
         # Arama
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 İrsaliye no veya müşteri ara...")
+        self.search_input.setPlaceholderText("Irsaliye no veya musteri ara...")
         self.search_input.setStyleSheet(f"""
-            QLineEdit {{ background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; 
-                        border-radius: 6px; padding: 8px 12px; color: {self.theme['text']}; min-width: 200px; }}
+            QLineEdit {{
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT}; min-width: {brand.sp(200)}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QLineEdit:focus {{ border-color: {brand.PRIMARY}; }}
         """)
         self.search_input.returnPressed.connect(self._on_search)
         f_layout.addWidget(self.search_input)
@@ -2050,7 +2219,11 @@ class DepoKabulPage(BasePage):
         self.tarih_bas.setCalendarPopup(True)
         self.tarih_bas.setDisplayFormat("dd.MM.yyyy")
         self.tarih_bas.setDate(QDate.currentDate().addMonths(-1))
-        self.tarih_bas.setStyleSheet(f"background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; border-radius: 6px; padding: 6px; color: {self.theme['text']};")
+        self.tarih_bas.setStyleSheet(f"""
+            background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+            border-radius: {brand.R_SM}px; padding: {brand.SP_2}px; color: {brand.TEXT};
+            font-size: {brand.FS_BODY}px;
+        """)
         f_layout.addWidget(self.tarih_bas)
         
         f_layout.addWidget(QLabel("Bitiş:"))
@@ -2068,8 +2241,13 @@ class DepoKabulPage(BasePage):
         self.durum_combo.addItem("Onaylı", "ONAYLANDI")
         self.durum_combo.addItem("İptal", "IPTAL")
         self.durum_combo.setStyleSheet(f"""
-            QComboBox {{ background: {self.theme['bg_input']}; border: 1px solid {self.theme['border']}; 
-                        border-radius: 6px; padding: 6px 10px; color: {self.theme['text']}; min-width: 120px; }}
+            QComboBox {{
+                background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_SM}px; padding: {brand.SP_2}px {brand.SP_3}px;
+                color: {brand.TEXT}; min-width: {brand.sp(120)}px;
+                font-size: {brand.FS_BODY}px;
+            }}
+            QComboBox:focus {{ border-color: {brand.PRIMARY}; }}
         """)
         self.durum_combo.currentIndexChanged.connect(self._load_data)
         f_layout.addWidget(self.durum_combo)
@@ -2079,8 +2257,13 @@ class DepoKabulPage(BasePage):
         search_btn = QPushButton("Ara")
         search_btn.setCursor(Qt.PointingHandCursor)
         search_btn.setStyleSheet(f"""
-            QPushButton {{ background: {self.theme['primary']}; color: white; border: none; 
-                          border-radius: 6px; padding: 8px 20px; font-weight: bold; }}
+            QPushButton {{
+                background: {brand.PRIMARY}; color: white; border: none;
+                border-radius: {brand.R_SM}px; min-height: {brand.sp(38)}px;
+                padding: 0 {brand.SP_5}px;
+                font-weight: {brand.FW_SEMIBOLD}; font-size: {brand.FS_BODY}px;
+            }}
+            QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
         """)
         search_btn.clicked.connect(self._on_search)
         f_layout.addWidget(search_btn)
@@ -2098,45 +2281,56 @@ class DepoKabulPage(BasePage):
         self.table.setColumnHidden(0, True)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setShowGrid(False)
+        self.table.setAlternatingRowColors(True)
         self.table.setStyleSheet(f"""
-            QTableWidget {{ 
-                background: {self.theme['bg_card']}; 
-                color: {self.theme['text']}; 
-                border: 1px solid {self.theme['border']}; 
-                border-radius: 8px; 
-                gridline-color: {self.theme['border']}; 
+            QTableWidget {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: {brand.R_LG}px;
+                outline: none;
             }}
-            QTableWidget::item {{ padding: 8px; }}
-            QHeaderView::section {{ 
-                background: {self.theme['bg_hover']}; 
-                color: {self.theme['text']}; 
-                padding: 10px; 
-                border: none; 
-                font-weight: bold; 
+            QTableWidget::item {{
+                padding: {brand.SP_2}px {brand.SP_3}px;
+                border-bottom: 1px solid {brand.BORDER};
+                color: {brand.TEXT};
+            }}
+            QTableWidget::item:alternate {{ background: {brand.BG_MAIN}; }}
+            QTableWidget::item:selected {{ background: {brand.BG_SELECTED}; }}
+            QHeaderView::section {{
+                background: {brand.BG_SURFACE};
+                color: {brand.TEXT_MUTED};
+                padding: {brand.SP_3}px;
+                border: none;
+                border-bottom: 2px solid {brand.PRIMARY};
+                font-size: {brand.FS_BODY_SM}px;
+                font-weight: {brand.FW_SEMIBOLD};
             }}
         """)
         self.table.verticalHeader().setVisible(False)
-        self.table.setColumnWidth(1, 120)
-        self.table.setColumnWidth(2, 120)
-        self.table.setColumnWidth(4, 100)
-        self.table.setColumnWidth(5, 60)
-        self.table.setColumnWidth(6, 100)
-        self.table.setColumnWidth(7, 110)
-        self.table.setColumnWidth(8, 120)
+        self.table.verticalHeader().setDefaultSectionSize(brand.sp(42))
+        self.table.setColumnWidth(1, brand.sp(120))
+        self.table.setColumnWidth(2, brand.sp(120))
+        self.table.setColumnWidth(4, brand.sp(100))
+        self.table.setColumnWidth(5, brand.sp(60))
+        self.table.setColumnWidth(6, brand.sp(100))
+        self.table.setColumnWidth(7, brand.sp(110))
+        self.table.setColumnWidth(8, brand.sp(120))
         self.table.doubleClicked.connect(self._on_row_double_click)
         layout.addWidget(self.table)
     
     def _load_data(self):
-        """Verileri yükle"""
+        """Verileri yukle"""
+        conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             search = self.search_input.text().strip()
             tarih_bas = self.tarih_bas.date().toString("yyyy-MM-dd")
             tarih_bit = self.tarih_bit.date().toString("yyyy-MM-dd")
             durum = self.durum_combo.currentData()
-            
+
             query = """
                 SELECT gi.id, gi.irsaliye_no, gi.cari_irsaliye_no, gi.cari_unvani, gi.tarih,
                        (SELECT COUNT(*) FROM siparis.giris_irsaliye_satirlar WHERE irsaliye_id = gi.id) as satir_sayisi,
@@ -2146,20 +2340,19 @@ class DepoKabulPage(BasePage):
                 WHERE gi.tarih BETWEEN ? AND ?
             """
             params = [tarih_bas, tarih_bit]
-            
+
             if search:
                 query += " AND (gi.irsaliye_no LIKE ? OR gi.cari_unvani LIKE ? OR gi.cari_irsaliye_no LIKE ?)"
                 params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
-            
+
             if durum:
                 query += " AND gi.durum = ?"
                 params.append(durum)
-            
+
             query += " ORDER BY gi.tarih DESC, gi.id DESC"
-            
+
             cursor.execute(query, params)
             rows = cursor.fetchall()
-            conn.close()
             
             self.table.setRowCount(len(rows))
             
@@ -2178,8 +2371,8 @@ class DepoKabulPage(BasePage):
                 # Durum badge
                 durum = row[6] or 'TASLAK'
                 durum_item = QTableWidgetItem(durum)
-                colors = {'TASLAK': QColor('#f59e0b'), 'ONAYLANDI': QColor('#22c55e'), 'IPTAL': QColor('#ef4444')}
-                durum_item.setForeground(colors.get(durum, QColor('#888')))
+                colors = {'TASLAK': QColor(brand.WARNING), 'ONAYLANDI': QColor(brand.SUCCESS), 'IPTAL': QColor(brand.ERROR)}
+                durum_item.setForeground(colors.get(durum, QColor(brand.TEXT_DIM)))
                 self.table.setItem(i, 6, durum_item)
 
                 # Lot durumu
@@ -2188,29 +2381,35 @@ class DepoKabulPage(BasePage):
                 if satir_sayisi > 0:
                     lot_durum = f"{lot_sayisi}/{satir_sayisi}"
                     if lot_sayisi == satir_sayisi:
-                        lot_durum += " ✅"
+                        lot_durum += " (Tamam)"
                     elif lot_sayisi > 0:
-                        lot_durum += " ⏳"
+                        lot_durum += " (Kismi)"
                     else:
-                        lot_durum += " ❌"
+                        lot_durum += " (Yok)"
                 else:
                     lot_durum = "-"
                 self.table.setItem(i, 7, QTableWidgetItem(lot_durum))
 
                 # İşlem butonu
                 widget = self.create_action_buttons([
-                    ("📋", "Detay", lambda checked, iid=row[0]: self._open_detail(iid), "view"),
+                    ("Detay", "Detay Goruntule", lambda checked, iid=row[0]: self._open_detail(iid), "view"),
                 ])
                 self.table.setCellWidget(i, 8, widget)
-                self.table.setRowHeight(i, 42)
+                self.table.setRowHeight(i, brand.sp(42))
 
             self.stat_label.setText(f"Toplam: {len(rows)} irsaliye")
             
         except Exception as e:
-            print(f"Veri yükleme hatası: {e}")
+            print(f"Veri yukleme hatasi: {e}")
             import traceback
             traceback.print_exc()
-    
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _on_search(self):
         """Arama"""
         self._load_data()

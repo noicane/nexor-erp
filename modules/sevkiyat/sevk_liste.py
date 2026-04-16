@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 from components.base_page import BasePage
 from core.database import get_db_connection
 from core.log_manager import LogManager
+from core.nexor_brand import brand
 
 # Sevke hazır durumlar
 SEVK_HAZIR_DURUMLAR = ('KONTROL_EDILDI', 'ONAYLANDI', 'SEVKE_HAZIR')
@@ -42,14 +43,14 @@ class SevkListePage(BasePage):
         header = QHBoxLayout()
         
         title = QLabel("📦 Sevkiyat Listesi")
-        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self.theme.get('text', '#fff')};")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {brand.TEXT};")
         header.addWidget(title)
         
         header.addStretch()
         
         # Saat
         self.saat_label = QLabel()
-        self.saat_label.setStyleSheet(f"color: {self.theme.get('text_muted', '#8a94a6')}; font-size: 18px; font-weight: bold;")
+        self.saat_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 18px; font-weight: bold;")
         header.addWidget(self.saat_label)
         
         # Yenile butonu
@@ -62,7 +63,7 @@ class SevkListePage(BasePage):
         
         # Filtre satırı
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(f"background: {self.theme.get('bg_card', '#242938')}; border-radius: 8px; padding: 8px;")
+        filter_frame.setStyleSheet(f"background: {brand.BG_CARD}; border-radius: 8px; padding: 8px;")
         filter_layout = QHBoxLayout(filter_frame)
         filter_layout.setContentsMargins(12, 8, 12, 8)
         
@@ -92,7 +93,7 @@ class SevkListePage(BasePage):
 
         # Özet bilgiler
         self.ozet_label = QLabel()
-        self.ozet_label.setStyleSheet(f"color: {self.theme.get('primary', '#6366f1')}; font-weight: bold;")
+        self.ozet_label.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold;")
         filter_layout.addWidget(self.ozet_label)
         
         layout.addWidget(filter_frame)
@@ -131,7 +132,7 @@ class SevkListePage(BasePage):
         footer = QHBoxLayout()
         
         self.secili_label = QLabel("Seçili: 0 lot")
-        self.secili_label.setStyleSheet(f"color: {self.theme.get('text_muted')};")
+        self.secili_label.setStyleSheet(f"color: {brand.TEXT_DIM};")
         footer.addWidget(self.secili_label)
         
         footer.addStretch()
@@ -140,7 +141,7 @@ class SevkListePage(BasePage):
         self.sevk_btn = QPushButton("🚚 Yeni Sevkiyat Oluştur")
         self.sevk_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {self.theme.get('success', '#22c55e')};
+                background: {brand.SUCCESS};
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -149,7 +150,7 @@ class SevkListePage(BasePage):
                 font-weight: bold;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('success_hover', '#16a34a')};
+                background: {'#059669'};
             }}
         """)
         self.sevk_btn.clicked.connect(self._yeni_sevkiyat)
@@ -163,52 +164,52 @@ class SevkListePage(BasePage):
     def _button_style(self):
         return f"""
             QPushButton {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#fff')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 16px;
             }}
             QPushButton:hover {{
-                background: {self.theme.get('bg_hover', '#3d4454')};
+                background: {brand.BG_HOVER};
             }}
         """
     
     def _input_style(self):
         return f"""
             QLineEdit, QComboBox, QDateEdit {{
-                background: {self.theme.get('bg_input', '#2d3548')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background: {brand.BG_INPUT};
+                border: 1px solid {brand.BORDER};
                 border-radius: 6px;
                 padding: 8px 12px;
-                color: {self.theme.get('text', '#fff')};
+                color: {brand.TEXT};
             }}
         """
     
     def _table_style(self):
         return f"""
             QTableWidget {{
-                background-color: {self.theme.get('bg_card', '#242938')};
-                alternate-background-color: {self.theme.get('bg_main', '#1a1f2e')};
-                border: 1px solid {self.theme.get('border', '#3d4454')};
+                background-color: {brand.BG_CARD};
+                alternate-background-color: {brand.BG_MAIN};
+                border: 1px solid {brand.BORDER};
                 border-radius: 8px;
-                gridline-color: {self.theme.get('border', '#3d4454')};
-                color: {self.theme.get('text', '#ffffff')};
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
             }}
             QTableWidget::item {{
                 padding: 8px;
-                border-bottom: 1px solid {self.theme.get('border', '#3d4454')};
+                border-bottom: 1px solid {brand.BORDER};
             }}
             QTableWidget::item:selected {{
-                background-color: {self.theme.get('primary', '#6366f1')};
+                background-color: {brand.PRIMARY};
                 color: white;
             }}
             QHeaderView::section {{
-                background-color: {self.theme.get('bg_input', '#2d3548')};
-                color: {self.theme.get('text', '#ffffff')};
+                background-color: {brand.BG_INPUT};
+                color: {brand.TEXT};
                 padding: 10px;
                 border: none;
-                border-bottom: 2px solid {self.theme.get('primary', '#6366f1')};
+                border-bottom: 2px solid {brand.PRIMARY};
                 font-weight: bold;
             }}
         """
@@ -308,7 +309,7 @@ class SevkListePage(BasePage):
             
             # Lot No
             item = QTableWidgetItem(data['lot_no'])
-            item.setForeground(QColor(self.theme.get('primary', '#6366f1')))
+            item.setForeground(QColor(brand.PRIMARY))
             self.table.setItem(row_idx, 1, item)
             
             # Müşteri
@@ -337,17 +338,17 @@ class SevkListePage(BasePage):
             item.setTextAlignment(Qt.AlignCenter)
             # Eski lotları vurgula
             if data['gun_sayisi'] > 7:
-                item.setForeground(QColor(self.theme.get('warning', '#f59e0b')))
+                item.setForeground(QColor(brand.WARNING))
             if data['gun_sayisi'] > 14:
-                item.setForeground(QColor(self.theme.get('danger', '#ef4444')))
+                item.setForeground(QColor(brand.ERROR))
             self.table.setItem(row_idx, 8, item)
             
             # Durum
             item = QTableWidgetItem(data['durum'])
             if data['durum'] == 'Rezerve':
-                item.setForeground(QColor(self.theme.get('warning', '#f59e0b')))
+                item.setForeground(QColor(brand.WARNING))
             else:
-                item.setForeground(QColor(self.theme.get('success', '#22c55e')))
+                item.setForeground(QColor(brand.SUCCESS))
             self.table.setItem(row_idx, 9, item)
         
         # Özet güncelle
