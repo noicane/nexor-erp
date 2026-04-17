@@ -148,6 +148,8 @@ MENU_STRUCTURE = [
         {"id": "rapor_kalite", "label": "Kalite Raporları"},
         {"id": "rapor_maliyet", "label": "Maliyet Raporları"},
         {"id": "rapor_kpi", "label": "KPI Dashboard"},
+        {"id": "rapor_musteri_hareket", "label": "Müşteri Hareket Raporu"},
+        {"id": "rapor_akim", "label": "PLC Akım Raporu"},
         {"id": "urun_izlenebilirlik", "label": "Ürün İzlenebilirlik"},
     ]},
 

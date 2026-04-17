@@ -31,6 +31,8 @@ def get_modern_style(theme: dict) -> dict:
         'success': brand.SUCCESS,
         'warning': brand.WARNING,
         'danger': brand.ERROR,
+        'error': brand.ERROR,
+        'info': brand.INFO,
         'bg_main': brand.BG_MAIN,
         'bg_hover': brand.BG_HOVER,
         'border_light': brand.BORDER_HARD,
@@ -40,9 +42,14 @@ def get_modern_style(theme: dict) -> dict:
 class RaporUretimPage(BasePage):
     """Uretim Raporu - Urun bazli m2/adet ozet ve detay"""
 
+    # Tiklanabilir filtre kolonlari: (tablo_adi, kolon_idx, kolon_adi)
+    FILTER_COLS_OZET = {2: "Musteri", 3: "Hat"}
+    FILTER_COLS_DETAY = {4: "Musteri", 5: "Hat"}
+
     def __init__(self, theme: dict):
         super().__init__(theme)
         self.s = get_modern_style(theme)
+        self._active_filter = None   # (kolon_adi, deger)
         self._setup_ui()
         QTimer.singleShot(100, self._load_data)
 
@@ -79,10 +86,12 @@ class RaporUretimPage(BasePage):
         self.toplam_adet_card = self._create_stat_card("Toplam Adet", "0", s['info'])
         self.toplam_m2_card = self._create_stat_card("Toplam m2", "0", s['success'])
         self.toplam_fire_card = self._create_stat_card("Fire Adet", "0", s['error'])
-        self.urun_cesit_card = self._create_stat_card("Urun Cesidi", "0", s['warning'])
+        self.toplam_red_card = self._create_stat_card("Red Adet", "0", s['warning'])
+        self.urun_cesit_card = self._create_stat_card("Urun Cesidi", "0", s['primary'])
         stats_layout.addWidget(self.toplam_adet_card)
         stats_layout.addWidget(self.toplam_m2_card)
         stats_layout.addWidget(self.toplam_fire_card)
+        stats_layout.addWidget(self.toplam_red_card)
         stats_layout.addWidget(self.urun_cesit_card)
         header.addLayout(stats_layout)
 
@@ -208,6 +217,36 @@ class RaporUretimPage(BasePage):
 
         layout.addWidget(filter_frame)
 
+        # ===== AKTIF FILTRE CUBUGU =====
+        self.filter_bar = QFrame()
+        self.filter_bar.setStyleSheet(f"""
+            QFrame {{
+                background: {brand.PRIMARY_SOFT};
+                border: 1px solid {brand.PRIMARY};
+                border-radius: 8px;
+            }}
+        """)
+        fb_l = QHBoxLayout(self.filter_bar)
+        fb_l.setContentsMargins(12, 6, 12, 6)
+        fb_l.setSpacing(8)
+        self.filter_label = QLabel("")
+        self.filter_label.setStyleSheet(f"color: {brand.TEXT}; font-size: 13px; font-weight: 500;")
+        fb_l.addWidget(self.filter_label)
+        fb_l.addStretch()
+        clear_btn = QPushButton("Filtreyi Temizle")
+        clear_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.ERROR}; color: white; border: none;
+                border-radius: 6px; padding: 4px 14px; font-size: 12px; font-weight: 600;
+            }}
+            QPushButton:hover {{ background: {brand.ERROR}; opacity: 0.8; }}
+        """)
+        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.clicked.connect(self._clear_filter)
+        fb_l.addWidget(clear_btn)
+        self.filter_bar.setVisible(False)
+        layout.addWidget(self.filter_bar)
+
         # ===== TABS =====
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(f"""
@@ -241,8 +280,8 @@ class RaporUretimPage(BasePage):
         # Tab 1: Urun Ozet
         self.ozet_table = self._create_table(
             ["Urun Kodu", "Urun Adi", "Musteri", "Hat", "Toplam Adet",
-             "Fire Adet", "m2/Adet", "Toplam m2", "Aski Sayisi"],
-            [100, 200, 150, 100, 90, 80, 80, 100, 80],
+             "Fire Adet", "Red Adet", "m2/Adet", "Toplam m2", "Aski Sayisi"],
+            [100, 200, 150, 100, 90, 80, 80, 80, 100, 80],
             stretch_col=1
         )
         self.tabs.addTab(self.ozet_table, "Urun Bazli Ozet")
@@ -250,20 +289,24 @@ class RaporUretimPage(BasePage):
         # Tab 2: Gunluk Detay
         self.detay_table = self._create_table(
             ["Tarih", "Is Emri", "Urun Kodu", "Urun Adi", "Musteri", "Hat",
-             "Vardiya", "Adet", "Fire", "m2/Adet", "Toplam m2", "Aski"],
-            [90, 100, 100, 180, 130, 90, 70, 70, 60, 70, 90, 60],
+             "Vardiya", "Adet", "Fire", "Red", "m2/Adet", "Toplam m2", "Aski"],
+            [90, 100, 100, 180, 130, 90, 70, 70, 60, 60, 70, 90, 60],
             stretch_col=3
         )
         self.tabs.addTab(self.detay_table, "Detayli Kayitlar")
 
         # Tab 3: Hat Bazli Ozet
         self.hat_table = self._create_table(
-            ["Hat", "Urun Cesidi", "Toplam Adet", "Toplam Fire", "Toplam m2",
-             "Fire Orani %", "Ort. m2/Gun"],
-            [150, 90, 100, 100, 110, 90, 100],
+            ["Hat", "Urun Cesidi", "Toplam Adet", "Toplam Fire", "Toplam Red",
+             "Toplam m2", "Fire %", "Ort. m2/Gun"],
+            [150, 90, 100, 100, 100, 110, 80, 100],
             stretch_col=0
         )
         self.tabs.addTab(self.hat_table, "Hat Bazli Ozet")
+
+        # Tiklanabilir filtre: Musteri veya Hat hucresine tikla -> filtrele
+        self.ozet_table.cellClicked.connect(self._on_ozet_cell_clicked)
+        self.detay_table.cellClicked.connect(self._on_detay_cell_clicked)
 
         layout.addWidget(self.tabs, 1)
 
@@ -340,6 +383,55 @@ class RaporUretimPage(BasePage):
         fl.addWidget(v_label)
 
         return frame
+
+    # -----------------------------------------------------------------
+    # TIKLANABILIR FILTRE
+    # -----------------------------------------------------------------
+    def _on_ozet_cell_clicked(self, row, col):
+        if col in self.FILTER_COLS_OZET:
+            item = self.ozet_table.item(row, col)
+            if item and item.text() and item.text() != "TOPLAM":
+                self._apply_table_filter(self.FILTER_COLS_OZET[col], item.text())
+
+    def _on_detay_cell_clicked(self, row, col):
+        if col in self.FILTER_COLS_DETAY:
+            item = self.detay_table.item(row, col)
+            if item and item.text():
+                self._apply_table_filter(self.FILTER_COLS_DETAY[col], item.text())
+
+    def _apply_table_filter(self, col_name, value):
+        """Tum tablolarda belirli kolonu filtrele"""
+        self._active_filter = (col_name, value)
+        self.filter_label.setText(f"Filtre: {col_name} = {value}")
+        self.filter_bar.setVisible(True)
+
+        # Ozet tablosu (Musteri=2, Hat=3)
+        ozet_col = {v: k for k, v in self.FILTER_COLS_OZET.items()}.get(col_name)
+        if ozet_col is not None:
+            for r in range(self.ozet_table.rowCount()):
+                item = self.ozet_table.item(r, ozet_col)
+                txt = item.text() if item else ""
+                # TOPLAM satirini da gizle filtrede
+                first = self.ozet_table.item(r, 0)
+                is_toplam = first and first.text() == "TOPLAM"
+                self.ozet_table.setRowHidden(r, txt != value and not is_toplam)
+
+        # Detay tablosu (Musteri=4, Hat=5)
+        detay_col = {v: k for k, v in self.FILTER_COLS_DETAY.items()}.get(col_name)
+        if detay_col is not None:
+            for r in range(self.detay_table.rowCount()):
+                item = self.detay_table.item(r, detay_col)
+                txt = item.text() if item else ""
+                self.detay_table.setRowHidden(r, txt != value)
+
+    def _clear_filter(self):
+        """Filtreyi temizle, tum satirlari goster"""
+        self._active_filter = None
+        self.filter_bar.setVisible(False)
+        for r in range(self.ozet_table.rowCount()):
+            self.ozet_table.setRowHidden(r, False)
+        for r in range(self.detay_table.rowCount()):
+            self.detay_table.setRowHidden(r, False)
 
     def _load_hat_filter(self):
         conn = None
@@ -422,6 +514,12 @@ class RaporUretimPage(BasePage):
                     h.kod + ' - ' + ISNULL(h.kisa_ad, h.ad) AS hat,
                     SUM(ISNULL(uk.uretilen_miktar, 0)) AS toplam_adet,
                     SUM(ISNULL(uk.fire_miktar, 0)) AS fire_adet,
+                    ISNULL((
+                        SELECT SUM(ISNULL(fk.hatali_adet, 0))
+                        FROM kalite.final_kontrol fk
+                        WHERE fk.is_emri_id = ie.id
+                          AND fk.kontrol_tarihi BETWEEN ? AND DATEADD(day, 1, ?)
+                    ), 0) AS red_adet,
                     ISNULL(u.yuzey_alani_m2, 0) AS m2_adet,
                     SUM(ISNULL(uk.uretilen_miktar, 0)) * ISNULL(u.yuzey_alani_m2, 0) AS toplam_m2,
                     SUM(ISNULL(uk.aski_sayisi, 0)) AS aski_sayisi
@@ -431,30 +529,41 @@ class RaporUretimPage(BasePage):
                 JOIN tanim.uretim_hatlari h ON uk.hat_id = h.id
                 WHERE uk.tarih BETWEEN ? AND ?
                 {hat_filter}
-                GROUP BY ie.stok_kodu, ie.stok_adi, ie.cari_unvani,
+                GROUP BY ie.id, ie.stok_kodu, ie.stok_adi, ie.cari_unvani,
                          h.kod, h.kisa_ad, h.ad, u.yuzey_alani_m2
                 ORDER BY toplam_m2 DESC
             """
-            cursor.execute(sql_ozet, params_base)
+            ozet_params = [tarih_bas, tarih_bit] + params_base
+            cursor.execute(sql_ozet, ozet_params)
             ozet_rows = cursor.fetchall()
 
-            # Istatistikler
+            # Istatistikler  (red_adet = col 6)
             toplam_adet = sum(r[4] or 0 for r in ozet_rows)
-            toplam_m2 = sum(r[7] or 0 for r in ozet_rows)
+            toplam_m2 = sum(r[8] or 0 for r in ozet_rows)
             toplam_fire = sum(r[5] or 0 for r in ozet_rows)
+            toplam_red = sum(r[6] or 0 for r in ozet_rows)
             urun_cesidi = len(set((r[0], r[1]) for r in ozet_rows))
 
             self.toplam_adet_card.findChild(QLabel, "value_label").setText(f"{toplam_adet:,.0f}")
             self.toplam_m2_card.findChild(QLabel, "value_label").setText(f"{toplam_m2:,.1f}")
             self.toplam_fire_card.findChild(QLabel, "value_label").setText(f"{toplam_fire:,.0f}")
+            self.toplam_red_card.findChild(QLabel, "value_label").setText(f"{toplam_red:,.0f}")
             self.urun_cesit_card.findChild(QLabel, "value_label").setText(str(urun_cesidi))
 
+            self._clear_filter()
             self.ozet_table.setRowCount(len(ozet_rows))
             for i, row in enumerate(ozet_rows):
+                # row: [kodu, adi, musteri, hat, adet, fire, red, m2_birim, m2_toplam, aski]
                 self.ozet_table.setItem(i, 0, QTableWidgetItem(str(row[0] or '')))
                 self.ozet_table.setItem(i, 1, QTableWidgetItem(str(row[1] or '')))
-                self.ozet_table.setItem(i, 2, QTableWidgetItem(str(row[2] or '')))
-                self.ozet_table.setItem(i, 3, QTableWidgetItem(str(row[3] or '')))
+
+                musteri_item = QTableWidgetItem(str(row[2] or ''))
+                musteri_item.setForeground(QColor(brand.INFO))
+                self.ozet_table.setItem(i, 2, musteri_item)
+
+                hat_item = QTableWidgetItem(str(row[3] or ''))
+                hat_item.setForeground(QColor(brand.INFO))
+                self.ozet_table.setItem(i, 3, hat_item)
 
                 adet_item = QTableWidgetItem(f"{row[4]:,.0f}" if row[4] else "0")
                 adet_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -466,18 +575,24 @@ class RaporUretimPage(BasePage):
                     fire_item.setForeground(QColor(s['error']))
                 self.ozet_table.setItem(i, 5, fire_item)
 
-                m2_birim = QTableWidgetItem(f"{row[6]:,.4f}" if row[6] else "-")
-                m2_birim.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.ozet_table.setItem(i, 6, m2_birim)
+                red_item = QTableWidgetItem(f"{row[6]:,.0f}" if row[6] else "0")
+                red_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if row[6] and row[6] > 0:
+                    red_item.setForeground(QColor(s['warning']))
+                self.ozet_table.setItem(i, 6, red_item)
 
-                m2_item = QTableWidgetItem(f"{row[7]:,.2f}" if row[7] else "0")
+                m2_birim = QTableWidgetItem(f"{row[7]:,.4f}" if row[7] else "-")
+                m2_birim.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.ozet_table.setItem(i, 7, m2_birim)
+
+                m2_item = QTableWidgetItem(f"{row[8]:,.2f}" if row[8] else "0")
                 m2_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 m2_item.setForeground(QColor(s['success']))
-                self.ozet_table.setItem(i, 7, m2_item)
+                self.ozet_table.setItem(i, 8, m2_item)
 
-                aski_item = QTableWidgetItem(f"{row[8]:,.0f}" if row[8] else "0")
+                aski_item = QTableWidgetItem(f"{row[9]:,.0f}" if row[9] else "0")
                 aski_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.ozet_table.setItem(i, 8, aski_item)
+                self.ozet_table.setItem(i, 9, aski_item)
 
                 self.ozet_table.setRowHeight(i, 42)
 
@@ -485,7 +600,6 @@ class RaporUretimPage(BasePage):
             if ozet_rows:
                 total_row = len(ozet_rows)
                 self.ozet_table.setRowCount(total_row + 1)
-                bold_style = f"font-weight: bold; color: {s['text']};"
 
                 toplam_label = QTableWidgetItem("TOPLAM")
                 toplam_label.setForeground(QColor(s['primary']))
@@ -493,26 +607,26 @@ class RaporUretimPage(BasePage):
                 for c in range(1, 4):
                     self.ozet_table.setItem(total_row, c, QTableWidgetItem(""))
 
-                t_adet = QTableWidgetItem(f"{toplam_adet:,.0f}")
-                t_adet.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                t_adet.setForeground(QColor(s['primary']))
-                self.ozet_table.setItem(total_row, 4, t_adet)
+                for col, val, clr in [
+                    (4, toplam_adet, s['primary']),
+                    (5, toplam_fire, s['error']),
+                    (6, toplam_red, s['warning']),
+                ]:
+                    item = QTableWidgetItem(f"{val:,.0f}")
+                    item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                    item.setForeground(QColor(clr))
+                    self.ozet_table.setItem(total_row, col, item)
 
-                t_fire = QTableWidgetItem(f"{toplam_fire:,.0f}")
-                t_fire.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                t_fire.setForeground(QColor(s['error']))
-                self.ozet_table.setItem(total_row, 5, t_fire)
-
-                self.ozet_table.setItem(total_row, 6, QTableWidgetItem(""))
+                self.ozet_table.setItem(total_row, 7, QTableWidgetItem(""))
 
                 t_m2 = QTableWidgetItem(f"{toplam_m2:,.2f}")
                 t_m2.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 t_m2.setForeground(QColor(s['success']))
-                self.ozet_table.setItem(total_row, 7, t_m2)
+                self.ozet_table.setItem(total_row, 8, t_m2)
 
-                t_aski = QTableWidgetItem(f"{sum(r[8] or 0 for r in ozet_rows):,.0f}")
+                t_aski = QTableWidgetItem(f"{sum(r[9] or 0 for r in ozet_rows):,.0f}")
                 t_aski.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.ozet_table.setItem(total_row, 8, t_aski)
+                self.ozet_table.setItem(total_row, 9, t_aski)
 
                 self.ozet_table.setRowHeight(total_row, 42)
 
@@ -528,6 +642,12 @@ class RaporUretimPage(BasePage):
                     ISNULL(v.ad, '-'),
                     ISNULL(uk.uretilen_miktar, 0),
                     ISNULL(uk.fire_miktar, 0),
+                    ISNULL((
+                        SELECT SUM(ISNULL(fk2.hatali_adet, 0))
+                        FROM kalite.final_kontrol fk2
+                        WHERE fk2.is_emri_id = uk.is_emri_id
+                          AND CAST(fk2.kontrol_tarihi AS DATE) = uk.tarih
+                    ), 0) AS red_adet,
                     ISNULL(u.yuzey_alani_m2, 0),
                     ISNULL(uk.uretilen_miktar, 0) * ISNULL(u.yuzey_alani_m2, 0),
                     ISNULL(uk.aski_sayisi, 0)
@@ -543,6 +663,7 @@ class RaporUretimPage(BasePage):
             cursor.execute(sql_detay, params_base)
             detay_rows = cursor.fetchall()
 
+            # row: [tarih, is_emri, kodu, adi, musteri, hat, vardiya, adet, fire, red, m2b, m2t, aski]
             self.detay_table.setRowCount(len(detay_rows))
             for i, row in enumerate(detay_rows):
                 tarih_str = row[0].strftime("%d.%m.%Y") if row[0] else '-'
@@ -550,8 +671,14 @@ class RaporUretimPage(BasePage):
                 self.detay_table.setItem(i, 1, QTableWidgetItem(str(row[1] or '')))
                 self.detay_table.setItem(i, 2, QTableWidgetItem(str(row[2] or '')))
                 self.detay_table.setItem(i, 3, QTableWidgetItem(str(row[3] or '')))
-                self.detay_table.setItem(i, 4, QTableWidgetItem(str(row[4] or '')))
-                self.detay_table.setItem(i, 5, QTableWidgetItem(str(row[5] or '')))
+
+                d_musteri = QTableWidgetItem(str(row[4] or ''))
+                d_musteri.setForeground(QColor(brand.INFO))
+                self.detay_table.setItem(i, 4, d_musteri)
+
+                d_hat = QTableWidgetItem(str(row[5] or ''))
+                d_hat.setForeground(QColor(brand.INFO))
+                self.detay_table.setItem(i, 5, d_hat)
                 self.detay_table.setItem(i, 6, QTableWidgetItem(str(row[6] or '')))
 
                 adet_item = QTableWidgetItem(f"{row[7]:,.0f}" if row[7] else "0")
@@ -564,18 +691,24 @@ class RaporUretimPage(BasePage):
                     fire_item.setForeground(QColor(s['error']))
                 self.detay_table.setItem(i, 8, fire_item)
 
-                m2b = QTableWidgetItem(f"{row[9]:,.4f}" if row[9] else "-")
-                m2b.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.detay_table.setItem(i, 9, m2b)
+                red_item = QTableWidgetItem(f"{row[9]:,.0f}" if row[9] else "0")
+                red_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if row[9] and row[9] > 0:
+                    red_item.setForeground(QColor(s['warning']))
+                self.detay_table.setItem(i, 9, red_item)
 
-                m2t = QTableWidgetItem(f"{row[10]:,.2f}" if row[10] else "0")
+                m2b = QTableWidgetItem(f"{row[10]:,.4f}" if row[10] else "-")
+                m2b.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                self.detay_table.setItem(i, 10, m2b)
+
+                m2t = QTableWidgetItem(f"{row[11]:,.2f}" if row[11] else "0")
                 m2t.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 m2t.setForeground(QColor(s['success']))
-                self.detay_table.setItem(i, 10, m2t)
+                self.detay_table.setItem(i, 11, m2t)
 
-                aski = QTableWidgetItem(f"{row[11]:,.0f}" if row[11] else "0")
+                aski = QTableWidgetItem(f"{row[12]:,.0f}" if row[12] else "0")
                 aski.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.detay_table.setItem(i, 11, aski)
+                self.detay_table.setItem(i, 12, aski)
 
                 self.detay_table.setRowHeight(i, 40)
 
@@ -589,6 +722,15 @@ class RaporUretimPage(BasePage):
                     COUNT(DISTINCT ISNULL(ie.stok_kodu, '')) AS urun_cesidi,
                     SUM(ISNULL(uk.uretilen_miktar, 0)) AS toplam_adet,
                     SUM(ISNULL(uk.fire_miktar, 0)) AS toplam_fire,
+                    ISNULL((
+                        SELECT SUM(ISNULL(fk3.hatali_adet, 0))
+                        FROM kalite.final_kontrol fk3
+                        JOIN siparis.is_emirleri ie3 ON fk3.is_emri_id = ie3.id
+                        JOIN uretim.uretim_kayitlari uk3 ON uk3.is_emri_id = ie3.id
+                            AND uk3.hat_id = h.id
+                        WHERE uk3.tarih BETWEEN ? AND ?
+                          AND fk3.kontrol_tarihi BETWEEN ? AND DATEADD(day, 1, ?)
+                    ), 0) AS toplam_red,
                     SUM(ISNULL(uk.uretilen_miktar, 0) * ISNULL(u.yuzey_alani_m2, 0)) AS toplam_m2
                 FROM uretim.uretim_kayitlari uk
                 JOIN siparis.is_emirleri ie ON uk.is_emri_id = ie.id
@@ -596,12 +738,14 @@ class RaporUretimPage(BasePage):
                 JOIN tanim.uretim_hatlari h ON uk.hat_id = h.id
                 WHERE uk.tarih BETWEEN ? AND ?
                 {hat_filter}
-                GROUP BY h.kod, h.kisa_ad, h.ad
+                GROUP BY h.id, h.kod, h.kisa_ad, h.ad
                 ORDER BY toplam_m2 DESC
             """
-            cursor.execute(sql_hat, params_base)
+            hat_params = [tarih_bas, tarih_bit, tarih_bas, tarih_bit] + params_base
+            cursor.execute(sql_hat, hat_params)
             hat_rows = cursor.fetchall()
 
+            # row: [hat, cesit, adet, fire, red, m2]
             self.hat_table.setRowCount(len(hat_rows))
             for i, row in enumerate(hat_rows):
                 self.hat_table.setItem(i, 0, QTableWidgetItem(str(row[0] or '')))
@@ -620,10 +764,16 @@ class RaporUretimPage(BasePage):
                     fire.setForeground(QColor(s['error']))
                 self.hat_table.setItem(i, 3, fire)
 
-                m2 = QTableWidgetItem(f"{row[4]:,.2f}" if row[4] else "0")
+                red = QTableWidgetItem(f"{row[4]:,.0f}" if row[4] else "0")
+                red.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                if row[4] and row[4] > 0:
+                    red.setForeground(QColor(s['warning']))
+                self.hat_table.setItem(i, 4, red)
+
+                m2 = QTableWidgetItem(f"{row[5]:,.2f}" if row[5] else "0")
                 m2.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                 m2.setForeground(QColor(s['success']))
-                self.hat_table.setItem(i, 4, m2)
+                self.hat_table.setItem(i, 5, m2)
 
                 # Fire orani
                 fire_oran = 0
@@ -635,13 +785,13 @@ class RaporUretimPage(BasePage):
                     fire_oran_item.setForeground(QColor(s['error']))
                 elif fire_oran > 2:
                     fire_oran_item.setForeground(QColor(s['warning']))
-                self.hat_table.setItem(i, 5, fire_oran_item)
+                self.hat_table.setItem(i, 6, fire_oran_item)
 
                 # Ort m2/gun
-                ort_m2 = (row[4] or 0) / gun_sayisi
+                ort_m2 = (row[5] or 0) / gun_sayisi
                 ort_item = QTableWidgetItem(f"{ort_m2:,.1f}")
                 ort_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                self.hat_table.setItem(i, 6, ort_item)
+                self.hat_table.setItem(i, 7, ort_item)
 
                 self.hat_table.setRowHeight(i, 42)
 
