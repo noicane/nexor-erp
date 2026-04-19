@@ -6,7 +6,8 @@ Programi kullanan firmanin bilgilerini yonetir (PDF ciktilari icin)
 import os
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
-    QLineEdit, QTextEdit, QFileDialog, QScrollArea, QWidget, QMessageBox, QComboBox
+    QLineEdit, QTextEdit, QFileDialog, QScrollArea, QWidget, QMessageBox, QComboBox,
+    QTabWidget
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
@@ -26,6 +27,48 @@ class SistemFirmaPage(BasePage):
         self._load_data()
 
     def _setup_ui(self):
+        """Tab kapsayicisi - 3 sekme: Firma + Etiket Sablonlari + PC Yazici"""
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        tabs = QTabWidget()
+        tabs.setStyleSheet(
+            f"QTabWidget::pane {{ border: 1px solid {brand.BORDER}; "
+            f"border-radius: 8px; background: {brand.BG_MAIN}; }}"
+            f"QTabBar::tab {{ background: {brand.BG_CARD}; color: {brand.TEXT_MUTED}; "
+            f"padding: 10px 18px; border: 1px solid {brand.BORDER}; "
+            f"border-bottom: none; border-top-left-radius: 8px; "
+            f"border-top-right-radius: 8px; margin-right: 2px; "
+            f"font-size: 13px; font-weight: bold; }}"
+            f"QTabBar::tab:selected {{ background: {brand.PRIMARY}; color: white; }}"
+            f"QTabBar::tab:hover:!selected {{ background: {brand.BG_HOVER}; "
+            f"color: {brand.TEXT}; }}"
+        )
+
+        # Tab 1: Firma Bilgileri (mevcut sayfa)
+        firma_widget = self._build_firma_tab()
+        tabs.addTab(firma_widget, "🏢 Firma Bilgileri")
+
+        # Tab 2: Etiket Sablonlari (kullanim yeri -> sablon atamalari, GLOBAL)
+        try:
+            from modules.sistem.sistem_etiket_atama import SistemEtiketAtamaTab
+            self.etiket_tab = SistemEtiketAtamaTab(self.theme)
+            tabs.addTab(self.etiket_tab, "📄 Etiket Sablonlari")
+        except Exception as e:
+            print(f"[sistem_firma] Etiket sablon sekmesi yuklenemedi: {e}")
+
+        # Tab 3: PC Yazici Atamalari (PC bazli yazici atamalari)
+        try:
+            from modules.sistem.sistem_pc_yazici import SistemPCYaziciTab
+            self.yazici_tab = SistemPCYaziciTab(self.theme)
+            tabs.addTab(self.yazici_tab, "🖨️ PC Yazici Atamalari")
+        except Exception as e:
+            print(f"[sistem_firma] PC yazici sekmesi yuklenemedi: {e}")
+
+        main_layout.addWidget(tabs)
+
+    def _build_firma_tab(self) -> QScrollArea:
+        """Firma bilgileri sekmesi (mevcut sayfa - aynen korundu)"""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
@@ -203,10 +246,7 @@ class SistemFirmaPage(BasePage):
 
         layout.addStretch()
         scroll.setWidget(content)
-
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(scroll)
+        return scroll
 
     def _create_section(self, icon: str, title: str, subtitle: str) -> QFrame:
         frame = QFrame()

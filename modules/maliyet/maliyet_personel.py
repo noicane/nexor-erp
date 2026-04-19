@@ -897,7 +897,7 @@ class MaliyetPersonelPage(BasePage):
         fl.addWidget(t)
         v = QLabel(value)
         v.setStyleSheet(f"color: {color}; font-size: 18px; font-weight: bold;")
-        v.setObjectName("value_label")
+        v.setObjectName("stat_value")
         fl.addWidget(v)
         return frame
 
@@ -975,9 +975,9 @@ class MaliyetPersonelPage(BasePage):
             atanmis_count = sum(1 for r in rows if r[5])
             toplam_maas = sum(r[4] or 0 for r in rows)
 
-            self.personel_card.findChild(QLabel, "value_label").setText(str(personel_count))
-            self.atanmis_card.findChild(QLabel, "value_label").setText(str(atanmis_count))
-            self.toplam_maas_card.findChild(QLabel, "value_label").setText(f"{toplam_maas:,.0f}")
+            self.personel_card.findChild(QLabel, "stat_value").setText(str(personel_count))
+            self.atanmis_card.findChild(QLabel, "stat_value").setText(str(atanmis_count))
+            self.toplam_maas_card.findChild(QLabel, "stat_value").setText(f"{toplam_maas:,.0f}")
 
             self.table.setRowCount(len(rows))
             for i, row in enumerate(rows):

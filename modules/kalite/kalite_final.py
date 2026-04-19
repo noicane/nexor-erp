@@ -1861,10 +1861,11 @@ class KaliteFinalPage(BasePage):
                 'stok_kodu': stok_kodu or ''
             }
 
-            # Etiket dialog'unu goster
-            dlg_etiket = EtiketOnizlemeDialog(self.theme, etiket_data, self)
-            if dlg_etiket.exec() == QDialog.Accepted:
-                # Basim sayisini artir
+            # Etiket bas - merkezi servis
+            # Yazici ve sablon Sistem > Firma Ayarlari > Etiket sekmelerinden okunur.
+            # Konfig yoksa eski dialog'a fallback eder.
+            from core.etiket_servisi import EtiketServisi
+            if EtiketServisi.bas("kalite_final", etiket_data, parent=self):
                 cursor.execute("""
                     UPDATE kalite.etiket_kuyrugu
                     SET basim_sayisi = basim_sayisi + 1,
@@ -1873,7 +1874,6 @@ class KaliteFinalPage(BasePage):
                     WHERE id = ?
                 """, (etiket_id,))
                 conn.commit()
-                QMessageBox.information(self, "Basarili", "Etiket basildi!")
 
         except Exception as e:
             QMessageBox.warning(self, "Etiket Hatasi", f"Etiket basilamadi:\n{str(e)}")
@@ -1918,22 +1918,10 @@ class KaliteFinalPage(BasePage):
                 'stok_kodu': self.secili_is_emri.get('stok_kodu', '')
             }
 
-            # Onizleme dialog'u goster
-            dlg = EtiketOnizlemeDialog(self.theme, etiket_data, self)
-            if dlg.exec() != QDialog.Accepted:
-                return None
-
-            # EZPL komutu olustur (Godex icin)
-            ezpl = self._generate_ezpl(etiket_data)
-
-            # Yaziciya gonder (simdilik dosyaya kaydet - test icin)
-            lot_safe = (etiket_data['lot_no'] or 'etiket').replace('/', '-').replace('\\', '-')
-            etiket_dosya = os.path.join(os.path.expanduser("~"), "Desktop", f"etiket_{lot_safe}.prn")
-            with open(etiket_dosya, 'w', encoding='utf-8') as f:
-                f.write(ezpl)
-
-            print(f"Etiket dosyasi olusturuldu: {etiket_dosya}")
-            return etiket_dosya
+            # Etiket bas - merkezi servis (Sistem > Firma Ayarlari'ndan konfigure)
+            from core.etiket_servisi import EtiketServisi
+            ok = EtiketServisi.bas("kalite_final", etiket_data, parent=self)
+            return True if ok else None
 
         except Exception as e:
             print(f"Etiket basma hatasi: {e}")

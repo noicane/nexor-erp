@@ -445,7 +445,7 @@ class BakimDurusTalepPage(BasePage):
 
         v_label = QLabel(value)
         v_label.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
-        v_label.setObjectName("value_label")
+        v_label.setObjectName("stat_value")
         fl.addWidget(v_label)
 
         return frame
@@ -459,16 +459,16 @@ class BakimDurusTalepPage(BasePage):
 
             # Stats
             cursor.execute("SELECT COUNT(*) FROM uretim.durus_kayitlari WHERE durum='ACIK'")
-            self.acik_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.acik_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             cursor.execute("SELECT COUNT(*) FROM uretim.durus_kayitlari WHERE durum='BAKIMDA'")
-            self.bakimda_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.bakimda_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             cursor.execute("""
                 SELECT COUNT(*) FROM uretim.durus_kayitlari
                 WHERE durum='KAPALI' AND CAST(bitis_zamani AS DATE) = CAST(GETDATE() AS DATE)
             """)
-            self.bugun_kapanan.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.bugun_kapanan.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             # List
             sql = """

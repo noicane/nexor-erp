@@ -418,7 +418,7 @@ class AnalizDialog(QDialog):
         self.tds_analiz_btn.setCursor(Qt.PointingHandCursor)
         self.tds_analiz_btn.setStyleSheet(f"""
             QPushButton {{
-                background: {brand.ACCENT};
+                background: {brand.INFO};
                 color: white;
                 border: none;
                 padding: {brand.SP_2}px {brand.SP_4}px;

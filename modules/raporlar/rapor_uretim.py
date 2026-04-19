@@ -379,7 +379,7 @@ class RaporUretimPage(BasePage):
 
         v_label = QLabel(value)
         v_label.setStyleSheet(f"color: {color}; font-size: 20px; font-weight: bold;")
-        v_label.setObjectName("value_label")
+        v_label.setObjectName("stat_value")
         fl.addWidget(v_label)
 
         return frame
@@ -544,11 +544,11 @@ class RaporUretimPage(BasePage):
             toplam_red = sum(r[6] or 0 for r in ozet_rows)
             urun_cesidi = len(set((r[0], r[1]) for r in ozet_rows))
 
-            self.toplam_adet_card.findChild(QLabel, "value_label").setText(f"{toplam_adet:,.0f}")
-            self.toplam_m2_card.findChild(QLabel, "value_label").setText(f"{toplam_m2:,.1f}")
-            self.toplam_fire_card.findChild(QLabel, "value_label").setText(f"{toplam_fire:,.0f}")
-            self.toplam_red_card.findChild(QLabel, "value_label").setText(f"{toplam_red:,.0f}")
-            self.urun_cesit_card.findChild(QLabel, "value_label").setText(str(urun_cesidi))
+            self.toplam_adet_card.findChild(QLabel, "stat_value").setText(f"{toplam_adet:,.0f}")
+            self.toplam_m2_card.findChild(QLabel, "stat_value").setText(f"{toplam_m2:,.1f}")
+            self.toplam_fire_card.findChild(QLabel, "stat_value").setText(f"{toplam_fire:,.0f}")
+            self.toplam_red_card.findChild(QLabel, "stat_value").setText(f"{toplam_red:,.0f}")
+            self.urun_cesit_card.findChild(QLabel, "stat_value").setText(str(urun_cesidi))
 
             self._clear_filter()
             self.ozet_table.setRowCount(len(ozet_rows))

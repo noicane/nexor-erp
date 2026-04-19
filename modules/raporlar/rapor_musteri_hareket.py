@@ -239,12 +239,12 @@ class RaporMusteriHareketPage(BasePage):
         vl.setContentsMargins(12, 8, 12, 8); vl.setSpacing(2)
         vl.addWidget(QLabel(title, styleSheet=f"color: {brand.TEXT_DIM}; font-size: 11px; font-weight: 500;"))
         v = QLabel(value, styleSheet=f"color: {color}; font-size: 20px; font-weight: bold;")
-        v.setObjectName("value_label")
+        v.setObjectName("stat_value")
         vl.addWidget(v)
         return f
 
     def _update_stat(self, card, value):
-        lbl = card.findChild(QLabel, "value_label")
+        lbl = card.findChild(QLabel, "stat_value")
         if lbl:
             lbl.setText(value)
 

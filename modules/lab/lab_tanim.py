@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QSpinBox, QTextEdit, QComboBox, QTabWidget, QWidget
 )
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
 from core.database import get_db_connection

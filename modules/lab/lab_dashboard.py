@@ -83,7 +83,7 @@ class LabDashboardPage(BasePage):
 
         left_title = QLabel("Banyo Performansi (Son 30 Gun)")
         left_title.setStyleSheet(
-            f"color: {brand.TEXT}; font-size: {brand.FS_SUBTITLE}px; "
+            f"color: {brand.TEXT}; font-size: {brand.FS_HEADING_SM}px; "
             f"font-weight: {brand.FW_SEMIBOLD};"
         )
         left_layout.addWidget(left_title)
@@ -121,7 +121,7 @@ class LabDashboardPage(BasePage):
 
         right_title = QLabel("Haftalik Trend")
         right_title.setStyleSheet(
-            f"color: {brand.TEXT}; font-size: {brand.FS_SUBTITLE}px; "
+            f"color: {brand.TEXT}; font-size: {brand.FS_HEADING_SM}px; "
             f"font-weight: {brand.FW_SEMIBOLD};"
         )
         right_layout.addWidget(right_title)

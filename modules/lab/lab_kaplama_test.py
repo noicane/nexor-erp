@@ -2221,10 +2221,16 @@ class LabKaplamaTestPage(BasePage):
             uygun = sum(1 for r in rows if r[12] == 'UYGUN')
             uygun_d = sum(1 for r in rows if r[12] == 'UYGUN_DEGIL')
             bekl = sum(1 for r in rows if r[12] == 'BEKLEMEDE')
-            self.card_toplam.findChild(QLabel, "value_label").setText(str(toplam))
-            self.card_uygun.findChild(QLabel, "value_label").setText(str(uygun))
-            self.card_uygun_degil.findChild(QLabel, "value_label").setText(str(uygun_d))
-            self.card_beklemede.findChild(QLabel, "value_label").setText(str(bekl))
+            # Stat kart degerlerini guncelle - BasePage.create_stat_card objectName: "stat_value"
+            for card, deger in (
+                (self.card_toplam, toplam),
+                (self.card_uygun, uygun),
+                (self.card_uygun_degil, uygun_d),
+                (self.card_beklemede, bekl),
+            ):
+                lbl = card.findChild(QLabel, "stat_value")
+                if lbl:
+                    lbl.setText(str(deger))
 
             self.table.setRowCount(toplam)
             for i, r in enumerate(rows):

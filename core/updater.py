@@ -44,100 +44,137 @@ class UpdateInfo:
 
 
 class DownloadThread(QThread):
-    """Dosya indirme thread'i - Versiyonlu yapı için"""
+    """Dosya indirme thread'i - Robocopy tabanlı (uzun path + retry + multi-thread)"""
     progress = Signal(int, str)  # yüzde, durum mesajı
     finished = Signal(bool, str)  # başarılı mı, mesaj/hata
-    
+
     def __init__(self, source_path: str, dest_path: str):
         super().__init__()
         self.source_path = Path(source_path)
         self.dest_path = Path(dest_path)
         self._cancelled = False
-    
+        self._process = None
+
     def cancel(self):
         self._cancelled = True
-    
+        if self._process and self._process.poll() is None:
+            try:
+                self._process.kill()
+            except Exception:
+                pass
+
     def run(self):
         try:
             # Kaynak kontrolü
             if not self.source_path.exists():
                 self.finished.emit(False, f"Kaynak bulunamadı: {self.source_path}")
                 return
-            
-            # Toplam boyut hesapla
-            total_size = self._get_total_size(self.source_path)
-            copied_size = 0
-            
-            if total_size == 0:
+
+            # Toplam dosya sayısı (progress için)
+            self.progress.emit(0, "Dosyalar sayılıyor...")
+            total_files = sum(1 for p in self.source_path.rglob('*') if p.is_file())
+
+            if total_files == 0:
                 self.finished.emit(False, "Sunucuda dosya bulunamadı!")
                 return
-            
-            # Hedef klasörü temizle
+
+            # Hedef klasörü temizle (yarım kalan kopyaları sil)
             if self.dest_path.exists():
-                shutil.rmtree(self.dest_path)
+                try:
+                    shutil.rmtree(self.dest_path)
+                except Exception:
+                    pass  # robocopy üzerine yazabilir
             self.dest_path.mkdir(parents=True, exist_ok=True)
-            
-            # Dosyaları kopyala
-            for item in self.source_path.iterdir():
+
+            # Robocopy komutu - uzun path + retry + hedef ayna (eski TEMP dosyalari silinir)
+            # /MT kaldirildi: az dosyali senaryoda (onefile=3 dosya) instabil
+            cmd = [
+                'robocopy',
+                str(self.source_path),
+                str(self.dest_path),
+                '/MIR',     # Mirror - hedefi kaynak ile ayna; eski dosyalari temizler
+                '/R:3',     # Hata durumunda 3 retry
+                '/W:2',     # Retry'lar arasi 2 sn bekle
+                '/NDL',     # Dizin listeleme yok
+                '/NJH',     # Job header yok
+                '/NJS',     # Job summary yok
+                '/NP',      # Dosya bazli yuzde yok
+            ]
+
+            self.progress.emit(0, "Kopyalama basliyor...")
+
+            CREATE_NO_WINDOW = 0x08000000
+            self._process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='cp857',
+                errors='ignore',
+                creationflags=CREATE_NO_WINDOW
+            )
+
+            copied_files = 0
+            last_lines = []  # Son 30 satir - hata raporu icin
+            for line in self._process.stdout:
                 if self._cancelled:
-                    self.finished.emit(False, "İndirme iptal edildi")
+                    try:
+                        self._process.kill()
+                    except Exception:
+                        pass
+                    self.finished.emit(False, "Indirme iptal edildi")
                     return
-                
-                if item.is_file():
-                    copied_size = self._copy_file(item, self.dest_path / item.name, 
-                                                   copied_size, total_size)
-                elif item.is_dir():
-                    copied_size = self._copy_dir(item, self.dest_path / item.name,
-                                                  copied_size, total_size)
-            
-            self.progress.emit(100, "Tamamlandı!")
+
+                line = line.strip()
+                if not line:
+                    continue
+
+                # Son output satirlarini biriktir (hata durumunda gosterim icin)
+                last_lines.append(line)
+                if len(last_lines) > 30:
+                    last_lines.pop(0)
+
+                # Robocopy her kopyalanan dosya icin bir satir yazar
+                copied_files += 1
+                percent = min(99, int((copied_files / total_files) * 100)) if total_files else 0
+                self.progress.emit(
+                    percent,
+                    f"Kopyalaniyor: {copied_files} / {total_files} dosya"
+                )
+
+            self._process.wait()
+            rc = self._process.returncode
+
+            # Robocopy exit codes:
+            #   0-7   : Basarili (1=copied, 2=extra, 4=mismatch - bitwise OR)
+            #   8+    : Hata (8=failure, 16=serious error - dosya kilitli, izin yok vb.)
+            if rc >= 8:
+                # Serious error detayli mesaj
+                tail = "\n".join(last_lines[-10:]) if last_lines else "(log bos)"
+                print(f"[Updater] Robocopy exit={rc}. Son 10 satir:\n{tail}")
+
+                hint = ""
+                if rc == 16:
+                    hint = ("\n\nOlasi neden: %TEMP%\\atmo_erp_update klasorundeki "
+                            "bir dosya kilitli (onceki NexorERP prosesi calisiyor).\n"
+                            "Cozum:\n"
+                            "1) Uygulamayi tamamen kapatin (Task Manager'dan kontrol edin)\n"
+                            "2) %TEMP%\\atmo_erp_update klasorunu silin\n"
+                            "3) Uygulamayi tekrar acip guncellemeyi tekrar deneyin")
+
+                self.finished.emit(
+                    False,
+                    f"Robocopy hatasi (kod {rc}){hint}"
+                )
+                return
+
+            self.progress.emit(100, f"Tamamlandi: {copied_files} dosya")
             self.finished.emit(True, str(self.dest_path))
-            
-        except PermissionError as e:
-            self.finished.emit(False, f"Erişim hatası: {e}")
+
+        except FileNotFoundError:
+            self.finished.emit(False, "robocopy komutu bulunamadı (Windows sistem komutu)")
         except Exception as e:
-            self.finished.emit(False, f"İndirme hatası: {e}")
-    
-    def _get_total_size(self, path: Path) -> int:
-        """Toplam boyutu hesapla"""
-        total = 0
-        try:
-            for item in path.rglob('*'):
-                if item.is_file():
-                    total += item.stat().st_size
-        except Exception:
-            pass
-        return total
-    
-    def _copy_file(self, src: Path, dst: Path, copied: int, total: int) -> int:
-        """Tek dosya kopyala"""
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        
-        size = src.stat().st_size
-        shutil.copy2(src, dst)
-        copied += size
-        
-        percent = int((copied / total) * 100) if total > 0 else 0
-        size_mb = copied / (1024 * 1024)
-        total_mb = total / (1024 * 1024)
-        self.progress.emit(percent, f"İndiriliyor: {size_mb:.1f} MB / {total_mb:.1f} MB")
-        
-        return copied
-    
-    def _copy_dir(self, src: Path, dst: Path, copied: int, total: int) -> int:
-        """Klasör kopyala (recursive)"""
-        dst.mkdir(parents=True, exist_ok=True)
-        
-        for item in src.iterdir():
-            if self._cancelled:
-                return copied
-            
-            if item.is_file():
-                copied = self._copy_file(item, dst / item.name, copied, total)
-            elif item.is_dir():
-                copied = self._copy_dir(item, dst / item.name, copied, total)
-        
-        return copied
+            self.finished.emit(False, f"Güncelleme hatası: {e}")
 
 
 class UpdateDialog(QDialog):

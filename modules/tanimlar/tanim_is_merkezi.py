@@ -617,7 +617,7 @@ class TanimIsMerkeziPage(BasePage):
         fl.addWidget(t)
         v = QLabel(value)
         v.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
-        v.setObjectName("value_label")
+        v.setObjectName("stat_value")
         fl.addWidget(v)
         return frame
 
@@ -641,8 +641,8 @@ class TanimIsMerkeziPage(BasePage):
             toplam = len(rows)
             aktif = sum(1 for r in rows if r[6])
 
-            self.toplam_card.findChild(QLabel, "value_label").setText(str(toplam))
-            self.aktif_card.findChild(QLabel, "value_label").setText(str(aktif))
+            self.toplam_card.findChild(QLabel, "stat_value").setText(str(toplam))
+            self.aktif_card.findChild(QLabel, "stat_value").setText(str(aktif))
 
             # İlk geçiş: ana merkezler
             for row in rows:

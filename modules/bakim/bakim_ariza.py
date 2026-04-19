@@ -590,7 +590,7 @@ class BakimArizaPage(BasePage):
         
         v_label = QLabel(value)
         v_label.setStyleSheet(f"color: {color}; font-size: 22px; font-weight: bold;")
-        v_label.setObjectName("value_label")
+        v_label.setObjectName("stat_value")
         layout.addWidget(v_label)
         
         return frame
@@ -605,13 +605,13 @@ class BakimArizaPage(BasePage):
 
             # Stats
             cursor.execute("SELECT COUNT(*) FROM bakim.ariza_bildirimleri WHERE durum='ACIK'")
-            self.acik_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.acik_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             cursor.execute("SELECT COUNT(*) FROM bakim.ariza_bildirimleri WHERE durum='ISLEMDE'")
-            self.islemde_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.islemde_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             cursor.execute("SELECT COUNT(*) FROM bakim.ariza_bildirimleri WHERE oncelik='KRITIK' AND durum IN ('ACIK','ISLEMDE')")
-            self.kritik_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.kritik_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             # List
             sql = """SELECT a.id, a.bildirim_no, e.ekipman_kodu + ' - ' + e.ekipman_adi,

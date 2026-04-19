@@ -857,7 +857,7 @@ class UretimDurusPage(BasePage):
             f"font-weight: {brand.FW_BOLD}; "
             f"background: transparent; border: none;"
         )
-        v_label.setObjectName("value_label")
+        v_label.setObjectName("stat_value")
         fl.addWidget(v_label)
 
         return frame
@@ -887,13 +887,13 @@ class UretimDurusPage(BasePage):
 
             # Stats
             cursor.execute("SELECT COUNT(*) FROM uretim.durus_kayitlari WHERE durum='ACIK'")
-            self.acik_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.acik_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             cursor.execute("SELECT COUNT(*) FROM uretim.durus_kayitlari WHERE durum='ACIK' AND bitis_zamani IS NULL")
-            self.devam_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.devam_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             cursor.execute("SELECT COUNT(*) FROM uretim.durus_kayitlari WHERE CAST(olusturma_tarihi AS DATE) = CAST(GETDATE() AS DATE)")
-            self.bugun_label.findChild(QLabel, "value_label").setText(str(cursor.fetchone()[0]))
+            self.bugun_label.findChild(QLabel, "stat_value").setText(str(cursor.fetchone()[0]))
 
             # List
             sql = """

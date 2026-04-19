@@ -731,7 +731,7 @@ class SistemWhatsappPage(BasePage):
         layout.addWidget(title_lbl)
         
         value_lbl = QLabel(value)
-        value_lbl.setObjectName("value_label")
+        value_lbl.setObjectName("stat_value")
         value_lbl.setStyleSheet(f"color: {color}; font-size: 24px; font-weight: bold;")
         layout.addWidget(value_lbl)
         
@@ -942,9 +942,9 @@ class SistemWhatsappPage(BasePage):
             """)
             stats = cursor.fetchone()
             if stats:
-                self.stat_bekleyen.findChild(QLabel, "value_label").setText(str(stats[0] or 0))
-                self.stat_gonderildi.findChild(QLabel, "value_label").setText(str(stats[1] or 0))
-                self.stat_hata.findChild(QLabel, "value_label").setText(str(stats[2] or 0))
+                self.stat_bekleyen.findChild(QLabel, "stat_value").setText(str(stats[0] or 0))
+                self.stat_gonderildi.findChild(QLabel, "stat_value").setText(str(stats[1] or 0))
+                self.stat_hata.findChild(QLabel, "stat_value").setText(str(stats[2] or 0))
             
             # Son 100 kayıt
             cursor.execute("""
