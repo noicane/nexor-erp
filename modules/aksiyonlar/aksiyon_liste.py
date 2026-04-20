@@ -18,8 +18,63 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
     QDialog, QMessageBox, QFrame
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import Qt, QRectF
+from PySide6.QtGui import QColor, QFont, QPainter, QBrush, QPen
+
+
+class _FillBar(QWidget):
+    """Pill fill bar — soft arkaplan + accent dolgu + ortada mono yuzde yazisi."""
+
+    def __init__(self, value: int = 0, parent=None):
+        from core.nexor_brand import brand as _b
+        super().__init__(parent)
+        self._b = _b
+        self._value = max(0, min(100, int(value)))
+        self.setFixedHeight(20)
+        self.setMinimumWidth(110)
+
+    def _accent(self) -> str:
+        v = self._value
+        if v >= 100: return self._b.SUCCESS
+        if v >= 60:  return self._b.INFO
+        if v > 0:    return self._b.WARNING
+        return self._b.TEXT_DIM
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+        r = h / 2.0
+        accent = self._accent()
+
+        # Arka plan pill — hafif koyu, kenarı ince accent
+        bg = QColor(accent)
+        bg.setAlphaF(0.10)
+        p.setPen(QPen(QColor(self._b.BORDER_HARD), 1.0))
+        p.setBrush(bg)
+        p.drawRoundedRect(QRectF(0.5, 0.5, w - 1, h - 1), r, r)
+
+        # Dolgu pill
+        if self._value > 0:
+            fw = max(h, w * self._value / 100.0)
+            fill = QColor(accent)
+            fill.setAlphaF(0.75)
+            p.setPen(Qt.NoPen)
+            p.setBrush(fill)
+            p.drawRoundedRect(QRectF(0.5, 0.5, fw - 1, h - 1), r, r)
+
+        # Yuzde yazisi — uzerinde varsa beyaz, aksi koyu
+        if self._value >= 50:
+            text_col = QColor('#FFFFFF')
+        else:
+            text_col = QColor(self._b.TEXT)
+        p.setPen(text_col)
+        f = QFont('JetBrains Mono')
+        f.setPixelSize(11)
+        f.setBold(True)
+        p.setFont(f)
+        p.drawText(self.rect(), Qt.AlignCenter, f"%{self._value}")
+        p.end()
 
 from components.base_page import BasePage
 from core.database import execute_query
@@ -184,6 +239,7 @@ class AksiyonListePage(BasePage):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.setAlternatingRowColors(True)
+        self.table.verticalHeader().setVisible(False)  # sol satir numarasi ic ice gorunumu kaldirildi
         self.table.doubleClicked.connect(self.open_edit_aksiyon)
 
         layout.addWidget(self.table)
@@ -307,11 +363,12 @@ class AksiyonListePage(BasePage):
             item.setFont(font)
             self.table.setItem(row_idx, 7, item)
 
-            # Tamamlanma oranı
-            oran = row_data.get('tamamlanma_orani', 0)
-            item = QTableWidgetItem(f"{oran}%")
-            item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_idx, 8, item)
+            # Tamamlanma oranı — pill fill bar (arka plan + soft accent dolgu + mono yuzde)
+            oran = int(row_data.get('tamamlanma_orani', 0) or 0)
+            bar = _FillBar(oran)
+            cell = QWidget()
+            cl = QHBoxLayout(cell); cl.setContentsMargins(8, 4, 8, 4); cl.addWidget(bar)
+            self.table.setCellWidget(row_idx, 8, cell)
 
             # Gecikme
             gecikme = row_data.get('gecikme_gun', 0) or 0
@@ -346,12 +403,10 @@ class AksiyonListePage(BasePage):
         self.update_stat_card_value(self.card_tamamlandi, str(tamamlandi))
 
     def update_stat_card_value(self, card: QFrame, value: str):
-        """Stat kartının değerini güncelle"""
-        layout = card.layout()
-        if layout and layout.count() >= 2:
-            value_label = layout.itemAt(1).widget()
-            if isinstance(value_label, QLabel):
-                value_label.setText(value)
+        """Stat kartının değerini güncelle (stat_value objectName üzerinden)."""
+        value_label = card.findChild(QLabel, "stat_value")
+        if value_label is not None:
+            value_label.setText(value)
 
     def format_kategori(self, kategori: str) -> str:
         """Kategori formatlama"""

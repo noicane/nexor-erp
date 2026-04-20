@@ -39,12 +39,14 @@ def satinalma_talep_pdf(talep_id: int):
                 p.sicil_no,
                 d.ad as departman,
                 amir.ad + ' ' + amir.soyad as amir_adi,
-                sa.ad + ' ' + sa.soyad as satinalma_onaylayan
+                COALESCE(sa.ad + ' ' + sa.soyad,
+                         LTRIM(RTRIM(ISNULL(uk.ad,'') + ' ' + ISNULL(uk.soyad,'')))) as satinalma_onaylayan
             FROM satinalma.talepler t
             JOIN ik.personeller p ON t.talep_eden_id = p.id
             LEFT JOIN ik.departmanlar d ON t.departman_id = d.id
             LEFT JOIN ik.personeller amir ON t.amir_id = amir.id
-            LEFT JOIN ik.personeller sa ON t.satinalma_onaylayan_id = sa.id
+            LEFT JOIN sistem.kullanicilar uk ON t.satinalma_onaylayan_id = uk.id
+            LEFT JOIN ik.personeller sa ON uk.personel_id = sa.id
             WHERE t.id = ?
         """, (talep_id,))
         row = cursor.fetchone()

@@ -106,7 +106,10 @@ class RaporAkimPage(BasePage):
             QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}""")
         btn.clicked.connect(self._load_data)
         fl.addWidget(btn)
-        fl.addWidget(self.create_export_button(title="PLC Akim Raporu"))
+        fl.addWidget(self.create_export_button(
+            title="PLC Akim Raporu",
+            table_provider=lambda: self.master_table
+        ))
         layout.addWidget(ff)
 
         # -- FILTRE BAR --

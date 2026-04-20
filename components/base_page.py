@@ -1136,19 +1136,22 @@ class BasePage(QWidget):
             QMessageBox.critical(self, "Hata", f"Excel olusturma hatasi:\n{str(e)}")
 
     def create_export_button(self, table=None, title: str = "Veri",
-                               table_attr: str = "table") -> QPushButton:
+                               table_attr: str = "table",
+                               table_provider=None) -> QPushButton:
         """
         Excel/CSV/PDF export menu butonu olustur.
         Toolbar'a eklenmeye hazir.
 
         Args:
-            table: QTableWidget referansi (None ise table_attr kullanilir)
+            table: QTableWidget referansi (sabit baglama)
             title: Export dosya adi
             table_attr: self uzerindeki tablo attribute adi (lazy binding)
+            table_provider: tklanma aninda tabloyu dondurecek callable. Tab/splitter
+                icin uygun: lambda: self.tabs.currentWidget()
 
         Kullanim:
             btn = self.create_export_button(title="Personel Listesi")
-            toolbar_layout.addWidget(btn)
+            btn = self.create_export_button(title="Uretim", table_provider=lambda: self.tabs.currentWidget())
         """
         t = self.theme
         btn = QPushButton("Disa Aktar")
@@ -1193,15 +1196,104 @@ class BasePage(QWidget):
         """)
 
         def _get_table():
+            if table_provider is not None:
+                try:
+                    return table_provider()
+                except Exception:
+                    return None
             if table is not None:
                 return table
             return getattr(self, table_attr, None)
 
         menu.addAction("Excel (.xlsx)", lambda: self.export_table_to_excel(_get_table(), title))
+        menu.addAction("PDF (.pdf)", lambda: self.export_table_to_pdf(_get_table(), title))
         menu.addAction("CSV (.csv)", lambda: self._export_table_to_csv(_get_table(), title))
 
         btn.setMenu(menu)
         return btn
+
+    def export_table_to_pdf(self, table: QTableWidget, title: str = "Veri",
+                             skip_last_col: bool = True):
+        """
+        QTableWidget'i merkezi PDF sablonu ile aktar (firma header + footer).
+        Genis tablolar otomatik landscape olur, sayfa asiminda sayfa eklenir.
+        """
+        if table is None:
+            QMessageBox.warning(self, "Hata", "Aktarilacak tablo bulunamadi.")
+            return
+
+        try:
+            from utils.pdf_template import PDFTemplate
+            from reportlab.lib.units import mm
+        except ImportError as e:
+            QMessageBox.warning(self, "Hata", f"PDF motoru yuklenemedi:\n{e}")
+            return
+
+        col_count = table.columnCount()
+        if skip_last_col and col_count > 1:
+            col_count -= 1
+        if col_count <= 0 or table.rowCount() == 0:
+            QMessageBox.information(self, "Bilgi", "Aktarilacak veri yok.")
+            return
+
+        headers = []
+        for c in range(col_count):
+            h = table.horizontalHeaderItem(c)
+            headers.append(h.text() if h else f"Kolon {c + 1}")
+
+        rows = []
+        for r in range(table.rowCount()):
+            if table.isRowHidden(r):
+                continue
+            row = []
+            for c in range(col_count):
+                item = table.item(r, c)
+                if item is not None:
+                    row.append(item.text())
+                else:
+                    w = table.cellWidget(r, c)
+                    if w is not None and hasattr(w, 'currentText'):
+                        row.append(w.currentText())
+                    elif w is not None and hasattr(w, 'text'):
+                        try:
+                            row.append(w.text())
+                        except Exception:
+                            row.append("")
+                    else:
+                        row.append("")
+            rows.append(row)
+
+        if not rows:
+            QMessageBox.information(self, "Bilgi", "Aktarilacak gorunur satir yok.")
+            return
+
+        orientation = "landscape" if col_count > 5 else "portrait"
+        safe_title = "".join(ch for ch in title if ch.isalnum() or ch in ' _-').strip()
+        filename = f"{safe_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+        try:
+            tpl = PDFTemplate(title=title, filename=filename, orientation=orientation)
+            y = tpl.content_top
+            header_h = 6.5 * mm
+            row_h = 5.5 * mm
+            footer_limit = tpl.margin + 20 * mm
+
+            idx = 0
+            while idx < len(rows):
+                available_h = y - footer_limit - header_h
+                fits = int(available_h / row_h) if available_h > 0 else 0
+                if fits < 1:
+                    y = tpl.new_page()
+                    continue
+                chunk = rows[idx:idx + fits]
+                y = tpl.table(y, headers, chunk, row_height=row_h)
+                idx += len(chunk)
+
+            path = tpl.finish(open_file=True)
+            QMessageBox.information(self, "Basarili",
+                                     f"PDF olusturuldu:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"PDF olusturma hatasi:\n{e}")
 
     def _export_table_to_csv(self, table: QTableWidget, title: str = "Veri"):
         """QTableWidget'i CSV'ye aktar"""

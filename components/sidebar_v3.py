@@ -9,16 +9,19 @@ Eski Sidebar ile %100 uyumlu:
 - Ayni metodlar (set_logo, set_dark_mode, set_active, update_theme, set_expanded, set_menu_expanded)
 """
 
+import math
+
 from PySide6.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
     QWidget, QSizePolicy, QPushButton, QInputDialog, QLineEdit
 )
 from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
-from PySide6.QtGui import QPixmap, QCursor, QPainter, QColor, QPen
+from PySide6.QtGui import QPixmap, QCursor, QPainter, QColor, QPen, QFont
 
 from core.menu_structure import MENU_STRUCTURE, get_page_title, get_page_icon
 from core.yetki_manager import YetkiManager
 from core.nexor_brand import brand
+from core.nexor_icons import NexorIcon, _DRAW_MAP as _NEXOR_ICON_KINDS
 
 
 # =============================================================================
@@ -86,6 +89,62 @@ class _SunMoonIcon(QLabel):
 
 
 # =============================================================================
+# NEXOR BRAND MARK — oval N + -32deg kirmizi diagonal
+# =============================================================================
+
+class NexorBrandMark(QWidget):
+    """
+    Sidebar ustundeki Nexor brand mark'i.
+    Oval cerceve + Fraunces italic N + sol-ust kosesinden -32 derece kirmizi cizgi.
+    """
+
+    def __init__(self, size: int = 40, parent=None):
+        super().__init__(parent)
+        self._size = brand.sp(size)
+        self.setFixedSize(self._size, self._size)
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        s = self._size
+
+        # Oval — dikey hafif uzun
+        ox0, ox1 = int(s * 0.18), int(s * 0.82)
+        oy0, oy1 = int(s * 0.15), int(s * 0.89)
+        pen = QPen(QColor(brand.TEXT_MUTED))
+        pen.setWidthF(max(1.0, s / 48))
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        p.drawEllipse(ox0, oy0, ox1 - ox0, oy1 - oy0)
+
+        # N harfi (Fraunces italic)
+        f = QFont('Fraunces')
+        f.setItalic(True)
+        f.setPixelSize(int(s * 0.52))
+        f.setWeight(QFont.Medium)
+        p.setFont(f)
+        p.setPen(QColor(brand.TEXT))
+        from PySide6.QtCore import QRect
+        p.drawText(QRect(0, 0, s, s), Qt.AlignCenter, "N")
+
+        # -32 derece kirmizi diagonal cizgi (oval sol ust kosesinden disa)
+        p.setRenderHint(QPainter.Antialiasing)
+        red_pen = QPen(QColor(brand.PRIMARY))
+        red_pen.setWidthF(max(2.0, s / 20))
+        red_pen.setCapStyle(Qt.FlatCap)
+        p.setPen(red_pen)
+        a = math.radians(-32)
+        length = int(s * 0.34)
+        x0 = int(s * 0.12)
+        y0 = int(s * 0.18)
+        x1 = x0 + int(length * math.cos(a))
+        y1 = y0 + int(length * math.sin(a))
+        p.drawLine(x0, y0, x1, y1)
+
+        p.end()
+
+
+# =============================================================================
 # MENU ITEM
 # =============================================================================
 
@@ -126,11 +185,14 @@ class MenuItem(QFrame):
             )
             self.active_bar.setVisible(False)
 
-            # Icon
+            # Icon — ozgun NexorIcon set'i (emoji / text fallback)
             if self.icon:
-                self.icon_label = QLabel(self.icon)
-                self.icon_label.setFixedWidth(brand.sp(22))
-                self.icon_label.setAlignment(Qt.AlignCenter)
+                if self.icon in _NEXOR_ICON_KINDS:
+                    self.icon_label = NexorIcon(self.icon, size=18)
+                else:
+                    self.icon_label = QLabel(self.icon)
+                    self.icon_label.setFixedWidth(brand.sp(22))
+                    self.icon_label.setAlignment(Qt.AlignCenter)
                 layout.addWidget(self.icon_label)
 
             # Text
@@ -149,9 +211,12 @@ class MenuItem(QFrame):
             self.setToolTip(self.label)
             layout = QVBoxLayout(self)
             layout.setContentsMargins(0, 0, 0, 0)
-            self.icon_label = QLabel(self.icon if self.icon else "•")
-            self.icon_label.setAlignment(Qt.AlignCenter)
-            layout.addWidget(self.icon_label)
+            if self.icon and self.icon in _NEXOR_ICON_KINDS:
+                self.icon_label = NexorIcon(self.icon, size=22)
+            else:
+                self.icon_label = QLabel(self.icon if self.icon else "•")
+                self.icon_label.setAlignment(Qt.AlignCenter)
+            layout.addWidget(self.icon_label, alignment=Qt.AlignCenter)
 
         self._apply_style()
 
@@ -201,9 +266,12 @@ class MenuItem(QFrame):
                 )
 
             if hasattr(self, 'icon_label'):
-                self.icon_label.setStyleSheet(
-                    f"font-size: {brand.fs(17)}px; color: {icon_color};"
-                )
+                if isinstance(self.icon_label, NexorIcon):
+                    self.icon_label.setActive(self.is_active)
+                else:
+                    self.icon_label.setStyleSheet(
+                        f"font-size: {brand.fs(17)}px; color: {icon_color};"
+                    )
 
             if self.has_children and hasattr(self, 'arrow'):
                 arrow_char = "⌄" if self.is_expanded else "›"
@@ -227,10 +295,13 @@ class MenuItem(QFrame):
             """)
 
             if hasattr(self, 'icon_label'):
-                self.icon_label.setStyleSheet(
-                    f"font-size: {brand.fs(20)}px; "
-                    f"color: {brand.PRIMARY if self.is_active else icon_color};"
-                )
+                if isinstance(self.icon_label, NexorIcon):
+                    self.icon_label.setActive(self.is_active)
+                else:
+                    self.icon_label.setStyleSheet(
+                        f"font-size: {brand.fs(20)}px; "
+                        f"color: {brand.PRIMARY if self.is_active else icon_color};"
+                    )
     
     def set_active(self, active: bool):
         self.is_active = active
@@ -392,19 +463,18 @@ class Sidebar(QFrame):
         logo_layout.setContentsMargins(brand.SP_4, 0, brand.SP_4, 0)
         logo_layout.setSpacing(brand.SP_3)
 
-        self.logo_icon = QLabel("N")
-        self.logo_icon.setFixedSize(brand.sp(38), brand.sp(38))
-        self.logo_icon.setAlignment(Qt.AlignCenter)
+        # Redline brand mark — oval N + kirmizi diagonal
+        self.logo_icon = NexorBrandMark(size=42)
         logo_layout.addWidget(self.logo_icon)
 
         self.brand_label = None
         self.erp_label = None
         if self.expanded_mode:
             brand_col = QVBoxLayout()
-            brand_col.setSpacing(0)
-            brand_col.setContentsMargins(0, 0, 0, 0)
+            brand_col.setSpacing(-2)
+            brand_col.setContentsMargins(brand.sp(6), 0, 0, 0)
 
-            self.brand_label = QLabel("NEXOR")
+            self.brand_label = QLabel("Nexor")
             brand_col.addWidget(self.brand_label)
 
             self.erp_label = QLabel("ERP")
@@ -415,21 +485,7 @@ class Sidebar(QFrame):
         logo_layout.addStretch()
         layout.addWidget(self.logo_frame)
 
-        # ================ SON KULLANILANLAR ================
-        self.recent_frame = None
-        self.recent_title = None
-        if self.expanded_mode:
-            self.recent_frame = QFrame()
-            self.recent_frame.setVisible(False)
-            self.recent_layout = QVBoxLayout(self.recent_frame)
-            self.recent_layout.setContentsMargins(
-                brand.SP_3, brand.SP_3, brand.SP_3, brand.SP_1
-            )
-            self.recent_layout.setSpacing(0)
-
-            self.recent_title = QLabel("SON KULLANILANLAR")
-            self.recent_layout.addWidget(self.recent_title)
-            layout.addWidget(self.recent_frame)
+        # SON KULLANILANLAR kaldirildi (istege gore)
 
         # ================ MENU SCROLL ================
         self.scroll_area = QScrollArea()
@@ -729,32 +785,40 @@ class Sidebar(QFrame):
                 f"border-bottom: 1px solid {brand.BORDER};"
             )
 
-        # Logo icon
+        # Logo icon — NexorBrandMark paintEvent kendi cizer, stylesheet sadece arka plani temiz tutar
         if hasattr(self, 'logo_icon') and not self.logo_path:
-            self.logo_icon.setStyleSheet(
-                f"background: {brand.PRIMARY}; "
-                f"color: white; "
-                f"font-size: {brand.fs(18)}px; "
-                f"font-weight: {brand.FW_BOLD}; "
-                f"border-radius: {brand.R_MD}px;"
-            )
+            if isinstance(self.logo_icon, NexorBrandMark):
+                self.logo_icon.setStyleSheet("background: transparent;")
+                self.logo_icon.update()
+            else:
+                self.logo_icon.setStyleSheet(
+                    f"background: {brand.PRIMARY}; "
+                    f"color: white; "
+                    f"font-size: {brand.fs(18)}px; "
+                    f"font-weight: {brand.FW_BOLD}; "
+                    f"border-radius: {brand.R_MD}px;"
+                )
 
         if getattr(self, 'brand_label', None):
+            # "Nexor" — Fraunces italic kirmizi
             self.brand_label.setStyleSheet(
-                f"font-size: {brand.fs(18)}px; "
-                f"font-weight: {brand.FW_BOLD}; "
-                f"color: {brand.TEXT}; "
+                f"font-family: {brand.FONT_DISPLAY}; "
+                f"font-size: {brand.fs(22)}px; "
+                f"font-style: italic; "
+                f"font-weight: {brand.FW_MEDIUM}; "
+                f"color: {brand.PRIMARY}; "
                 f"background: transparent; "
-                f"letter-spacing: 1px; "
                 f"border: none;"
             )
 
         if getattr(self, 'erp_label', None):
+            # "ERP" — Fraunces regular, beyaz
             self.erp_label.setStyleSheet(
-                f"font-size: {brand.fs(9)}px; "
-                f"font-weight: {brand.FW_SEMIBOLD}; "
-                f"color: {brand.PRIMARY}; "
-                f"letter-spacing: 2px; "
+                f"font-family: {brand.FONT_DISPLAY}; "
+                f"font-size: {brand.fs(18)}px; "
+                f"font-weight: {brand.FW_REGULAR}; "
+                f"color: {brand.TEXT}; "
+                f"letter-spacing: 1px; "
                 f"background: transparent; "
                 f"border: none;"
             )

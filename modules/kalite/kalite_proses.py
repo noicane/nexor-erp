@@ -36,10 +36,43 @@ class IlkUrunOnayDialog(QDialog):
         self.is_emri_data = is_emri_data
         self.test_sonuclari = []
         self.foto_paths = []
+        self.urun_kalinlik = {'min': None, 'max': None, 'hedef': None}
         self.setWindowTitle("Ilk Urun Onay Formu - FR.75")
         self.setMinimumSize(brand.sp(900), brand.sp(700))
+        self._load_urun_kalinlik()
         self._load_test_turleri()
         self._setup_ui()
+
+    # -----------------------------------------------------------------
+    def _load_urun_kalinlik(self):
+        """Stok kartindan kaplama kalinlik min/max/hedef degerlerini cek."""
+        urun_id = self.is_emri_data.get('stok_id') or self.is_emri_data.get('urun_id')
+        if not urun_id:
+            return
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT kalinlik_min_um, kalinlik_max_um, kalinlik_hedef_um "
+                "FROM stok.urunler WHERE id = ?",
+                (urun_id,),
+            )
+            row = cursor.fetchone()
+            if row:
+                self.urun_kalinlik = {
+                    'min': float(row[0]) if row[0] is not None else None,
+                    'max': float(row[1]) if row[1] is not None else None,
+                    'hedef': float(row[2]) if row[2] is not None else None,
+                }
+        except Exception:
+            pass
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
 
     # -----------------------------------------------------------------
     def _load_test_turleri(self):
@@ -295,10 +328,35 @@ class IlkUrunOnayDialog(QDialog):
         for i, test in enumerate(self.test_turleri):
             self.test_table.setRowHeight(i, brand.sp(42))
 
-            self.test_table.setItem(i, 0, QTableWidgetItem(test['ad']))
+            # Kalinlik testleri icin stok kartindan gelen degerleri kullan
+            is_kalinlik = (
+                (test.get('kod') or '').upper() == 'KAL'
+                or 'KALINLIK' in (test.get('ad') or '').upper()
+            )
+            min_val = test.get('min')
+            max_val = test.get('max')
+            if is_kalinlik and (self.urun_kalinlik['min'] is not None
+                                 or self.urun_kalinlik['max'] is not None):
+                min_val = self.urun_kalinlik['min'] if self.urun_kalinlik['min'] is not None else min_val
+                max_val = self.urun_kalinlik['max'] if self.urun_kalinlik['max'] is not None else max_val
+                test_ad = test['ad']
+                hedef = self.urun_kalinlik.get('hedef')
+                if hedef is not None:
+                    test_ad = f"{test_ad} (Hedef: {hedef:g} um)"
+            else:
+                test_ad = test['ad']
+
+            name_item = QTableWidgetItem(test_ad)
+            if is_kalinlik and (min_val != test.get('min') or max_val != test.get('max')):
+                name_item.setForeground(QColor(brand.INFO))
+            self.test_table.setItem(i, 0, name_item)
             self.test_table.setItem(i, 1, QTableWidgetItem(test.get('birim', '')))
-            self.test_table.setItem(i, 2, QTableWidgetItem(str(test.get('min', '-') or '-')))
-            self.test_table.setItem(i, 3, QTableWidgetItem(str(test.get('max', '-') or '-')))
+            self.test_table.setItem(i, 2, QTableWidgetItem(
+                f"{min_val:g}" if isinstance(min_val, (int, float)) else str(min_val or '-')
+            ))
+            self.test_table.setItem(i, 3, QTableWidgetItem(
+                f"{max_val:g}" if isinstance(max_val, (int, float)) else str(max_val or '-')
+            ))
 
             if test.get('birim') == 'OK/NOK':
                 inp = QComboBox()

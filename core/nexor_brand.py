@@ -137,6 +137,8 @@ class _NexorBrand:
 
     FONT_FAMILY   = "'Inter', 'Segoe UI', -apple-system, system-ui, sans-serif"
     FONT_MONO     = "'JetBrains Mono', 'Consolas', 'Menlo', monospace"
+    # Redline signature — sadece modul landing basligi, KPI sayilari, imza yerlerinde
+    FONT_DISPLAY  = "'Fraunces', 'Georgia', 'Times New Roman', serif"
 
     _FS_CAPTION    = 11
     _FS_BODY_SM    = 12

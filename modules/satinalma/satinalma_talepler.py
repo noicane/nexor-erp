@@ -913,12 +913,14 @@ class TalepDialog(QDialog):
                        d.ad as departman, p.ad + ' ' + p.soyad as talep_eden, t.tahmini_tutar,
                        t.durum, t.amir_onay_durumu, t.satinalma_onay_durumu,
                        t.notlar,
-                       po.ad + ' ' + po.soyad as onaylayan,
+                       COALESCE(po.ad + ' ' + po.soyad,
+                                LTRIM(RTRIM(ISNULL(uk.ad,'') + ' ' + ISNULL(uk.soyad,'')))) as onaylayan,
                        t.satinalma_onay_tarihi
                 FROM satinalma.talepler t
                 LEFT JOIN ik.departmanlar d ON t.departman_id = d.id
                 LEFT JOIN ik.personeller p ON t.talep_eden_id = p.id
-                LEFT JOIN ik.personeller po ON t.satinalma_onaylayan_id = po.id
+                LEFT JOIN sistem.kullanicilar uk ON t.satinalma_onaylayan_id = uk.id
+                LEFT JOIN ik.personeller po ON uk.personel_id = po.id
                 WHERE t.id = ?
             """, (self.talep_id,))
             talep = cursor.fetchone()
@@ -1267,11 +1269,13 @@ class SatinalmaTaleplerPage(BasePage):
                 SELECT t.id, t.talep_no, FORMAT(t.tarih, 'dd.MM.yyyy'),
                        d.ad, p.ad + ' ' + p.soyad as talep_eden,
                        t.oncelik, t.tahmini_tutar, t.durum, t.amir_onay_durumu,
-                       po.ad + ' ' + po.soyad as onaylayan
+                       COALESCE(po.ad + ' ' + po.soyad,
+                                LTRIM(RTRIM(ISNULL(uk.ad,'') + ' ' + ISNULL(uk.soyad,'')))) as onaylayan
                 FROM satinalma.talepler t
                 LEFT JOIN ik.departmanlar d ON t.departman_id = d.id
                 LEFT JOIN ik.personeller p ON t.talep_eden_id = p.id
-                LEFT JOIN ik.personeller po ON t.satinalma_onaylayan_id = po.id
+                LEFT JOIN sistem.kullanicilar uk ON t.satinalma_onaylayan_id = uk.id
+                LEFT JOIN ik.personeller po ON uk.personel_id = po.id
                 ORDER BY t.tarih DESC, t.id DESC
             """)
             
@@ -1286,7 +1290,7 @@ class SatinalmaTaleplerPage(BasePage):
     
     def _display_data(self, rows):
         self.table.setRowCount(len(rows))
-        
+
         durum_colors = {
             'TASLAK': brand.TEXT_DIM,
             'ONAY_BEKLIYOR': brand.WARNING,
@@ -1294,7 +1298,7 @@ class SatinalmaTaleplerPage(BasePage):
             'SATINALMA_ONAYLANDI': brand.SUCCESS,
             'REDDEDILDI': brand.ERROR,
         }
-        
+
         for i, row in enumerate(rows):
             # row: 0=id, 1=talep_no, 2=tarih, 3=departman, 4=talep_eden, 5=oncelik, 6=tutar, 7=durum, 8=amir_onay, 9=onaylayan
             for j, val in enumerate(row):

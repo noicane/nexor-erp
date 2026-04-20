@@ -3091,9 +3091,9 @@ class StokListePage(BasePage):
         toolbar.addWidget(self.musteri_combo)
 
         self.aktif_combo = QComboBox()
-        self.aktif_combo.addItem("Tümü", None)
         self.aktif_combo.addItem("Aktif", True)
         self.aktif_combo.addItem("Pasif", False)
+        self.aktif_combo.addItem("Tümü", None)
         self.aktif_combo.setFixedHeight(brand.sp(40))
         self.aktif_combo.setStyleSheet(self._combo_style())
         self.aktif_combo.currentIndexChanged.connect(self._on_filter_change)

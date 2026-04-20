@@ -104,6 +104,18 @@ class RaporKalitePage(BasePage):
         self.kaynak_combo.setStyleSheet(cs)
         fl.addWidget(self.kaynak_combo)
 
+        fl.addWidget(QLabel("Hat Tipi:", styleSheet=ls))
+        self.hat_tipi_combo = QComboBox()
+        self.hat_tipi_combo.addItem("Tum Tipler", None)
+        self.hat_tipi_combo.setStyleSheet(cs)
+        fl.addWidget(self.hat_tipi_combo)
+
+        fl.addWidget(QLabel("Kaplama:", styleSheet=ls))
+        self.kaplama_combo = QComboBox()
+        self.kaplama_combo.addItem("Tum Kaplamalar", None)
+        self.kaplama_combo.setStyleSheet(cs)
+        fl.addWidget(self.kaplama_combo)
+
         fl.addWidget(QLabel("Hat:", styleSheet=ls))
         self.hat_combo = QComboBox()
         self.hat_combo.addItem("Tum Hatlar", None)
@@ -117,7 +129,10 @@ class RaporKalitePage(BasePage):
             QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}""")
         btn.clicked.connect(self._load_data)
         fl.addWidget(btn)
-        fl.addWidget(self.create_export_button(title="Kalite Raporu"))
+        fl.addWidget(self.create_export_button(
+            title="Kalite Raporu",
+            table_provider=lambda: self.ref_table
+        ))
         layout.addWidget(ff)
 
         # -- AKTIF FILTRE CUBUGU --
@@ -190,6 +205,8 @@ class RaporKalitePage(BasePage):
         layout.addWidget(splitter, 1)
 
         QTimer.singleShot(100, self._load_hat_filter)
+        QTimer.singleShot(100, self._load_hat_tipi_filter)
+        QTimer.singleShot(100, self._load_kaplama_filter)
 
     # =================================================================
     # HELPERS
@@ -237,6 +254,33 @@ class RaporKalitePage(BasePage):
             cur.execute("SELECT id, kod, ISNULL(kisa_ad, ad) FROM tanim.uretim_hatlari WHERE aktif_mi=1 ORDER BY sira_no")
             for r in cur.fetchall():
                 self.hat_combo.addItem(f"{r[1]} - {r[2]}", r[0])
+        except Exception: pass
+        finally:
+            if conn:
+                try: conn.close()
+                except Exception: pass
+
+    def _load_hat_tipi_filter(self):
+        conn = None
+        try:
+            conn = get_db_connection(); cur = conn.cursor()
+            cur.execute("SELECT DISTINCT hat_tipi FROM tanim.uretim_hatlari "
+                        "WHERE aktif_mi=1 AND hat_tipi IS NOT NULL ORDER BY hat_tipi")
+            for r in cur.fetchall():
+                self.hat_tipi_combo.addItem(str(r[0]), r[0])
+        except Exception: pass
+        finally:
+            if conn:
+                try: conn.close()
+                except Exception: pass
+
+    def _load_kaplama_filter(self):
+        conn = None
+        try:
+            conn = get_db_connection(); cur = conn.cursor()
+            cur.execute("SELECT id, kod, ad FROM tanim.kaplama_turleri ORDER BY kod")
+            for r in cur.fetchall():
+                self.kaplama_combo.addItem(f"{r[1]} - {r[2]}", r[0])
         except Exception: pass
         finally:
             if conn:
@@ -348,11 +392,41 @@ class RaporKalitePage(BasePage):
     # =================================================================
     # DATA
     # =================================================================
+    def _build_hat_kaplama_filters(self, fk_or_pk: str):
+        """
+        Hat/Hat Tipi/Kaplama filtrelerini build et.
+        Returns (join_sql, where_extra_sql, params_in_sql_order).
+        Params SQL'deki ? sirasiyla: join params -> (cagri yerinde date) -> where params.
+        """
+        hat_id = self.hat_combo.currentData()
+        hat_tipi = self.hat_tipi_combo.currentData()
+        kaplama_id = self.kaplama_combo.currentData()
+
+        join_sql = ""
+        join_params = []
+        if hat_id or hat_tipi:
+            join_sql += (f" JOIN uretim.uretim_kayitlari uk_h "
+                         f"ON uk_h.is_emri_id = {fk_or_pk}.is_emri_id")
+            if hat_id:
+                join_sql += " AND uk_h.hat_id = ?"
+                join_params.append(hat_id)
+            if hat_tipi:
+                join_sql += (" JOIN tanim.uretim_hatlari h_t "
+                             "ON h_t.id = uk_h.hat_id AND h_t.hat_tipi = ?")
+                join_params.append(hat_tipi)
+
+        where_sql = ""
+        where_params = []
+        if kaplama_id:
+            where_sql = " AND ie.kaplama_turu_id = ?"
+            where_params.append(kaplama_id)
+
+        return join_sql, where_sql, join_params, where_params
+
     def _load_data(self):
         tarih_bas = self.tarih_bas.date().toPython()
         tarih_bit = self.tarih_bit.date().toPython()
         kaynak = self.kaynak_combo.currentData()
-        hat_id = self.hat_combo.currentData()
 
         self.hata_table.setRowCount(0)
         self.ref_search.clear()
@@ -360,12 +434,6 @@ class RaporKalitePage(BasePage):
         self._detail_cache = {}
         self.detail_header.setText("  Yukaridaki listeden bir referans secin")
         self.detail_header.setStyleSheet(f"background: rgba(0,0,0,0.2); color: {brand.TEXT_DIM}; padding: 6px 12px; font-size: 12px; font-style: italic;")
-
-        hat_join = ""
-        hat_where = ""
-        if hat_id:
-            hat_join = " JOIN uretim.uretim_kayitlari uk_h ON uk_h.is_emri_id = fk.is_emri_id AND uk_h.hat_id = ?"
-            hat_where = ""  # hat_join zaten filtreler
 
         conn = None
         try:
@@ -378,11 +446,8 @@ class RaporKalitePage(BasePage):
             ref_data = {}  # stok_kodu -> {adi, lot, musteri, hat, kontrol, saglam, hatali}
 
             if kaynak in ("TUMU", "FINAL"):
-                hat_j = ""
-                params = [tarih_bas, tarih_bit]
-                if hat_id:
-                    hat_j = " JOIN uretim.uretim_kayitlari uk_h ON uk_h.is_emri_id = fk.is_emri_id AND uk_h.hat_id = ?"
-                    params.append(hat_id)
+                hat_j, kap_w, jp, wp = self._build_hat_kaplama_filters('fk')
+                params = jp + [tarih_bas, tarih_bit] + wp
                 cur.execute(f"""
                     SELECT
                         ISNULL(ie.stok_kodu, '-'),
@@ -399,6 +464,7 @@ class RaporKalitePage(BasePage):
                     JOIN siparis.is_emirleri ie ON fk.is_emri_id = ie.id
                     {hat_j}
                     WHERE fk.kontrol_tarihi BETWEEN ? AND DATEADD(day, 1, ?)
+                    {kap_w}
                     GROUP BY ie.stok_kodu, ie.stok_adi, ie.cari_unvani, ie.id
                 """, params)
                 for r in cur.fetchall():
@@ -410,11 +476,8 @@ class RaporKalitePage(BasePage):
                     d['hatali'] += (r[6] or 0)
 
             if kaynak in ("TUMU", "PROSES"):
-                hat_j = ""
-                params = [tarih_bas, tarih_bit]
-                if hat_id:
-                    hat_j = " JOIN uretim.uretim_kayitlari uk_h ON uk_h.is_emri_id = pk.is_emri_id AND uk_h.hat_id = ?"
-                    params.append(hat_id)
+                hat_j, kap_w, jp, wp = self._build_hat_kaplama_filters('pk')
+                params = jp + [tarih_bas, tarih_bit] + wp
                 cur.execute(f"""
                     SELECT
                         ISNULL(ie.stok_kodu, '-'),
@@ -431,6 +494,7 @@ class RaporKalitePage(BasePage):
                     JOIN siparis.is_emirleri ie ON pk.is_emri_id = ie.id
                     {hat_j}
                     WHERE pk.kontrol_tarihi BETWEEN ? AND DATEADD(day, 1, ?)
+                    {kap_w}
                     GROUP BY ie.stok_kodu, ie.stok_adi, ie.cari_unvani, ie.id
                 """, params)
                 for r in cur.fetchall():
@@ -512,11 +576,8 @@ class RaporKalitePage(BasePage):
             # DETAY CACHE: final_kontrol + uretim_redler hata turu
             # =====================================================
             if kaynak in ("TUMU", "FINAL"):
-                hat_j = ""
-                params = [tarih_bas, tarih_bit]
-                if hat_id:
-                    hat_j = " JOIN uretim.uretim_kayitlari uk_h ON uk_h.is_emri_id = fk.is_emri_id AND uk_h.hat_id = ?"
-                    params.append(hat_id)
+                hat_j, kap_w, jp, wp = self._build_hat_kaplama_filters('fk')
+                params = jp + [tarih_bas, tarih_bit] + wp
                 cur.execute(f"""
                     SELECT
                         ISNULL(ie.stok_kodu, '-'),
@@ -535,6 +596,7 @@ class RaporKalitePage(BasePage):
                     {hat_j}
                     WHERE fk.kontrol_tarihi BETWEEN ? AND DATEADD(day, 1, ?)
                       AND fk.hatali_adet > 0
+                      {kap_w}
                     ORDER BY fk.kontrol_tarihi DESC
                 """, params)
                 for r in cur.fetchall():
@@ -542,11 +604,8 @@ class RaporKalitePage(BasePage):
                         (r[1], r[2], r[3] or 0, r[4] or 0, r[5] or 0, r[6], r[7]))
 
             if kaynak in ("TUMU", "PROSES"):
-                hat_j = ""
-                params = [tarih_bas, tarih_bit]
-                if hat_id:
-                    hat_j = " JOIN uretim.uretim_kayitlari uk_h ON uk_h.is_emri_id = pk.is_emri_id AND uk_h.hat_id = ?"
-                    params.append(hat_id)
+                hat_j, kap_w, jp, wp = self._build_hat_kaplama_filters('pk')
+                params = jp + [tarih_bas, tarih_bit] + wp
                 cur.execute(f"""
                     SELECT
                         ISNULL(ie.stok_kodu, '-'),
@@ -562,6 +621,7 @@ class RaporKalitePage(BasePage):
                     {hat_j}
                     WHERE pk.kontrol_tarihi BETWEEN ? AND DATEADD(day, 1, ?)
                       AND pk.hatali_adet > 0
+                      {kap_w}
                     ORDER BY pk.kontrol_tarihi DESC
                 """, params)
                 for r in cur.fetchall():

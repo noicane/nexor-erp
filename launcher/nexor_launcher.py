@@ -32,6 +32,8 @@ Cevrimdisi Modu:
 
 import os
 import sys
+import re
+import socket
 import shutil
 import subprocess
 import threading
@@ -51,10 +53,11 @@ APP_DISPLAY_NAME = "Nexor ERP"
 EXE_NAME = "NexorERP.exe"
 KEEP_SLOTS = 3  # Son 3 versiyon lokal'de tutulur
 
-# Sunucu yolu - registry'den de okunabilir (Inno Setup yazar)
-# IP kullaniliyor cunku VPN'de hostname (AtlasNAS) cozulmuyor.
-# Inno Setup ile degistirilebilir veya HKCU\Software\Nexor\ServerPath ile override edilir.
-DEFAULT_SERVER_PATH = r"\\192.168.10.35\atmo_logic\releases"
+# Sunucu yolu - registry'den de okunabilir (Inno Setup veya kur.bat yazar)
+# Default: AtlasNas hostname (ofis aginda calisir).
+# VPN'de hostname cozulmuyorsa kur.bat veya Inno Setup ile registry override
+# edilir: HKCU\Software\Nexor\ServerPath = \\192.168.10.35\atmo_logic\releases
+DEFAULT_SERVER_PATH = r"\\AtlasNas\Atmo_Logic\releases"
 
 # Lokal slot konumu
 LOCAL_BASE = Path(os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))) / APP_NAME / "releases"
@@ -128,6 +131,28 @@ def parse_version(v: str) -> Optional[Tuple[int, ...]]:
         return None
 
 
+def _server_host_from_path(server_path: str) -> Optional[str]:
+    """\\AtlasNas\\Atmo_Logic\\releases -> 'AtlasNas'. Cozulemezse None."""
+    m = re.match(r"^\\\\([^\\]+)\\", server_path)
+    return m.group(1) if m else None
+
+
+def probe_server(server_path: str, timeout: float = 2.0) -> bool:
+    """
+    SMB sunucuya hizli erisilebilirlik kontrolu (TCP 445).
+    Default 30s SMB timeout yerine 2sn'de cevap alip donmemizi sagliyor.
+    """
+    host = _server_host_from_path(server_path)
+    if not host:
+        return True  # path acik UNC degilse skip et
+    try:
+        with socket.create_connection((host, 445), timeout=timeout):
+            return True
+    except (socket.timeout, OSError) as e:
+        log.warning(f"SMB probe basarisiz ({host}:445): {e}")
+        return False
+
+
 def read_current_version(server_path: str) -> str:
     """Sunucudan current.txt oku. Hata firlatabilir."""
     cur_file = Path(server_path) / "current.txt"
@@ -164,19 +189,17 @@ def list_local_slots() -> List[Tuple[Tuple[int, ...], Path]]:
 # =========================
 # COPY (robocopy)
 # =========================
-def count_files(path: Path) -> int:
-    """Klasordeki toplam dosya sayisi (progress icin)."""
-    try:
-        return sum(1 for p in path.rglob('*') if p.is_file())
-    except Exception:
-        return 0
-
-
 def copy_slot(version: str, server_path: str, progress_q: queue.Queue, cancel_event: threading.Event):
     """
     Sunucudan version klasorunu indir. Progress'i kuyruga yazar.
+
+    NOT: Daha once `rglob()` ile dosya sayimi yapiliyordu, fakat SMB share'de
+    Python'un rglob cagrisi acilan handle'lari robocopy'nin source'u acmasini
+    engelliyor (ERROR 267 - Dizin adi gecersiz). Bu yuzden count_files kaldirildi
+    ve progress indeterminate moda alindi.
+
     Kuyruk mesajlari:
-        ('progress', percent_int, status_str)
+        ('progress', percent_int, status_str)  # pct=-1 -> indeterminate
         ('done', True, '')
         ('done', False, error_msg)
     """
@@ -187,12 +210,6 @@ def copy_slot(version: str, server_path: str, progress_q: queue.Queue, cancel_ev
 
         if not src.exists():
             progress_q.put(('done', False, f"Sunucuda versiyon bulunamadi:\n{src}"))
-            return
-
-        progress_q.put(('progress', 0, "Dosyalar sayiliyor..."))
-        total = count_files(src)
-        if total == 0:
-            progress_q.put(('done', False, "Sunucudaki versiyon bos!"))
             return
 
         # Eski tmp varsa temizle
@@ -208,16 +225,18 @@ def copy_slot(version: str, server_path: str, progress_q: queue.Queue, cancel_ev
             'robocopy',
             str(src),
             str(dst_tmp),
-            '/E',       # alt klasorler dahil
-            '/R:3',     # 3 retry
-            '/W:2',     # 2 sn bekleme
-            '/NDL',     # dizin listeleme yok
-            '/NJH',     # job header yok
-            '/NJS',     # job summary yok
-            '/NP',      # dosya yuzdeleri yok (biz hesaplayacagiz)
+            '/E',          # alt klasorler dahil
+            '/R:3',        # 3 retry
+            '/W:2',        # 2 sn bekleme
+            '/NDL',        # dizin listeleme yok
+            '/NJH',        # job header yok
+            '/NJS',        # job summary yok
+            '/NP',         # dosya yuzdeleri yok
+            '/COPY:DT',    # sadece Data + Timestamp (SMB'de Attribute yetkisi yok -> ERROR 267)
+            '/DCOPY:T',    # dizin icin sadece Timestamp
         ]
 
-        progress_q.put(('progress', 0, f"Indiriliyor: 0 / {total} dosya"))
+        progress_q.put(('progress', -1, "Indiriliyor..."))
 
         proc = subprocess.Popen(
             cmd,
@@ -230,6 +249,7 @@ def copy_slot(version: str, server_path: str, progress_q: queue.Queue, cancel_ev
         )
 
         copied = 0
+        stdout_tail = []  # hata durumunda log'a yazmak icin son 20 satir
         for line in proc.stdout:
             if cancel_event.is_set():
                 try:
@@ -247,13 +267,17 @@ def copy_slot(version: str, server_path: str, progress_q: queue.Queue, cancel_ev
             line = line.strip()
             if not line:
                 continue
+            stdout_tail.append(line)
+            if len(stdout_tail) > 20:
+                stdout_tail.pop(0)
             copied += 1
-            pct = min(99, int((copied / total) * 100))
-            progress_q.put(('progress', pct, f"Indiriliyor: {copied} / {total} dosya"))
+            # Total bilinmiyor -> indeterminate; yalniz kopyalanan dosya sayisini goster
+            progress_q.put(('progress', -1, f"Indiriliyor... ({copied} dosya)"))
 
         proc.wait()
         if proc.returncode >= 8:
-            progress_q.put(('done', False, f"Indirme hatasi (robocopy rc={proc.returncode})"))
+            log.error(f"robocopy rc={proc.returncode} son satirlar:\n" + "\n".join(stdout_tail))
+            progress_q.put(('done', False, f"Indirme hatasi (rc={proc.returncode}). Detay: logs/launcher.log"))
             return
 
         # Atomic rename: tmp -> final
@@ -423,6 +447,7 @@ class ProgressDialog:
             maximum=100,
         )
         self.pbar.pack(fill='x')
+        self._indeterminate = False
 
         # Status label
         self.status = tk.Label(
@@ -451,7 +476,18 @@ class ProgressDialog:
                 kind = msg[0]
                 if kind == 'progress':
                     _, pct, status = msg
-                    self.pbar['value'] = pct
+                    if pct < 0:
+                        # Indeterminate mode
+                        if not self._indeterminate:
+                            self.pbar.config(mode='indeterminate')
+                            self.pbar.start(12)
+                            self._indeterminate = True
+                    else:
+                        if self._indeterminate:
+                            self.pbar.stop()
+                            self.pbar.config(mode='determinate')
+                            self._indeterminate = False
+                        self.pbar['value'] = pct
                     self.status.config(text=status)
                 elif kind == 'done':
                     _, ok, err = msg
@@ -501,13 +537,16 @@ def main():
     server_path = get_server_path()
     LOCAL_BASE.mkdir(parents=True, exist_ok=True)
 
-    # 1. Sunucudan hedef versiyonu al
+    # 1. Sunucudan hedef versiyonu al (once hizli SMB probe)
     target_version: Optional[str] = None
-    try:
-        target_version = read_current_version(server_path)
-        log.info(f"Sunucu hedef versiyon: {target_version}")
-    except Exception as e:
-        log.warning(f"Sunucuya ulasilamadi: {e}")
+    if probe_server(server_path, timeout=2.0):
+        try:
+            target_version = read_current_version(server_path)
+            log.info(f"Sunucu hedef versiyon: {target_version}")
+        except Exception as e:
+            log.warning(f"current.txt okunamadi: {e}")
+    else:
+        log.warning(f"SMB probe basarisiz - offline moduna geciliyor: {server_path}")
 
     # 2. Sunucu erisilemiyor -> offline modu
     if target_version is None:

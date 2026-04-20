@@ -332,7 +332,7 @@ MODULES = {
 # =========================
 # RAPOR AYARLARI
 # =========================
-REPORT_OUTPUT_DIR = Path.home() / ".redline_nexor" / "reports"
+REPORT_OUTPUT_DIR = Path.home() / "Documents" / "Nexor Raporlar"
 REPORT_FORMATS = ["PDF", "XLSX", "CSV"]
 DEFAULT_REPORT_FORMAT = "PDF"
 

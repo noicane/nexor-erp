@@ -5,9 +5,9 @@ Tüm menüler ve alt menüler burada tanımlı
 """
 
 MENU_STRUCTURE = [
-    {"id": "dashboard", "icon": "📊", "label": "Dashboard", "children": []},
+    {"id": "dashboard", "icon": "dashboard", "label": "Dashboard", "children": []},
     
-    {"id": "cariler", "icon": "👥", "label": "Cariler", "children": [
+    {"id": "cariler", "icon": "users", "label": "Cariler", "children": [
         {"id": "cari_liste", "label": "Cari Listesi"},
         {"id": "cari_detay", "label": "Cari Detay"},
         {"id": "cari_bakiye", "label": "Cari Bakiye"},
@@ -16,23 +16,23 @@ MENU_STRUCTURE = [
         {"id": "cari_spesifikasyonlar", "label": "Cari Spesifikasyonlar"},
     ]},
     
-    {"id": "stok", "icon": "📦", "label": "Stok Kartları", "children": [
+    {"id": "stok", "icon": "box", "label": "Stok Kartları", "children": [
         {"id": "stok_liste", "label": "Stok Listesi"},
         {"id": "stok_fiyat", "label": "Fiyat Listesi"},
         {"id": "stok_maliyet", "label": "Maliyet Tanımları"},
     ]},
 
-    {"id": "teklifler", "icon": "📝", "label": "Teklifler", "children": [
+    {"id": "teklifler", "icon": "document", "label": "Teklifler", "children": [
         {"id": "teklif_liste", "label": "Teklif Listesi"},
     ]},
 
-    {"id": "is_emirleri", "icon": "📋", "label": "İş Emirleri", "children": [
+    {"id": "is_emirleri", "icon": "clipboard", "label": "İş Emirleri", "children": [
         {"id": "ie_liste", "label": "İş Emri Listesi"},
         {"id": "ie_planlama", "label": "Planlama"},
         {"id": "ie_termin", "label": "Termin Takip"},
     ]},
     
-    {"id": "uretim", "icon": "🏭", "label": "Üretim", "children": [
+    {"id": "uretim", "icon": "factory", "label": "Üretim", "children": [
         {"id": "uretim_giris", "label": "Üretim Girişi"},
         {"id": "uretim_hat", "label": "Hat Takip"},
         {"id": "uretim_rework", "label": "Rework (Söküm)"},
@@ -43,7 +43,7 @@ MENU_STRUCTURE = [
         {"id": "uretim_bara_dashboard", "label": "Bara Dashboard"},
     ]},
     
-    {"id": "kalite", "icon": "✅", "label": "Kalite", "children": [
+    {"id": "kalite", "icon": "check", "label": "Kalite", "children": [
         {"id": "kalite_giris", "label": "Giriş Kalite"},
         {"id": "kalite_proses", "label": "Proses Kalite"},
         {"id": "kalite_final_kontrol", "label": "Final Kalite Kontrol"},
@@ -58,7 +58,7 @@ MENU_STRUCTURE = [
         {"id": "dokumantasyon_yonetimi", "label": "Dokümantasyon Yönetimi"},
     ]},
     
-    {"id": "laboratuvar", "icon": "🔬", "label": "Laboratuvar", "children": [
+    {"id": "laboratuvar", "icon": "flask", "label": "Laboratuvar", "children": [
         {"id": "lab_dashboard", "label": "📊 Dashboard"},
         {"id": "lab_event_log", "label": "📋 Event Log"},
         {"id": "lab_sonuc", "label": "Analiz Sonuçları"},
@@ -69,21 +69,21 @@ MENU_STRUCTURE = [
         {"id": "lab_kaplama_test", "label": "🔬 Kaplama Test"},
     ]},
     
-    {"id": "sevkiyat", "icon": "🚚", "label": "Sevkiyat", "children": [
+    {"id": "sevkiyat", "icon": "truck", "label": "Sevkiyat", "children": [
         {"id": "sevk_liste", "label": "Sevkiyat Listesi"},
         {"id": "sevk_yeni", "label": "Yeni Sevkiyat"},
         {"id": "sevk_irsaliye", "label": "İrsaliye Yazdır"},
         {"id": "sevk_iade", "label": "İade Girişi"},
     ]},
     
-    {"id": "satinalma", "icon": "🛒", "label": "Satınalma", "children": [
+    {"id": "satinalma", "icon": "cart", "label": "Satınalma", "children": [
         {"id": "satinalma_talepler", "label": "Satınalma Talepleri"},
         {"id": "satinalma_siparisler", "label": "Satınalma Siparişleri"},
         {"id": "satinalma_mal_kabul", "label": "Mal Kabul"},
         {"id": "satinalma_anlasmalar", "label": "Tedarikçi Anlaşmaları"},
     ]},
     
-    {"id": "depo", "icon": "🏪", "label": "Depo / Emanet", "children": [
+    {"id": "depo", "icon": "warehouse", "label": "Depo / Emanet", "children": [
         {"id": "depo_takip", "label": "Depo Takip"},
         {"id": "depo_kabul", "label": "Mal Kabul"},
         {"id": "depo_cikis", "label": "Depo Çıkış"},
@@ -92,7 +92,7 @@ MENU_STRUCTURE = [
         {"id": "depo_stok_takip", "label": "Stok Takip"},
     ]},
     
-    {"id": "ik", "icon": "🧑‍💼", "label": "İnsan Kaynakları", "children": [
+    {"id": "ik", "icon": "user-badge", "label": "İnsan Kaynakları", "children": [
         {"id": "ik_personel", "label": "Personel Listesi"},
         {"id": "ik_puantaj", "label": "Puantaj"},
         {"id": "ik_izin", "label": "İzin Yönetimi"},
@@ -105,7 +105,7 @@ MENU_STRUCTURE = [
         {"id": "pdks_service_control", "label": "🤖 Okuma Servisi"},
     ]},
     
-    {"id": "bakim", "icon": "🔧", "label": "Bakım", "children": [
+    {"id": "bakim", "icon": "wrench", "label": "Bakım", "children": [
         {"id": "bakim_durus_talep", "label": "Duruş Talepleri"},
         {"id": "bakim_ekipman", "label": "Ekipman Kartları"},
         {"id": "bakim_plan", "label": "Bakım Planları"},
@@ -113,7 +113,7 @@ MENU_STRUCTURE = [
         {"id": "bakim_yedek", "label": "Yedek Parça"},
     ]},
     
-    {"id": "isg", "icon": "🦺", "label": "İş Sağlığı Güvenliği", "children": [
+    {"id": "isg", "icon": "shield", "label": "İş Sağlığı Güvenliği", "children": [
         {"id": "isg_risk_degerlendirme", "label": "Risk Değerlendirme"},
         {"id": "isg_olay_kayitlari", "label": "Olay Kayıtları"},
         {"id": "isg_kkd_dagitim", "label": "KKD Dağıtım"},
@@ -126,7 +126,7 @@ MENU_STRUCTURE = [
         {"id": "isg_gbf", "label": "GBF/MSDS"},
     ]},
     
-    {"id": "cevre", "icon": "🌿", "label": "Çevre Yönetimi", "children": [
+    {"id": "cevre", "icon": "leaf", "label": "Çevre Yönetimi", "children": [
         {"id": "cevre_atik_yonetimi", "label": "Atık Yönetimi"},
         {"id": "cevre_emisyon", "label": "Emisyon Takibi"},
         {"id": "cevre_izinler", "label": "Çevresel İzinler"},
@@ -137,13 +137,13 @@ MENU_STRUCTURE = [
         {"id": "cevre_kimyasal", "label": "Kimyasal Envanter"},
     ]},
     
-    {"id": "aksiyonlar", "icon": "📋", "label": "Aksiyonlar", "children": [
+    {"id": "aksiyonlar", "icon": "list", "label": "Aksiyonlar", "children": [
         {"id": "aksiyon_dashboard", "label": "Aksiyon Dashboard"},
         {"id": "aksiyon_liste", "label": "Aksiyon Listesi"},
         {"id": "aksiyon_bana_atanan", "label": "Bana Atananlar"},
     ]},
 
-    {"id": "raporlar", "icon": "📈", "label": "Raporlar", "children": [
+    {"id": "raporlar", "icon": "chart", "label": "Raporlar", "children": [
         {"id": "rapor_uretim", "label": "Üretim Raporları"},
         {"id": "rapor_kalite", "label": "Kalite Raporları"},
         {"id": "rapor_maliyet", "label": "Maliyet Raporları"},
@@ -153,7 +153,7 @@ MENU_STRUCTURE = [
         {"id": "urun_izlenebilirlik", "label": "Ürün İzlenebilirlik"},
     ]},
 
-    {"id": "tanimlar", "icon": "⚙️", "label": "Tanımlar", "children": [
+    {"id": "tanimlar", "icon": "gear", "label": "Tanımlar", "children": [
         {"id": "tanim_hat", "label": "Üretim Hatları"},
         {"id": "tanim_proses", "label": "Prosesler"},
         {"id": "tanim_rota", "label": "Rotalar"},
@@ -173,7 +173,7 @@ MENU_STRUCTURE = [
         {"id": "tanim_giris_kalite_kriterleri", "label": "Giriş Kalite Kriterleri"},
     ]},
 
-    {"id": "yonetim", "icon": "📊", "label": "Yönetim", "password": "Nexor-Atlas2026", "children": [
+    {"id": "yonetim", "icon": "crown", "label": "Yönetim", "password": "Nexor-Atlas2026", "children": [
         {"id": "yonetim_ciro_analiz", "label": "Ciro Analizi"},
         {"id": "yonetim_bara_hesaplama", "label": "Bara Hesaplama"},
         {"id": "tanim_is_merkezi", "label": "İş Merkezi Tanımları"},
@@ -182,7 +182,7 @@ MENU_STRUCTURE = [
         {"id": "stok_fiyat", "label": "Fiyat Listesi"},
     ]},
 
-    {"id": "sistem", "icon": "🛡️", "label": "Sistem", "children": [
+    {"id": "sistem", "icon": "lock", "label": "Sistem", "children": [
         {"id": "sistem_veritabani", "label": "Veritabanı Bağlantıları"},
         {"id": "bildirim_sistemi", "label": "Bildirimler"},
         {"id": "bildirim_tercihleri", "label": "Bildirim Tercihleri"},

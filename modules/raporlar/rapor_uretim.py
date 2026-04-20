@@ -183,6 +183,26 @@ class RaporUretimPage(BasePage):
         self.tarih_bitis_label.setVisible(False)
         self.tarih_bit.setVisible(False)
 
+        # Hat Tipi (ON / KTL / ZNNI)
+        lbl = QLabel("Hat Tipi:")
+        lbl.setStyleSheet(f"color: {s['text_secondary']}; font-size: 13px; font-weight: 500;")
+        filter_layout.addWidget(lbl)
+
+        self.hat_tipi_combo = QComboBox()
+        self.hat_tipi_combo.addItem("Tum Tipler", None)
+        self.hat_tipi_combo.setStyleSheet(combo_style)
+        filter_layout.addWidget(self.hat_tipi_combo)
+
+        # Kaplama Turu
+        lbl = QLabel("Kaplama:")
+        lbl.setStyleSheet(f"color: {s['text_secondary']}; font-size: 13px; font-weight: 500;")
+        filter_layout.addWidget(lbl)
+
+        self.kaplama_combo = QComboBox()
+        self.kaplama_combo.addItem("Tum Kaplamalar", None)
+        self.kaplama_combo.setStyleSheet(combo_style)
+        filter_layout.addWidget(self.kaplama_combo)
+
         # Hat filtresi
         lbl = QLabel("Hat:")
         lbl.setStyleSheet(f"color: {s['text_secondary']}; font-size: 13px; font-weight: 500;")
@@ -191,6 +211,8 @@ class RaporUretimPage(BasePage):
         self.hat_combo = QComboBox()
         self.hat_combo.addItem("Tum Hatlar", None)
         self._load_hat_filter()
+        self._load_hat_tipi_filter()
+        self._load_kaplama_filter()
         self.hat_combo.setStyleSheet(combo_style)
         filter_layout.addWidget(self.hat_combo)
 
@@ -213,7 +235,10 @@ class RaporUretimPage(BasePage):
         search_btn.clicked.connect(self._load_data)
         filter_layout.addWidget(search_btn)
 
-        filter_layout.addWidget(self.create_export_button(title="Uretim Raporu"))
+        filter_layout.addWidget(self.create_export_button(
+            title="Uretim Raporu",
+            table_provider=lambda: self.tabs.currentWidget()
+        ))
 
         layout.addWidget(filter_frame)
 
@@ -452,6 +477,45 @@ class RaporUretimPage(BasePage):
                 except Exception:
                     pass
 
+    def _load_hat_tipi_filter(self):
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT DISTINCT hat_tipi FROM tanim.uretim_hatlari "
+                "WHERE aktif_mi=1 AND hat_tipi IS NOT NULL ORDER BY hat_tipi"
+            )
+            for row in cursor.fetchall():
+                self.hat_tipi_combo.addItem(str(row[0]), row[0])
+        except Exception:
+            pass
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+    def _load_kaplama_filter(self):
+        conn = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT id, kod, ad FROM tanim.kaplama_turleri ORDER BY kod"
+            )
+            for row in cursor.fetchall():
+                self.kaplama_combo.addItem(f"{row[1]} - {row[2]}", row[0])
+        except Exception:
+            pass
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
     def _on_periyot_changed(self):
         periyot = self.periyot_combo.currentData()
         is_tarih_arasi = periyot == "TARIH_ARASI"
@@ -493,6 +557,8 @@ class RaporUretimPage(BasePage):
         s = self.s
         tarih_bas, tarih_bit = self._get_date_range()
         hat_id = self.hat_combo.currentData()
+        hat_tipi = self.hat_tipi_combo.currentData()
+        kaplama_id = self.kaplama_combo.currentData()
 
         conn = None
         try:
@@ -502,8 +568,14 @@ class RaporUretimPage(BasePage):
             hat_filter = ""
             params_base = [tarih_bas, tarih_bit]
             if hat_id:
-                hat_filter = " AND uk.hat_id = ?"
+                hat_filter += " AND uk.hat_id = ?"
                 params_base.append(hat_id)
+            if hat_tipi:
+                hat_filter += " AND h.hat_tipi = ?"
+                params_base.append(hat_tipi)
+            if kaplama_id:
+                hat_filter += " AND ISNULL(ie.kaplama_turu_id, u.kaplama_turu_id) = ?"
+                params_base.append(kaplama_id)
 
             # ===== TAB 1: URUN BAZLI OZET =====
             sql_ozet = f"""

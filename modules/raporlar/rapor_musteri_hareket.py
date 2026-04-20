@@ -128,7 +128,10 @@ class RaporMusteriHareketPage(BasePage):
         """)
         btn.clicked.connect(self._load_data)
         fl.addWidget(btn)
-        fl.addWidget(self.create_export_button(title="Musteri Hareket Raporu"))
+        fl.addWidget(self.create_export_button(
+            title="Musteri Hareket Raporu",
+            table_provider=lambda: self.ref_table
+        ))
         layout.addWidget(ff)
 
         # -- MASTER-DETAIL SPLITTER --
