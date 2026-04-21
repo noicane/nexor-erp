@@ -118,7 +118,12 @@ class GunlukPlanlamaPage(BasePage):
                        ISNULL(r.toplam_sure_dk, 0) as recete_sure,
                        ISNULL(u.bara_adedi, 0) as bara_adedi,
                        ISNULL(u.gunluk_ihtiyac_adet, 0) as ihtiyac,
-                       ISNULL(u.stok_aski_adet, 0) as stok_aski
+                       ISNULL(u.stok_aski_adet, 0) as stok_aski,
+                       ISNULL((
+                           SELECT SUM(b.kullanilabilir_miktar)
+                           FROM stok.vw_stok_bakiye b
+                           WHERE b.urun_kodu = u.urun_kodu
+                       ), 0) as stok_adet
                 FROM stok.urunler u
                 LEFT JOIN musteri.cariler c ON u.cari_id = c.id
                 LEFT JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id
@@ -139,6 +144,7 @@ class GunlukPlanlamaPage(BasePage):
                 toplam_dk = yapilacak_bara * recete_sure
 
                 stok_aski = int(r[12] or 0)
+                stok_adet = int(r[13] or 0)
                 talepler.append({
                     'urun_id': int(r[0]),
                     'urun_kodu': r[1] or '',
@@ -155,6 +161,7 @@ class GunlukPlanlamaPage(BasePage):
                     'yapilacak_bara': yapilacak_bara,
                     'toplam_dk': toplam_dk,
                     'stok_aski': stok_aski,
+                    'stok_adet': stok_adet,
                 })
             conn.close()
             return talepler
@@ -436,10 +443,10 @@ class GunlukPlanlamaPage(BasePage):
 
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(11)
+        self.table.setColumnCount(12)
         self.table.setHorizontalHeaderLabels([
             "Müşteri", "Kap.", "Ürün Kodu", "Ürün Adı",
-            "İhtiyaç", "Bara/Parça", "Yapılacak Bara",
+            "İhtiyaç", "Stok", "Bara/Parça", "Yapılacak Bara",
             "Reçete Süre (dk)", "Toplam (dk)", "Vardiya", "Kaynak"
         ])
         self.table.setStyleSheet(f"""
@@ -454,12 +461,13 @@ class GunlukPlanlamaPage(BasePage):
         self.table.setColumnWidth(1, 70)    # Kap
         self.table.setColumnWidth(2, 110)   # Kod
         self.table.setColumnWidth(4, 90)    # İhtiyaç
-        self.table.setColumnWidth(5, 90)    # Bara/Parça
-        self.table.setColumnWidth(6, 110)   # Yapılacak Bara
-        self.table.setColumnWidth(7, 120)   # Reçete Süre
-        self.table.setColumnWidth(8, 110)   # Toplam
-        self.table.setColumnWidth(9, 100)   # Vardiya
-        self.table.setColumnWidth(10, 90)   # Kaynak
+        self.table.setColumnWidth(5, 90)    # Stok
+        self.table.setColumnWidth(6, 90)    # Bara/Parça
+        self.table.setColumnWidth(7, 110)   # Yapılacak Bara
+        self.table.setColumnWidth(8, 120)   # Reçete Süre
+        self.table.setColumnWidth(9, 110)   # Toplam
+        self.table.setColumnWidth(10, 100)  # Vardiya
+        self.table.setColumnWidth(11, 90)   # Kaynak
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -585,11 +593,11 @@ class GunlukPlanlamaPage(BasePage):
             f = self._bold_font(); f.setPointSize(11); hdr.setFont(f)
             hdr.setBackground(QColor(bg.replace('0.15)', '0.25)')) if 'rgba' in bg else QColor(bg))
             self.table.setItem(row, 0, hdr)
-            for c in range(1, 11):
+            for c in range(1, 12):
                 empty = QTableWidgetItem("")
                 empty.setBackground(QColor(35, 45, 60))
                 self.table.setItem(row, c, empty)
-            self.table.setSpan(row, 0, 1, 11)
+            self.table.setSpan(row, 0, 1, 12)
             self.table.setRowHeight(row, 34)
             row += 1
 
@@ -603,6 +611,7 @@ class GunlukPlanlamaPage(BasePage):
                 row += 1
 
             # --- Grup altoplami ---
+            grup_stok = sum(s.get('stok_adet', 0) or 0 for s in items)
             alt = QTableWidgetItem(f"  ↳ {short} Toplamı")
             alt.setForeground(QColor(brand.TEXT))
             alt.setFont(self._bold_font())
@@ -618,26 +627,33 @@ class GunlukPlanlamaPage(BasePage):
             it.setForeground(QColor(fg))
             it.setBackground(QColor(25, 31, 41))
             self.table.setItem(row, 4, it)
-            # 5 boş, 6 toplam bara
+            # 5 toplam stok
+            it = QTableWidgetItem(f"{grup_stok:,}")
+            it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            it.setFont(self._bold_font())
+            it.setForeground(QColor(brand.SUCCESS if grup_stok >= grup_adet else brand.WARNING))
+            it.setBackground(QColor(25, 31, 41))
+            self.table.setItem(row, 5, it)
+            # 6 boş, 7 toplam bara
             e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
-            self.table.setItem(row, 5, e)
+            self.table.setItem(row, 6, e)
             it = QTableWidgetItem(f"{grup_bara:,}")
             it.setTextAlignment(Qt.AlignCenter)
             it.setFont(self._bold_font())
             it.setForeground(QColor(fg))
             it.setBackground(QColor(25, 31, 41))
-            self.table.setItem(row, 6, it)
-            # 7 boş, 8 toplam dk
+            self.table.setItem(row, 7, it)
+            # 8 boş, 9 toplam dk
             e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
-            self.table.setItem(row, 7, e)
+            self.table.setItem(row, 8, e)
             it = QTableWidgetItem(f"{grup_dk:,} dk")
             it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             it.setFont(self._bold_font())
             it.setForeground(QColor(brand.SUCCESS))
             it.setBackground(QColor(25, 31, 41))
-            self.table.setItem(row, 8, it)
-            # 9, 10 boş
-            for c in (9, 10):
+            self.table.setItem(row, 9, it)
+            # 10, 11 boş
+            for c in (10, 11):
                 e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
                 self.table.setItem(row, c, e)
             self.table.setRowHeight(row, 36)
@@ -647,6 +663,7 @@ class GunlukPlanlamaPage(BasePage):
 
         # --- Grand Total ---
         if grup_sayisi > 0:
+            grand_stok = sum(s.get('stok_adet', 0) or 0 for s in self._satirlar)
             gt = QTableWidgetItem("  ═ GENEL TOPLAM ═")
             gt.setForeground(QColor(brand.PRIMARY))
             f = self._bold_font(); f.setPointSize(12); gt.setFont(f)
@@ -660,21 +677,28 @@ class GunlukPlanlamaPage(BasePage):
             it.setFont(f); it.setForeground(QColor(brand.PRIMARY))
             it.setBackground(QColor(45, 15, 20))
             self.table.setItem(row, 4, it)
+            # Grand stok
+            it = QTableWidgetItem(f"{grand_stok:,}")
+            it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            it.setFont(f)
+            it.setForeground(QColor(brand.SUCCESS if grand_stok >= grand_adet else brand.WARNING))
+            it.setBackground(QColor(45, 15, 20))
+            self.table.setItem(row, 5, it)
             e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
-            self.table.setItem(row, 5, e)
+            self.table.setItem(row, 6, e)
             it = QTableWidgetItem(f"{grand_bara:,}")
             it.setTextAlignment(Qt.AlignCenter)
             it.setFont(f); it.setForeground(QColor(brand.PRIMARY))
             it.setBackground(QColor(45, 15, 20))
-            self.table.setItem(row, 6, it)
+            self.table.setItem(row, 7, it)
             e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
-            self.table.setItem(row, 7, e)
+            self.table.setItem(row, 8, e)
             it = QTableWidgetItem(f"{grand_dk:,} dk")
             it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             it.setFont(f); it.setForeground(QColor(brand.PRIMARY))
             it.setBackground(QColor(45, 15, 20))
-            self.table.setItem(row, 8, it)
-            for c in (9, 10):
+            self.table.setItem(row, 9, it)
+            for c in (10, 11):
                 e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
                 self.table.setItem(row, c, e)
             self.table.setRowHeight(row, 40)
@@ -712,35 +736,58 @@ class GunlukPlanlamaPage(BasePage):
         it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.table.setItem(row, 4, it)
 
-        # 5 Bara/Parça (stok kartındaki bara_adedi)
+        # 5 Stok (GKK onayli, kullanilabilir)
+        stok = s.get('stok_adet', 0) or 0
+        ihtiyac = s.get('ihtiyac_adet', 0) or 0
+        if stok >= ihtiyac and ihtiyac > 0:
+            stok_clr = brand.SUCCESS
+            stok_txt = f"{stok:,}"
+        elif stok > 0:
+            stok_clr = brand.WARNING
+            stok_txt = f"{stok:,} / -{ihtiyac - stok:,}"
+        else:
+            stok_clr = brand.ERROR
+            stok_txt = "0 ⚠"
+        it = QTableWidgetItem(stok_txt)
+        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        it.setForeground(QColor(stok_clr))
+        it.setFont(self._bold_font())
+        it.setToolTip(
+            f"İhtiyaç: {ihtiyac:,}\n"
+            f"GKK onaylı stok: {stok:,}\n"
+            f"{'✓ Yeterli' if stok >= ihtiyac else ('⚠ Kısmi (eksik: ' + str(ihtiyac - stok) + ')') if stok > 0 else '✗ Stok yok'}"
+        )
+        self.table.setItem(row, 5, it)
+
+        # 6 Bara/Parça (stok kartındaki bara_adedi)
         it = QTableWidgetItem(str(s['bara_parca']))
         it.setTextAlignment(Qt.AlignCenter)
         it.setForeground(QColor(brand.TEXT_DIM))
-        self.table.setItem(row, 5, it)
+        self.table.setItem(row, 6, it)
 
-        # 6 Yapılacak Bara
+        # 7 Yapılacak Bara
         it = QTableWidgetItem(str(s['yapilacak_bara']))
         it.setTextAlignment(Qt.AlignCenter)
         it.setForeground(QColor(brand.INFO))
         it.setFont(self._bold_font())
-        self.table.setItem(row, 6, it)
+        self.table.setItem(row, 7, it)
 
-        # 7 Reçete süre
+        # 8 Reçete süre
         rs = s['recete_sure_dk']
         it = QTableWidgetItem(f"{rs} dk" if rs else "-")
         it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         if rs == 0:
             it.setForeground(QColor(brand.WARNING))
-        self.table.setItem(row, 7, it)
+        self.table.setItem(row, 8, it)
 
-        # 8 Toplam
+        # 9 Toplam
         it = QTableWidgetItem(f"{s['toplam_dk']} dk")
         it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         it.setForeground(QColor(brand.SUCCESS))
         it.setFont(self._bold_font())
-        self.table.setItem(row, 8, it)
+        self.table.setItem(row, 9, it)
 
-        # 9 Vardiya combo
+        # 10 Vardiya combo
         vc = QComboBox()
         vc.addItem("— seç —", None)
         for v in self._vardiyalar:
@@ -754,12 +801,12 @@ class GunlukPlanlamaPage(BasePage):
             f"color: {brand.TEXT}; padding: 4px 8px; border-radius: 5px; }}"
         )
         vc.currentIndexChanged.connect(lambda _, idx=satir_idx, cb=vc: self._on_vardiya_change(idx, cb))
-        self.table.setCellWidget(row, 9, vc)
+        self.table.setCellWidget(row, 10, vc)
 
-        # 10 Kaynak
+        # 11 Kaynak
         it = QTableWidgetItem(s.get('kaynak', 'ANLASMA'))
         it.setForeground(QColor(brand.TEXT_DIM))
-        self.table.setItem(row, 10, it)
+        self.table.setItem(row, 11, it)
 
         self.table.setRowHeight(row, 42)
 
