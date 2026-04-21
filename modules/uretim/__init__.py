@@ -15,6 +15,7 @@ from .uretim_vardiya import UretimVardiyaPage
 from .uretim_rework import ReworkPage
 from .uretim_bara_dashboard import BaraDashboardPage
 from .askilama_planlama import AskilamaPlanlamaPage
+from .gunluk_planlama import GunlukPlanlamaPage
 
 # Sayfa kayıtları
 PageRegistry.register("uretim_giris", UretimGirisPage, MODULE_NAME)
@@ -25,6 +26,7 @@ PageRegistry.register("uretim_vardiya", UretimVardiyaPage, MODULE_NAME)
 PageRegistry.register("uretim_rework", ReworkPage, MODULE_NAME)
 PageRegistry.register("uretim_bara_dashboard", BaraDashboardPage, MODULE_NAME)
 PageRegistry.register("askilama_planlama", AskilamaPlanlamaPage, MODULE_NAME)
+PageRegistry.register("gunluk_planlama", GunlukPlanlamaPage, MODULE_NAME)
 
 __all__ = [
     "UretimGirisPage",
@@ -34,5 +36,6 @@ __all__ = [
     "UretimVardiyaPage",
     "ReworkPage",
     "BaraDashboardPage",
-    "AskilamaPlanlamaPage"
+    "AskilamaPlanlamaPage",
+    "GunlukPlanlamaPage"
 ]
