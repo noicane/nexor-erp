@@ -23,10 +23,10 @@ from datetime import date, datetime, time as _time
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
-    QComboBox, QDateEdit, QTableWidget, QTableWidgetItem, QHeaderView,
+    QComboBox, QDateEdit, QTimeEdit, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QMessageBox, QSpinBox, QGraphicsDropShadowEffect
 )
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt, QDate, QTime
 from PySide6.QtGui import QColor
 
 from components.base_page import BasePage
@@ -87,6 +87,20 @@ class GunlukPlanlamaPage(BasePage):
         except Exception as e:
             print(f"[GunlukPlan] bara kapasite hata: {e}")
             return {}
+
+    def _vardiya_saatleri(self) -> tuple:
+        """(baslangic_time, bitis_time, toplam_dk) — filtre bardan oku."""
+        if hasattr(self, 'baslangic_time'):
+            bas = self.baslangic_time.time().toPython()
+            total = self.vardiya_sure_spin.value() if hasattr(self, 'vardiya_sure_spin') else 480
+        else:
+            bas = _time(7, 30)
+            total = 480
+        bm = bas.hour * 60 + bas.minute
+        em = (bm + total) % (24 * 60)
+        bh, bmi = divmod(em, 60)
+        bit = _time(bh, bmi)
+        return (bas, bit, total)
 
     def _load_vardiyalar(self):
         try:
@@ -178,6 +192,21 @@ class GunlukPlanlamaPage(BasePage):
                 # Bara sayisi ihtiyaci
                 aski_ihtiyaci = yapilacak_bara
 
+                # Staggered scheduling: her askinin giris/cikis zamanlari
+                # T=0'da hepsi baslar, dongu sonunda hepsi biter, sonraki grup cikinca baslar
+                # batch_count = kac tam grup (ceil)
+                batch_count = math.ceil(yapilacak_bara / paralel_bara) if paralel_bara > 0 else 0
+                # is_sure_dk = toplam is suresi (grup grup arka arkaya)
+                is_sure_dk = batch_count * aski_dongu_dk
+                # Ilk bara giris: T=0 (vardiya bas)
+                ilk_giris_dk = 0
+                # Ilk bara cikis: T=dongu
+                ilk_cikis_dk = aski_dongu_dk
+                # Son bara cikis: T=is_sure_dk
+                son_cikis_dk = is_sure_dk
+                # Bir sonraki cevrim (aski bosalip tekrar kullanilir): T=dongu
+                sonraki_cevrim_dk = aski_dongu_dk
+
                 # Gerekli personel (vardiya basi)
                 gerekli_personel = toplam_personel_dk / VARDIYA_DK if VARDIYA_DK else 0
 
@@ -211,6 +240,12 @@ class GunlukPlanlamaPage(BasePage):
                     'aski_ihtiyaci': aski_ihtiyaci,
                     'aski_yeter': aski_yeter,
                     'gerekli_personel': round(gerekli_personel, 2),
+                    'batch_count': batch_count,
+                    'is_sure_dk': is_sure_dk,
+                    'ilk_giris_dk': ilk_giris_dk,
+                    'ilk_cikis_dk': ilk_cikis_dk,
+                    'son_cikis_dk': son_cikis_dk,
+                    'sonraki_cevrim_dk': sonraki_cevrim_dk,
                     'stok_adet': stok_adet,
                     'stok_bekleyen': stok_bekleyen,
                 })
@@ -504,6 +539,25 @@ class GunlukPlanlamaPage(BasePage):
         self.tarih_edit.dateChanged.connect(lambda _: self._refresh())
         fl.addWidget(self.tarih_edit)
 
+        fl.addWidget(QLabel("Başlangıç:", styleSheet=ls))
+        self.baslangic_time = QTimeEdit()
+        self.baslangic_time.setDisplayFormat("HH:mm")
+        self.baslangic_time.setTime(QTime(7, 30))
+        self.baslangic_time.setStyleSheet(f"QTimeEdit {{ {ins} max-width: 85px; }}")
+        self.baslangic_time.setToolTip("Vardiya başlangıç saati.\n"
+                                        "İşler bu saatten itibaren sıralı olarak planlanır.")
+        self.baslangic_time.timeChanged.connect(lambda _: self._fill_table())
+        fl.addWidget(self.baslangic_time)
+
+        fl.addWidget(QLabel("Vardiya:", styleSheet=ls))
+        self.vardiya_sure_spin = QSpinBox()
+        self.vardiya_sure_spin.setRange(60, 1440)
+        self.vardiya_sure_spin.setSuffix(" dk")
+        self.vardiya_sure_spin.setValue(480)
+        self.vardiya_sure_spin.setStyleSheet(f"QSpinBox {{ {ins} max-width: 90px; }}")
+        self.vardiya_sure_spin.valueChanged.connect(lambda _: self._fill_table())
+        fl.addWidget(self.vardiya_sure_spin)
+
         self.durum_lbl = QLabel("TASLAK")
         self.durum_lbl.setStyleSheet(
             f"background: rgba(220,38,38,0.12); color: {brand.PRIMARY}; "
@@ -567,12 +621,12 @@ class GunlukPlanlamaPage(BasePage):
 
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(15)
+        self.table.setColumnCount(16)
         self.table.setHorizontalHeaderLabels([
             "Müşteri", "Kap.", "Ürün Kodu", "Ürün Adı",
             "İhtiyaç", "Onaylı", "Bekleyen", "Bara/Parça", "Yapılacak Bara",
             "Reçete Süre (dk)", "Toplam (dk)",
-            "Gerekli Kişi", "Durum",
+            "Gerekli Kişi", "Durum", "Saat (giriş→bitiş)",
             "Vardiya", "Kaynak"
         ])
         self.table.setStyleSheet(f"""
@@ -595,8 +649,9 @@ class GunlukPlanlamaPage(BasePage):
         self.table.setColumnWidth(10, 100)  # Toplam
         self.table.setColumnWidth(11, 90)   # Gerekli Kişi
         self.table.setColumnWidth(12, 120)  # Durum
-        self.table.setColumnWidth(13, 90)   # Vardiya
-        self.table.setColumnWidth(14, 80)   # Kaynak
+        self.table.setColumnWidth(13, 140)  # Saat (giriş→bitiş)
+        self.table.setColumnWidth(14, 90)   # Vardiya
+        self.table.setColumnWidth(15, 80)   # Kaynak
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -722,16 +777,24 @@ class GunlukPlanlamaPage(BasePage):
             f = self._bold_font(); f.setPointSize(11); hdr.setFont(f)
             hdr.setBackground(QColor(bg.replace('0.15)', '0.25)')) if 'rgba' in bg else QColor(bg))
             self.table.setItem(row, 0, hdr)
-            for c in range(1, 15):
+            for c in range(1, 16):
                 empty = QTableWidgetItem("")
                 empty.setBackground(QColor(35, 45, 60))
                 self.table.setItem(row, c, empty)
-            self.table.setSpan(row, 0, 1, 15)
+            self.table.setSpan(row, 0, 1, 16)
             self.table.setRowHeight(row, 34)
             row += 1
 
             grup_adet = 0; grup_bara = 0; grup_dk = 0
+            # Scheduler: bu hat icin vardiya basindan is sirali dagit
+            vardiya_bas, _, _ = self._vardiya_saatleri()
+            cur_dk = vardiya_bas.hour * 60 + vardiya_bas.minute  # baslangic dakika cinsinden
             for s in items:
+                # Is suresi icinde bu is'in giris ve bitis saati
+                is_sure = s.get('is_sure_dk', 0) or 0
+                s['sched_giris_dk'] = cur_dk
+                s['sched_bitis_dk'] = cur_dk + is_sure
+                cur_dk += is_sure
                 self._row_to_satir_idx[row] = self._satirlar.index(s)
                 self._fill_data_row(row, s)
                 grup_adet += s['ihtiyac_adet']
@@ -792,7 +855,7 @@ class GunlukPlanlamaPage(BasePage):
             it.setBackground(QColor(25, 31, 41))
             self.table.setItem(row, 10, it)
             # 11-14 boş (gerekli kişi, durum, vardiya, kaynak)
-            for c in (11, 12, 13, 14):
+            for c in (11, 12, 13, 14, 15):
                 e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
                 self.table.setItem(row, c, e)
             self.table.setRowHeight(row, 36)
@@ -851,7 +914,7 @@ class GunlukPlanlamaPage(BasePage):
             it.setBackground(QColor(45, 15, 20))
             self.table.setItem(row, 10, it)
             # 11-14 boş
-            for c in (11, 12, 13, 14):
+            for c in (11, 12, 13, 14, 15):
                 e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
                 self.table.setItem(row, c, e)
             self.table.setRowHeight(row, 40)
@@ -989,7 +1052,35 @@ class GunlukPlanlamaPage(BasePage):
         )
         self.table.setItem(row, 12, it)
 
-        # 13 Vardiya combo
+        # 13 Saat (giriş → bitiş) + sonraki çevrim
+        sg = s.get('sched_giris_dk')
+        sb = s.get('sched_bitis_dk')
+        _, vardiya_bitis_t, vardiya_total = self._vardiya_saatleri()
+        vardiya_bitis_dk = vardiya_bitis_t.hour * 60 + vardiya_bitis_t.minute
+        if sg is not None and sb is not None:
+            gh, gm = divmod(sg % (24 * 60), 60)
+            bh, bm = divmod(sb % (24 * 60), 60)
+            saat_txt = f"{gh:02d}:{gm:02d} → {bh:02d}:{bm:02d}"
+            it = QTableWidgetItem(saat_txt)
+            it.setTextAlignment(Qt.AlignCenter)
+            # Vardiya bitişini aşarsa kırmızı
+            if sb > vardiya_bitis_dk:
+                it.setForeground(QColor(brand.ERROR))
+                saat_txt += " ⚠"
+                it.setText(saat_txt)
+            else:
+                it.setForeground(QColor(brand.TEXT))
+            it.setToolTip(
+                f"İş süresi: {s.get('is_sure_dk', 0)} dk\n"
+                f"Batch sayısı: {s.get('batch_count', 0)} (her batch {s.get('aski_dongu_dk', 0)} dk)\n"
+                f"Askı sonraki çevrim: {s.get('sonraki_cevrim_dk', 0)} dk sonra\n"
+                f"Vardiya bitişine: {(vardiya_bitis_dk - sg) if vardiya_bitis_dk > sg else 0} dk var"
+            )
+            self.table.setItem(row, 13, it)
+        else:
+            self.table.setItem(row, 13, QTableWidgetItem("-"))
+
+        # 14 Vardiya combo
         vc = QComboBox()
         vc.addItem("— seç —", None)
         for v in self._vardiyalar:
@@ -1003,12 +1094,12 @@ class GunlukPlanlamaPage(BasePage):
             f"color: {brand.TEXT}; padding: 4px 8px; border-radius: 5px; }}"
         )
         vc.currentIndexChanged.connect(lambda _, idx=satir_idx, cb=vc: self._on_vardiya_change(idx, cb))
-        self.table.setCellWidget(row, 13, vc)
+        self.table.setCellWidget(row, 14, vc)
 
-        # 14 Kaynak
+        # 15 Kaynak
         it = QTableWidgetItem(s.get('kaynak', 'ANLASMA'))
         it.setForeground(QColor(brand.TEXT_DIM))
-        self.table.setItem(row, 14, it)
+        self.table.setItem(row, 15, it)
 
         self.table.setRowHeight(row, 42)
 
