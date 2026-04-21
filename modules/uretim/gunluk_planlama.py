@@ -682,6 +682,26 @@ class GunlukPlanlamaPage(BasePage):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table, 1)
 
+        # 24 SAAT TIMELINE
+        timeline_lbl = QLabel("📊 24 Saat Timeline (hat × saat) — hücrede aktif bara sayısı")
+        timeline_lbl.setStyleSheet(f"color: {brand.TEXT}; font-size: 13px; font-weight: 600; "
+                                     f"margin-top: 8px;")
+        layout.addWidget(timeline_lbl)
+
+        self.timeline_table = QTableWidget()
+        self.timeline_table.setFixedHeight(160)
+        self.timeline_table.setStyleSheet(f"""
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
+                border-radius: 10px; color: {brand.TEXT}; gridline-color: {brand.BORDER};
+                font-size: 11px; }}
+            QTableWidget::item {{ padding: 4px; text-align: center; }}
+            QHeaderView::section {{ background: rgba(0,0,0,0.3); color: {brand.TEXT_MUTED};
+                padding: 4px; border: none; font-weight: 600; font-size: 10px; }}
+        """)
+        self.timeline_table.verticalHeader().setVisible(False)
+        self.timeline_table.setSelectionMode(QAbstractItemView.NoSelection)
+        layout.addWidget(self.timeline_table)
+
     def _mk_stat(self, title: str, value: str, color: str) -> QFrame:
         f = QFrame(); f.setFixedHeight(66)
         f.setStyleSheet(
@@ -981,6 +1001,89 @@ class GunlukPlanlamaPage(BasePage):
             self.table.setRowHeight(row, 40)
 
         self._update_stats()
+        self._fill_timeline()
+
+    def _fill_timeline(self):
+        """24 saat × hat matriks: her saatte hatta aktif bara sayisi."""
+        if not hasattr(self, 'timeline_table'):
+            return
+        # Hat listesi (satirlardan cikart)
+        hatlar = sorted(set((s.get('kap_kod') or '?').upper() for s in self._satirlar))
+        if not hatlar:
+            self.timeline_table.setRowCount(0)
+            self.timeline_table.setColumnCount(0)
+            return
+
+        # Saat slotlari: 24 saat
+        saatler = list(range(24))
+
+        # Her (hat, saat) icin aktif bara
+        grid = {(h, sa): 0 for h in hatlar for sa in saatler}
+        events = {(h, sa): {'gir': 0, 'cik': 0} for h in hatlar for sa in saatler}
+
+        for s in self._satirlar:
+            hat = (s.get('kap_kod') or '?').upper()
+            giris = s.get('sched_giris_dk')
+            bitis = s.get('sched_bitis_dk')
+            if giris is None or bitis is None:
+                continue
+            paralel = s.get('paralel_bara', 1) or 1
+            # Aktif saatler
+            gh = (giris // 60) % 24
+            bh = (bitis // 60) % 24
+            events[(hat, gh)]['gir'] += paralel
+            events[(hat, bh)]['cik'] += paralel
+            # Aktif: giristen bitise kadar her saat
+            cur = giris
+            while cur < bitis:
+                saat = (cur // 60) % 24
+                grid[(hat, saat)] = max(grid.get((hat, saat), 0), paralel)
+                cur += 60
+
+        # Tablo
+        self.timeline_table.setColumnCount(len(saatler) + 1)
+        headers = ["Hat"] + [f"{sa:02d}:00" for sa in saatler]
+        self.timeline_table.setHorizontalHeaderLabels(headers)
+        self.timeline_table.setColumnWidth(0, 80)
+        for i in range(1, len(saatler) + 1):
+            self.timeline_table.setColumnWidth(i, 48)
+
+        self.timeline_table.setRowCount(len(hatlar))
+        for r_idx, hat in enumerate(hatlar):
+            # Hat adı (ilk sütun)
+            _, _, short = _kap_color(hat)
+            hat_item = QTableWidgetItem(short)
+            hat_item.setFont(self._bold_font())
+            hat_item.setTextAlignment(Qt.AlignCenter)
+            self.timeline_table.setItem(r_idx, 0, hat_item)
+            # Her saat
+            for c_idx, sa in enumerate(saatler, start=1):
+                aktif = grid.get((hat, sa), 0)
+                ev = events.get((hat, sa), {'gir': 0, 'cik': 0})
+                if aktif > 0:
+                    txt = str(aktif)
+                    _, bg, fg = _kap_color(hat)
+                    it = QTableWidgetItem(txt)
+                    it.setTextAlignment(Qt.AlignCenter)
+                    it.setForeground(QColor(fg))
+                    it.setFont(self._bold_font())
+                    # Arka plan: renkli
+                    r, g, b = 30, 40, 55
+                    if 'KTL' in hat or 'KTF' in hat: r, g, b = 16, 80, 50
+                    elif 'ZN' in hat: r, g, b = 30, 60, 100
+                    elif 'ON' in hat or 'TB' in hat: r, g, b = 90, 60, 20
+                    it.setBackground(QColor(r, g, b))
+                    tip = f"Hat: {hat}  Saat: {sa:02d}:00"
+                    if ev['gir'] > 0: tip += f"\n↓ Giren: {ev['gir']}"
+                    if ev['cik'] > 0: tip += f"\n↑ Çıkan: {ev['cik']}"
+                    tip += f"\nAktif: {aktif} bara"
+                    it.setToolTip(tip)
+                    self.timeline_table.setItem(r_idx, c_idx, it)
+                else:
+                    it = QTableWidgetItem("")
+                    it.setBackground(QColor(15, 20, 25))
+                    self.timeline_table.setItem(r_idx, c_idx, it)
+            self.timeline_table.setRowHeight(r_idx, 32)
 
     def _fill_data_row(self, row: int, s: dict):
         """Tek bir veri satirini doldur. Satir indeksi satir_idx self._satirlar'daki."""
