@@ -113,16 +113,27 @@ class AskilamaPlanlamaPage(BasePage):
         total = em - bm if em > bm else (24 * 60 - bm) + em
         return (bas, bit, total)
 
-    def _load_plan_urunler(self, tarih: date, vardiya_id: int) -> list:
+    def _load_plan_urunler(self, tarih: date, vardiya_id: int,
+                            hat_filtre: str = None) -> list:
         """Uretim planlama ekranindaki isleri getirir.
 
         Kaynak: uretim.planlama + siparis.is_emirleri + stok.urunler
-        Filtre: secili tarih + vardiya + iptal edilmemis
+        Filtre: secili tarih + vardiya + iptal edilmemis + opsiyonel hat
         """
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            cur.execute("""
+
+            # Hat filtresi
+            hat_where = ""
+            if hat_filtre == "KTL":
+                hat_where = "AND h.kod LIKE '%KTL%'"
+            elif hat_filtre == "ZNNI":
+                hat_where = "AND (h.kod LIKE '%ZN%' OR h.kod LIKE '%ZNNI%')"
+            elif hat_filtre == "ON":
+                hat_where = "AND h.kod LIKE '%ON%'"
+
+            sql = f"""
                 SELECT p.id AS planlama_id,
                        p.tarih, p.vardiya_id, p.hat_id,
                        h.kod AS hat_kod, h.ad AS hat_ad,
@@ -140,8 +151,10 @@ class AskilamaPlanlamaPage(BasePage):
                 LEFT JOIN tanim.uretim_hatlari h ON p.hat_id = h.id
                 WHERE p.tarih = ? AND p.vardiya_id = ?
                   AND (p.durum IS NULL OR p.durum <> 'IPTAL')
+                  {hat_where}
                 ORDER BY p.sira_no, p.id
-            """, (tarih, vardiya_id))
+            """
+            cur.execute(sql, (tarih, vardiya_id))
 
             jobs = []
             for r in cur.fetchall():
@@ -375,6 +388,20 @@ class AskilamaPlanlamaPage(BasePage):
         )
         self.vardiya_combo.currentIndexChanged.connect(self._on_vardiya_changed)
         row.addWidget(self.vardiya_combo)
+
+        row.addWidget(QLabel("Hat:", styleSheet=ls))
+        self.hat_combo = QComboBox()
+        self.hat_combo.addItem("Tümü", None)
+        self.hat_combo.addItem("KTL (Kataforez)", "KTL")
+        self.hat_combo.addItem("ZNNI (Çinko-Nikel)", "ZNNI")
+        self.hat_combo.addItem("ON İşlem", "ON")
+        self.hat_combo.setStyleSheet(
+            f"QComboBox {{ {ins} min-width: 150px; }}"
+            f"QComboBox QAbstractItemView {{ background: {brand.BG_CARD}; "
+            f"color: {brand.TEXT}; selection-background-color: {brand.PRIMARY}; }}"
+        )
+        self.hat_combo.currentIndexChanged.connect(lambda _: self._refresh_plan())
+        row.addWidget(self.hat_combo)
 
         self.override_check = QCheckBox("Saat Override")
         self.override_check.setStyleSheet(f"color: {brand.WARNING}; font-size: 12px;")
@@ -871,7 +898,8 @@ class AskilamaPlanlamaPage(BasePage):
         if not v:
             self._jobs = []
         else:
-            self._jobs = self._load_plan_urunler(tarih, v['id'])
+            hat_filtre = self.hat_combo.currentData() if hasattr(self, 'hat_combo') else None
+            self._jobs = self._load_plan_urunler(tarih, v['id'], hat_filtre)
         self._assignments = {}
         self._fill_job_table()
 
