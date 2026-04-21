@@ -786,14 +786,50 @@ class GunlukPlanlamaPage(BasePage):
             row += 1
 
             grup_adet = 0; grup_bara = 0; grup_dk = 0
-            # Scheduler: bu hat icin vardiya basindan is sirali dagit
-            vardiya_bas, _, _ = self._vardiya_saatleri()
-            cur_dk = vardiya_bas.hour * 60 + vardiya_bas.minute  # baslangic dakika cinsinden
+            # ÇOK VARDIYALI SCHEDULER: is sigmazsa sonraki vardiyaya tasir
+            # tanim.vardiyalar'dan siralanmis vardiya listesi (bas dakika, bit dakika)
+            vardiyalar_sorted = sorted(self._vardiyalar, key=lambda v: (
+                v['bas'].hour * 60 + v['bas'].minute if isinstance(v['bas'], _time) else 0
+            ))
+            vardiya_spans = []
+            for v in vardiyalar_sorted:
+                bm = v['bas'].hour * 60 + v['bas'].minute if isinstance(v['bas'], _time) else 0
+                em = v['bit'].hour * 60 + v['bit'].minute if isinstance(v['bit'], _time) else bm + 480
+                if em <= bm:  # gece vardiyasi: sonraki gune sar
+                    em += 24 * 60
+                vardiya_spans.append({'id': v['id'], 'kod': v['kod'], 'bas': bm, 'bit': em})
+
+            # Kullanicinin girdigi baslangic saati — ilk vardiyayi bundan basla
+            v_bas_user, _, _ = self._vardiya_saatleri()
+            cur_dk = v_bas_user.hour * 60 + v_bas_user.minute
+            # Bu dakikaya en yakin/icinde olan vardiyayi bul
+            v_idx = 0
+            for i, vs in enumerate(vardiya_spans):
+                if vs['bas'] <= cur_dk < vs['bit']:
+                    v_idx = i; break
+            else:
+                v_idx = 0
+
             for s in items:
-                # Is suresi icinde bu is'in giris ve bitis saati
                 is_sure = s.get('is_sure_dk', 0) or 0
+                # Mevcut vardiyaya sigar mi?
+                while vardiya_spans and cur_dk + is_sure > vardiya_spans[v_idx]['bit']:
+                    # Sonraki vardiyaya ge
+                    if v_idx + 1 < len(vardiya_spans):
+                        v_idx += 1
+                        cur_dk = vardiya_spans[v_idx]['bas']
+                    else:
+                        # Tum vardiyalar doldu — ertesi gunun ilk vardiyasi
+                        v_idx = 0
+                        cur_dk = vardiya_spans[0]['bas'] + 24 * 60
+                        break
+
                 s['sched_giris_dk'] = cur_dk
                 s['sched_bitis_dk'] = cur_dk + is_sure
+                # Otomatik vardiya ata (kullanici degistirebilir)
+                if vardiya_spans and s.get('vardiya_id') is None:
+                    s['vardiya_id'] = vardiya_spans[v_idx]['id']
+                s['sched_vardiya_kod'] = vardiya_spans[v_idx]['kod'] if vardiya_spans else ''
                 cur_dk += is_sure
                 self._row_to_satir_idx[row] = self._satirlar.index(s)
                 self._fill_data_row(row, s)
