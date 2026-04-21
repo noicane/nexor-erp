@@ -829,6 +829,13 @@ class StokDetayDialog(QDialog):
                     "Askılama planlamasında personel başı işi süreyi hesaplamakta kullanılır.\n"
                     "Örn: 4 dk → 20 bara × 4 dk = 80 dk iş, 2 kişi ile 40 dk."
         ))
+        g2_layout.addLayout(self._create_editable_field(
+            'gunluk_ihtiyac_adet', 'Günlük İhtiyaç (Adet)',
+            self.urun_data.get('gunluk_ihtiyac_adet'), 'int',
+            tooltip="Müşteri ile anlaşılan günlük ortalama adet.\n"
+                    "Planlama ekranında her sabah otomatik iş emri oluşturulurken\n"
+                    "bu miktar kullanılır. Boş veya 0 ise otomatik plana dahil edilmez."
+        ))
         g2_layout.addLayout(self._create_editable_field('pitch_mm', 'Pitch (mm)', self.urun_data.get('pitch_mm'), 'number'))
         layout.addWidget(group2)
         
