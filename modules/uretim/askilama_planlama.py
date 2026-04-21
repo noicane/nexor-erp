@@ -113,63 +113,64 @@ class AskilamaPlanlamaPage(BasePage):
         total = em - bm if em > bm else (24 * 60 - bm) + em
         return (bas, bit, total)
 
-    def _load_plan_urunler(self, tarih: date) -> list:
-        """Belirtilen tarihe en yakin haftanin planindan urunleri getirir."""
+    def _load_plan_urunler(self, tarih: date, vardiya_id: int) -> list:
+        """Uretim planlama ekranindaki isleri getirir.
+
+        Kaynak: uretim.planlama + siparis.is_emirleri + stok.urunler
+        Filtre: secili tarih + vardiya + iptal edilmemis
+        """
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            # Haftanin pazartesisi (kaplama.plan_haftalik.hafta_baslangic)
-            pzt = tarih - timedelta(days=tarih.weekday())
             cur.execute("""
-                SELECT TOP 1 id FROM kaplama.plan_haftalik
-                WHERE hafta_baslangic = ?
-                ORDER BY id DESC
-            """, (pzt,))
-            row = cur.fetchone()
-            if not row:
-                self._plan_id = None
-                conn.close()
-                return []
-            self._plan_id = int(row[0])
+                SELECT p.id AS planlama_id,
+                       p.tarih, p.vardiya_id, p.hat_id,
+                       h.kod AS hat_kod, h.ad AS hat_ad,
+                       p.is_emri_id, ie.is_emri_no,
+                       ie.urun_id, u.urun_kodu, u.urun_adi,
+                       ISNULL(u.bara_aski_suresi_dk, 0) as aski_suresi_dk,
+                       ie.kaplama_tipi,
+                       p.planlanan_bara,
+                       p.baslangic_saat, p.bitis_saat,
+                       p.durum, p.sira_no,
+                       ie.oncelik
+                FROM uretim.planlama p
+                LEFT JOIN siparis.is_emirleri ie ON p.is_emri_id = ie.id
+                LEFT JOIN stok.urunler u ON ie.urun_id = u.id
+                LEFT JOIN tanim.uretim_hatlari h ON p.hat_id = h.id
+                WHERE p.tarih = ? AND p.vardiya_id = ?
+                  AND (p.durum IS NULL OR p.durum <> 'IPTAL')
+                ORDER BY p.sira_no, p.id
+            """, (tarih, vardiya_id))
 
-            cur.execute("""
-                SELECT pu.id, pu.urun_ref, pu.recete_no, pu.tip, pu.aski_tip,
-                       pu.kapasite, pu.stok_aski, pu.bara_aski, pu.haftalik_ihtiyac,
-                       pu.oncelik,
-                       u.urun_kodu, u.urun_adi, u.bara_aski_suresi_dk
-                FROM kaplama.plan_urunler pu
-                LEFT JOIN stok.urunler u ON pu.urun_ref = u.id
-                WHERE pu.plan_id = ?
-                ORDER BY pu.oncelik, pu.tip, pu.id
-            """, (self._plan_id,))
             jobs = []
             for r in cur.fetchall():
-                bara_aski = int(r[7] or 0)
-                kapasite = int(r[5] or 0)
-                haftalik = int(r[8] or 0)
-                # Bir baradaki parca sayisi = bara_aski x kapasite
-                parca_per_bara = bara_aski * kapasite
-                # Tahmini haftalik bara adedi
-                bara_haftalik = math.ceil(haftalik / parca_per_bara) if parca_per_bara else 0
-                # Tahmini bu vardiya bara (5 gun x 3 vardiya = 15)
-                bara_vardiya = math.ceil(bara_haftalik / 15) if bara_haftalik else 0
+                hat_kod = (r[4] or '').upper()
+                # Hat kodundan tipi cikar (E-KTL -> KTL, E-ZNNI -> ZNNI, E-ON -> ON)
+                if 'KTL' in hat_kod: tip = 'KTL'
+                elif 'ZN' in hat_kod: tip = 'ZNNI'
+                elif 'ON' in hat_kod: tip = 'ON'
+                else: tip = (r[12] or '').upper() or hat_kod
 
                 jobs.append({
-                    'plan_urun_id': int(r[0]),
-                    'urun_id': int(r[1]) if r[1] else None,
-                    'recete_no': r[2] or '',
-                    'tip': r[3] or '',
-                    'aski_tip': r[4] or '',
-                    'kapasite': kapasite,
-                    'bara_aski': bara_aski,
-                    'haftalik_ihtiyac': haftalik,
-                    'oncelik': r[9] or 'normal',
-                    'urun_kodu': r[10] or '-',
-                    'urun_adi': r[11] or '',
-                    'aski_suresi_dk': int(r[12] or 0),
-                    # Editable alanlar
-                    'bara_adedi': bara_vardiya,
-                    'secili': False,
+                    'planlama_id': int(r[0]),
+                    'is_emri_id': int(r[6]) if r[6] else None,
+                    'is_emri_no': r[7] or '',
+                    'urun_id': int(r[8]) if r[8] else None,
+                    'urun_kodu': r[9] or '-',
+                    'urun_adi': r[10] or '',
+                    'aski_suresi_dk': int(r[11] or 0),
+                    'tip': tip,
+                    'hat_kod': r[4] or '',
+                    'hat_ad': r[5] or '',
+                    'bara_adedi': int(r[13] or 0),
+                    'baslangic_saat': r[14],
+                    'bitis_saat': r[15],
+                    'durum': r[16] or 'PLANLANDI',
+                    'sira_no': int(r[17] or 0),
+                    'oncelik': str(r[18] or 'normal'),
+                    # Editable alanlar - default olarak hepsi secili
+                    'secili': True,
                 })
             conn.close()
             return jobs
@@ -263,19 +264,24 @@ class AskilamaPlanlamaPage(BasePage):
 
                 cur.execute("""
                     INSERT INTO uretim.askilama_plan
-                        (tarih, vardiya_id, plan_urun_id, urun_id, recete_no, hat_tipi,
+                        (tarih, vardiya_id, planlama_id, is_emri_id, urun_id,
+                         recete_no, hat_tipi,
                          bara_adedi, aski_suresi_dk, toplam_dk, gercek_dk,
                          baslangic, bitis, saat_override_bas, saat_override_bit,
                          oncelik, durum)
                     OUTPUT INSERTED.id
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, N'ONAYLI')
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, N'ONAYLI')
                 """, (
-                    tarih, v['id'], job['plan_urun_id'], job['urun_id'],
-                    job['recete_no'], job['tip'],
+                    tarih, v['id'],
+                    job.get('planlama_id'),
+                    job.get('is_emri_id'),
+                    job.get('urun_id'),
+                    job.get('is_emri_no', ''),
+                    job['tip'],
                     int(job['bara_adedi']), int(job['aski_suresi_dk']),
                     toplam_dk, gercek_dk,
                     cur_bas, bitis_tm, override_bas, override_bit,
-                    job['oncelik']
+                    job.get('oncelik', 'normal')
                 ))
                 plan_id = int(cur.fetchone()[0])
 
@@ -517,9 +523,9 @@ class AskilamaPlanlamaPage(BasePage):
         self.job_table = QTableWidget()
         self.job_table.setColumnCount(11)
         self.job_table.setHorizontalHeaderLabels([
-            "Seç", "Hat", "Ürün Kodu", "Ürün Adı", "Reçete",
-            "Askı Tip", "Haft. İhtiyaç", "Bara Adedi",
-            "Askı Süresi (dk)", "Toplam Süre", "Öncelik"
+            "Seç", "Hat", "İş Emri", "Ürün Kodu", "Ürün Adı",
+            "Bara Adedi", "Askı Süresi (dk)", "Toplam Süre",
+            "Başlangıç", "Durum", "Öncelik"
         ])
         self.job_table.setStyleSheet(f"""
             QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
@@ -532,15 +538,15 @@ class AskilamaPlanlamaPage(BasePage):
         """)
         self.job_table.setColumnWidth(0, 45)
         self.job_table.setColumnWidth(1, 70)
-        self.job_table.setColumnWidth(2, 110)
-        self.job_table.setColumnWidth(4, 90)
-        self.job_table.setColumnWidth(5, 80)
-        self.job_table.setColumnWidth(6, 110)
-        self.job_table.setColumnWidth(7, 100)
-        self.job_table.setColumnWidth(8, 130)
-        self.job_table.setColumnWidth(9, 110)
-        self.job_table.setColumnWidth(10, 90)
-        self.job_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.job_table.setColumnWidth(2, 160)   # İş Emri
+        self.job_table.setColumnWidth(3, 110)   # Ürün Kodu
+        self.job_table.setColumnWidth(5, 100)   # Bara Adedi
+        self.job_table.setColumnWidth(6, 130)   # Askı Süresi
+        self.job_table.setColumnWidth(7, 110)   # Toplam Süre
+        self.job_table.setColumnWidth(8, 90)    # Başlangıç
+        self.job_table.setColumnWidth(9, 100)   # Durum
+        self.job_table.setColumnWidth(10, 80)   # Öncelik
+        self.job_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.Stretch)
         self.job_table.verticalHeader().setVisible(False)
         self.job_table.setSelectionMode(QAbstractItemView.NoSelection)
         v.addWidget(self.job_table, 1)
@@ -592,45 +598,53 @@ class AskilamaPlanlamaPage(BasePage):
             hh2.addWidget(pill); hh2.addStretch()
             self.job_table.setCellWidget(i, 1, hb2)
 
-            # 2 - Kod
-            self.job_table.setItem(i, 2, QTableWidgetItem(job['urun_kodu']))
-            # 3 - Ad
+            # 2 - İş Emri No
+            ie_item = QTableWidgetItem(job['is_emri_no'])
+            ie_item.setForeground(QColor(brand.INFO))
+            self.job_table.setItem(i, 2, ie_item)
+
+            # 3 - Ürün Kodu
+            self.job_table.setItem(i, 3, QTableWidgetItem(job['urun_kodu']))
+            # 4 - Ürün Adı
             ad_item = QTableWidgetItem(job['urun_adi'])
             ad_item.setForeground(QColor(brand.TEXT_DIM))
-            self.job_table.setItem(i, 3, ad_item)
-            # 4 - Recete
-            self.job_table.setItem(i, 4, QTableWidgetItem(job['recete_no']))
-            # 5 - Aski tip
-            self.job_table.setItem(i, 5, QTableWidgetItem(job['aski_tip']))
-            # 6 - Haftalik ihtiyac
-            hi_item = QTableWidgetItem(f"{job['haftalik_ihtiyac']:,}")
-            hi_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.job_table.setItem(i, 6, hi_item)
+            self.job_table.setItem(i, 4, ad_item)
 
-            # 7 - Bara adedi (editable)
+            # 5 - Bara adedi (editable)
             bara_sp = QSpinBox(); bara_sp.setMaximum(9999); bara_sp.setValue(job['bara_adedi'])
             bara_sp.setStyleSheet(
                 f"QSpinBox {{ background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; "
                 f"color: {brand.TEXT}; padding: 4px 6px; border-radius: 5px; }}"
             )
             bara_sp.valueChanged.connect(lambda val, idx=i: self._on_job_bara(idx, val))
-            self.job_table.setCellWidget(i, 7, bara_sp)
+            self.job_table.setCellWidget(i, 5, bara_sp)
 
-            # 8 - Aski suresi (editable)
+            # 6 - Aski suresi (editable)
             sure_sp = QSpinBox(); sure_sp.setMaximum(999); sure_sp.setValue(job['aski_suresi_dk'])
             sure_sp.setStyleSheet(
                 f"QSpinBox {{ background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; "
                 f"color: {brand.TEXT}; padding: 4px 6px; border-radius: 5px; }}"
             )
             sure_sp.valueChanged.connect(lambda val, idx=i: self._on_job_sure(idx, val))
-            self.job_table.setCellWidget(i, 8, sure_sp)
+            self.job_table.setCellWidget(i, 6, sure_sp)
 
-            # 9 - Toplam sure (calculated)
+            # 7 - Toplam sure (calculated)
             toplam = job['bara_adedi'] * job['aski_suresi_dk']
             top_item = QTableWidgetItem(f"{toplam} dk")
             top_item.setForeground(QColor(brand.SUCCESS))
             top_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.job_table.setItem(i, 9, top_item)
+            self.job_table.setItem(i, 7, top_item)
+
+            # 8 - Baslangic saati
+            bas = job['baslangic_saat']
+            bas_str = bas.strftime('%H:%M') if hasattr(bas, 'strftime') else '-'
+            self.job_table.setItem(i, 8, QTableWidgetItem(bas_str))
+
+            # 9 - Durum
+            durum_item = QTableWidgetItem(job['durum'])
+            durum_clr = brand.SUCCESS if job['durum'] == 'PLANLANDI' else brand.TEXT_DIM
+            durum_item.setForeground(QColor(durum_clr))
+            self.job_table.setItem(i, 9, durum_item)
 
             # 10 - Oncelik
             self.job_table.setItem(i, 10, QTableWidgetItem(job['oncelik']))
@@ -853,7 +867,11 @@ class AskilamaPlanlamaPage(BasePage):
 
     def _refresh_plan(self):
         tarih = self.tarih_edit.date().toPython()
-        self._jobs = self._load_plan_urunler(tarih)
+        v = self._get_selected_vardiya()
+        if not v:
+            self._jobs = []
+        else:
+            self._jobs = self._load_plan_urunler(tarih, v['id'])
         self._assignments = {}
         self._fill_job_table()
 
@@ -870,7 +888,7 @@ class AskilamaPlanlamaPage(BasePage):
             it = QTableWidgetItem(f"{toplam} dk")
             it.setForeground(QColor(brand.SUCCESS))
             it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.job_table.setItem(idx, 9, it)
+            self.job_table.setItem(idx, 7, it)
             self._update_summary()
 
     def _on_job_sure(self, idx: int, val: int):
@@ -880,7 +898,7 @@ class AskilamaPlanlamaPage(BasePage):
             it = QTableWidgetItem(f"{toplam} dk")
             it.setForeground(QColor(brand.SUCCESS))
             it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.job_table.setItem(idx, 9, it)
+            self.job_table.setItem(idx, 7, it)
             self._update_summary()
 
     def _on_select_all(self):
