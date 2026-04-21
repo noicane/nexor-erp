@@ -170,11 +170,12 @@ class GunlukPlanlamaPage(BasePage):
                 aski_dongu_dk = aski_sure + recete_sure + bosaltma_sure
                 aski_turnover = (VARDIYA_DK / aski_dongu_dk) if aski_dongu_dk > 0 else 0
 
-                # Bir bara = aski_adedi aski topluluğu. Kaç bara paralel gidebilir?
-                paralel_bara = (stok_aski // aski_adedi) if aski_adedi > 0 else 0
+                # 1 aski = 1 bara (user: 'askiyi 1 baralik aski bar gibi dusun')
+                # Paralel bara = stok_aski (elimdeki aski sayisi)
+                paralel_bara = stok_aski
                 # Vardiyada toplam bara kapasitesi (aski kisidi):
                 aski_kapasite = int(paralel_bara * aski_turnover) if aski_turnover else 0
-                # aski_ihtiyaci = artik bara sayisina dönüştü (vardiyada yapılacak bara)
+                # Bara sayisi ihtiyaci
                 aski_ihtiyaci = yapilacak_bara
 
                 # Gerekli personel (vardiya basi)
@@ -313,7 +314,7 @@ class GunlukPlanlamaPage(BasePage):
                 toplam_personel_dk = yapilacak_bara * personel_dk_per_bara
                 aski_dongu_dk = ex['aski_sure'] + recete_sure + ex['bosaltma_sure']
                 aski_turnover = (VARDIYA_DK / aski_dongu_dk) if aski_dongu_dk > 0 else 0
-                paralel_bara = (ex['stok_aski'] // ex['aski_adedi']) if ex['aski_adedi'] > 0 else 0
+                paralel_bara = ex['stok_aski']  # 1 aski = 1 bara
                 aski_kapasite = int(paralel_bara * aski_turnover) if aski_turnover else 0
                 aski_ihtiyaci = yapilacak_bara
                 gerekli_personel = toplam_personel_dk / VARDIYA_DK if VARDIYA_DK else 0
@@ -982,8 +983,7 @@ class GunlukPlanlamaPage(BasePage):
             f"Askı döngüsü: {s.get('aski_dongu_dk', 0)} dk\n"
             f"  (asma {s.get('aski_sure_dk', 0)} + reçete {s.get('recete_sure_dk', 0)} + boşaltma {s.get('bosaltma_sure_dk', 0)})\n"
             f"Vardiyada turn: {s.get('aski_turnover', 0)}\n"
-            f"Stok askı: {s.get('stok_aski', 0)} · 1 barada askı: {s.get('aski_adedi', 0)}\n"
-            f"Paralel bara: {s.get('stok_aski', 0) // max(s.get('aski_adedi', 1), 1)}\n"
+            f"Stok askı (= paralel bara): {s.get('stok_aski', 0)}\n"
             f"Vardiya kapasitesi (bara): {aski_kap}\n"
             f"İhtiyaç (bara): {aski_iht}"
         )
