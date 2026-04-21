@@ -40,6 +40,7 @@ MENU_STRUCTURE = [
         {"id": "uretim_durus", "label": "Duruş Kayıtları"},
         {"id": "uretim_vardiya", "label": "Vardiya Raporu"},
         {"id": "kaplama_planlama", "label": "Kaplama Planlama"},
+        {"id": "askilama_planlama", "label": "Askılama Planlama"},
         {"id": "uretim_bara_dashboard", "label": "Bara Dashboard"},
     ]},
     

@@ -822,6 +822,13 @@ class StokDetayDialog(QDialog):
                                                         self.urun_data.get('aski_tipi_id'), 'id', 'ad'))
         g2_layout.addLayout(self._create_editable_field('aski_adedi', 'Askı Adedi', self.urun_data.get('aski_adedi'), 'int'))
         g2_layout.addLayout(self._create_editable_field('bara_adedi', 'Bara Adedi', self.urun_data.get('bara_adedi'), 'int'))
+        g2_layout.addLayout(self._create_editable_field(
+            'bara_aski_suresi_dk', 'Askılama Süresi (Bara)',
+            self.urun_data.get('bara_aski_suresi_dk'), 'int',
+            tooltip="1 kişinin bir barayı asma süresi (dakika).\n"
+                    "Askılama planlamasında personel başı işi süreyi hesaplamakta kullanılır.\n"
+                    "Örn: 4 dk → 20 bara × 4 dk = 80 dk iş, 2 kişi ile 40 dk."
+        ))
         g2_layout.addLayout(self._create_editable_field('pitch_mm', 'Pitch (mm)', self.urun_data.get('pitch_mm'), 'number'))
         layout.addWidget(group2)
         
@@ -1969,14 +1976,17 @@ class StokDetayDialog(QDialog):
         layout.addWidget(title_lbl)
         return frame
     
-    def _create_editable_field(self, key: str, label: str, value, field_type: str = "text", 
-                                max_val: float = 999999, decimals: int = 2) -> QHBoxLayout:
+    def _create_editable_field(self, key: str, label: str, value, field_type: str = "text",
+                                max_val: float = 999999, decimals: int = 2,
+                                tooltip: str = "") -> QHBoxLayout:
         """Düzenlenebilir alan oluştur"""
         row = QHBoxLayout()
-        
+
         lbl = QLabel(f"{label}:")
         lbl.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px;")
         lbl.setFixedWidth(140)
+        if tooltip:
+            lbl.setToolTip(tooltip)
         row.addWidget(lbl)
         
         if field_type == "text":
@@ -2003,9 +2013,11 @@ class StokDetayDialog(QDialog):
             widget.setText(str(value) if value else "")
         
         widget.setEnabled(False)
+        if tooltip:
+            widget.setToolTip(tooltip)
         self.edit_widgets[key] = widget
         row.addWidget(widget, 1)
-        
+
         return row
     
     def _create_editable_combo(self, key: str, label: str, items: list, current_value, 
