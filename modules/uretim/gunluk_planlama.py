@@ -118,7 +118,10 @@ class GunlukPlanlamaPage(BasePage):
                        ISNULL(r.toplam_sure_dk, 0) as recete_sure,
                        ISNULL(u.bara_adedi, 0) as bara_adedi,
                        ISNULL(u.gunluk_ihtiyac_adet, 0) as ihtiyac,
-                       ISNULL(u.stok_aski_adet, 0) as stok_aski,
+                       ISNULL(u.stok_aski_adet, 1) as stok_aski,
+                       ISNULL(u.aski_adedi, 1) as aski_adedi,
+                       ISNULL(u.bara_bosaltma_suresi_dk, 40) as bosaltma_sure,
+                       ISNULL(u.bara_aski_suresi_dk, 40) as aski_sure,
                        ISNULL((
                            SELECT SUM(sb.miktar - ISNULL(sb.rezerve_miktar, 0))
                            FROM stok.stok_bakiye sb
@@ -141,19 +144,45 @@ class GunlukPlanlamaPage(BasePage):
                 ORDER BY kt.kod, c.unvan, u.urun_kodu
             """)
             talepler = []
+            VARDIYA_DK = 480  # sabit vardiya suresi
             for r in cur.fetchall():
                 bara_adedi_kart = int(r[10] or 0)
                 ihtiyac = int(r[11] or 0)
                 recete_sure = int(r[9] or 0)
+                stok_aski = int(r[12] or 1)
+                aski_adedi = int(r[13] or 1)      # 1 barada kac aski
+                bosaltma_sure = int(r[14] or 40)
+                aski_sure = int(r[15] or 40)
+                stok_adet = int(r[16] or 0)
+                stok_bekleyen = int(r[17] or 0)
 
-                # 1 barada parca sayisi = stok.urunler.bara_adedi
-                # Yapilacak bara = ceil(ihtiyac / bara_adedi_kart)
+                # Yapilacak bara = ceil(ihtiyac / 1 barada parca)
                 yapilacak_bara = math.ceil(ihtiyac / bara_adedi_kart) if bara_adedi_kart > 0 else 0
-                toplam_dk = yapilacak_bara * recete_sure
 
-                stok_aski = int(r[12] or 0)
-                stok_adet = int(r[13] or 0)
-                stok_bekleyen = int(r[14] or 0)
+                # Hat is yuku (bara hat uzerinde kalma toplami)
+                toplam_hat_dk = yapilacak_bara * recete_sure
+
+                # Personel is yuku (asma + bosaltma, bara basina)
+                personel_dk_per_bara = aski_sure + bosaltma_sure
+                toplam_personel_dk = yapilacak_bara * personel_dk_per_bara
+
+                # Aski dongu: asma + hat + bosaltma (1 askinin mesgul suresi)
+                aski_dongu_dk = aski_sure + recete_sure + bosaltma_sure
+                aski_turnover = (VARDIYA_DK / aski_dongu_dk) if aski_dongu_dk > 0 else 0
+
+                # Bir bara = aski_adedi aski topluluğu. Kaç bara paralel gidebilir?
+                paralel_bara = (stok_aski // aski_adedi) if aski_adedi > 0 else 0
+                # Vardiyada toplam bara kapasitesi (aski kisidi):
+                aski_kapasite = int(paralel_bara * aski_turnover) if aski_turnover else 0
+                # aski_ihtiyaci = artik bara sayisina dönüştü (vardiyada yapılacak bara)
+                aski_ihtiyaci = yapilacak_bara
+
+                # Gerekli personel (vardiya basi)
+                gerekli_personel = toplam_personel_dk / VARDIYA_DK if VARDIYA_DK else 0
+
+                # Cevrim tamamlanabilir mi
+                aski_yeter = (aski_kapasite >= aski_ihtiyaci) if aski_ihtiyaci else True
+
                 talepler.append({
                     'urun_id': int(r[0]),
                     'urun_kodu': r[1] or '',
@@ -168,8 +197,19 @@ class GunlukPlanlamaPage(BasePage):
                     'bara_parca': bara_adedi_kart,
                     'ihtiyac_adet': ihtiyac,
                     'yapilacak_bara': yapilacak_bara,
-                    'toplam_dk': toplam_dk,
+                    'toplam_dk': toplam_hat_dk,            # geriye uyumluluk icin
+                    'toplam_hat_dk': toplam_hat_dk,
+                    'toplam_personel_dk': toplam_personel_dk,
                     'stok_aski': stok_aski,
+                    'aski_adedi': aski_adedi,
+                    'aski_sure_dk': aski_sure,
+                    'bosaltma_sure_dk': bosaltma_sure,
+                    'aski_dongu_dk': aski_dongu_dk,
+                    'aski_turnover': round(aski_turnover, 2),
+                    'aski_kapasite': aski_kapasite,
+                    'aski_ihtiyaci': aski_ihtiyaci,
+                    'aski_yeter': aski_yeter,
+                    'gerekli_personel': round(gerekli_personel, 2),
                     'stok_adet': stok_adet,
                     'stok_bekleyen': stok_bekleyen,
                 })
@@ -241,12 +281,49 @@ class GunlukPlanlamaPage(BasePage):
                 ORDER BY s.sira_no, s.id
             """, (taslak_id,))
             rows = []
-            for r in cur.fetchall():
+            VARDIYA_DK = 480
+            # Urun id'lerini topla, aski/bosaltma/aski_adedi'ni tek sorgu ile cek
+            row_data = cur.fetchall()
+            urun_ids = list(set(int(r[3]) for r in row_data if r[3]))
+            extras = {}
+            if urun_ids:
+                ph = ','.join(['?'] * len(urun_ids))
+                cur.execute(f"""
+                    SELECT id,
+                           ISNULL(stok_aski_adet, 1),
+                           ISNULL(aski_adedi, 1),
+                           ISNULL(bara_aski_suresi_dk, 40),
+                           ISNULL(bara_bosaltma_suresi_dk, 40)
+                    FROM stok.urunler WHERE id IN ({ph})
+                """, urun_ids)
+                for er in cur.fetchall():
+                    extras[int(er[0])] = {
+                        'stok_aski': int(er[1]),
+                        'aski_adedi': int(er[2]),
+                        'aski_sure': int(er[3]),
+                        'bosaltma_sure': int(er[4]),
+                    }
+
+            for r in row_data:
+                urun_id = int(r[3]) if r[3] else None
+                ex = extras.get(urun_id, {'stok_aski': 1, 'aski_adedi': 1, 'aski_sure': 40, 'bosaltma_sure': 40})
+                yapilacak_bara = int(r[12] or 0)
+                recete_sure = int(r[14] or 0)
+                personel_dk_per_bara = ex['aski_sure'] + ex['bosaltma_sure']
+                toplam_personel_dk = yapilacak_bara * personel_dk_per_bara
+                aski_dongu_dk = ex['aski_sure'] + recete_sure + ex['bosaltma_sure']
+                aski_turnover = (VARDIYA_DK / aski_dongu_dk) if aski_dongu_dk > 0 else 0
+                paralel_bara = (ex['stok_aski'] // ex['aski_adedi']) if ex['aski_adedi'] > 0 else 0
+                aski_kapasite = int(paralel_bara * aski_turnover) if aski_turnover else 0
+                aski_ihtiyaci = yapilacak_bara
+                gerekli_personel = toplam_personel_dk / VARDIYA_DK if VARDIYA_DK else 0
+                aski_yeter = (aski_kapasite >= aski_ihtiyaci) if aski_ihtiyaci else True
+
                 rows.append({
                     'id': int(r[0]),
                     'vardiya_id': int(r[1]) if r[1] else None,
                     'vardiya_kod': r[2] or '',
-                    'urun_id': int(r[3]) if r[3] else None,
+                    'urun_id': urun_id,
                     'urun_kodu': r[4] or '',
                     'urun_adi': r[5] or '',
                     'cari_id': int(r[6]) if r[6] else None,
@@ -255,14 +332,26 @@ class GunlukPlanlamaPage(BasePage):
                     'kap_kod': r[9] or '',
                     'recete_no': r[10] or '',
                     'ihtiyac_adet': int(r[11] or 0),
-                    'yapilacak_bara': int(r[12] or 0),
+                    'yapilacak_bara': yapilacak_bara,
                     'bara_parca': int(r[13] or 0),
-                    'recete_sure_dk': int(r[14] or 0),
+                    'recete_sure_dk': recete_sure,
                     'toplam_dk': int(r[15] or 0),
+                    'toplam_hat_dk': int(r[15] or 0),
+                    'toplam_personel_dk': toplam_personel_dk,
                     'sira_no': int(r[16] or 0),
                     'kaynak': r[17] or 'ANLASMA',
                     'stok_adet': int(r[18] or 0),
                     'stok_bekleyen': int(r[19] or 0),
+                    'stok_aski': ex['stok_aski'],
+                    'aski_adedi': ex['aski_adedi'],
+                    'aski_sure_dk': ex['aski_sure'],
+                    'bosaltma_sure_dk': ex['bosaltma_sure'],
+                    'aski_dongu_dk': aski_dongu_dk,
+                    'aski_turnover': round(aski_turnover, 2),
+                    'aski_kapasite': aski_kapasite,
+                    'aski_ihtiyaci': aski_ihtiyaci,
+                    'aski_yeter': aski_yeter,
+                    'gerekli_personel': round(gerekli_personel, 2),
                 })
             conn.close()
             return rows
@@ -422,6 +511,16 @@ class GunlukPlanlamaPage(BasePage):
         )
         fl.addWidget(self.durum_lbl)
 
+        fl.addWidget(QLabel("Askıcı sayısı:", styleSheet=ls))
+        self.askici_spin = QSpinBox()
+        self.askici_spin.setRange(0, 99)
+        self.askici_spin.setValue(5)
+        self.askici_spin.setStyleSheet(f"QSpinBox {{ {ins} max-width: 70px; }}")
+        self.askici_spin.setToolTip("Bu vardiyada görevli askılamacı sayısı.\n"
+                                     "Planlamanın altında gerekli vs mevcut karşılaştırması gösterilir.")
+        self.askici_spin.valueChanged.connect(lambda _: self._fill_table())
+        fl.addWidget(self.askici_spin)
+
         fl.addStretch()
 
         self.olustur_btn = QPushButton("⚡ Otomatik Oluştur")
@@ -459,17 +558,21 @@ class GunlukPlanlamaPage(BasePage):
         self.stat_ktl = self._mk_stat("KTL İş Yükü", "0 dk", brand.SUCCESS)
         self.stat_zn = self._mk_stat("ZN/ZNNI", "0 dk", brand.INFO)
         self.stat_diger = self._mk_stat("Diğer", "0 dk", brand.WARNING)
-        for s in (self.stat_talep, self.stat_bara, self.stat_ktl, self.stat_zn, self.stat_diger):
+        self.stat_personel = self._mk_stat("Gerekli / Mevcut Kişi", "0 / 0", brand.WARNING)
+        for s in (self.stat_talep, self.stat_bara, self.stat_ktl, self.stat_zn,
+                  self.stat_diger, self.stat_personel):
             sl.addWidget(s)
         layout.addWidget(sf)
 
         # Tablo
         self.table = QTableWidget()
-        self.table.setColumnCount(13)
+        self.table.setColumnCount(15)
         self.table.setHorizontalHeaderLabels([
             "Müşteri", "Kap.", "Ürün Kodu", "Ürün Adı",
             "İhtiyaç", "Onaylı", "Bekleyen", "Bara/Parça", "Yapılacak Bara",
-            "Reçete Süre (dk)", "Toplam (dk)", "Vardiya", "Kaynak"
+            "Reçete Süre (dk)", "Toplam (dk)",
+            "Gerekli Kişi", "Durum",
+            "Vardiya", "Kaynak"
         ])
         self.table.setStyleSheet(f"""
             QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
@@ -482,15 +585,17 @@ class GunlukPlanlamaPage(BasePage):
         self.table.setColumnWidth(0, 160)   # Müşteri
         self.table.setColumnWidth(1, 70)    # Kap
         self.table.setColumnWidth(2, 110)   # Kod
-        self.table.setColumnWidth(4, 90)    # İhtiyaç
-        self.table.setColumnWidth(5, 90)    # Onaylı
-        self.table.setColumnWidth(6, 90)    # Bekleyen
-        self.table.setColumnWidth(7, 90)    # Bara/Parça
-        self.table.setColumnWidth(8, 110)   # Yapılacak Bara
-        self.table.setColumnWidth(9, 120)   # Reçete Süre
-        self.table.setColumnWidth(10, 110)  # Toplam
-        self.table.setColumnWidth(11, 100)  # Vardiya
-        self.table.setColumnWidth(12, 90)   # Kaynak
+        self.table.setColumnWidth(4, 80)    # İhtiyaç
+        self.table.setColumnWidth(5, 80)    # Onaylı
+        self.table.setColumnWidth(6, 80)    # Bekleyen
+        self.table.setColumnWidth(7, 80)    # Bara/Parça
+        self.table.setColumnWidth(8, 100)   # Yapılacak Bara
+        self.table.setColumnWidth(9, 100)   # Reçete Süre
+        self.table.setColumnWidth(10, 100)  # Toplam
+        self.table.setColumnWidth(11, 90)   # Gerekli Kişi
+        self.table.setColumnWidth(12, 120)  # Durum
+        self.table.setColumnWidth(13, 90)   # Vardiya
+        self.table.setColumnWidth(14, 80)   # Kaynak
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
@@ -616,11 +721,11 @@ class GunlukPlanlamaPage(BasePage):
             f = self._bold_font(); f.setPointSize(11); hdr.setFont(f)
             hdr.setBackground(QColor(bg.replace('0.15)', '0.25)')) if 'rgba' in bg else QColor(bg))
             self.table.setItem(row, 0, hdr)
-            for c in range(1, 13):
+            for c in range(1, 15):
                 empty = QTableWidgetItem("")
                 empty.setBackground(QColor(35, 45, 60))
                 self.table.setItem(row, c, empty)
-            self.table.setSpan(row, 0, 1, 13)
+            self.table.setSpan(row, 0, 1, 15)
             self.table.setRowHeight(row, 34)
             row += 1
 
@@ -685,8 +790,8 @@ class GunlukPlanlamaPage(BasePage):
             it.setForeground(QColor(brand.SUCCESS))
             it.setBackground(QColor(25, 31, 41))
             self.table.setItem(row, 10, it)
-            # 11, 12 boş (vardiya, kaynak)
-            for c in (11, 12):
+            # 11-14 boş (gerekli kişi, durum, vardiya, kaynak)
+            for c in (11, 12, 13, 14):
                 e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
                 self.table.setItem(row, c, e)
             self.table.setRowHeight(row, 36)
@@ -744,8 +849,8 @@ class GunlukPlanlamaPage(BasePage):
             it.setFont(f); it.setForeground(QColor(brand.PRIMARY))
             it.setBackground(QColor(45, 15, 20))
             self.table.setItem(row, 10, it)
-            # 11, 12 boş
-            for c in (11, 12):
+            # 11-14 boş
+            for c in (11, 12, 13, 14):
                 e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
                 self.table.setItem(row, c, e)
             self.table.setRowHeight(row, 40)
@@ -842,7 +947,49 @@ class GunlukPlanlamaPage(BasePage):
         it.setFont(self._bold_font())
         self.table.setItem(row, 10, it)
 
-        # 11 Vardiya combo
+        # 11 Gerekli Kişi
+        gp = s.get('gerekli_personel', 0) or 0
+        it = QTableWidgetItem(f"{gp:.2f}")
+        it.setTextAlignment(Qt.AlignCenter)
+        it.setFont(self._bold_font())
+        it.setForeground(QColor(brand.INFO))
+        it.setToolTip(
+            f"Toplam personel iş yükü: {s.get('toplam_personel_dk', 0)} dk\n"
+            f"Bara × (asma+boşaltma) = {s['yapilacak_bara']} × "
+            f"({s.get('aski_sure_dk', 0)}+{s.get('bosaltma_sure_dk', 0)})\n"
+            f"Gerekli = iş/vardiya = {gp:.2f} kişi"
+        )
+        self.table.setItem(row, 11, it)
+
+        # 12 Durum
+        aski_yeter = s.get('aski_yeter', True)
+        aski_kap = s.get('aski_kapasite', 0)
+        aski_iht = s.get('aski_ihtiyaci', 0)
+        if aski_yeter and aski_kap > 0:
+            durum_txt = f"✓ OK ({aski_kap}/{aski_iht})"
+            durum_clr = brand.SUCCESS
+        elif aski_kap == 0 or s.get('stok_aski', 1) < s.get('aski_adedi', 1):
+            durum_txt = "⚠ Askı yetmez"
+            durum_clr = brand.ERROR
+        else:
+            durum_txt = f"⚠ {aski_kap}/{aski_iht} bara"
+            durum_clr = brand.WARNING
+        it = QTableWidgetItem(durum_txt)
+        it.setTextAlignment(Qt.AlignCenter)
+        it.setForeground(QColor(durum_clr))
+        it.setFont(self._bold_font())
+        it.setToolTip(
+            f"Askı döngüsü: {s.get('aski_dongu_dk', 0)} dk\n"
+            f"  (asma {s.get('aski_sure_dk', 0)} + reçete {s.get('recete_sure_dk', 0)} + boşaltma {s.get('bosaltma_sure_dk', 0)})\n"
+            f"Vardiyada turn: {s.get('aski_turnover', 0)}\n"
+            f"Stok askı: {s.get('stok_aski', 0)} · 1 barada askı: {s.get('aski_adedi', 0)}\n"
+            f"Paralel bara: {s.get('stok_aski', 0) // max(s.get('aski_adedi', 1), 1)}\n"
+            f"Vardiya kapasitesi (bara): {aski_kap}\n"
+            f"İhtiyaç (bara): {aski_iht}"
+        )
+        self.table.setItem(row, 12, it)
+
+        # 13 Vardiya combo
         vc = QComboBox()
         vc.addItem("— seç —", None)
         for v in self._vardiyalar:
@@ -856,12 +1003,12 @@ class GunlukPlanlamaPage(BasePage):
             f"color: {brand.TEXT}; padding: 4px 8px; border-radius: 5px; }}"
         )
         vc.currentIndexChanged.connect(lambda _, idx=satir_idx, cb=vc: self._on_vardiya_change(idx, cb))
-        self.table.setCellWidget(row, 11, vc)
+        self.table.setCellWidget(row, 13, vc)
 
-        # 12 Kaynak
+        # 14 Kaynak
         it = QTableWidgetItem(s.get('kaynak', 'ANLASMA'))
         it.setForeground(QColor(brand.TEXT_DIM))
-        self.table.setItem(row, 12, it)
+        self.table.setItem(row, 14, it)
 
         self.table.setRowHeight(row, 42)
 
@@ -875,11 +1022,23 @@ class GunlukPlanlamaPage(BasePage):
         ktl = sum(s['toplam_dk'] for s in self._satirlar if s.get('kap_kod', '').upper() in ('KTF', 'KATAFOREZ'))
         zn = sum(s['toplam_dk'] for s in self._satirlar if s.get('kap_kod', '').upper() in ('ZN', 'ZNNI', 'ASITZN'))
         diger = sum(s['toplam_dk'] for s in self._satirlar) - ktl - zn
+        gerekli_toplam = sum(s.get('gerekli_personel', 0) or 0 for s in self._satirlar)
+        mevcut = self.askici_spin.value() if hasattr(self, 'askici_spin') else 0
         self._set_stat(self.stat_talep, str(talep))
         self._set_stat(self.stat_bara, f"{toplam_bara:,}")
         self._set_stat(self.stat_ktl, f"{ktl:,} dk")
         self._set_stat(self.stat_zn, f"{zn:,} dk")
         self._set_stat(self.stat_diger, f"{diger:,} dk")
+        # Personel karsilastirma rengi
+        per_lbl = self.stat_personel.findChild(QLabel, "stat_value")
+        if per_lbl:
+            per_lbl.setText(f"{gerekli_toplam:.1f} / {mevcut}")
+            if mevcut == 0:
+                per_lbl.setStyleSheet(f"color: {brand.WARNING}; font-size: 18px; font-weight: 700;")
+            elif gerekli_toplam <= mevcut:
+                per_lbl.setStyleSheet(f"color: {brand.SUCCESS}; font-size: 18px; font-weight: 700;")
+            else:
+                per_lbl.setStyleSheet(f"color: {brand.ERROR}; font-size: 18px; font-weight: 700;")
 
     # ==================================================================
     # BUTON HANDLER

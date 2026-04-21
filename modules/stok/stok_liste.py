@@ -840,6 +840,14 @@ class StokDetayDialog(QDialog):
                     "Örn: 4 dk → 20 bara × 4 dk = 80 dk iş, 2 kişi ile 40 dk."
         ))
         g2_layout.addLayout(self._create_editable_field(
+            'bara_bosaltma_suresi_dk', 'Boşaltma Süresi (Bara)',
+            self.urun_data.get('bara_bosaltma_suresi_dk'), 'int',
+            tooltip="1 kişinin bir barayı boşaltma süresi (dakika).\n"
+                    "Asma ve boşaltma ayrı hesaplanır — toplam personel yükü\n"
+                    "= bara × (askılama + boşaltma). Askı döngüsü ise asma +\n"
+                    "reçete (hatta geçiş) + boşaltma toplamıdır."
+        ))
+        g2_layout.addLayout(self._create_editable_field(
             'gunluk_ihtiyac_adet', 'Günlük İhtiyaç (Adet)',
             self.urun_data.get('gunluk_ihtiyac_adet'), 'int',
             tooltip="Müşteri ile anlaşılan günlük ortalama adet.\n"
