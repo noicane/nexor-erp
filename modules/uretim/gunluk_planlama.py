@@ -159,6 +159,7 @@ class GunlukPlanlamaPage(BasePage):
             """)
             talepler = []
             VARDIYA_DK = 480  # sabit vardiya suresi
+            hat_bara_map = self._load_hat_bara_kapasite()  # {kap_kod: bara_stok}
             for r in cur.fetchall():
                 bara_adedi_kart = int(r[10] or 0)
                 ihtiyac = int(r[11] or 0)
@@ -184,10 +185,18 @@ class GunlukPlanlamaPage(BasePage):
                 aski_dongu_dk = aski_sure + recete_sure + bosaltma_sure
                 aski_turnover = (VARDIYA_DK / aski_dongu_dk) if aski_dongu_dk > 0 else 0
 
-                # 1 aski = 1 bara (user: 'askiyi 1 baralik aski bar gibi dusun')
-                # Paralel bara = stok_aski (elimdeki aski sayisi)
-                paralel_bara = stok_aski
-                # Vardiyada toplam bara kapasitesi (aski kisidi):
+                # 1 aski = 1 bara. Paralel bara = min(stok_aski, hat.bara_stok)
+                kap_kod = (r[6] or '').upper()
+                hat_bara_stok = hat_bara_map.get(kap_kod, 0)
+                paralel_bara = min(stok_aski, hat_bara_stok) if hat_bara_stok > 0 else stok_aski
+                # Hangi kisit? (darbogaz)
+                if hat_bara_stok > 0 and stok_aski > hat_bara_stok:
+                    darbogaz = 'BARA'  # hat'ta yeterli bara yok
+                elif hat_bara_stok > 0 and stok_aski < hat_bara_stok:
+                    darbogaz = 'ASKI'
+                else:
+                    darbogaz = 'ESIT'
+                # Vardiyada toplam bara kapasitesi:
                 aski_kapasite = int(paralel_bara * aski_turnover) if aski_turnover else 0
                 # Bara sayisi ihtiyaci
                 aski_ihtiyaci = yapilacak_bara
@@ -239,6 +248,9 @@ class GunlukPlanlamaPage(BasePage):
                     'aski_kapasite': aski_kapasite,
                     'aski_ihtiyaci': aski_ihtiyaci,
                     'aski_yeter': aski_yeter,
+                    'hat_bara_stok': hat_bara_stok,
+                    'paralel_bara': paralel_bara,
+                    'darbogaz': darbogaz,
                     'gerekli_personel': round(gerekli_personel, 2),
                     'batch_count': batch_count,
                     'is_sure_dk': is_sure_dk,
@@ -318,6 +330,7 @@ class GunlukPlanlamaPage(BasePage):
             """, (taslak_id,))
             rows = []
             VARDIYA_DK = 480
+            hat_bara_map = self._load_hat_bara_kapasite()
             # Urun id'lerini topla, aski/bosaltma/aski_adedi'ni tek sorgu ile cek
             row_data = cur.fetchall()
             urun_ids = list(set(int(r[3]) for r in row_data if r[3]))
@@ -349,7 +362,16 @@ class GunlukPlanlamaPage(BasePage):
                 toplam_personel_dk = yapilacak_bara * personel_dk_per_bara
                 aski_dongu_dk = ex['aski_sure'] + recete_sure + ex['bosaltma_sure']
                 aski_turnover = (VARDIYA_DK / aski_dongu_dk) if aski_dongu_dk > 0 else 0
-                paralel_bara = ex['stok_aski']  # 1 aski = 1 bara
+                # Paralel bara = min(stok_aski, hat.bara_stok) — hat kisidi
+                kap_kod = (r[9] or '').upper()
+                hat_bara_stok = hat_bara_map.get(kap_kod, 0)
+                paralel_bara = min(ex['stok_aski'], hat_bara_stok) if hat_bara_stok > 0 else ex['stok_aski']
+                if hat_bara_stok > 0 and ex['stok_aski'] > hat_bara_stok:
+                    darbogaz = 'BARA'
+                elif hat_bara_stok > 0 and ex['stok_aski'] < hat_bara_stok:
+                    darbogaz = 'ASKI'
+                else:
+                    darbogaz = 'ESIT'
                 aski_kapasite = int(paralel_bara * aski_turnover) if aski_turnover else 0
                 aski_ihtiyaci = yapilacak_bara
                 gerekli_personel = toplam_personel_dk / VARDIYA_DK if VARDIYA_DK else 0
@@ -387,6 +409,9 @@ class GunlukPlanlamaPage(BasePage):
                     'aski_kapasite': aski_kapasite,
                     'aski_ihtiyaci': aski_ihtiyaci,
                     'aski_yeter': aski_yeter,
+                    'hat_bara_stok': hat_bara_stok,
+                    'paralel_bara': paralel_bara,
+                    'darbogaz': darbogaz,
                     'gerekli_personel': round(gerekli_personel, 2),
                 })
             conn.close()
@@ -1082,7 +1107,10 @@ class GunlukPlanlamaPage(BasePage):
             f"Askı döngüsü: {s.get('aski_dongu_dk', 0)} dk\n"
             f"  (asma {s.get('aski_sure_dk', 0)} + reçete {s.get('recete_sure_dk', 0)} + boşaltma {s.get('bosaltma_sure_dk', 0)})\n"
             f"Vardiyada turn: {s.get('aski_turnover', 0)}\n"
-            f"Stok askı (= paralel bara): {s.get('stok_aski', 0)}\n"
+            f"Stok askı: {s.get('stok_aski', 0)}\n"
+            f"Hat bara stok: {s.get('hat_bara_stok', 0)}\n"
+            f"Paralel bara: {s.get('paralel_bara', 0)} (= min(askı, hat bara))\n"
+            f"Darboğaz: {s.get('darbogaz', '-')}\n"
             f"Vardiya kapasitesi (bara): {aski_kap}\n"
             f"İhtiyaç (bara): {aski_iht}"
         )
