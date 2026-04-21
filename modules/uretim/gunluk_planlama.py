@@ -120,16 +120,17 @@ class GunlukPlanlamaPage(BasePage):
                        ISNULL(u.gunluk_ihtiyac_adet, 0) as ihtiyac,
                        ISNULL(u.stok_aski_adet, 0) as stok_aski,
                        ISNULL((
-                           SELECT SUM(sb.miktar)
+                           SELECT SUM(sb.miktar - ISNULL(sb.rezerve_miktar, 0))
                            FROM stok.stok_bakiye sb
                            WHERE sb.urun_id = u.id
-                             AND sb.kalite_durumu = 'ONAYLANDI'
+                             AND sb.durum_kodu = 'GIRIS_ONAY'
+                             AND sb.miktar - ISNULL(sb.rezerve_miktar, 0) > 0
                        ), 0) as stok_adet,
                        ISNULL((
                            SELECT SUM(sb.miktar)
                            FROM stok.stok_bakiye sb
                            WHERE sb.urun_id = u.id
-                             AND sb.kalite_durumu IN ('BEKLIYOR', 'KONTROL_BEKLIYOR')
+                             AND sb.durum_kodu IN ('KABUL', 'GIRIS_KALITE')
                        ), 0) as stok_bekleyen
                 FROM stok.urunler u
                 LEFT JOIN musteri.cariler c ON u.cari_id = c.id
@@ -212,6 +213,7 @@ class GunlukPlanlamaPage(BasePage):
             return None
 
     def _satirlari_yukle(self, taslak_id: int) -> list:
+        """Taslak satirlarini yuklerken canli stok bilgisini de join ile cek."""
         try:
             conn = get_db_connection(); cur = conn.cursor()
             cur.execute("""
@@ -221,7 +223,15 @@ class GunlukPlanlamaPage(BasePage):
                        s.kaplama_turu_id, kt.kod as kap_kod,
                        s.recete_no, s.talep_adet, s.bara_adedi,
                        s.bara_parca, s.bara_sure_dk, s.toplam_sure_dk,
-                       s.sira_no, s.kaynak
+                       s.sira_no, s.kaynak,
+                       ISNULL((SELECT SUM(sb.miktar - ISNULL(sb.rezerve_miktar, 0))
+                               FROM stok.stok_bakiye sb
+                               WHERE sb.urun_id = s.urun_id
+                                 AND sb.durum_kodu = 'GIRIS_ONAY'
+                                 AND sb.miktar - ISNULL(sb.rezerve_miktar, 0) > 0), 0) as stok_adet,
+                       ISNULL((SELECT SUM(sb.miktar) FROM stok.stok_bakiye sb
+                               WHERE sb.urun_id = s.urun_id
+                                 AND sb.durum_kodu IN ('KABUL', 'GIRIS_KALITE')), 0) as stok_bekleyen
                 FROM planlama.gunluk_taslak_satir s
                 LEFT JOIN tanim.vardiyalar v ON s.vardiya_id = v.id
                 LEFT JOIN stok.urunler u ON s.urun_id = u.id
@@ -251,11 +261,14 @@ class GunlukPlanlamaPage(BasePage):
                     'toplam_dk': int(r[15] or 0),
                     'sira_no': int(r[16] or 0),
                     'kaynak': r[17] or 'ANLASMA',
+                    'stok_adet': int(r[18] or 0),
+                    'stok_bekleyen': int(r[19] or 0),
                 })
             conn.close()
             return rows
         except Exception as e:
             print(f"[GunlukPlan] satir yukleme hata: {e}")
+            import traceback; traceback.print_exc()
             return []
 
     def _satirlari_kaydet(self, taslak_id: int, satirlar: list):
