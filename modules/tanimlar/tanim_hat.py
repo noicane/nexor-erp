@@ -272,6 +272,17 @@ class UretimHatDialog(QDialog):
         self.kapasite_input.setSuffix(" m²/saat")
         self.kapasite_input.setValue(self.data.get('kapasite_saat_m2', 0) or 0)
         form.addRow("Kapasite:", self.kapasite_input)
+
+        self.bara_stok_input = QSpinBox()
+        self.bara_stok_input.setRange(0, 9999)
+        self.bara_stok_input.setSuffix(" bara")
+        self.bara_stok_input.setValue(self.data.get('bara_stok_adet', 0) or 0)
+        self.bara_stok_input.setToolTip(
+            "Bu hatta elimde fiziksel olarak kaç bara var (dönen bara stoğu).\n"
+            "Dönüşümlü kullanılır: vardiyada toplam bara kapasitesi =\n"
+            "bara_stok × (vardiya_dk / reçete_sure_dk)"
+        )
+        form.addRow("Bara Stok Adedi:", self.bara_stok_input)
         
         color_layout = QHBoxLayout()
         self.color_btn = QPushButton()
@@ -352,17 +363,18 @@ class UretimHatDialog(QDialog):
                      self.kaplama_combo.currentData(), self.hat_tipi_combo.currentData(),
                      self.sira_input.value(), self.robot_input.value(), self.pozisyon_input.value(),
                      self.devir_input.value(), self.kapasite_input.value(), self.selected_color,
-                     self.aktif_combo.currentData())
-            
+                     self.aktif_combo.currentData(), self.bara_stok_input.value() or None)
+
             if self.hat_id:
                 cursor.execute("""UPDATE tanim.uretim_hatlari SET hat_bolum_id=?, kod=?, ad=?, kisa_ad=?,
                     kaplama_turu_id=?, hat_tipi=?, sira_no=?, robot_sayisi=?, toplam_pozisyon=?,
-                    devir_suresi_dk=?, kapasite_saat_m2=?, renk_kodu=?, aktif_mi=?, guncelleme_tarihi=GETDATE()
+                    devir_suresi_dk=?, kapasite_saat_m2=?, renk_kodu=?, aktif_mi=?, bara_stok_adet=?,
+                    guncelleme_tarihi=GETDATE()
                     WHERE id=?""", params + (self.hat_id,))
             else:
                 cursor.execute("""INSERT INTO tanim.uretim_hatlari (hat_bolum_id, kod, ad, kisa_ad,
                     kaplama_turu_id, hat_tipi, sira_no, robot_sayisi, toplam_pozisyon, devir_suresi_dk,
-                    kapasite_saat_m2, renk_kodu, aktif_mi) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""", params)
+                    kapasite_saat_m2, renk_kodu, aktif_mi, bara_stok_adet) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", params)
             
             conn.commit()
             conn.close()

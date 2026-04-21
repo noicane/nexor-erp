@@ -68,6 +68,26 @@ class GunlukPlanlamaPage(BasePage):
     # ==================================================================
     # DB
     # ==================================================================
+    def _load_hat_bara_kapasite(self) -> dict:
+        """Kaplama turune gore hat bara stok adedini dondurur.
+        Return: {'KTF': 30, 'ZN': 20, ...}
+        """
+        try:
+            conn = get_db_connection(); cur = conn.cursor()
+            cur.execute("""
+                SELECT kt.kod,
+                       ISNULL(SUM(ISNULL(h.bara_stok_adet, 0)), 0) as bara_stok
+                FROM tanim.uretim_hatlari h
+                LEFT JOIN tanim.kaplama_turleri kt ON h.kaplama_turu_id = kt.id
+                WHERE h.aktif_mi = 1 AND (h.silindi_mi IS NULL OR h.silindi_mi = 0)
+                  AND kt.kod IS NOT NULL
+                GROUP BY kt.kod
+            """)
+            return {r[0]: int(r[1] or 0) for r in cur.fetchall()}
+        except Exception as e:
+            print(f"[GunlukPlan] bara kapasite hata: {e}")
+            return {}
+
     def _load_vardiyalar(self):
         try:
             conn = get_db_connection(); cur = conn.cursor()
@@ -97,7 +117,8 @@ class GunlukPlanlamaPage(BasePage):
                        u.recete_no,
                        ISNULL(r.toplam_sure_dk, 0) as recete_sure,
                        ISNULL(u.bara_adedi, 0) as bara_adedi,
-                       ISNULL(u.gunluk_ihtiyac_adet, 0) as ihtiyac
+                       ISNULL(u.gunluk_ihtiyac_adet, 0) as ihtiyac,
+                       ISNULL(u.stok_aski_adet, 0) as stok_aski
                 FROM stok.urunler u
                 LEFT JOIN musteri.cariler c ON u.cari_id = c.id
                 LEFT JOIN tanim.kaplama_turleri kt ON u.kaplama_turu_id = kt.id
@@ -117,6 +138,7 @@ class GunlukPlanlamaPage(BasePage):
                 yapilacak_bara = math.ceil(ihtiyac / bara_adedi_kart) if bara_adedi_kart > 0 else 0
                 toplam_dk = yapilacak_bara * recete_sure
 
+                stok_aski = int(r[12] or 0)
                 talepler.append({
                     'urun_id': int(r[0]),
                     'urun_kodu': r[1] or '',
@@ -132,6 +154,7 @@ class GunlukPlanlamaPage(BasePage):
                     'ihtiyac_adet': ihtiyac,
                     'yapilacak_bara': yapilacak_bara,
                     'toplam_dk': toplam_dk,
+                    'stok_aski': stok_aski,
                 })
             conn.close()
             return talepler
@@ -521,6 +544,10 @@ class GunlukPlanlamaPage(BasePage):
         total_rows = len(self._satirlar) + (grup_sayisi * 2) + (1 if grup_sayisi > 0 else 0)
         self.table.setRowCount(total_rows)
 
+        # Bara kapasitesi (hat bazli) + vardiya suresi
+        bara_kap_map = self._load_hat_bara_kapasite()
+        vardiya_dk = 480  # default bir vardiya
+
         row = 0
         grand_adet = 0; grand_bara = 0; grand_dk = 0
         # Satir -> gercek index esleme (vardiya combo handler icin)
@@ -528,10 +555,33 @@ class GunlukPlanlamaPage(BasePage):
 
         for kod, items in sirali_gruplar:
             bg, fg, short = _kap_color(kod)
+            grup_bara_ihtiyac = sum(s['yapilacak_bara'] for s in items)
+            grup_toplam_dk = sum(s['toplam_dk'] for s in items)
+            # Ortalama recete suresi
+            avg_recete = (grup_toplam_dk / grup_bara_ihtiyac) if grup_bara_ihtiyac else 0
+            # Turnover (1 vardiyada kac kez)
+            turnover = (vardiya_dk / avg_recete) if avg_recete else 0
+            # Bara kapasitesi
+            bara_stok = bara_kap_map.get(kod, 0)
+            bara_kapasite = int(bara_stok * turnover) if turnover else 0
+
+            # Uyari metni
+            if bara_stok == 0:
+                kap_txt = "  ⚠ Bara stok tanımsız"
+                kap_color = brand.WARNING
+            elif grup_bara_ihtiyac > bara_kapasite and bara_kapasite > 0:
+                kap_txt = f"  ⚠ {grup_bara_ihtiyac} bara gerekli / {bara_kapasite} kapasite — YETMEZ"
+                kap_color = brand.ERROR
+            elif bara_kapasite > 0:
+                kap_txt = f"  ✓ {grup_bara_ihtiyac} bara / {bara_kapasite} kapasite"
+                kap_color = brand.SUCCESS
+            else:
+                kap_txt = ""
+                kap_color = brand.TEXT_DIM
 
             # --- Grup Header ---
-            hdr = QTableWidgetItem(f"  ▼ {short}  ({len(items)} talep)")
-            hdr.setForeground(QColor(fg))
+            hdr = QTableWidgetItem(f"  ▼ {short}  ({len(items)} talep){kap_txt}")
+            hdr.setForeground(QColor(kap_color if kap_txt else fg))
             f = self._bold_font(); f.setPointSize(11); hdr.setFont(f)
             hdr.setBackground(QColor(bg.replace('0.15)', '0.25)')) if 'rgba' in bg else QColor(bg))
             self.table.setItem(row, 0, hdr)

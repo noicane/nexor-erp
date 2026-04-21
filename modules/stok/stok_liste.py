@@ -820,7 +820,17 @@ class StokDetayDialog(QDialog):
         aski_tipleri = self._load_aski_tipleri()
         g2_layout.addLayout(self._create_editable_combo('aski_tipi_id', 'Askı Tipi', aski_tipleri,
                                                         self.urun_data.get('aski_tipi_id'), 'id', 'ad'))
-        g2_layout.addLayout(self._create_editable_field('aski_adedi', 'Askı Adedi', self.urun_data.get('aski_adedi'), 'int'))
+        g2_layout.addLayout(self._create_editable_field(
+            'aski_adedi', 'Askı Adedi', self.urun_data.get('aski_adedi'), 'int',
+            tooltip="1 barada kaç askı asılır (teknik değer)."
+        ))
+        g2_layout.addLayout(self._create_editable_field(
+            'stok_aski_adet', 'Stok Askı Adedi',
+            self.urun_data.get('stok_aski_adet'), 'int',
+            tooltip="Bu üründen elimde kaç askı var (fiziksel stok).\n"
+                    "Askılar dönüşümlü kullanılır — vardiyada aynı askı birden\n"
+                    "fazla tur atabilir. Formül: kapasite = stok_aski × (vardiya / reçete)"
+        ))
         g2_layout.addLayout(self._create_editable_field('bara_adedi', 'Bara Adedi', self.urun_data.get('bara_adedi'), 'int'))
         g2_layout.addLayout(self._create_editable_field(
             'bara_aski_suresi_dk', 'Askılama Süresi (Bara)',
