@@ -1153,8 +1153,24 @@ def stok_aktar(urun_id: int, sifre: str = "") -> ZirveAktarimSonuc:
                           'DEGISTIRMETARIHI', 'ILKKAYITTARIHI'):
             overrides[tarih_kol] = now
 
-        # 7) INSERT SQL'i olustur (identity kolonlari haric)
-        skip_cols = {'REF'}  # IDENTITY
+        # 6b) Identity / computed / timestamp (rowversion) kolonlarini tespit et
+        # Bu tipler INSERT'e dahil edilemez
+        skip_cols = {'REF'}  # REF IDENTITY (yedek)
+        try:
+            zc.execute("""
+                SELECT c.name, c.is_identity, c.is_computed, t.name AS type_name
+                FROM sys.columns c
+                JOIN sys.types t ON c.user_type_id = t.user_type_id
+                WHERE c.object_id = OBJECT_ID('dbo.STOKGEN')
+            """)
+            for meta_row in zc.fetchall():
+                col_name, is_ident, is_comp, type_name = meta_row
+                if is_ident or is_comp or (type_name or '').lower() in ('timestamp', 'rowversion'):
+                    skip_cols.add(col_name.upper())
+        except Exception as meta_err:
+            print(f"[Zirve] STOKGEN metadata okuma uyarisi: {meta_err}")
+
+        # 7) INSERT SQL'i olustur
         insert_cols = []
         insert_vals = []
         for i, col in enumerate(cols):
