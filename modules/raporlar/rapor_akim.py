@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor
 from collections import defaultdict
+from datetime import date, timedelta, datetime as _dt
+import calendar
 
 from components.base_page import BasePage
 from core.database import get_db_connection
@@ -79,16 +81,81 @@ class RaporAkimPage(BasePage):
             font-size: 13px; font-weight: 500; }}
             QPushButton:hover {{ border-color: {brand.PRIMARY}; }}"""
 
-        btn_gunluk = QPushButton("Gunluk")
-        btn_gunluk.setStyleSheet(btn_s)
-        btn_gunluk.clicked.connect(self._set_gunluk)
-        fl.addWidget(btn_gunluk)
+        # Periyot secici
+        fl.addWidget(QLabel("Periyot:", styleSheet=ls))
+        self.periyot_combo = QComboBox()
+        self.periyot_combo.addItem("Gunluk", "gunluk")
+        self.periyot_combo.addItem("Haftalik", "haftalik")
+        self.periyot_combo.addItem("Aylik", "aylik")
+        self.periyot_combo.addItem("2 Tarih Arasi", "aralik")
+        self.periyot_combo.setStyleSheet(cs)
+        self.periyot_combo.currentIndexChanged.connect(self._on_periyot_changed)
+        fl.addWidget(self.periyot_combo)
 
-        fl.addWidget(QLabel("Tarih:", styleSheet=ls))
+        # Gunluk: tek tarih
+        self.gunluk_container = QWidget()
+        gl = QHBoxLayout(self.gunluk_container); gl.setContentsMargins(0, 0, 0, 0); gl.setSpacing(8)
+        gl.addWidget(QLabel("Tarih:", styleSheet=ls))
         self.tarih = QDateEdit()
         self.tarih.setCalendarPopup(True); self.tarih.setDisplayFormat("dd.MM.yyyy")
         self.tarih.setDate(QDate.currentDate()); self.tarih.setStyleSheet(ds)
-        fl.addWidget(self.tarih)
+        gl.addWidget(self.tarih)
+        fl.addWidget(self.gunluk_container)
+
+        # Haftalik: hafta icinden bir tarih
+        self.haftalik_container = QWidget()
+        hl = QHBoxLayout(self.haftalik_container); hl.setContentsMargins(0, 0, 0, 0); hl.setSpacing(8)
+        hl.addWidget(QLabel("Hafta:", styleSheet=ls))
+        self.hafta_tarih = QDateEdit()
+        self.hafta_tarih.setCalendarPopup(True); self.hafta_tarih.setDisplayFormat("dd.MM.yyyy")
+        self.hafta_tarih.setDate(QDate.currentDate()); self.hafta_tarih.setStyleSheet(ds)
+        hl.addWidget(self.hafta_tarih)
+        self.hafta_aralik_lbl = QLabel("", styleSheet=f"color: {brand.TEXT_MUTED}; font-size: 12px;")
+        hl.addWidget(self.hafta_aralik_lbl)
+        self.hafta_tarih.dateChanged.connect(self._update_hafta_label)
+        self._update_hafta_label()
+        fl.addWidget(self.haftalik_container)
+
+        # Aylik: ay + yil
+        self.aylik_container = QWidget()
+        al = QHBoxLayout(self.aylik_container); al.setContentsMargins(0, 0, 0, 0); al.setSpacing(8)
+        al.addWidget(QLabel("Ay:", styleSheet=ls))
+        self.ay_combo = QComboBox()
+        aylar = ["Ocak", "Subat", "Mart", "Nisan", "Mayis", "Haziran",
+                 "Temmuz", "Agustos", "Eylul", "Ekim", "Kasim", "Aralik"]
+        for i, ad in enumerate(aylar, 1):
+            self.ay_combo.addItem(ad, i)
+        self.ay_combo.setCurrentIndex(_dt.now().month - 1)
+        self.ay_combo.setStyleSheet(cs)
+        al.addWidget(self.ay_combo)
+        al.addWidget(QLabel("Yil:", styleSheet=ls))
+        self.yil_combo = QComboBox()
+        cur_year = _dt.now().year
+        for y in range(cur_year, cur_year - 5, -1):
+            self.yil_combo.addItem(str(y), y)
+        self.yil_combo.setStyleSheet(cs)
+        al.addWidget(self.yil_combo)
+        fl.addWidget(self.aylik_container)
+
+        # 2 tarih arasi
+        self.aralik_container = QWidget()
+        rl = QHBoxLayout(self.aralik_container); rl.setContentsMargins(0, 0, 0, 0); rl.setSpacing(8)
+        rl.addWidget(QLabel("Baslangic:", styleSheet=ls))
+        self.bas_tarih = QDateEdit()
+        self.bas_tarih.setCalendarPopup(True); self.bas_tarih.setDisplayFormat("dd.MM.yyyy")
+        self.bas_tarih.setDate(QDate.currentDate().addDays(-7)); self.bas_tarih.setStyleSheet(ds)
+        rl.addWidget(self.bas_tarih)
+        rl.addWidget(QLabel("Bitis:", styleSheet=ls))
+        self.bit_tarih = QDateEdit()
+        self.bit_tarih.setCalendarPopup(True); self.bit_tarih.setDisplayFormat("dd.MM.yyyy")
+        self.bit_tarih.setDate(QDate.currentDate()); self.bit_tarih.setStyleSheet(ds)
+        rl.addWidget(self.bit_tarih)
+        fl.addWidget(self.aralik_container)
+
+        # Baslangicta sadece gunluk gorunsun
+        self.haftalik_container.setVisible(False)
+        self.aylik_container.setVisible(False)
+        self.aralik_container.setVisible(False)
 
         fl.addWidget(QLabel("Hat:", styleSheet=ls))
         self.hat_combo = QComboBox()
@@ -150,8 +217,8 @@ class RaporAkimPage(BasePage):
         bl.addWidget(self.detail_header)
 
         self.detail_table = self._make_table(
-            ["Saat", "Akim (A)", "Voltaj (V)", "Sicaklik (C)", "Recete", "Adim"],
-            [140, 110, 110, 110, 80, 80],
+            ["Tarih / Saat", "Akim (A)", "Voltaj (V)", "Sicaklik (C)", "Recete", "Adim"],
+            [170, 110, 110, 110, 80, 80],
             stretch_col=0
         )
         bl.addWidget(self.detail_table)
@@ -200,9 +267,43 @@ class RaporAkimPage(BasePage):
         lbl = card.findChild(QLabel, "stat_value")
         if lbl: lbl.setText(value)
 
-    def _set_gunluk(self):
-        self.tarih.setDate(QDate.currentDate())
-        self._load_data()
+    def _on_periyot_changed(self):
+        p = self.periyot_combo.currentData()
+        self.gunluk_container.setVisible(p == "gunluk")
+        self.haftalik_container.setVisible(p == "haftalik")
+        self.aylik_container.setVisible(p == "aylik")
+        self.aralik_container.setVisible(p == "aralik")
+
+    def _update_hafta_label(self):
+        try:
+            t = self.hafta_tarih.date().toPython()
+            pzt = t - timedelta(days=t.weekday())
+            paz = pzt + timedelta(days=6)
+            self.hafta_aralik_lbl.setText(f"({pzt.strftime('%d.%m')} - {paz.strftime('%d.%m.%Y')})")
+        except Exception:
+            pass
+
+    def _get_tarih_araligi(self):
+        p = self.periyot_combo.currentData()
+        if p == "haftalik":
+            t = self.hafta_tarih.date().toPython()
+            pzt = t - timedelta(days=t.weekday())
+            paz = pzt + timedelta(days=6)
+            return pzt, paz, "haftalik"
+        if p == "aylik":
+            ay = self.ay_combo.currentData()
+            yil = self.yil_combo.currentData()
+            son_gun = calendar.monthrange(yil, ay)[1]
+            return date(yil, ay, 1), date(yil, ay, son_gun), "aylik"
+        if p == "aralik":
+            b = self.bas_tarih.date().toPython()
+            s = self.bit_tarih.date().toPython()
+            if b > s:
+                b, s = s, b
+            return b, s, "aralik"
+        # gunluk
+        t = self.tarih.date().toPython()
+        return t, t, "gunluk"
 
     # =================================================================
     # TIKLANABILIR FILTRE
@@ -250,7 +351,7 @@ class RaporAkimPage(BasePage):
         self.detail_table.setRowCount(len(kayitlar))
         for i, (tarih, akim, voltaj, sicaklik, recete, adim) in enumerate(kayitlar):
             self.detail_table.setItem(i, 0, QTableWidgetItem(
-                tarih.strftime("%H:%M:%S") if tarih else ""))
+                tarih.strftime("%d.%m.%Y %H:%M:%S") if tarih else ""))
 
             a_item = QTableWidgetItem(f"{akim:,.0f}")
             a_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -273,7 +374,7 @@ class RaporAkimPage(BasePage):
     # DATA
     # =================================================================
     def _load_data(self):
-        tarih = self.tarih.date().toPython()
+        bas, bit, periyot = self._get_tarih_araligi()
         hat_filtre = self.hat_combo.currentData()
 
         self.detail_table.setRowCount(0)
@@ -313,10 +414,10 @@ class RaporAkimPage(BasePage):
                        recete_no, recete_adim, tarih_doldurma
                 FROM uretim.plc_tarihce
                 WHERE akim IS NOT NULL AND akim > 0
-                  AND CAST(kayit_tarihi AS DATE) = ?
+                  AND CAST(kayit_tarihi AS DATE) BETWEEN ? AND ?
                   {hat_where}
                 ORDER BY hat_kodu, kazan_no, kayit_tarihi
-            ''', (tarih,))
+            ''', (bas, bit))
             rows = cur.fetchall()
 
             # Kazan bazli grupla

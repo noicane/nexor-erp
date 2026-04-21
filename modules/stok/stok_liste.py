@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
     QScrollArea, QWidget, QTabWidget, QDoubleSpinBox, QSpinBox,
     QTextEdit, QSplitter, QFileDialog, QCheckBox, QGroupBox,
     QFormLayout, QCompleter, QTreeWidget, QTreeWidgetItem,
-    QProgressBar, QListWidget, QListWidgetItem
+    QProgressBar, QListWidget, QListWidgetItem, QApplication
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap, QColor, QFont, QIcon
@@ -449,6 +449,42 @@ class StokDetayDialog(QDialog):
         """)
         self.toggle_aktif_btn.clicked.connect(self._toggle_aktif)
         h_layout.addWidget(self.toggle_aktif_btn)
+
+        # Zirve'ye Aktar
+        zirve_stk_mevcut = self.urun_data.get('zirve_stk') if isinstance(self.urun_data, dict) else None
+        self.zirve_btn = QPushButton(
+            f"✓ Zirve: {zirve_stk_mevcut}" if zirve_stk_mevcut else "Zirve'ye Aktar"
+        )
+        self.zirve_btn.setCursor(Qt.PointingHandCursor)
+        self.zirve_btn.setFixedHeight(brand.sp(34))
+        if zirve_stk_mevcut:
+            self.zirve_btn.setEnabled(False)
+            self.zirve_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {brand.SUCCESS_SOFT};
+                    color: {brand.SUCCESS};
+                    border: 1px solid {brand.SUCCESS};
+                    border-radius: {brand.R_SM}px;
+                    padding: 0 {brand.SP_5}px;
+                    font-size: {brand.FS_BODY_SM}px;
+                    font-weight: {brand.FW_SEMIBOLD};
+                }}
+            """)
+        else:
+            self.zirve_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {brand.INFO};
+                    color: white;
+                    border: none;
+                    border-radius: {brand.R_SM}px;
+                    padding: 0 {brand.SP_5}px;
+                    font-size: {brand.FS_BODY_SM}px;
+                    font-weight: {brand.FW_SEMIBOLD};
+                }}
+                QPushButton:hover {{ background: {brand.PRIMARY_HOVER}; }}
+            """)
+            self.zirve_btn.clicked.connect(self._zirveye_aktar)
+        h_layout.addWidget(self.zirve_btn)
 
         # Düzenle — primary buton
         self.edit_btn = QPushButton("Düzenle")
@@ -2451,6 +2487,75 @@ class StokDetayDialog(QDialog):
         """)
         self.toggle_aktif_btn.setText("Pasif Yap" if is_aktif else "Aktif Yap")
         # Buton stili ghost — degismiyor
+
+    def _zirveye_aktar(self):
+        """Stok kartini Zirve'ye aktar (sifre dogrulamasi ile)."""
+        from PySide6.QtWidgets import QInputDialog, QLineEdit
+        from core.zirve_entegrasyon import stok_aktar
+
+        urun_kodu = self.urun_data.get('urun_kodu', '') if isinstance(self.urun_data, dict) else ''
+        urun_adi = self.urun_data.get('urun_adi', '') if isinstance(self.urun_data, dict) else ''
+
+        # 1) On onay
+        onay = QMessageBox.question(
+            self,
+            "Zirve'ye Aktarim",
+            f"Bu stok karti Zirve'ye aktarilacak:\n\n"
+            f"Kod: {urun_kodu}\n"
+            f"Adi: {urun_adi}\n\n"
+            f"Devam etmek icin sifre istenecek. Emin misiniz?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        if onay != QMessageBox.Yes:
+            return
+
+        # 2) Sifre sor
+        sifre, ok = QInputDialog.getText(
+            self,
+            "Aktarim Sifresi",
+            f"Zirve aktarim sifresini girin:\n({urun_kodu} - {urun_adi})",
+            QLineEdit.Password
+        )
+        if not ok or not sifre:
+            return
+
+        # 3) Aktar
+        self.zirve_btn.setEnabled(False)
+        self.zirve_btn.setText("Aktariliyor...")
+        QApplication.processEvents()
+
+        try:
+            sonuc = stok_aktar(self.urun_id, sifre)
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Beklenmeyen hata:\n{e}")
+            self.zirve_btn.setEnabled(True)
+            self.zirve_btn.setText("Zirve'ye Aktar")
+            return
+
+        if sonuc.basarili:
+            QMessageBox.information(self, "Basarili", sonuc.mesaj)
+            # Butonu guncelle
+            self.zirve_btn.setText(f"✓ Zirve: {sonuc.zirve_evrakno}")
+            self.zirve_btn.setEnabled(False)
+            self.zirve_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: {brand.SUCCESS_SOFT};
+                    color: {brand.SUCCESS};
+                    border: 1px solid {brand.SUCCESS};
+                    border-radius: {brand.R_SM}px;
+                    padding: 0 {brand.SP_5}px;
+                    font-size: {brand.FS_BODY_SM}px;
+                    font-weight: {brand.FW_SEMIBOLD};
+                }}
+            """)
+            # Cache'i guncelle
+            if isinstance(self.urun_data, dict):
+                self.urun_data['zirve_stk'] = sonuc.zirve_evrakno
+        else:
+            QMessageBox.warning(self, "Aktarim Basarisiz", sonuc.hata or "Bilinmeyen hata")
+            self.zirve_btn.setEnabled(True)
+            self.zirve_btn.setText("Zirve'ye Aktar")
 
     def _toggle_edit_mode(self):
         if self.edit_mode:

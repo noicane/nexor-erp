@@ -36,6 +36,11 @@ ZIRVE_DEPOREF = 1         # Varsayılan depo
 ZIRVE_KULLANICI = 'NEXOR'
 ZIRVE_KDVY = 20.0         # Varsayılan KDV %
 
+# Zirve'ye stok aktariminda sorulan onay sifresi.
+# Bu sifre harici sistemde degisiklik yapmadan once ikinci guvenlik kontrolu saglar.
+# Degistirmek icin bu sabiti duzenleyin.
+ZIRVE_AKTARIM_SIFRESI = 'zirve2026'
+
 
 @dataclass
 class ZirveAktarimSonuc:
@@ -48,26 +53,86 @@ class ZirveAktarimSonuc:
 
 
 def _get_zirve_connection():
-    """Zirve ATLAS_KATAFOREZ_2026T veritabanına bağlantı"""
+    """Zirve ATLAS_KATAFOREZ_2026T veritabanına bağlantı.
+
+    Oncelik sirasi:
+        1. db_manager'da tanimli 'ZIRVE' baglantisi (sistem_veritabani_baglantilari)
+        2. db_manager'daki ERP credentials'i + DATABASE override
+        3. UDL dosyasi (Nexor.UDL)
+        4. C:/NEXOR/config.json
+        5. Environment variables (son care)
+    """
+    server = None
+    user = None
+    password = None
+    driver = 'ODBC Driver 18 for SQL Server'
+
+    # 1) db_manager'da ZIRVE tanimli mi?
     try:
-        config_path = "C:/NEXOR/config.json"
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-        db = config.get('database', {})
-        server = db.get('server', r'192.168.10.66\SQLEXPRESS')
-        user = db.get('user', 'MERP')
-        pwd_b64 = db.get('password', '')
-        try:
-            password = base64.b64decode(pwd_b64).decode()
-        except Exception:
-            password = pwd_b64
+        from core.database_manager import db_manager
+        if 'ZIRVE' in db_manager.get_available_connections():
+            return db_manager.get_connection('ZIRVE')
     except Exception:
+        pass
+
+    # 2) ERP credentials'i al, DATABASE'i override et
+    try:
+        from core.database_manager import db_manager
+        erp_cfg = db_manager._configs.get('ERP') if hasattr(db_manager, '_configs') else None
+        if erp_cfg and erp_cfg.get('user') and erp_cfg.get('password'):
+            server = erp_cfg.get('server')
+            user = erp_cfg.get('user')
+            password = erp_cfg.get('password')
+            driver = erp_cfg.get('driver', driver)
+    except Exception:
+        pass
+
+    # 3) UDL dosyasi
+    if not user or not password:
+        try:
+            from core.external_config import _UDL_FILE, parse_udl_file
+            if _UDL_FILE and parse_udl_file:
+                udl = parse_udl_file(_UDL_FILE)
+                if udl and udl.get('user'):
+                    server = server or udl.get('server')
+                    user = udl.get('user')
+                    password = udl.get('password', '')
+        except Exception:
+            pass
+
+    # 4) C:/NEXOR/config.json (eski davranis)
+    if not user or not password:
+        try:
+            config_path = "C:/NEXOR/config.json"
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            db = config.get('database', {})
+            server = server or db.get('server')
+            user = db.get('user')
+            pwd_b64 = db.get('password', '')
+            try:
+                password = base64.b64decode(pwd_b64).decode()
+            except Exception:
+                password = pwd_b64
+        except Exception:
+            pass
+
+    # 5) Environment variables
+    if not server:
         server = os.environ.get('NEXOR_DB_SERVER', r'192.168.10.66\SQLEXPRESS')
+    if not user:
         user = os.environ.get('NEXOR_DB_USER', '')
+    if not password:
         password = os.environ.get('NEXOR_DB_PASS', '')
 
+    if not user or not password:
+        raise ConnectionError(
+            "Zirve baglantisi icin kullanici/sifre bulunamadi. "
+            "Sistem > Veritabani Baglantilari ekranindan kontrol edin."
+        )
+
     conn = pyodbc.connect(
-        f'DRIVER={{ODBC Driver 18 for SQL Server}};'
+        f'DRIVER={{{driver}}};'
         f'SERVER={server};'
         f'DATABASE=ATLAS_KATAFOREZ_2026T;'
         f'UID={user};PWD={password};'
@@ -930,3 +995,256 @@ def zirve_stok_senkronla(sadece_yeni=False):
             except Exception: pass
 
     return sonuc
+
+
+# ============================================================================
+# NEXOR -> ZIRVE STOK AKTARIMI (tekil kart, butondan tetiklenir)
+# Guvenlik: sifre kontrolu + template-based INSERT + duplicate link
+# ============================================================================
+
+def _ensure_zirve_stk_kolonu(nexor_cursor):
+    """stok.urunler.zirve_stk kolonu yoksa ekle (runtime guard)."""
+    try:
+        nexor_cursor.execute("""
+            IF NOT EXISTS (
+                SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA='stok' AND TABLE_NAME='urunler' AND COLUMN_NAME='zirve_stk'
+            )
+            BEGIN
+                ALTER TABLE stok.urunler ADD zirve_stk NVARCHAR(50) NULL;
+            END
+        """)
+    except Exception:
+        pass
+
+
+def stok_aktar(urun_id: int, sifre: str = "") -> ZirveAktarimSonuc:
+    """
+    Nexor urununu Zirve STOKGEN tablosuna aktarir.
+
+    Guvenlik:
+        - ZIRVE_AKTARIM_SIFRESI ile eslesmezse hic bir islem yapmaz
+        - Nexor'da zirve_stk dolu ise tekrar aktarmaz
+        - Zirve'de ayni STK zaten varsa yeni kayit acmaz, sadece baglar
+
+    Strateji:
+        - Zirve'de en son eklenen bir stok karti TEMPLATE olarak okunur
+        - Tum kolonlar kopyalanir, SADECE kritik alanlar Nexor verisiyle override edilir
+        - Bu sayede NOT NULL / defaults / muhasebe kolonlari korunur
+
+    Args:
+        urun_id: stok.urunler.id
+        sifre: Kullanici tarafindan girilen aktarim sifresi
+
+    Returns:
+        ZirveAktarimSonuc
+    """
+    # 1) Sifre kontrolu
+    if not sifre or sifre != ZIRVE_AKTARIM_SIFRESI:
+        return ZirveAktarimSonuc(
+            basarili=False,
+            hata="Yanlis aktarim sifresi! Islem iptal edildi."
+        )
+
+    nexor_conn = None
+    zirve_conn = None
+    try:
+        # 2) Nexor urun verisi
+        nexor_conn = get_db_connection()
+        nc = nexor_conn.cursor()
+        _ensure_zirve_stk_kolonu(nc)
+
+        nc.execute("""
+            SELECT u.urun_kodu, u.urun_adi, b.kod AS birim_kod,
+                   u.zirve_alis_fiyat, u.zirve_satis_fiyat,
+                   u.notlar, u.zirve_stk,
+                   u.urun_tipi
+            FROM stok.urunler u
+            LEFT JOIN tanim.birimler b ON u.birim_id = b.id
+            WHERE u.id = ?
+        """, (urun_id,))
+        row = nc.fetchone()
+        if not row:
+            return ZirveAktarimSonuc(basarili=False, hata="Nexor'da urun bulunamadi!")
+
+        urun_kodu = (row[0] or '').strip()
+        urun_adi = (row[1] or '').strip()
+        birim_kod = (row[2] or 'AD').strip() or 'AD'
+        alis_fiyat = float(row[3] or 0)
+        satis_fiyat = float(row[4] or 0)
+        notlar = (row[5] or '').strip()
+        mevcut_zirve_stk = row[6]
+        urun_tipi = (row[7] or '').strip()
+
+        if not urun_kodu:
+            return ZirveAktarimSonuc(basarili=False, hata="Urun kodu bos olamaz!")
+
+        if mevcut_zirve_stk:
+            return ZirveAktarimSonuc(
+                basarili=False,
+                hata=f"Bu urun zaten Zirve'ye aktarilmis!\n\n"
+                     f"Zirve STK: {mevcut_zirve_stk}\n"
+                     f"Tekrar aktarim istiyorsaniz once Zirve baglantisini kaldirin."
+            )
+
+        # 3) Zirve baglanti
+        zirve_conn = _get_zirve_connection()
+        zc = zirve_conn.cursor()
+
+        # 4) Zirve'de bu STK zaten var mi?
+        zc.execute("SELECT TOP 1 STK, STA, REF FROM dbo.STOKGEN WHERE STK = ?", (urun_kodu,))
+        mevcut = zc.fetchone()
+        if mevcut:
+            # Link et (yeni kart acmadan)
+            nc.execute("UPDATE stok.urunler SET zirve_stk = ? WHERE id = ?",
+                       (mevcut[0], urun_id))
+            try:
+                nc.execute("""
+                    INSERT INTO entegrasyon.zirve_senkron_log
+                    (islem_tipi, yonu, referans_tablo, referans_id, zirve_id, durum, request_data)
+                    VALUES ('STOK', 'NEXOR_ZIRVE', 'stok.urunler', ?, ?, 'BASARILI',
+                            ?)
+                """, (urun_id, str(mevcut[2]),
+                      f"LINKED STK:{mevcut[0]} (Zirve'de zaten vardi)"))
+            except Exception:
+                pass
+            nexor_conn.commit()
+            return ZirveAktarimSonuc(
+                basarili=True,
+                zirve_sirano=int(mevcut[2]) if mevcut[2] else None,
+                zirve_evrakno=mevcut[0],
+                mesaj=f"Zirve'de ayni STK kodu zaten vardi.\n"
+                      f"Yeni kart acilmadi, mevcut karta baglandi.\n\n"
+                      f"STK: {mevcut[0]}\nSTA: {mevcut[1]}"
+            )
+
+        # 5) Template: Zirve'de en son eklenen uygun bir stok karti
+        zc.execute("""
+            SELECT TOP 1 * FROM dbo.STOKGEN
+            WHERE STK IS NOT NULL AND LTRIM(RTRIM(STK)) <> ''
+            ORDER BY REF DESC
+        """)
+        template_row = zc.fetchone()
+        if not template_row:
+            return ZirveAktarimSonuc(
+                basarili=False,
+                hata="Zirve STOKGEN tablosunda template olarak kullanilacak kart yok!"
+            )
+
+        cols = [d[0] for d in zc.description]
+
+        # 6) Override edilecek alanlar (NEXOR verisi)
+        import uuid as _uuid
+        yeni_p_id = str(_uuid.uuid4()).upper()
+
+        overrides = {
+            'STK': urun_kodu[:50],
+            'STA': (urun_adi or urun_kodu)[:250],
+            'P_ID': yeni_p_id,
+            'BBIRIM': birim_kod[:10],
+            'ALIS1_1': alis_fiyat,
+            'SAT1_1': satis_fiyat,
+            'ACIKLAMA': (notlar or '')[:250],
+            'KULLANICI': ZIRVE_KULLANICI,
+        }
+        # Tarih kolonlari varsa bugune cek
+        now = datetime.now()
+        for tarih_kol in ('TARIH', 'KAYITTARIHI', 'KAYIT_TARIHI', 'OLUSTURMATARIHI',
+                          'DEGISTIRMETARIHI', 'ILKKAYITTARIHI'):
+            overrides[tarih_kol] = now
+
+        # 7) INSERT SQL'i olustur (identity kolonlari haric)
+        skip_cols = {'REF'}  # IDENTITY
+        insert_cols = []
+        insert_vals = []
+        for i, col in enumerate(cols):
+            if col.upper() in skip_cols:
+                continue
+            insert_cols.append(f'[{col}]')
+            key = col.upper()
+            if key in overrides:
+                insert_vals.append(overrides[key])
+            else:
+                insert_vals.append(template_row[i])
+
+        placeholders = ','.join(['?'] * len(insert_cols))
+        col_sql = ','.join(insert_cols)
+        sql = f"INSERT INTO dbo.STOKGEN ({col_sql}) VALUES ({placeholders})"
+
+        zc.execute(sql, insert_vals)
+
+        zc.execute("SELECT IDENT_CURRENT('dbo.STOKGEN')")
+        yeni_ref = int(zc.fetchone()[0])
+
+        zirve_conn.commit()
+
+        # 8) Nexor tarafina baglantiyi yaz + log
+        nc.execute("UPDATE stok.urunler SET zirve_stk = ? WHERE id = ?",
+                   (urun_kodu, urun_id))
+        try:
+            nc.execute("""
+                INSERT INTO entegrasyon.zirve_senkron_log
+                (islem_tipi, yonu, referans_tablo, referans_id, zirve_id, durum, request_data)
+                VALUES ('STOK', 'NEXOR_ZIRVE', 'stok.urunler', ?, ?, 'BASARILI', ?)
+            """, (urun_id, str(yeni_ref),
+                  f"STK:{urun_kodu}, REF:{yeni_ref}, STA:{urun_adi}, "
+                  f"TIP:{urun_tipi}, BIRIM:{birim_kod}"))
+        except Exception:
+            pass
+        nexor_conn.commit()
+
+        return ZirveAktarimSonuc(
+            basarili=True,
+            zirve_sirano=yeni_ref,
+            zirve_evrakno=urun_kodu,
+            zirve_pid=yeni_p_id,
+            mesaj=f"Stok karti Zirve'ye aktarildi!\n\n"
+                  f"STK : {urun_kodu}\n"
+                  f"STA : {urun_adi}\n"
+                  f"REF : {yeni_ref}\n"
+                  f"Birim: {birim_kod}\n"
+                  f"Alis : {alis_fiyat:,.2f}\n"
+                  f"Satis: {satis_fiyat:,.2f}"
+        )
+
+    except Exception as e:
+        # Hata logla
+        try:
+            if nexor_conn:
+                log_cur = nexor_conn.cursor()
+                log_cur.execute("""
+                    INSERT INTO entegrasyon.zirve_senkron_log
+                    (islem_tipi, yonu, referans_tablo, referans_id, durum, hata_mesaji)
+                    VALUES ('STOK', 'NEXOR_ZIRVE', 'stok.urunler', ?, 'HATA', ?)
+                """, (urun_id, str(e)[:500]))
+                nexor_conn.commit()
+        except Exception:
+            pass
+        import traceback
+        traceback.print_exc()
+        return ZirveAktarimSonuc(basarili=False, hata=str(e))
+    finally:
+        if zirve_conn:
+            try: zirve_conn.close()
+            except Exception: pass
+        if nexor_conn:
+            try: nexor_conn.close()
+            except Exception: pass
+
+
+def stok_aktarim_kontrol(urun_id: int) -> dict:
+    """Bir urunun Zirve aktarim durumunu dondurur."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        _ensure_zirve_stk_kolonu(cur)
+        cur.execute("SELECT zirve_stk FROM stok.urunler WHERE id = ?", (urun_id,))
+        row = cur.fetchone()
+        zirve_stk = row[0] if row else None
+        conn.close()
+        return {
+            'aktarildi': bool(zirve_stk),
+            'zirve_stk': zirve_stk
+        }
+    except Exception:
+        return {'aktarildi': False, 'zirve_stk': None}
