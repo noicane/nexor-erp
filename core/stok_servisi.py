@@ -68,7 +68,7 @@ class StokServisi:
         
         # Kullanılabilir stoklar
         stoklar = servis.get_kullanilabilir_stoklar(
-            kalite_durumu='ONAY',
+            kalite_durumu='ONAYLANDI',
             depo_kategorisi='DEPO'
         )
     """
@@ -147,7 +147,7 @@ class StokServisi:
     
     def get_kullanilabilir_stoklar(
         self,
-        kalite_durumu: str = 'ONAY',
+        kalite_durumu: str = 'ONAYLANDI',
         depo_kategorisi: str = None,
         depo_id: int = None,
         urun_id: int = None,
@@ -157,9 +157,9 @@ class StokServisi:
     ) -> List[StokBakiye]:
         """
         Kullanılabilir stokları getir
-        
+
         Args:
-            kalite_durumu: 'ONAY', 'BEKLIYOR', 'RED', 'SARTLI' veya None (tümü)
+            kalite_durumu: 'ONAYLANDI', 'BEKLIYOR', 'RED', 'SARTLI' veya None (tümü)
             depo_kategorisi: 'GIRIS', 'KALITE', 'DEPO', 'URETIM', 'CIKIS' veya None
             depo_id: Belirli depo
             urun_id: Belirli ürün
@@ -310,7 +310,7 @@ class StokServisi:
                 COUNT(DISTINCT sb.lot_no) as lot_sayisi,
                 COUNT(DISTINCT sb.urun_id) as urun_sayisi,
                 SUM(sb.miktar) as toplam_miktar,
-                SUM(CASE WHEN ISNULL(sb.kalite_durumu_v2, sb.kalite_durumu) = 'ONAY' THEN sb.miktar ELSE 0 END) as onayli_miktar,
+                SUM(CASE WHEN ISNULL(sb.kalite_durumu_v2, sb.kalite_durumu) = 'ONAYLANDI' THEN sb.miktar ELSE 0 END) as onayli_miktar,
                 SUM(CASE WHEN ISNULL(sb.kalite_durumu_v2, sb.kalite_durumu) = 'BEKLIYOR' THEN sb.miktar ELSE 0 END) as bekleyen_miktar
             FROM stok.stok_bakiye sb
             WHERE sb.depo_id = ? AND sb.miktar > 0
@@ -427,7 +427,7 @@ class StokServisi:
         
         return (True, bakiye.kullanilabilir_miktar, "OK")
     
-    def kalite_uygun_mu(self, stok_bakiye_id: int, gereken_durum: str = 'ONAY') -> tuple:
+    def kalite_uygun_mu(self, stok_bakiye_id: int, gereken_durum: str = 'ONAYLANDI') -> tuple:
         """
         Kalite durumu kontrolü
         

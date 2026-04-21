@@ -782,9 +782,15 @@ class SayimDetayDialog(QDialog):
             spin.setStyleSheet(cell_input_css)
             spin.setProperty("detay_id", detay_id)
             spin.setProperty("sistem", sistem)
+            spin.blockSignals(True)
             if row[6] is not None:
                 spin.setValue(float(row[6]))
-            spin.valueChanged.connect(lambda val, r=i, sp=spin: self._miktar_degisti(r, sp))
+            spin.blockSignals(False)
+            spin.setProperty("dirty", False)
+            spin.valueChanged.connect(
+                lambda val, r=i, sp=spin: (sp.setProperty("dirty", True),
+                                            self._miktar_degisti(r, sp))
+            )
             self.tbl_detay.setCellWidget(i, 5, spin)
 
             fark_val = float(row[7]) if row[7] is not None else None
@@ -829,14 +835,15 @@ class SayimDetayDialog(QDialog):
             self.tbl_detay.setRowHidden(i, text not in kod and text not in ad)
 
     def _kaydet(self):
-        """Sayilan miktarlari kaydet"""
+        """Sayilan miktarlari kaydet (sadece kullanici tarafindan degistirilen satirlar)"""
         conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            saved = 0
             for i in range(self.tbl_detay.rowCount()):
                 spin = self.tbl_detay.cellWidget(i, 5)
-                if spin is None:
+                if spin is None or not spin.property("dirty"):
                     continue
                 detay_id = spin.property("detay_id")
                 sayilan = spin.value()
@@ -846,9 +853,13 @@ class SayimDetayDialog(QDialog):
                     UPDATE stok.sayim_detaylari SET sayilan_miktar = ?, fark = ?, durum = 'SAYILDI'
                     WHERE id = ?
                 """, (sayilan, fark, detay_id))
+                saved += 1
             conn.commit()
             self._load_detaylar()
-            QMessageBox.information(self, "Bilgi", "Sayim verileri kaydedildi.")
+            if saved:
+                QMessageBox.information(self, "Bilgi", f"{saved} kalem kaydedildi.")
+            else:
+                QMessageBox.information(self, "Bilgi", "Kaydedilecek degisiklik yok.")
         except Exception as e:
             QMessageBox.critical(self, "Hata", str(e))
         finally:
@@ -917,7 +928,7 @@ class SayimDetayDialog(QDialog):
                                 (urun_id, depo_id, lot_no, miktar, rezerve_miktar,
                                  bloke_mi, kalite_durumu, durum_kodu,
                                  giris_tarihi, son_hareket_tarihi)
-                                VALUES (?, ?, ?, ?, 0, 0, 'ONAY', 'SAYIM', GETDATE(), GETDATE())
+                                VALUES (?, ?, ?, ?, 0, 0, 'ONAYLANDI', 'SAYIM', GETDATE(), GETDATE())
                             """, (urun_id, depo_id, ref_lot, fark))
                         else:
                             ref_lot = 'YOK'
@@ -948,14 +959,14 @@ class SayimDetayDialog(QDialog):
                     pass
 
     def _kaydet_silent(self):
-        """Sessiz kaydet (mesaj gostermeden)"""
+        """Sessiz kaydet (sadece kullanici tarafindan degistirilen satirlar)"""
         conn = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             for i in range(self.tbl_detay.rowCount()):
                 spin = self.tbl_detay.cellWidget(i, 5)
-                if spin is None:
+                if spin is None or not spin.property("dirty"):
                     continue
                 detay_id = spin.property("detay_id")
                 sayilan = spin.value()

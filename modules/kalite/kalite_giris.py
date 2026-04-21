@@ -367,7 +367,7 @@ class KriterKontrolDialog(QDialog):
 
             # Durum belirleme
             if durum == 'ONAYLANDI':
-                kalite_durumu = 'ONAY'
+                kalite_durumu = 'ONAYLANDI'
                 durum_kodu = 'GIRIS_ONAY'
             elif durum == 'RED':
                 kalite_durumu = 'RED'
@@ -987,7 +987,7 @@ class AnaLotDetayDialog(QDialog):
             cursor = conn.cursor()
 
             if durum == 'ONAYLANDI':
-                kalite_durumu = 'ONAY'
+                kalite_durumu = 'ONAYLANDI'
                 durum_kodu = 'GIRIS_ONAY'
             else:
                 kalite_durumu = 'RED'
@@ -1207,7 +1207,7 @@ class KaliteGirisPage(BasePage):
             query = """
                 SELECT sb.parent_lot_no, MAX(u.urun_kodu), COUNT(*),
                     SUM(CASE WHEN sb.kalite_durumu = 'BEKLIYOR' THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN sb.kalite_durumu = 'ONAY' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN sb.kalite_durumu = 'ONAYLANDI' THEN 1 ELSE 0 END),
                     MAX(COALESCE(gi.cari_unvani, sb.cari_unvani))
                 FROM stok.stok_bakiye sb
                 LEFT JOIN stok.urunler u ON sb.urun_id = u.id
@@ -1237,7 +1237,7 @@ class KaliteGirisPage(BasePage):
             cursor.execute("""
                 SELECT
                     SUM(CASE WHEN kalite_durumu = 'BEKLIYOR' THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN kalite_durumu = 'ONAY' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN kalite_durumu = 'ONAYLANDI' THEN 1 ELSE 0 END),
                     COUNT(*)
                 FROM stok.stok_bakiye
                 WHERE parent_lot_no IS NOT NULL

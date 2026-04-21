@@ -436,7 +436,7 @@ class StokKimyasalPage(BasePage):
 
                 durum = str(r[7] or "")
                 durum_item = QTableWidgetItem(durum)
-                if durum == 'ONAY':
+                if durum == 'ONAYLANDI':
                     durum_item.setForeground(QColor(brand.SUCCESS))
                 self.tbl_stok.setItem(i, 6, durum_item)
                 self.tbl_stok.setRowHeight(i, 38)

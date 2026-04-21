@@ -123,7 +123,7 @@ class GunlukPlanlamaPage(BasePage):
                            SELECT SUM(sb.miktar)
                            FROM stok.stok_bakiye sb
                            WHERE sb.urun_id = u.id
-                             AND sb.kalite_durumu = 'ONAY'
+                             AND sb.kalite_durumu = 'ONAYLANDI'
                        ), 0) as stok_adet,
                        ISNULL((
                            SELECT SUM(sb.miktar)
