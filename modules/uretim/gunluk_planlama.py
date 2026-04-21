@@ -499,87 +499,219 @@ class GunlukPlanlamaPage(BasePage):
         self._fill_table()
 
     def _fill_table(self):
-        self.table.setRowCount(len(self._satirlar))
-        for i, s in enumerate(self._satirlar):
-            # 0 Müşteri
-            self.table.setItem(i, 0, QTableWidgetItem(s.get('cari_unvan', '') or ''))
+        # Hat bazinda grupla
+        from collections import defaultdict
+        gruplar = defaultdict(list)
+        for s in self._satirlar:
+            key = (s.get('kap_kod') or '').upper() or 'DIGER'
+            gruplar[key].append(s)
 
-            # 1 Kaplama pill
-            kap_kod = (s.get('kap_kod') or '').upper()
-            bg, fg, short = _kap_color(kap_kod)
-            pill = QLabel(short)
-            pill.setAlignment(Qt.AlignCenter)
-            pill.setStyleSheet(
-                f"color: {fg}; background: {bg}; border-radius: 9px; "
-                f"padding: 2px 8px; font-size: 11px; font-weight: 700;"
-            )
-            hb = QWidget(); hh = QHBoxLayout(hb); hh.setContentsMargins(4, 2, 4, 2)
-            hh.addWidget(pill); hh.addStretch()
-            self.table.setCellWidget(i, 1, hb)
+        # Sira: KTL, ZN/ZNNI, Toz/Nikel, Diger
+        oncelik_sira = ['KTF', 'KATAFOREZ', 'ZN', 'ZNNI', 'ASITZN', 'NIKEL', 'KROM', 'TOZ']
+        sirali_gruplar = []
+        for kod in oncelik_sira:
+            if kod in gruplar:
+                sirali_gruplar.append((kod, gruplar[kod]))
+                del gruplar[kod]
+        for kod, items in gruplar.items():
+            sirali_gruplar.append((kod, items))
 
-            # 2 Kod, 3 Ad
-            self.table.setItem(i, 2, QTableWidgetItem(s.get('urun_kodu', '')))
-            ad = QTableWidgetItem(s.get('urun_adi', ''))
-            ad.setForeground(QColor(brand.TEXT_DIM))
-            self.table.setItem(i, 3, ad)
+        # Toplam satir sayisi = satir + her grup icin 1 header + 1 altoplam + grandtotal
+        grup_sayisi = len(sirali_gruplar)
+        total_rows = len(self._satirlar) + (grup_sayisi * 2) + (1 if grup_sayisi > 0 else 0)
+        self.table.setRowCount(total_rows)
 
-            # 4 İhtiyaç
-            it = QTableWidgetItem(f"{s['ihtiyac_adet']:,}")
+        row = 0
+        grand_adet = 0; grand_bara = 0; grand_dk = 0
+        # Satir -> gercek index esleme (vardiya combo handler icin)
+        self._row_to_satir_idx = {}
+
+        for kod, items in sirali_gruplar:
+            bg, fg, short = _kap_color(kod)
+
+            # --- Grup Header ---
+            hdr = QTableWidgetItem(f"  ▼ {short}  ({len(items)} talep)")
+            hdr.setForeground(QColor(fg))
+            f = self._bold_font(); f.setPointSize(11); hdr.setFont(f)
+            hdr.setBackground(QColor(bg.replace('0.15)', '0.25)')) if 'rgba' in bg else QColor(bg))
+            self.table.setItem(row, 0, hdr)
+            for c in range(1, 11):
+                empty = QTableWidgetItem("")
+                empty.setBackground(QColor(35, 45, 60))
+                self.table.setItem(row, c, empty)
+            self.table.setSpan(row, 0, 1, 11)
+            self.table.setRowHeight(row, 34)
+            row += 1
+
+            grup_adet = 0; grup_bara = 0; grup_dk = 0
+            for s in items:
+                self._row_to_satir_idx[row] = self._satirlar.index(s)
+                self._fill_data_row(row, s)
+                grup_adet += s['ihtiyac_adet']
+                grup_bara += s['yapilacak_bara']
+                grup_dk += s['toplam_dk']
+                row += 1
+
+            # --- Grup altoplami ---
+            alt = QTableWidgetItem(f"  ↳ {short} Toplamı")
+            alt.setForeground(QColor(brand.TEXT))
+            alt.setFont(self._bold_font())
+            alt.setBackground(QColor(25, 31, 41))
+            self.table.setItem(row, 0, alt)
+            for c in range(1, 4):
+                e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
+                self.table.setItem(row, c, e)
+            # 4 toplam adet
+            it = QTableWidgetItem(f"{grup_adet:,}")
             it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(i, 4, it)
-
-            # 5 Bara/Parça (stok kartındaki bara_adedi)
-            it = QTableWidgetItem(str(s['bara_parca']))
-            it.setTextAlignment(Qt.AlignCenter)
-            it.setForeground(QColor(brand.TEXT_DIM))
-            self.table.setItem(i, 5, it)
-
-            # 6 Yapılacak Bara
-            it = QTableWidgetItem(str(s['yapilacak_bara']))
-            it.setTextAlignment(Qt.AlignCenter)
-            it.setForeground(QColor(brand.INFO))
             it.setFont(self._bold_font())
-            self.table.setItem(i, 6, it)
-
-            # 7 Reçete süre
-            rs = s['recete_sure_dk']
-            it = QTableWidgetItem(f"{rs} dk" if rs else "-")
+            it.setForeground(QColor(fg))
+            it.setBackground(QColor(25, 31, 41))
+            self.table.setItem(row, 4, it)
+            # 5 boş, 6 toplam bara
+            e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
+            self.table.setItem(row, 5, e)
+            it = QTableWidgetItem(f"{grup_bara:,}")
+            it.setTextAlignment(Qt.AlignCenter)
+            it.setFont(self._bold_font())
+            it.setForeground(QColor(fg))
+            it.setBackground(QColor(25, 31, 41))
+            self.table.setItem(row, 6, it)
+            # 7 boş, 8 toplam dk
+            e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
+            self.table.setItem(row, 7, e)
+            it = QTableWidgetItem(f"{grup_dk:,} dk")
             it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            if rs == 0:
-                it.setForeground(QColor(brand.WARNING))
-            self.table.setItem(i, 7, it)
-
-            # 8 Toplam
-            it = QTableWidgetItem(f"{s['toplam_dk']} dk")
-            it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            it.setFont(self._bold_font())
             it.setForeground(QColor(brand.SUCCESS))
-            it.setFont(self._bold_font())
-            self.table.setItem(i, 8, it)
+            it.setBackground(QColor(25, 31, 41))
+            self.table.setItem(row, 8, it)
+            # 9, 10 boş
+            for c in (9, 10):
+                e = QTableWidgetItem(""); e.setBackground(QColor(25, 31, 41))
+                self.table.setItem(row, c, e)
+            self.table.setRowHeight(row, 36)
+            row += 1
 
-            # 9 Vardiya combo
-            vc = QComboBox()
-            vc.addItem("— seç —", None)
-            for v in self._vardiyalar:
-                vc.addItem(v['kod'], v['id'])
-            if s.get('vardiya_id'):
-                for k in range(vc.count()):
-                    if vc.itemData(k) == s['vardiya_id']:
-                        vc.setCurrentIndex(k); break
-            vc.setStyleSheet(
-                f"QComboBox {{ background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; "
-                f"color: {brand.TEXT}; padding: 4px 8px; border-radius: 5px; }}"
-            )
-            vc.currentIndexChanged.connect(lambda _, idx=i, cb=vc: self._on_vardiya_change(idx, cb))
-            self.table.setCellWidget(i, 9, vc)
+            grand_adet += grup_adet; grand_bara += grup_bara; grand_dk += grup_dk
 
-            # 10 Kaynak
-            it = QTableWidgetItem(s.get('kaynak', 'ANLASMA'))
-            it.setForeground(QColor(brand.TEXT_DIM))
-            self.table.setItem(i, 10, it)
-
-            self.table.setRowHeight(i, 42)
+        # --- Grand Total ---
+        if grup_sayisi > 0:
+            gt = QTableWidgetItem("  ═ GENEL TOPLAM ═")
+            gt.setForeground(QColor(brand.PRIMARY))
+            f = self._bold_font(); f.setPointSize(12); gt.setFont(f)
+            gt.setBackground(QColor(45, 15, 20))
+            self.table.setItem(row, 0, gt)
+            for c in range(1, 4):
+                e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
+                self.table.setItem(row, c, e)
+            it = QTableWidgetItem(f"{grand_adet:,}")
+            it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            it.setFont(f); it.setForeground(QColor(brand.PRIMARY))
+            it.setBackground(QColor(45, 15, 20))
+            self.table.setItem(row, 4, it)
+            e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
+            self.table.setItem(row, 5, e)
+            it = QTableWidgetItem(f"{grand_bara:,}")
+            it.setTextAlignment(Qt.AlignCenter)
+            it.setFont(f); it.setForeground(QColor(brand.PRIMARY))
+            it.setBackground(QColor(45, 15, 20))
+            self.table.setItem(row, 6, it)
+            e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
+            self.table.setItem(row, 7, e)
+            it = QTableWidgetItem(f"{grand_dk:,} dk")
+            it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            it.setFont(f); it.setForeground(QColor(brand.PRIMARY))
+            it.setBackground(QColor(45, 15, 20))
+            self.table.setItem(row, 8, it)
+            for c in (9, 10):
+                e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
+                self.table.setItem(row, c, e)
+            self.table.setRowHeight(row, 40)
 
         self._update_stats()
+
+    def _fill_data_row(self, row: int, s: dict):
+        """Tek bir veri satirini doldur. Satir indeksi satir_idx self._satirlar'daki."""
+        satir_idx = self._satirlar.index(s)
+
+        # 0 Müşteri
+        self.table.setItem(row, 0, QTableWidgetItem(s.get('cari_unvan', '') or ''))
+
+        # 1 Kaplama pill
+        kap_kod = (s.get('kap_kod') or '').upper()
+        bg, fg, short = _kap_color(kap_kod)
+        pill = QLabel(short)
+        pill.setAlignment(Qt.AlignCenter)
+        pill.setStyleSheet(
+            f"color: {fg}; background: {bg}; border-radius: 9px; "
+            f"padding: 2px 8px; font-size: 11px; font-weight: 700;"
+        )
+        hb = QWidget(); hh = QHBoxLayout(hb); hh.setContentsMargins(4, 2, 4, 2)
+        hh.addWidget(pill); hh.addStretch()
+        self.table.setCellWidget(row, 1, hb)
+
+        # 2 Kod, 3 Ad
+        self.table.setItem(row, 2, QTableWidgetItem(s.get('urun_kodu', '')))
+        ad = QTableWidgetItem(s.get('urun_adi', ''))
+        ad.setForeground(QColor(brand.TEXT_DIM))
+        self.table.setItem(row, 3, ad)
+
+        # 4 İhtiyaç
+        it = QTableWidgetItem(f"{s['ihtiyac_adet']:,}")
+        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.table.setItem(row, 4, it)
+
+        # 5 Bara/Parça (stok kartındaki bara_adedi)
+        it = QTableWidgetItem(str(s['bara_parca']))
+        it.setTextAlignment(Qt.AlignCenter)
+        it.setForeground(QColor(brand.TEXT_DIM))
+        self.table.setItem(row, 5, it)
+
+        # 6 Yapılacak Bara
+        it = QTableWidgetItem(str(s['yapilacak_bara']))
+        it.setTextAlignment(Qt.AlignCenter)
+        it.setForeground(QColor(brand.INFO))
+        it.setFont(self._bold_font())
+        self.table.setItem(row, 6, it)
+
+        # 7 Reçete süre
+        rs = s['recete_sure_dk']
+        it = QTableWidgetItem(f"{rs} dk" if rs else "-")
+        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        if rs == 0:
+            it.setForeground(QColor(brand.WARNING))
+        self.table.setItem(row, 7, it)
+
+        # 8 Toplam
+        it = QTableWidgetItem(f"{s['toplam_dk']} dk")
+        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        it.setForeground(QColor(brand.SUCCESS))
+        it.setFont(self._bold_font())
+        self.table.setItem(row, 8, it)
+
+        # 9 Vardiya combo
+        vc = QComboBox()
+        vc.addItem("— seç —", None)
+        for v in self._vardiyalar:
+            vc.addItem(v['kod'], v['id'])
+        if s.get('vardiya_id'):
+            for k in range(vc.count()):
+                if vc.itemData(k) == s['vardiya_id']:
+                    vc.setCurrentIndex(k); break
+        vc.setStyleSheet(
+            f"QComboBox {{ background: {brand.BG_INPUT}; border: 1px solid {brand.BORDER}; "
+            f"color: {brand.TEXT}; padding: 4px 8px; border-radius: 5px; }}"
+        )
+        vc.currentIndexChanged.connect(lambda _, idx=satir_idx, cb=vc: self._on_vardiya_change(idx, cb))
+        self.table.setCellWidget(row, 9, vc)
+
+        # 10 Kaynak
+        it = QTableWidgetItem(s.get('kaynak', 'ANLASMA'))
+        it.setForeground(QColor(brand.TEXT_DIM))
+        self.table.setItem(row, 10, it)
+
+        self.table.setRowHeight(row, 42)
 
     def _bold_font(self):
         from PySide6.QtGui import QFont
