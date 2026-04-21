@@ -960,9 +960,12 @@ class AnaLotDetayDialog(QDialog):
         for i in range(self.table.rowCount()):
             w = self.table.cellWidget(i, 4)
             if w:
-                cb = w.findChild(QCheckBox)
+                # Checkbox container icinde veya direkt olabilir
+                cb = w.findChild(QCheckBox) if not isinstance(w, QCheckBox) else w
                 if cb and cb.isChecked():
-                    selected.append(cb.property('lot_no'))
+                    lot_no = cb.property('lot_no')
+                    if lot_no:
+                        selected.append(lot_no)
 
         if not selected:
             QMessageBox.warning(self, "Uyari", "Lutfen en az bir palet secin!")
