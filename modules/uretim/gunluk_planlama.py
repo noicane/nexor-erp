@@ -682,24 +682,36 @@ class GunlukPlanlamaPage(BasePage):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         layout.addWidget(self.table, 1)
 
-        # 24 SAAT TIMELINE
-        timeline_lbl = QLabel("📊 24 Saat Timeline (hat × saat) — hücrede aktif bara sayısı")
+        # BARA TIMELINE (vardiya bazlı, her bara ayrı satır)
+        timeline_lbl = QLabel("📋 Bara Detayı (vardiya × bara) — her bara ayrı satır, giriş/çıkış saatleri")
         timeline_lbl.setStyleSheet(f"color: {brand.TEXT}; font-size: 13px; font-weight: 600; "
                                      f"margin-top: 8px;")
         layout.addWidget(timeline_lbl)
 
         self.timeline_table = QTableWidget()
-        self.timeline_table.setFixedHeight(160)
+        self.timeline_table.setColumnCount(7)
+        self.timeline_table.setHorizontalHeaderLabels([
+            "Bara #", "Hat", "Giriş Saati", "Ürün", "Müşteri", "Çıkış Saati", "Askı #"
+        ])
         self.timeline_table.setStyleSheet(f"""
             QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
                 border-radius: 10px; color: {brand.TEXT}; gridline-color: {brand.BORDER};
-                font-size: 11px; }}
-            QTableWidget::item {{ padding: 4px; text-align: center; }}
+                font-size: 12px; }}
+            QTableWidget::item {{ padding: 6px 8px; }}
             QHeaderView::section {{ background: rgba(0,0,0,0.3); color: {brand.TEXT_MUTED};
-                padding: 4px; border: none; font-weight: 600; font-size: 10px; }}
+                padding: 8px; border: none; border-bottom: 2px solid {brand.PRIMARY};
+                font-weight: 600; font-size: 12px; }}
         """)
         self.timeline_table.verticalHeader().setVisible(False)
         self.timeline_table.setSelectionMode(QAbstractItemView.NoSelection)
+        self.timeline_table.setColumnWidth(0, 70)
+        self.timeline_table.setColumnWidth(1, 70)
+        self.timeline_table.setColumnWidth(2, 100)
+        self.timeline_table.setColumnWidth(4, 180)
+        self.timeline_table.setColumnWidth(5, 100)
+        self.timeline_table.setColumnWidth(6, 70)
+        self.timeline_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
+        self.timeline_table.setMinimumHeight(260)
         layout.addWidget(self.timeline_table)
 
     def _mk_stat(self, title: str, value: str, color: str) -> QFrame:
@@ -1004,86 +1016,143 @@ class GunlukPlanlamaPage(BasePage):
         self._fill_timeline()
 
     def _fill_timeline(self):
-        """24 saat × hat matriks: her saatte hatta aktif bara sayisi."""
+        """Bara bazli timeline: her bara ayri satir, vardiya gruplari ile."""
         if not hasattr(self, 'timeline_table'):
             return
-        # Hat listesi (satirlardan cikart)
-        hatlar = sorted(set((s.get('kap_kod') or '?').upper() for s in self._satirlar))
-        if not hatlar:
-            self.timeline_table.setRowCount(0)
-            self.timeline_table.setColumnCount(0)
-            return
 
-        # Saat slotlari: 24 saat
-        saatler = list(range(24))
-
-        # Her (hat, saat) icin aktif bara
-        grid = {(h, sa): 0 for h in hatlar for sa in saatler}
-        events = {(h, sa): {'gir': 0, 'cik': 0} for h in hatlar for sa in saatler}
-
+        # Hat bazinda grupla
+        from collections import defaultdict
+        hat_isleri = defaultdict(list)
         for s in self._satirlar:
             hat = (s.get('kap_kod') or '?').upper()
-            giris = s.get('sched_giris_dk')
-            bitis = s.get('sched_bitis_dk')
-            if giris is None or bitis is None:
-                continue
-            paralel = s.get('paralel_bara', 1) or 1
-            # Aktif saatler
-            gh = (giris // 60) % 24
-            bh = (bitis // 60) % 24
-            events[(hat, gh)]['gir'] += paralel
-            events[(hat, bh)]['cik'] += paralel
-            # Aktif: giristen bitise kadar her saat
-            cur = giris
-            while cur < bitis:
-                saat = (cur // 60) % 24
-                grid[(hat, saat)] = max(grid.get((hat, saat), 0), paralel)
-                cur += 60
+            hat_isleri[hat].append(s)
 
-        # Tablo
-        self.timeline_table.setColumnCount(len(saatler) + 1)
-        headers = ["Hat"] + [f"{sa:02d}:00" for sa in saatler]
-        self.timeline_table.setHorizontalHeaderLabels(headers)
-        self.timeline_table.setColumnWidth(0, 80)
-        for i in range(1, len(saatler) + 1):
-            self.timeline_table.setColumnWidth(i, 48)
+        # Vardiya saat bilgileri (dk cinsinden spans)
+        vardiya_bas, _, _ = self._vardiya_saatleri()
+        baslangic_dk = vardiya_bas.hour * 60 + vardiya_bas.minute
+        vardiyalar_sorted = sorted(self._vardiyalar, key=lambda v: (
+            v['bas'].hour * 60 + v['bas'].minute if isinstance(v['bas'], _time) else 0
+        ))
+        v_spans = []  # her vardiya icin (kod, bas_dk, bit_dk) ile +24h offset
+        for day_offset in (0, 1):  # bugun + yarin
+            for v in vardiyalar_sorted:
+                bm = v['bas'].hour * 60 + v['bas'].minute if isinstance(v['bas'], _time) else 0
+                em = v['bit'].hour * 60 + v['bit'].minute if isinstance(v['bit'], _time) else bm + 480
+                if em <= bm:
+                    em += 24 * 60
+                v_spans.append({'kod': v['kod'], 'bas': bm + day_offset * 1440,
+                                 'bit': em + day_offset * 1440})
 
-        self.timeline_table.setRowCount(len(hatlar))
-        for r_idx, hat in enumerate(hatlar):
-            # Hat adı (ilk sütun)
-            _, _, short = _kap_color(hat)
-            hat_item = QTableWidgetItem(short)
-            hat_item.setFont(self._bold_font())
-            hat_item.setTextAlignment(Qt.AlignCenter)
-            self.timeline_table.setItem(r_idx, 0, hat_item)
-            # Her saat
-            for c_idx, sa in enumerate(saatler, start=1):
-                aktif = grid.get((hat, sa), 0)
-                ev = events.get((hat, sa), {'gir': 0, 'cik': 0})
-                if aktif > 0:
-                    txt = str(aktif)
-                    _, bg, fg = _kap_color(hat)
-                    it = QTableWidgetItem(txt)
-                    it.setTextAlignment(Qt.AlignCenter)
-                    it.setForeground(QColor(fg))
-                    it.setFont(self._bold_font())
-                    # Arka plan: renkli
-                    r, g, b = 30, 40, 55
-                    if 'KTL' in hat or 'KTF' in hat: r, g, b = 16, 80, 50
-                    elif 'ZN' in hat: r, g, b = 30, 60, 100
-                    elif 'ON' in hat or 'TB' in hat: r, g, b = 90, 60, 20
-                    it.setBackground(QColor(r, g, b))
-                    tip = f"Hat: {hat}  Saat: {sa:02d}:00"
-                    if ev['gir'] > 0: tip += f"\n↓ Giren: {ev['gir']}"
-                    if ev['cik'] > 0: tip += f"\n↑ Çıkan: {ev['cik']}"
-                    tip += f"\nAktif: {aktif} bara"
-                    it.setToolTip(tip)
-                    self.timeline_table.setItem(r_idx, c_idx, it)
-                else:
-                    it = QTableWidgetItem("")
-                    it.setBackground(QColor(15, 20, 25))
-                    self.timeline_table.setItem(r_idx, c_idx, it)
-            self.timeline_table.setRowHeight(r_idx, 32)
+        def vardiya_bul(dk):
+            for vs in v_spans:
+                if vs['bas'] <= dk < vs['bit']:
+                    return vs['kod']
+            return '?'
+
+        # Her hat için staggered bara üret
+        tum_baralar = []  # {bara_no, hat, urun_kodu, urun_adi, musteri, giris_dk, cikis_dk, aski_idx}
+        for hat, isler in hat_isleri.items():
+            cur_aski_list = None  # Her hat'ta askilar ayri tutulsun
+            askici_son = baslangic_dk
+            for s in isler:
+                paralel = max(s.get('paralel_bara', 1) or 1, 1)
+                aski_sure = s.get('aski_sure_dk', 40) or 40
+                dongu = s.get('aski_dongu_dk', 180) or 180
+                yapilacak = s.get('yapilacak_bara', 0) or 0
+                # Askı listesi ilk iş için kurulur
+                if cur_aski_list is None:
+                    cur_aski_list = [baslangic_dk] * paralel
+                # Paralel degisiyorsa genislet
+                while len(cur_aski_list) < paralel:
+                    cur_aski_list.append(baslangic_dk)
+
+                for bara_no in range(1, yapilacak + 1):
+                    # En erken boşalan askı
+                    aski_idx = min(range(len(cur_aski_list)), key=lambda i: cur_aski_list[i])
+                    aski_bos = cur_aski_list[aski_idx]
+                    giris = max(aski_bos, askici_son)
+                    cikis = giris + dongu
+                    cur_aski_list[aski_idx] = cikis
+                    askici_son = giris + aski_sure
+                    tum_baralar.append({
+                        'bara_no': bara_no,
+                        'hat': hat,
+                        'urun_kodu': s.get('urun_kodu', ''),
+                        'urun_adi': s.get('urun_adi', ''),
+                        'musteri': s.get('cari_unvan', ''),
+                        'giris_dk': giris,
+                        'cikis_dk': cikis,
+                        'aski_idx': aski_idx + 1,
+                    })
+
+        # Vardiya grupla (giris_dk bazinda)
+        from collections import OrderedDict
+        v_grup = OrderedDict()
+        for b in sorted(tum_baralar, key=lambda x: x['giris_dk']):
+            vk = vardiya_bul(b['giris_dk'])
+            v_grup.setdefault(vk, []).append(b)
+
+        # Tablo doldur
+        total_rows = sum(len(bl) + 1 for bl in v_grup.values())  # +1 header per vardiya
+        self.timeline_table.setRowCount(total_rows)
+        row = 0
+        for vk, baralar in v_grup.items():
+            # Vardiya header
+            hdr = QTableWidgetItem(f"  ▼ VARDİYA {vk}  ({len(baralar)} bara)")
+            hdr.setForeground(QColor(brand.PRIMARY))
+            f = self._bold_font(); f.setPointSize(12); hdr.setFont(f)
+            hdr.setBackground(QColor(45, 15, 20))
+            self.timeline_table.setItem(row, 0, hdr)
+            for c in range(1, 7):
+                e = QTableWidgetItem(""); e.setBackground(QColor(45, 15, 20))
+                self.timeline_table.setItem(row, c, e)
+            self.timeline_table.setSpan(row, 0, 1, 7)
+            self.timeline_table.setRowHeight(row, 32)
+            row += 1
+
+            for b in baralar:
+                _, bg, fg = _kap_color(b['hat'])
+                # 0 Bara no
+                it = QTableWidgetItem(f"#{b['bara_no']}")
+                it.setTextAlignment(Qt.AlignCenter)
+                it.setForeground(QColor(brand.TEXT_DIM))
+                self.timeline_table.setItem(row, 0, it)
+                # 1 Hat pill
+                _, _, short = _kap_color(b['hat'])
+                it = QTableWidgetItem(short)
+                it.setTextAlignment(Qt.AlignCenter)
+                it.setForeground(QColor(fg))
+                it.setFont(self._bold_font())
+                self.timeline_table.setItem(row, 1, it)
+                # 2 Giris saati
+                gh, gm = divmod(b['giris_dk'] % 1440, 60)
+                it = QTableWidgetItem(f"{gh:02d}:{gm:02d}")
+                it.setTextAlignment(Qt.AlignCenter)
+                it.setForeground(QColor(brand.SUCCESS))
+                self.timeline_table.setItem(row, 2, it)
+                # 3 Urun
+                it = QTableWidgetItem(f"{b['urun_kodu']} · {b['urun_adi'][:40]}")
+                self.timeline_table.setItem(row, 3, it)
+                # 4 Musteri
+                it = QTableWidgetItem(b['musteri'][:30])
+                it.setForeground(QColor(brand.TEXT_DIM))
+                self.timeline_table.setItem(row, 4, it)
+                # 5 Cikis saati
+                ch, cm = divmod(b['cikis_dk'] % 1440, 60)
+                cikis_txt = f"{ch:02d}:{cm:02d}"
+                if b['cikis_dk'] >= 1440:
+                    cikis_txt += " (+1g)"
+                it = QTableWidgetItem(cikis_txt)
+                it.setTextAlignment(Qt.AlignCenter)
+                it.setForeground(QColor(brand.WARNING))
+                self.timeline_table.setItem(row, 5, it)
+                # 6 Aski no
+                it = QTableWidgetItem(f"A{b['aski_idx']}")
+                it.setTextAlignment(Qt.AlignCenter)
+                it.setForeground(QColor(brand.INFO))
+                self.timeline_table.setItem(row, 6, it)
+                self.timeline_table.setRowHeight(row, 28)
+                row += 1
 
     def _fill_data_row(self, row: int, s: dict):
         """Tek bir veri satirini doldur. Satir indeksi satir_idx self._satirlar'daki."""
