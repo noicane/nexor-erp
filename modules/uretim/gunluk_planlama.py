@@ -501,12 +501,14 @@ class GunlukPlanlamaPage(BasePage):
                 ie_id = int(cur.fetchone()[0])
 
                 # uretim.planlama INSERT
+                from core.yetki_manager import YetkiManager
+                _olusturan_id = YetkiManager._current_user_id
                 cur.execute("""
                     INSERT INTO uretim.planlama
                         (tarih, hat_id, vardiya_id, is_emri_id,
-                         planlanan_bara, durum, olusturma_tarihi)
-                    VALUES (?, NULL, ?, ?, ?, N'PLANLANDI', GETDATE())
-                """, (tarih, v_id, ie_id, bara))
+                         planlanan_bara, durum, olusturan_id, olusturma_tarihi)
+                    VALUES (?, NULL, ?, ?, ?, N'PLANLANDI', ?, GETDATE())
+                """, (tarih, v_id, ie_id, bara, _olusturan_id))
                 olusan += 1
 
             # taslagi onaylandi olarak isaretle

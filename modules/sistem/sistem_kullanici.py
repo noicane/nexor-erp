@@ -143,7 +143,35 @@ class KullaniciDialog(QDialog):
         
         sifre_group.setLayout(sifre_layout)
         layout.addWidget(sifre_group)
-        
+
+        # Terminal PIN (EDA51 / Android terminal icin)
+        # Sadece mevcut kullanici icin (yeni olusturma sirasinda once kaydet, sonra ayarla)
+        self._pin_group = QGroupBox("Terminal PIN (El Terminali / Tablet)")
+        pin_layout = QHBoxLayout()
+        self.lbl_pin_durum = QLabel("PIN tanimli degil")
+        self.lbl_pin_durum.setStyleSheet(f"color: {brand.TEXT_DIM};")
+        pin_layout.addWidget(self.lbl_pin_durum, 1)
+        self.btn_pin_ayarla = QPushButton("PIN Ayarla / Degistir")
+        self.btn_pin_ayarla.setCursor(Qt.PointingHandCursor)
+        self.btn_pin_ayarla.setStyleSheet(f"""
+            QPushButton {{
+                background: {brand.PRIMARY}; color: white; padding: 6px 14px;
+                border: none; border-radius: 6px; font-weight: bold;
+            }}
+            QPushButton:hover {{ background: #2563eb; }}
+        """)
+        self.btn_pin_ayarla.clicked.connect(self._terminal_pin_ayarla)
+        pin_layout.addWidget(self.btn_pin_ayarla)
+        self.btn_pin_sil = QPushButton("Sil")
+        self.btn_pin_sil.setCursor(Qt.PointingHandCursor)
+        self.btn_pin_sil.clicked.connect(self._terminal_pin_sil)
+        pin_layout.addWidget(self.btn_pin_sil)
+        self._pin_group.setLayout(pin_layout)
+        layout.addWidget(self._pin_group)
+        # Yeni kayitta gizle (kaydetmeden once kullanici_id yok)
+        if not self.kullanici_id:
+            self._pin_group.setVisible(False)
+
         # Durum
         durum_group = QGroupBox("Durum")
         durum_layout = QFormLayout()
@@ -265,6 +293,23 @@ class KullaniciDialog(QDialog):
                 try:
                     if hasattr(row, 'kart_id'):
                         self.txt_kart_id.setText(row.kart_id or '')
+                except Exception:
+                    pass
+
+                # Terminal PIN durumu
+                try:
+                    if hasattr(row, 'terminal_pin_set') and row.terminal_pin_set:
+                        son = ''
+                        try:
+                            if hasattr(row, 'terminal_pin_son_degisim') and row.terminal_pin_son_degisim:
+                                son = f" (son: {row.terminal_pin_son_degisim.strftime('%Y-%m-%d')})"
+                        except Exception:
+                            pass
+                        self.lbl_pin_durum.setText(f"PIN tanimli{son}")
+                        self.lbl_pin_durum.setStyleSheet(f"color: {brand.SUCCESS}; font-weight: bold;")
+                    else:
+                        self.lbl_pin_durum.setText("PIN tanimli degil")
+                        self.lbl_pin_durum.setStyleSheet(f"color: {brand.TEXT_DIM};")
                 except Exception:
                     pass
                 
@@ -447,6 +492,120 @@ class KullaniciDialog(QDialog):
             
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Kayıt hatası: {str(e)}")
+
+    def _terminal_pin_ayarla(self):
+        """4-6 haneli PIN al, hash'le ve sistem.kullanicilar tablosuna yaz."""
+        if not self.kullanici_id:
+            QMessageBox.information(self, "Once Kaydet",
+                "PIN ayarlamak icin once kullaniciyi kaydedin, sonra tekrar acin.")
+            return
+
+        from PySide6.QtWidgets import QDialog as QD, QFormLayout as QF, QLineEdit as QL
+        from PySide6.QtGui import QIntValidator
+
+        dlg = QD(self)
+        dlg.setWindowTitle("Terminal PIN Ayarla")
+        dlg.setMinimumWidth(360)
+        v = QVBoxLayout(dlg)
+        info = QLabel(
+            "El terminali (EDA51) veya tabletten giris icin 4 ya da 6 haneli sayisal PIN girin.\n"
+            "Bu PIN sadece terminal/tablet erisimi icindir; web girisi icin SIFRE alani kullanilir."
+        )
+        info.setWordWrap(True)
+        info.setStyleSheet(f"color: {brand.TEXT_DIM}; padding-bottom: 8px;")
+        v.addWidget(info)
+
+        f = QF()
+        ed_pin = QL()
+        ed_pin.setEchoMode(QL.Password)
+        ed_pin.setMaxLength(6)
+        ed_pin.setValidator(QIntValidator(0, 999999))
+        ed_pin.setPlaceholderText("4 veya 6 hane")
+        f.addRow("Yeni PIN:", ed_pin)
+        ed_pin2 = QL()
+        ed_pin2.setEchoMode(QL.Password)
+        ed_pin2.setMaxLength(6)
+        ed_pin2.setValidator(QIntValidator(0, 999999))
+        ed_pin2.setPlaceholderText("Tekrar")
+        f.addRow("Tekrar:", ed_pin2)
+        v.addLayout(f)
+
+        btns = QHBoxLayout()
+        btns.addStretch()
+        b_iptal = QPushButton("Iptal")
+        b_iptal.clicked.connect(dlg.reject)
+        b_kaydet = QPushButton("Kaydet")
+        b_kaydet.setStyleSheet(
+            f"QPushButton {{ background:{brand.PRIMARY}; color:white; padding:6px 14px; "
+            f"border:none; border-radius:6px; font-weight:bold; }}"
+        )
+        b_kaydet.clicked.connect(dlg.accept)
+        btns.addWidget(b_iptal)
+        btns.addWidget(b_kaydet)
+        v.addLayout(btns)
+
+        if dlg.exec() != QDialog.Accepted:
+            return
+
+        pin = ed_pin.text().strip()
+        pin2 = ed_pin2.text().strip()
+        if pin != pin2:
+            QMessageBox.warning(self, "Eslesmiyor", "Iki PIN alani ayni olmali.")
+            return
+        if len(pin) not in (4, 6) or not pin.isdigit():
+            QMessageBox.warning(self, "Gecersiz", "PIN 4 veya 6 haneli sayisal deger olmali.")
+            return
+
+        # Hash mantigi: SHA-256 + per-kullanici salt (terminal_api/auth.py ile ayni!)
+        import hashlib
+        salt = f"nexor-terminal-pin-v1::{self.kullanici_id}::"
+        pin_hash = hashlib.sha256((salt + pin).encode("utf-8")).hexdigest()
+
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE sistem.kullanicilar
+                SET terminal_pin_hash = ?,
+                    terminal_pin_set = 1,
+                    terminal_pin_son_degisim = SYSDATETIME()
+                WHERE id = ?
+            """, [pin_hash, self.kullanici_id])
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "DB Hatasi", str(e))
+            return
+
+        self.lbl_pin_durum.setText(f"PIN tanimli (yeni)")
+        self.lbl_pin_durum.setStyleSheet(f"color: {brand.SUCCESS}; font-weight: bold;")
+        QMessageBox.information(self, "Tamam",
+            f"Terminal PIN ayarlandi.\nKullanici '{self.txt_kullanici_adi.text()}' bu PIN ile el terminaline giris yapabilir.")
+
+    def _terminal_pin_sil(self):
+        if not self.kullanici_id:
+            return
+        if QMessageBox.question(self, "PIN Sil",
+            "Bu kullanicinin terminal PIN'i silinsin mi?\nKart yoksa terminal'e giris yapamayacak."
+        ) != QMessageBox.Yes:
+            return
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE sistem.kullanicilar
+                SET terminal_pin_hash = NULL,
+                    terminal_pin_set = 0,
+                    terminal_pin_son_degisim = SYSDATETIME()
+                WHERE id = ?
+            """, [self.kullanici_id])
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "DB Hatasi", str(e))
+            return
+        self.lbl_pin_durum.setText("PIN tanimli degil")
+        self.lbl_pin_durum.setStyleSheet(f"color: {brand.TEXT_DIM};")
 
     def _toggle_kart_okuma(self, checked: bool):
         """Kart okuma modunu aç/kapa."""

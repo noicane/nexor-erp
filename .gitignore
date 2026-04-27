@@ -54,6 +54,14 @@ config.json
 *.local.py
 settings.json
 
+# Ortam dosyalari (API key'ler, sifreler)
+.env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/uploads/
+apps/*/.venv/
+
 # Database
 *.db
 *.sqlite
@@ -70,6 +78,27 @@ config_backups/
 *.tmp
 *.temp
 .cache/
+
+# Gecici gelistirme scriptleri (push'lanmamali)
+scripts/_temp_*.py
+scripts/_test_*.py
+
+# MCP / Claude Code yerel ayarlari
+.mcp.json
+.claude/
+
+# Musteri logolari (kisisel veri)
+logos/
+config/logos/
+
+# Flutter project icinde generated/local
+apps/nexor_terminal/.dart_tool/
+apps/nexor_terminal/build/
+apps/nexor_terminal/.flutter-plugins
+apps/nexor_terminal/.flutter-plugins-dependencies
+apps/nexor_terminal/android/local.properties
+apps/nexor_terminal/android/key.properties
+apps/nexor_terminal/android/**/keystore.jks
 
 # Test
 .pytest_cache/

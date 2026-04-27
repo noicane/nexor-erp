@@ -55,7 +55,8 @@ logger = logging.getLogger("nexor")
 from config import APP_NAME, SETTINGS_FILE
 from version import VERSION, get_full_version
 from themes import build_theme
-from core.menu_structure import MENU_STRUCTURE, get_page_title
+from core.menu_structure import MENU_STRUCTURE, get_modul_kodu, get_page_title
+from core.modul_servisi import ModulServisi
 from components import Sidebar, Header
 from components.dialog_minimize_bar import DialogMinimizeBar
 from dialogs import ModernLoginDialog
@@ -201,6 +202,12 @@ def parse_arguments():
         '--reset-db',
         action='store_true',
         help='Veritabanı ayarlarını sıfırla ve wizard aç'
+    )
+    parser.add_argument(
+        '--profile', '-p',
+        type=str,
+        default=None,
+        help='Aktif profili belirle (config.json profiles altindaki anahtar)'
     )
     parser.add_argument(
         '--version', '-v',
@@ -532,6 +539,14 @@ class MainWindow(QMainWindow):
         # Minimize bar (dialog'lar icin)
         self.minimize_bar = DialogMinimizeBar(self.theme, self)
         r_layout.addWidget(self.minimize_bar)
+
+        # Status bar - bagli DB + aktif musteri + PLC durumu
+        try:
+            from components.status_bar import NexorStatusBar
+            self.status_bar_w = NexorStatusBar(self)
+            r_layout.addWidget(self.status_bar_w)
+        except Exception as e:
+            logger.warning("Status bar olusturulamadi: %s", e)
 
         self.main_layout.addWidget(self.right_panel, 1)
         
@@ -1039,6 +1054,25 @@ class MainWindow(QMainWindow):
         if page_id not in self.pages:
             return
 
+        # Modul lisans guard - sidebar'da gizli olsa bile shortcut/global search ile acma engellensin
+        modul_kodu = get_modul_kodu(page_id)
+        if modul_kodu and not ModulServisi.instance().is_aktif(modul_kodu):
+            QMessageBox.warning(
+                self, "Modül Aktif Değil",
+                f"'{get_page_title(page_id)}' sayfası bu kurulumda aktif değil.\n\n"
+                f"Modül: {modul_kodu}\n"
+                f"Sistem > Modül Yönetimi üzerinden aktifleştirebilirsiniz."
+            )
+            return
+
+        # Gelistirici-only sayfa guard (musteri yonetimi gibi)
+        if page_id == "sistem_musteri_yonetimi" and not ModulServisi.instance().gelistirici_modu:
+            QMessageBox.warning(
+                self, "Erisim Yok",
+                "Bu sayfa sadece gelistirici modunda erisilebilir."
+            )
+            return
+
         try:
             widget = self.pages[page_id]
 
@@ -1401,7 +1435,7 @@ def main():
         # ─────────────────────────────────────────────
         # KOMUT SATIRI ARGÜMANLARI KONTROLÜ
         # ─────────────────────────────────────────────
-        
+
         # --reset-db: Config'i sıfırla
         if args.reset_db:
             logger.info("Veritabanı ayarları sıfırlanıyor...")
@@ -1414,7 +1448,30 @@ def main():
             except Exception as e:
                 logger.warning("Config sıfırlama hatası: %s", e)
             args.setup = True  # Wizard'ı aç
-        
+
+        # --profile=NAME: aktif profili override et (CLI > config)
+        if args.profile:
+            try:
+                from core.external_config import config_manager as _cm
+                if args.profile in _cm.list_profiles():
+                    if _cm.get_active_profile() != args.profile:
+                        _cm.set_active_profile(args.profile)
+                        logger.info("Aktif profil CLI ile degisti: %s", args.profile)
+                else:
+                    logger.warning("--profile=%s bulunamadi, mevcut profil korunuyor.", args.profile)
+            except Exception as e:
+                logger.warning("Profil CLI override hatasi: %s", e)
+
+        # Gelistirici modu acilis profil secici dialogu (2+ profil varsa)
+        if not args.profile and not args.setup and not args.reset_db:
+            try:
+                from dialogs.profil_secici import profil_sec_eger_gerekirse
+                yeni = profil_sec_eger_gerekirse()
+                if yeni:
+                    logger.info("Aktif profil dialog ile degisti: %s", yeni)
+            except Exception as e:
+                logger.warning("Profil secici dialog hatasi: %s", e)
+
         # --setup veya DB bağlantı hatası: Setup wizard aç
         if args.setup:
             logger.info("Setup wizard açılıyor...")
@@ -1479,7 +1536,60 @@ def main():
             return
 
         logger.info("Veritabanı bağlantısı başarılı")
-        
+
+        # ─────────────────────────────────────────────
+        # MIGRATION RUNNER (versiyonlu DB migration'lari)
+        # ─────────────────────────────────────────────
+        try:
+            from core.migration_runner import run_pending_migrations
+            uygulanan = run_pending_migrations()
+            if uygulanan > 0:
+                logger.info("%d migration uygulandi", uygulanan)
+        except Exception as mig_err:
+            logger.exception("Migration hatasi: %s", mig_err)
+            QMessageBox.critical(
+                None,
+                "Migration Hatası",
+                f"Veritabanı migration'ları çalıştırılırken hata oluştu:\n\n{mig_err}\n\n"
+                f"Uygulama açılamıyor. Detaylar için log dosyasına bakın."
+            )
+            return
+
+        # SEQUENCE health-check: geride kalmis sequence varsa table max + 1'e ceker.
+        try:
+            from core.sequence_health_check import check_and_resync_sequences
+            check_and_resync_sequences()
+        except Exception as seq_err:
+            logger.exception("Sequence health-check hatasi (uygulama devam ediyor): %s", seq_err)
+
+        # Modul lisans sync: aktif profile config.json moduller_aktif -> lisans.modul_durumlari
+        # (Bayinin baska bir musteride yaptigi modul ayarlari bu sayede uygulanir.)
+        try:
+            from core.modul_lisans_sync import sync_config_to_db
+            sync_config_to_db()
+        except Exception as msync_err:
+            logger.exception("Modul lisans sync hatasi (uygulama devam ediyor): %s", msync_err)
+
+        # Musteri yenileme uyarilari (M2.4): anlasma/bakim/lisans bitis -> 60/30/7 gun bildirim
+        try:
+            from core.musteri_yenileme_check import check_renewal_warnings
+            check_renewal_warnings()
+        except Exception as yc_err:
+            logger.exception("Yenileme uyari kontrolu hatasi (uygulama devam ediyor): %s", yc_err)
+
+        # ─────────────────────────────────────────────
+        # MODUL SERVISI baslangic yukleme
+        # ─────────────────────────────────────────────
+        try:
+            from core.modul_servisi import ModulServisi
+            servis = ModulServisi.instance()
+            logger.info(
+                "ModulServisi yuklendi: %d modul, gelistirici_modu=%s",
+                len(servis.tumunu_getir()), servis.gelistirici_modu
+            )
+        except Exception as ms_err:
+            logger.warning("ModulServisi yukleme hatasi (devam ediliyor): %s", ms_err)
+
         # ─────────────────────────────────────────────
         # GÜNCELLEME KONTROLÜ
         # ─────────────────────────────────────────────
@@ -1522,6 +1632,22 @@ def main():
 
             if login.exec() == ModernLoginDialog.Accepted:
                 try:
+                    # MASTER (bayi) modu: NEXOR ana ekrani yerine BayiPaneli ac
+                    if getattr(ModernLoginDialog, 'master_mode', False):
+                        try:
+                            from dialogs.bayi_paneli import BayiPaneli
+                            app.setQuitOnLastWindowClosed(True)
+                            theme = build_theme("dark", "redline")
+                            panel = BayiPaneli(theme)
+                            main_window_ref.append(panel)
+                            panel.showMaximized()
+                            return
+                        except Exception as bayi_err:
+                            logger.exception("BayiPaneli açılamadı: %s", bayi_err)
+                            show_error_dialog("Bayi Paneli Hatası", bayi_err)
+                            app.quit()
+                            return
+
                     # Login'den kullanıcı bilgisini al
                     user_info = ModernLoginDialog.get_current_user()
 

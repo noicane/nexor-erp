@@ -581,13 +581,13 @@ class TalepDialog(QDialog):
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT talep_no, tarih, talep_eden_id, departman_id, oncelik, istenen_termin, talep_nedeni, notlar, 
-                       durum, amir_onay_durumu, satinalma_onay_durumu
+                SELECT talep_no, tarih, talep_eden_id, departman_id, oncelik, istenen_termin, talep_nedeni, notlar,
+                       durum, amir_onay_durumu, satinalma_onay_durumu, tedarikci_id
                 FROM satinalma.talepler WHERE id = ?
             """, (self.talep_id,))
             row = cursor.fetchone()
             conn.close()
-            
+
             if row:
                 self.txt_talep_no.setText(row[0] or "")
                 if row[1]:
@@ -610,6 +610,11 @@ class TalepDialog(QDialog):
                     self.date_termin.setDate(QDate(row[5].year, row[5].month, row[5].day))
                 self.txt_neden.setPlainText(row[6] or "")
                 self.txt_notlar.setPlainText(row[7] or "")
+                # Tedarikci sec
+                if len(row) > 11 and row[11] and hasattr(self, 'cmb_tedarikci'):
+                    idx = self.cmb_tedarikci.findData(row[11])
+                    if idx >= 0:
+                        self.cmb_tedarikci.setCurrentIndex(idx)
                 
                 # Durum bilgilerini güncelle
                 durum = row[8] or "TASLAK"
@@ -781,17 +786,20 @@ class TalepDialog(QDialog):
             tarih = self.date_tarih.date().toPython()
             termin = self.date_termin.date().toPython()
             
+            tedarikci_id = self.cmb_tedarikci.currentData() if hasattr(self, 'cmb_tedarikci') else None
+
             if self.talep_id:
                 # Güncelleme
                 cursor.execute("""
                     UPDATE satinalma.talepler SET
                         tarih = ?, talep_eden_id = ?, departman_id = ?, oncelik = ?, istenen_termin = ?,
-                        talep_nedeni = ?, notlar = ?, guncelleme_tarihi = GETDATE(),
-                        guncelleyen_id = ?
+                        talep_nedeni = ?, notlar = ?, tedarikci_id = ?,
+                        guncelleme_tarihi = GETDATE(), guncelleyen_id = ?
                     WHERE id = ?
                 """, (tarih, talep_eden_id, departman_id, self.cmb_oncelik.currentText(), termin,
                       self.txt_neden.toPlainText().strip() or None,
                       self.txt_notlar.toPlainText().strip() or None,
+                      tedarikci_id,
                       self.kullanici_id, self.talep_id))
             else:
                 # Yeni talep
@@ -804,16 +812,17 @@ class TalepDialog(QDialog):
                 """, (f"TLP-{tarih_str}-%",))
                 sira = cursor.fetchone()[0]
                 talep_no = f"TLP-{tarih_str}-{sira:04d}"
-                
+
                 cursor.execute("""
-                    INSERT INTO satinalma.talepler 
+                    INSERT INTO satinalma.talepler
                     (talep_no, tarih, talep_eden_id, departman_id, oncelik, istenen_termin,
-                     talep_nedeni, notlar, durum, olusturan_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'TASLAK', ?)
-                """, (talep_no, tarih, talep_eden_id, departman_id, 
+                     talep_nedeni, notlar, tedarikci_id, durum, olusturan_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'TASLAK', ?)
+                """, (talep_no, tarih, talep_eden_id, departman_id,
                       self.cmb_oncelik.currentText(), termin,
                       self.txt_neden.toPlainText().strip() or None,
                       self.txt_notlar.toPlainText().strip() or None,
+                      tedarikci_id,
                       self.kullanici_id))
                 
                 # Yeni ID'yi al

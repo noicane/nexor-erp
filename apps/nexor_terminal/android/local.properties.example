@@ -1,0 +1,7 @@
+## NOT: Bu dosyayi local.properties olarak kopyalayin ve dogru yollari yazin
+## (flutter create normalde bunu otomatik uretir).
+
+sdk.dir=C:\\Users\\maydi\\AppData\\Local\\Android\\Sdk
+flutter.sdk=C:\\Users\\maydi\\flutter
+flutter.versionName=0.1.0
+flutter.versionCode=1

@@ -1777,12 +1777,15 @@ class PlanlamaDialog(QDialog):
                 is_emri_id = cursor.fetchone()[0]
                 
                 # 2. Planlama kaydı
+                from core.yetki_manager import YetkiManager
+                olusturan_id = YetkiManager._current_user_id
                 cursor.execute("""
-                    INSERT INTO uretim.planlama 
-                    (uuid, tarih, hat_id, vardiya_id, is_emri_id, sira_no, planlanan_bara, 
-                     stok_bakiye_id, durum, olusturma_tarihi) 
-                    VALUES (NEWID(), ?, ?, ?, ?, ?, ?, ?, 'PLANLANDI', GETDATE())
-                """, (tarih, hat_id, vardiya_id, is_emri_id, sira_no, planlanan_bara, lot.get('id')))
+                    INSERT INTO uretim.planlama
+                    (uuid, tarih, hat_id, vardiya_id, is_emri_id, sira_no, planlanan_bara,
+                     stok_bakiye_id, durum, olusturan_id, olusturma_tarihi)
+                    VALUES (NEWID(), ?, ?, ?, ?, ?, ?, ?, 'PLANLANDI', ?, GETDATE())
+                """, (tarih, hat_id, vardiya_id, is_emri_id, sira_no, planlanan_bara,
+                      lot.get('id'), olusturan_id))
                 
                 # 3. LOT DURUM GÜNCELLEME - GIRIS_ONAY → PLANLANDI
                 if lot_no:

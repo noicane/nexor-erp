@@ -1893,16 +1893,8 @@ class IrsaliyeDetayDialog(QDialog):
                         return
 
                 if self.yeni_kayit:
-                    # Yeni irsaliye no oluştur - SEQUENCE kullan (Thread-Safe, Deadlock yok!)
-                    try:
-                        cursor.execute("SELECT NEXT VALUE FOR siparis.seq_giris_irsaliye_id")
-                        next_id = cursor.fetchone()[0]
-                    except Exception:
-                        # Sequence yoksa eski yöntemi kullan
-                        cursor.execute("SELECT ISNULL(MAX(id), 0) FROM siparis.giris_irsaliyeleri WITH (TABLOCKX)")
-                        next_id = cursor.fetchone()[0] + 1
-                    
-                    irsaliye_no = f"GRS-{datetime.now().strftime('%Y%m')}-{next_id:04d}"
+                    from core.numara_uretici import yeni_giris_irsaliye_no
+                    irsaliye_no = yeni_giris_irsaliye_no(cursor)
                     print(f"[SAVE DEBUG] Yeni irsaliye_no={irsaliye_no} | next_id={next_id}")
                     
                     cursor.execute("""

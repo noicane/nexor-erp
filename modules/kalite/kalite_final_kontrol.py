@@ -1835,25 +1835,8 @@ class KaliteFinalKontrolPage(BasePage):
                 """, (stok_kodu or f"URN-{is_emri_id}", stok_adi or f"Ürün {is_emri_id}"))
                 urun_id = cursor.fetchone()[0]
 
-            # 5. İş emri durumunu güncelle
-            if kalan <= 0:
-                if hatali == 0:
-                    ie_durum = 'ONAYLANDI'
-                elif saglam == 0:
-                    ie_durum = 'REDDEDILDI'
-                else:
-                    ie_durum = 'KISMI_RED'
-                cursor.execute("""
-                    UPDATE siparis.is_emirleri
-                    SET durum = ?, guncelleme_tarihi = GETDATE()
-                    WHERE id = ?
-                """, (ie_durum, is_emri_id))
-            else:
-                cursor.execute("""
-                    UPDATE siparis.is_emirleri
-                    SET guncelleme_tarihi = GETDATE()
-                    WHERE id = ?
-                """, (is_emri_id,))
+            # 5. Is emri durumunu motor uzerinden tazele (merkezi hesap)
+            motor.is_emri_durum_tazele(is_emri_id)
 
             # 6. STOK HAREKETLERİ
             if lot_no:
@@ -1927,21 +1910,21 @@ class KaliteFinalKontrolPage(BasePage):
                         WHERE lot_no = ? AND depo_id = ?
                     """, (lot_no, fkk_depo_id))
 
-                    # kalite.uretim_redler tablosuna kayıt
-                    if hatali > 0:
-                        try:
-                            hata_listesi = result.get('hata_listesi', [])
-                            ilk_hata_turu_id = hata_listesi[0].get('hata_turu_id') if hata_listesi else None
+                # kalite.uretim_redler tablosuna kayıt (parçalı/tam kontrol fark etmez)
+                if hatali > 0:
+                    try:
+                        hata_listesi = result.get('hata_listesi', [])
+                        ilk_hata_turu_id = hata_listesi[0].get('hata_turu_id') if hata_listesi else None
 
-                            cursor.execute("""
-                                INSERT INTO kalite.uretim_redler
-                                (is_emri_id, lot_no, red_miktar, kontrol_id, red_tarihi,
-                                 kontrol_eden_id, durum, aciklama, hata_turu_id, olusturma_tarihi)
-                                VALUES (?, ?, ?, ?, GETDATE(), ?, 'BEKLIYOR', ?, ?, GETDATE())
-                            """, (is_emri_id, lot_no, hatali, kontrol_id,
-                                  self.personel_data['id'], result.get('not', ''), ilk_hata_turu_id))
-                        except Exception as red_err:
-                            print(f"Üretim red kaydı hatası: {red_err}")
+                        cursor.execute("""
+                            INSERT INTO kalite.uretim_redler
+                            (is_emri_id, lot_no, red_miktar, kontrol_id, red_tarihi,
+                             kontrol_eden_id, durum, aciklama, hata_turu_id, olusturma_tarihi)
+                            VALUES (?, ?, ?, ?, GETDATE(), ?, 'BEKLIYOR', ?, ?, GETDATE())
+                        """, (is_emri_id, lot_no, hatali, kontrol_id,
+                              self.personel_data['id'], result.get('not', ''), ilk_hata_turu_id))
+                    except Exception as red_err:
+                        print(f"Üretim red kaydı hatası: {red_err}")
 
             conn.commit()
             LogManager.log_insert('kalite', 'kalite.uretim_redler', None, 'Yeni kayit eklendi')

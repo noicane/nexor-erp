@@ -37,6 +37,7 @@ def get_modern_style(theme: dict) -> dict:
         'success': brand.SUCCESS,
         'warning': brand.WARNING,
         'danger': brand.ERROR,
+        'info': brand.INFO,
         'bg_main': brand.BG_MAIN,
         'bg_hover': brand.BG_HOVER,
         'border_light': brand.BORDER_HARD,

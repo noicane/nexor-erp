@@ -40,6 +40,8 @@ def _find_udl_file() -> Optional[Path]:
     import sys
 
     # 1. config.json'dan udl_path oku (varsa)
+    # Yeni format (v2.0): profiles[active_profile].udl_path
+    # Eski format (v1.0): top-level udl_path
     udl_from_config = None
     try:
         config_path = None
@@ -52,7 +54,14 @@ def _find_udl_file() -> Optional[Path]:
             import json as _json
             with open(config_path, 'r', encoding='utf-8') as _f:
                 _cfg = _json.load(_f)
-            udl_from_config = _cfg.get('udl_path', '')
+            # Yeni format: aktif profilin udl_path'i
+            active = _cfg.get('active_profile')
+            profiles = _cfg.get('profiles') or {}
+            if active and active in profiles:
+                udl_from_config = (profiles[active] or {}).get('udl_path', '')
+            # Eski format fallback
+            if not udl_from_config:
+                udl_from_config = _cfg.get('udl_path', '')
     except Exception:
         pass
 
@@ -194,16 +203,66 @@ CONFIG_BACKUP_DIR = CONFIG_DIR / "config_backups"
 print(f"[CONFIG] Dizin: {CONFIG_DIR}")
 print(f"[CONFIG] Dosya: {CONFIG_FILE}")
 
-# Varsayilan ayarlar
-DEFAULT_CONFIG = {
-    "version": "1.0",
-    "created_date": None,
-    "modified_date": None,
+# Profil-spesifik anahtarlar: aktif profilin altinda yasarlar.
+# get/set/save bu anahtarlari otomatik olarak profile yonlendirir.
+_PROFILE_KEYS = {
+    "udl_path",
+    "database",
+    "plc_database",
+    "pdks",
+    "company",
+    "musteri_kodu",
+    "musteri_adi",
+    "kisa_ad",
+    "musteri_tipi",
+    "segment",
+    "sektor",
+    "durum",
+    "logo_path",
+    "vergi",
+    "iletisim",
+    "adresler",
+    "kisiler",
+    "anlasma",
+    "bakim",
+    "kurulum",
+    "belgeler",
+    "raporlama",
+    "moduller_aktif",
+    "nas",
+    "aktiviteler",
+    "destek",
+    "finansal",
+    "audit_log",
+}
 
-    # UDL dosya yolu (bos ise uygulama dizini ve C:/NEXOR aranir)
+# Varsayilan profil icerigi
+DEFAULT_PROFILE = {
+    "musteri_kodu": "default",
+    "musteri_adi": "",
+    "kisa_ad": "",
+    "musteri_tipi": "AKTIF",   # DEMO, AKTIF, ESKI, PILOT
+    "segment": "",              # Mikro, KOBI, Kurumsal
+    "sektor": "",
+    "durum": "AKTIF",           # AKTIF, PASIF, ASKIDA
     "udl_path": "",
+    "logo_path": "",
 
-    # Ana veritabani (ERP)
+    "vergi": {
+        "vergi_dairesi": "",
+        "vkn_tckn": "",
+        "mersis_no": ""
+    },
+
+    "iletisim": {
+        "telefon": "",
+        "email": "",
+        "web": ""
+    },
+
+    "adresler": [],   # her kayit: {tip, baslik, adres, sehir, ilce, posta_kodu}
+    "kisiler": [],    # her kayit: {ad, unvan, telefon, email, rol}
+
     "database": {
         "server": "localhost\\SQLEXPRESS",
         "database": "NexorERP",
@@ -214,8 +273,6 @@ DEFAULT_CONFIG = {
         "max_connections": 20,
         "trusted_connection": False
     },
-    
-    # PLC veritabani (opsiyonel)
     "plc_database": {
         "enabled": False,
         "server": "localhost\\SQLEXPRESS",
@@ -226,32 +283,148 @@ DEFAULT_CONFIG = {
         "timeout": 5,
         "max_connections": 5
     },
-    
-    # Uygulama ayarlari
-    "application": {
-        "theme": "dark",
-        "language": "tr_TR",
-        "auto_update": True,
-        "update_server": "",
-        "log_level": "INFO"
-    },
-    
-    # PDKS ayarlari
     "pdks": {
         "enabled": False,
         "device_ip": "",
         "device_port": 4370,
         "poll_interval": 10
     },
+    "company": {
+        "name": "",
+        "address": "",
+        "phone": "",
+        "email": "",
+        "tax_id": "",
+        "logo_path": ""
+    },
 
-    # NAS ayarlari
+    "anlasma": {
+        "sozlesme_no": "",
+        "baslangic_tarihi": "",
+        "bitis_tarihi": "",
+        "yenileme_tipi": "MANUEL",      # MANUEL, OTOMATIK
+        "lisans_tipi": "YILLIK",        # PERPETUAL, YILLIK, AYLIK
+        "bedel": 0.0,
+        "para_birimi": "TRY",
+        "kdv_dahil": False,
+        "odeme_periyodu": "YILLIK",     # TEK, AYLIK, YILLIK
+        "kullanici_limiti": 0,
+        "ek_kullanici_ucreti": 0.0,
+        "imza_pdf_path": "",
+        "notlar": ""
+    },
+
+    "bakim": {
+        "var": True,
+        "aylik_ucret": 0.0,
+        "sonraki_fatura_tarihi": "",
+        "bitis_tarihi": "",
+        "yanit_suresi_saat": 4,
+        "cozum_suresi_saat": 24,
+        "destek_7_24": False
+    },
+
+    "kurulum": {
+        "tip": "ON_PREM",               # ON_PREM, CLOUD
+        "sql_surumu": "",
+        "nexor_versiyonu": "",
+        "son_guncelleme_tarihi": ""
+    },
+
+    "belgeler": [],   # her kayit: {tip, dosya_yolu, eklenme_tarihi, aciklama}
+
+    "raporlama": {
+        "sorumlu_personel": "",
+        "etiketler": [],
+        "kazanim_kanali": "",
+        "ilk_satis_tarihi": "",
+        "son_yenileme_tarihi": ""
+    },
+
+    # Modul lisanslari (musteri bazli override).
+    # Anahtar: modul_kodu, deger: {aktif: bool, bitis_tarihi: 'YYYY-MM-DD', notlar: str}
+    # Bos dict = tum moduller default (DB seed durumunda).
+    "moduller_aktif": {},
+
+    # NAS sunucu + paylasim yollari (her musteri farkli sunucuda olabilir)
+    # `server` UNC adi (ornek: "AtlasNAS" -> \\AtlasNAS\..., ya da IP "192.168.10.50")
+    # `shares` her ozel klasor icin paylasim+alt yol (sunucudan sonraki kisim).
+    # Yol bos birakilirsa o ozellik calismaz; UI bunu uyarir.
     "nas": {
         "server": "AtlasNAS",
         "shares": {
-            "data_yonetimi": "Data Yönetimi",
-            "kalite": "Kalite",
-            "atmo_logic": "Atmo_Logic"
+            "mamul_resim":  "Data Yönetimi/MAMUL_RESIM",
+            "urunler":      "Data Yönetimi/Urunler",
+            "kimyasallar":  "Data Yönetimi/Kimyasallar",
+            "logo":         "Data Yönetimi/LOGO/atlas_logo.png",
+            "tds":          "Data Yönetimi/TDS_Dokumanlari",
+            "aksiyonlar":   "Data Yönetimi/Aksiyonlar",
+            "kalite":       "Kalite",
+            "update_server":"Atmo_Logic",
+            "personel":     "Personel"
         }
+    },
+
+    # M2.1 - Aktivite/Notlar timeline (Chatter mantigi)
+    # Her kayit: {zaman, tip, baslik, icerik, kullanici, ek_dosyalar:[path, ...]}
+    # tip: NOT, ARAMA, ZIYARET, MAIL, EGITIM, KURULUM, DESTEK, ANLASMA, DIGER
+    "aktiviteler": [],
+
+    # M2.2 - Destek gecmisi
+    # ozet: KPI snapshot (ortalama yanit/cozum, memnuniyet)
+    # ticketlar: [{no, tarih, baslik, durum, oncelik, yanit_dk, cozum_dk, memnuniyet_1_5, aciklama}]
+    "destek": {
+        "ozet": {
+            "son_ziyaret_tarihi": "",
+            "memnuniyet_skoru": 0.0,
+            "ortalama_yanit_dk": 0,
+            "ortalama_cozum_dk": 0
+        },
+        "ticketlar": []
+    },
+
+    # M2.3 - Finansal bilgiler
+    # bankalar: [{banka_adi, sube, hesap_no, iban, para_birimi}]
+    "finansal": {
+        "zirve_cari_kodu": "",
+        "cari_bakiye": 0.0,
+        "kredi_limiti": 0.0,
+        "vade_gun": 30,
+        "risk_skoru": "",
+        "para_birimi": "TRY",
+        "son_odeme_tarihi": "",
+        "son_odeme_tutari": 0.0,
+        "notlar": "",
+        "bankalar": []
+    },
+
+    # M2.5 - Audit log
+    # Her kayit: {zaman, kullanici, alan, eski, yeni, kategori}
+    # kategori: ANLASMA, BAKIM, LISANS, ILETISIM, DB, DIGER
+    "audit_log": []
+}
+
+# Varsayilan ayarlar (yeni sema - profil destekli)
+DEFAULT_CONFIG = {
+    "version": "2.0",
+    "created_date": None,
+    "modified_date": None,
+
+    # Aktif profil ismi (profiles dict'inde anahtar olarak bulunmali)
+    "active_profile": "default",
+
+    # Profil tanimlari (musteri/ortam bazli)
+    "profiles": {
+        "default": dict(DEFAULT_PROFILE)
+    },
+
+    # ---- Global (profilden bagimsiz) ayarlar ----
+    "application": {
+        "theme": "dark",
+        "language": "tr_TR",
+        "auto_update": True,
+        "update_server": "",
+        "log_level": "INFO"
     }
 }
 
@@ -333,7 +506,7 @@ class ExternalConfigManager:
             logger.error(f"Dizin olusturma hatasi: {e}")
     
     def _load(self) -> bool:
-        """Config dosyasini yukle"""
+        """Config dosyasini yukle ve gerekirse v1.0 -> v2.0 migrate et."""
         try:
             if CONFIG_FILE.exists():
                 with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -341,29 +514,106 @@ class ExternalConfigManager:
                 self._is_loaded = True
                 self._config_exists = True
                 logger.info(f"Config yuklendi: {CONFIG_FILE}")
+                # Eski formatsa profil yapisina gec ve dosyayi gunelle
+                self._migrate_to_profiles()
                 return True
             else:
                 # Varsayilan config
-                self._config = DEFAULT_CONFIG.copy()
+                import copy
+                self._config = copy.deepcopy(DEFAULT_CONFIG)
                 self._config['created_date'] = datetime.now().isoformat()
                 self._is_loaded = True
                 self._config_exists = False
                 logger.warning(f"Config dosyasi bulunamadi: {CONFIG_FILE}")
                 return False
-                
+
         except json.JSONDecodeError as e:
             logger.error(f"Config JSON hatasi: {e}")
-            self._config = DEFAULT_CONFIG.copy()
+            import copy
+            self._config = copy.deepcopy(DEFAULT_CONFIG)
             self._is_loaded = True
             self._config_exists = False
             return False
-            
+
         except Exception as e:
             logger.error(f"Config yukleme hatasi: {e}")
-            self._config = DEFAULT_CONFIG.copy()
+            import copy
+            self._config = copy.deepcopy(DEFAULT_CONFIG)
             self._is_loaded = True
             self._config_exists = False
             return False
+
+    def _migrate_to_profiles(self) -> None:
+        """v1.0 (top-level database/pdks/...) -> v2.0 (profiles[atmo].* + active_profile).
+
+        Idempotent: yeni format zaten varsa hicbir sey yapmaz. Migration sonrasi
+        config dosyasini diske yazar (eski format kayit kalmaz).
+        """
+        if 'profiles' in self._config and 'active_profile' in self._config:
+            # Yeni format - ama yine de yeni eklenen profil-spesifik alanlari kontrol et
+            self._migrate_top_level_to_active_profile()
+            return  # Zaten yeni format
+
+        logger.info("Config v1.0 -> v2.0 migrate ediliyor (atmo profil olusturuluyor)")
+        old = self._config
+
+        atmo_profile = {
+            "musteri_kodu": "atmo",
+            "musteri_adi": (old.get('company') or {}).get('name', '') or "Atmo",
+            "udl_path": old.get('udl_path', ''),
+            "database": old.get('database') or dict(DEFAULT_PROFILE['database']),
+            "plc_database": old.get('plc_database') or dict(DEFAULT_PROFILE['plc_database']),
+            "pdks": old.get('pdks') or dict(DEFAULT_PROFILE['pdks']),
+            "company": old.get('company') or dict(DEFAULT_PROFILE['company']),
+        }
+
+        new_config = {
+            "version": "2.0",
+            "created_date": old.get('created_date'),
+            "modified_date": datetime.now().isoformat(),
+            "active_profile": "atmo",
+            "profiles": {"atmo": atmo_profile},
+        }
+        # Global anahtarlari kopyala (profil-spesifik olmayan her sey)
+        for key, value in old.items():
+            if key in {'version', 'created_date', 'modified_date',
+                       'active_profile', 'profiles', 'udl_path',
+                       'database', 'plc_database', 'pdks', 'company',
+                       'musteri_kodu', 'musteri_adi'}:
+                continue
+            new_config[key] = value
+
+        self._config = new_config
+
+        # Yeni format diske kaydet (eski format silinsin)
+        try:
+            self.save()
+            logger.info("Config v2.0 olarak kaydedildi (profil: atmo)")
+        except Exception as e:
+            logger.error(f"Config v2.0 kaydetme hatasi: {e}")
+
+    def _migrate_top_level_to_active_profile(self) -> None:
+        """v2.0 sonrasi yeni eklenen profil-spesifik alanlari (ornek: 'nas')
+        eski global'den aktif profile'a tasi. Idempotent.
+        """
+        active = self._config.get('active_profile')
+        profiles = self._config.get('profiles') or {}
+        if not active or active not in profiles:
+            return
+
+        profile = profiles[active]
+        degisti = False
+        for key in _PROFILE_KEYS:
+            if key in self._config and key not in profile:
+                logger.info("[CONFIG MIGRATE] '%s' top-level -> profiles.%s'a tasiniyor", key, active)
+                profile[key] = self._config.pop(key)
+                degisti = True
+
+        if degisti:
+            try:
+                self.save()
+            except Exception as e:
+                logger.error(f"Top-level migration kaydetme hatasi: {e}")
     
     def save(self) -> bool:
         """Config dosyasini kaydet"""
@@ -385,14 +635,14 @@ class ExternalConfigManager:
             # Kaydet
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(self._config, f, indent=4, ensure_ascii=False)
-            
+
             self._config_exists = True
-            print(f"[CONFIG] ✓ Kaydedildi: {CONFIG_FILE}")
+            print(f"[CONFIG] [OK] Kaydedildi: {CONFIG_FILE}")
             logger.info(f"Config kaydedildi: {CONFIG_FILE}")
             return True
-            
+
         except Exception as e:
-            print(f"[CONFIG] ✗ Kaydetme hatası: {e}")
+            print(f"[CONFIG] [HATA] Kaydetme hatasi: {e}")
             logger.error(f"Config kaydetme hatasi: {e}")
             return False
     
@@ -413,36 +663,128 @@ class ExternalConfigManager:
     
     def get(self, key: str, default: Any = None) -> Any:
         """
-        Ayar degeri al (noktali notasyon destekli)
-        
+        Ayar degeri al (noktali notasyon destekli).
+
+        Profil-spesifik anahtarlar (database, plc_database, pdks, udl_path,
+        company, musteri_*) otomatik olarak aktif profilden okunur.
+
         Ornek:
-            config_manager.get('database.server')
-            config_manager.get('application.theme', 'dark')
+            config_manager.get('database.server')   -> profiles[active].database.server
+            config_manager.get('application.theme') -> top-level application.theme
         """
+        parts = key.split('.')
+        first = parts[0] if parts else ''
+
+        if first in _PROFILE_KEYS:
+            profile = self._active_profile_dict()
+            try:
+                value = profile
+                for part in parts:
+                    value = value[part]
+                return value
+            except (KeyError, TypeError):
+                return default
+
         try:
             value = self._config
-            for part in key.split('.'):
+            for part in parts:
                 value = value[part]
             return value
         except (KeyError, TypeError):
             return default
-    
+
     def set(self, key: str, value: Any) -> None:
         """
-        Ayar degeri yaz (noktali notasyon destekli)
-        
+        Ayar degeri yaz (noktali notasyon destekli).
+
+        Profil-spesifik anahtarlar otomatik olarak aktif profile yazilir.
+
         Ornek:
             config_manager.set('database.server', 'localhost\\SQLEXPRESS')
+            config_manager.set('application.theme', 'dark')
         """
         parts = key.split('.')
-        config = self._config
-        
+        first = parts[0] if parts else ''
+
+        if first in _PROFILE_KEYS:
+            target = self._active_profile_dict(create=True)
+        else:
+            target = self._config
+
         for part in parts[:-1]:
-            if part not in config:
-                config[part] = {}
-            config = config[part]
-        
-        config[parts[-1]] = value
+            if part not in target or not isinstance(target[part], dict):
+                target[part] = {}
+            target = target[part]
+        target[parts[-1]] = value
+
+    # ---------- Profil yardimcilari ----------
+
+    def _active_profile_dict(self, create: bool = False) -> Dict[str, Any]:
+        """Aktif profilin dict referansini dondur. create=True ise yoksa olusturur."""
+        active = self._config.get('active_profile') or 'default'
+        profiles = self._config.get('profiles')
+        if not isinstance(profiles, dict):
+            if not create:
+                return {}
+            profiles = {}
+            self._config['profiles'] = profiles
+        if active not in profiles:
+            if not create:
+                return {}
+            import copy
+            profiles[active] = copy.deepcopy(DEFAULT_PROFILE)
+        return profiles[active]
+
+    def get_active_profile(self) -> str:
+        """Aktif profil ismini dondur."""
+        return self._config.get('active_profile') or 'default'
+
+    def set_active_profile(self, name: str) -> bool:
+        """Aktif profili degistir (profilin var oldugunu varsayar). Save edilir."""
+        profiles = self._config.get('profiles') or {}
+        if name not in profiles:
+            logger.error(f"Profil bulunamadi: {name}")
+            return False
+        self._config['active_profile'] = name
+        return self.save()
+
+    def list_profiles(self) -> list:
+        """Mevcut profil isimleri (alfabetik)."""
+        profiles = self._config.get('profiles') or {}
+        return sorted(profiles.keys())
+
+    def get_profile(self, name: str) -> Optional[Dict[str, Any]]:
+        """Verilen profil dict'ini dondur (yoksa None)."""
+        profiles = self._config.get('profiles') or {}
+        return profiles.get(name)
+
+    def add_profile(self, name: str, data: Optional[Dict[str, Any]] = None) -> bool:
+        """Yeni profil ekle. Mevcutsa False doner. Save edilir."""
+        profiles = self._config.setdefault('profiles', {})
+        if name in profiles:
+            logger.error(f"Profil zaten var: {name}")
+            return False
+        import copy
+        new_profile = copy.deepcopy(DEFAULT_PROFILE)
+        new_profile['musteri_kodu'] = name
+        if data:
+            new_profile.update(data)
+        profiles[name] = new_profile
+        return self.save()
+
+    def remove_profile(self, name: str) -> bool:
+        """Profili sil. Aktif profil ise veya tek profil ise False doner."""
+        profiles = self._config.get('profiles') or {}
+        if name not in profiles:
+            return False
+        if name == self.get_active_profile():
+            logger.error(f"Aktif profil silinemez: {name}")
+            return False
+        if len(profiles) <= 1:
+            logger.error("Son profil silinemez")
+            return False
+        profiles.pop(name)
+        return self.save()
     
     def config_exists(self) -> bool:
         """Config dosyasi mevcut mu?"""
@@ -457,23 +799,23 @@ class ExternalConfigManager:
         if not self._config_exists:
             return True
 
-        # Veritabani ayarlari bos mu?
-        db_config = self._config.get('database', {})
+        # Veritabani ayarlari bos mu? (aktif profilden)
+        db_config = self._active_profile_dict().get('database', {}) or {}
         if not db_config.get('server') or not db_config.get('database'):
             return True
 
         return False
-    
+
     def get_db_config(self) -> Dict[str, Any]:
         """
-        Veritabani baglanti ayarlarini dondur
+        Veritabani baglanti ayarlarini dondur (aktif profil + UDL override).
         (database_manager.py ile uyumlu format)
 
         Oncelik sirasi:
             1. Nexor.UDL dosyasi (masaustu / uygulama dizini / C:/NEXOR)
-            2. config.json
+            2. config.json -> profiles[active_profile].database
         """
-        db = self._config.get('database', {})
+        db = self._active_profile_dict().get('database', {}) or {}
 
         config = {
             'server': db.get('server', ''),
@@ -501,13 +843,14 @@ class ExternalConfigManager:
 
         return config
     
-    def set_db_config(self, server: str, database: str, 
+    def set_db_config(self, server: str, database: str,
                       user: str = '', password: str = '',
                       trusted_connection: bool = False,
                       driver: str = 'ODBC Driver 18 for SQL Server',
                       timeout: int = 10, max_connections: int = 20) -> None:
-        """Veritabani baglanti ayarlarini kaydet"""
-        self._config['database'] = {
+        """Veritabani baglanti ayarlarini aktif profile yaz."""
+        profile = self._active_profile_dict(create=True)
+        profile['database'] = {
             'server': server,
             'database': database,
             'user': user if not trusted_connection else '',
@@ -517,14 +860,14 @@ class ExternalConfigManager:
             'max_connections': max_connections,
             'trusted_connection': trusted_connection
         }
-    
+
     def get_plc_config(self) -> Optional[Dict[str, Any]]:
-        """PLC veritabani ayarlarini dondur"""
-        plc = self._config.get('plc_database', {})
-        
+        """PLC veritabani ayarlarini dondur (aktif profilden)."""
+        plc = self._active_profile_dict().get('plc_database', {}) or {}
+
         if not plc.get('enabled', False):
             return None
-        
+
         return {
             'server': plc.get('server', ''),
             'database': plc.get('database', ''),
@@ -534,12 +877,13 @@ class ExternalConfigManager:
             'timeout': plc.get('timeout', 5),
             'max_connections': plc.get('max_connections', 5)
         }
-    
-    def set_plc_config(self, enabled: bool, server: str = '', 
-                       database: str = '', user: str = '', 
+
+    def set_plc_config(self, enabled: bool, server: str = '',
+                       database: str = '', user: str = '',
                        password: str = '', **kwargs) -> None:
-        """PLC veritabani ayarlarini kaydet"""
-        self._config['plc_database'] = {
+        """PLC veritabani ayarlarini aktif profile yaz."""
+        profile = self._active_profile_dict(create=True)
+        profile['plc_database'] = {
             'enabled': enabled,
             'server': server,
             'database': database,
@@ -549,14 +893,14 @@ class ExternalConfigManager:
             'timeout': kwargs.get('timeout', 5),
             'max_connections': kwargs.get('max_connections', 5)
         }
-    
+
     def get_app_config(self) -> Dict[str, Any]:
-        """Uygulama ayarlarini dondur"""
+        """Uygulama ayarlarini dondur (global)."""
         return self._config.get('application', {})
-    
+
     def get_pdks_config(self) -> Dict[str, Any]:
-        """PDKS ayarlarini dondur"""
-        return self._config.get('pdks', {})
+        """PDKS ayarlarini dondur (aktif profilden)."""
+        return self._active_profile_dict().get('pdks', {}) or {}
     
     def get_connection_string(self, for_plc: bool = False) -> str:
         """
@@ -641,7 +985,8 @@ class ExternalConfigManager:
     
     def reset_to_defaults(self) -> None:
         """Varsayilan ayarlara don"""
-        self._config = DEFAULT_CONFIG.copy()
+        import copy
+        self._config = copy.deepcopy(DEFAULT_CONFIG)
         self._config['created_date'] = datetime.now().isoformat()
     
     def reload(self) -> bool:

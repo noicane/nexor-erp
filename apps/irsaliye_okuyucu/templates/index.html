@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#c41e1e">
+  <title>İrsaliye Okuyucu · NEXOR</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">📦</span>
+    <strong>İrsaliye Okuyucu</strong>
+  </div>
+  <span id="status-badge" class="status" data-status="loading">· Yükleniyor</span>
+</header>
+
+<main class="main">
+  <!-- ADIM 1: FOTO ÇEK / SEÇ -->
+  <section id="step-capture" class="step active">
+    <div class="card capture-card">
+      <div class="capture-preview" id="preview-wrap">
+        <div class="capture-empty" id="preview-empty">
+          <span class="big-icon">📷</span>
+          <p>İrsaliyenin fotoğrafını çekin</p>
+          <small>Matbaa çıktısı / temiz zemin / iyi ışık</small>
+        </div>
+        <img id="preview-img" alt="">
+      </div>
+
+      <label for="foto-input" class="btn btn-primary btn-big" id="foto-btn">
+        📸 Fotoğraf Çek
+      </label>
+      <input type="file" id="foto-input" accept="image/*" capture="environment" hidden>
+
+      <button id="btn-oku" class="btn btn-success btn-big" disabled>
+        ✨ Oku ve Analiz Et
+      </button>
+    </div>
+  </section>
+
+  <!-- ADIM 2: İŞLENİYOR -->
+  <section id="step-loading" class="step">
+    <div class="card center">
+      <div class="spinner"></div>
+      <h3>AI irsaliyeyi okuyor...</h3>
+      <p class="muted">Bu işlem 5-15 saniye sürebilir</p>
+    </div>
+  </section>
+
+  <!-- ADIM 3: ÖNİZLEME / DÜZENLE -->
+  <section id="step-review" class="step">
+    <div class="card">
+      <h3>🏢 Müşteri Bilgileri</h3>
+      <div class="form-row">
+        <label>Müşteri Ünvanı</label>
+        <select id="cari-select"></select>
+        <input type="text" id="cari-unvan-manual" placeholder="Ya da manuel gir..." style="display:none;">
+      </div>
+      <div class="form-row">
+        <label>VKN</label>
+        <input type="text" id="cari-vkn" readonly>
+      </div>
+      <div class="form-row">
+        <label>İrsaliye No</label>
+        <input type="text" id="cari-irsaliye-no">
+      </div>
+      <div class="form-row">
+        <label>Tarih</label>
+        <input type="date" id="tarih">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🚚 Taşıma (Opsiyonel)</h3>
+      <div class="form-row">
+        <label>Araç Plaka</label>
+        <input type="text" id="arac-plaka">
+      </div>
+      <div class="form-row">
+        <label>Şoför Adı</label>
+        <input type="text" id="sofor-adi">
+      </div>
+      <div class="form-row">
+        <label>Teslim Alan</label>
+        <input type="text" id="teslim-alan">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📋 Kalemler <span class="count-badge" id="kalem-count">0</span></h3>
+      <div id="kalem-liste"></div>
+      <button class="btn btn-ghost" id="btn-kalem-ekle">+ Yeni Kalem</button>
+    </div>
+
+    <div class="card">
+      <h3>📝 Notlar</h3>
+      <textarea id="notlar" rows="3" placeholder="FASON, BEDELSİZ vs."></textarea>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn btn-ghost" id="btn-geri">↶ Yeni Fotoğraf</button>
+      <button class="btn btn-success btn-big" id="btn-kaydet">💾 NEXOR'a Kaydet</button>
+    </div>
+  </section>
+
+  <!-- ADIM 4: BAŞARILI -->
+  <section id="step-success" class="step">
+    <div class="card center success-card">
+      <div class="success-icon">✅</div>
+      <h2>Kaydedildi!</h2>
+      <p class="muted">İrsaliye No</p>
+      <p class="big-no" id="basarili-no">-</p>
+      <p class="muted small" id="basarili-mesaj"></p>
+      <button class="btn btn-primary btn-big" id="btn-yeni">📸 Yeni İrsaliye</button>
+    </div>
+  </section>
+
+  <!-- HATA TOAST -->
+  <div id="toast" class="toast"></div>
+</main>
+
+<!-- KALEM TEMPLATE -->
+<template id="kalem-template">
+  <div class="kalem-row">
+    <div class="kalem-header">
+      <span class="kalem-sira"></span>
+      <button class="kalem-remove" title="Sil">✕</button>
+    </div>
+    <div class="form-row">
+      <label>Stok Kodu</label>
+      <input type="text" class="k-kod">
+    </div>
+    <div class="form-row">
+      <label>Ürün Adı</label>
+      <input type="text" class="k-ad">
+    </div>
+    <div class="form-row row-inline">
+      <div class="col">
+        <label>Miktar</label>
+        <input type="number" class="k-miktar" min="0" step="1">
+      </div>
+      <div class="col">
+        <label>Birim</label>
+        <input type="text" class="k-birim" value="ADET">
+      </div>
+      <div class="col">
+        <label>Kaplama</label>
+        <input type="text" class="k-kaplama">
+      </div>
+    </div>
+    <div class="form-row k-oneri-wrap" style="display:none;">
+      <label>NEXOR Stok Eşleşme</label>
+      <select class="k-oneri"></select>
+      <button type="button" class="btn btn-ghost k-ara-btn" style="margin-top:8px; font-size:13px;">🔍 Stok Kartı Ara (bulunamadıysa)</button>
+    </div>
+  </div>
+</template>
+
+<!-- Stok arama modali -->
+<div id="ara-modal" class="modal" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-head">
+      <strong>Stok Kartı Ara</strong>
+      <button class="modal-close" id="ara-kapat">✕</button>
+    </div>
+    <input type="text" id="ara-input" placeholder="Kod veya ürün adı yazın (min 2 harf)..." autofocus>
+    <div id="ara-sonuclar" class="ara-sonuclar"></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

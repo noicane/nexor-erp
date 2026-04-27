@@ -9,13 +9,17 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QLineEdit,
     QAbstractItemView, QMessageBox, QComboBox, QDateEdit,
     QDialog, QGridLayout, QTextEdit, QSpinBox, QDoubleSpinBox,
-    QSplitter, QWidget, QCheckBox
+    QSplitter, QWidget, QCheckBox, QTabWidget
 )
 from PySide6.QtCore import Qt, QTimer, QDate, Signal
 from PySide6.QtGui import QColor, QFont
 
 from components.base_page import BasePage
 from components.dialog_minimize_bar import add_minimize_button
+from components.table_cell_widgets import (
+    col_width_for_number, make_cell_checkbox,
+    make_cell_lineedit, make_cell_spinbox,
+)
 from core.database import get_db_connection
 from core.log_manager import LogManager
 from core.nexor_brand import brand
@@ -254,6 +258,42 @@ class SevkIadePage(BasePage):
 
         layout.addLayout(header)
 
+        # TAB WIDGET: Yeni İade + İade Listesi
+        self.tabs = QTabWidget()
+        self.tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {brand.BORDER};
+                border-radius: 8px;
+                background: {brand.BG_MAIN};
+                top: -1px;
+            }}
+            QTabBar::tab {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                padding: 10px 18px;
+                border: 1px solid {brand.BORDER};
+                border-bottom: none;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                margin-right: 4px;
+                font-weight: bold;
+            }}
+            QTabBar::tab:selected {{
+                background: {brand.PRIMARY};
+                color: white;
+            }}
+            QTabBar::tab:hover:!selected {{
+                background: {brand.BG_HOVER};
+            }}
+        """)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
+        # Tab 1: Yeni İade (mevcut form)
+        yeni_tab = QWidget()
+        yeni_layout = QVBoxLayout(yeni_tab)
+        yeni_layout.setContentsMargins(12, 12, 12, 12)
+        yeni_layout.setSpacing(12)
+
         # Splitter
         splitter = QSplitter(Qt.Horizontal)
 
@@ -408,9 +448,10 @@ class SevkIadePage(BasePage):
         self.satirlar_table.setColumnWidth(0, 40)
         self.satirlar_table.setColumnWidth(1, 100)
         self.satirlar_table.setColumnWidth(3, 120)
-        self.satirlar_table.setColumnWidth(4, 80)
-        self.satirlar_table.setColumnWidth(5, 80)
-        self.satirlar_table.setColumnWidth(6, 120)
+        self.satirlar_table.setColumnWidth(4, 90)
+        # Duzenlenebilir hucreler: col_width_for_number ile hesaplanir
+        self.satirlar_table.setColumnWidth(5, col_width_for_number(99999))
+        self.satirlar_table.setColumnWidth(6, 220)
         self.satirlar_table.verticalHeader().setVisible(False)
         self.satirlar_table.setStyleSheet(f"""
             QTableWidget {{
@@ -468,7 +509,230 @@ class SevkIadePage(BasePage):
         splitter.addWidget(sag)
         splitter.setSizes([350, 650])
 
-        layout.addWidget(splitter, 1)
+        yeni_layout.addWidget(splitter, 1)
+        self.tabs.addTab(yeni_tab, "📝 Yeni İade")
+
+        # Tab 2: İade Listesi
+        liste_tab = self._liste_tab_olustur()
+        self.tabs.addTab(liste_tab, "📋 İade Listesi")
+
+        layout.addWidget(self.tabs, 1)
+
+    # =========================================================================
+    # İADE LİSTESİ TAB
+    # =========================================================================
+
+    def _liste_tab_olustur(self) -> QWidget:
+        """İade listesi sekmesini oluştur"""
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(10)
+
+        # Üst bar: başlık + yenile
+        top = QHBoxLayout()
+        top_title = QLabel("📋 Kayıtlı İade İrsaliyeleri")
+        top_title.setStyleSheet(f"color: {brand.PRIMARY}; font-weight: bold; font-size: 14px;")
+        top.addWidget(top_title)
+        top.addStretch()
+
+        self.liste_info_label = QLabel("0 kayıt")
+        self.liste_info_label.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 12px; margin-right: 12px;")
+        top.addWidget(self.liste_info_label)
+
+        yenile_btn = QPushButton("🔄 Yenile")
+        yenile_btn.setStyleSheet(self._button_style())
+        yenile_btn.clicked.connect(self._liste_yukle)
+        top.addWidget(yenile_btn)
+        lay.addLayout(top)
+
+        # Liste tablosu
+        self.liste_table = QTableWidget()
+        self.liste_table.setColumnCount(8)
+        self.liste_table.setHorizontalHeaderLabels([
+            "İade No", "Tarih", "Müşteri", "Ref. İrsaliye",
+            "Kalem", "Toplam Adet", "Durum", "Oluşturulma"
+        ])
+        self.liste_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        self.liste_table.setColumnWidth(0, 130)
+        self.liste_table.setColumnWidth(1, 90)
+        self.liste_table.setColumnWidth(3, 150)
+        self.liste_table.setColumnWidth(4, 70)
+        self.liste_table.setColumnWidth(5, 100)
+        self.liste_table.setColumnWidth(6, 110)
+        self.liste_table.setColumnWidth(7, 130)
+        self.liste_table.verticalHeader().setVisible(False)
+        self.liste_table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.liste_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.liste_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.liste_table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {brand.BG_CARD};
+                border: 1px solid {brand.BORDER};
+                border-radius: 8px;
+                gridline-color: {brand.BORDER};
+                color: {brand.TEXT};
+            }}
+            QHeaderView::section {{
+                background: {brand.BG_INPUT};
+                color: {brand.TEXT};
+                padding: 8px;
+                border: none;
+                font-weight: bold;
+            }}
+            QTableWidget::item:selected {{
+                background: {brand.PRIMARY};
+                color: white;
+            }}
+        """)
+        self.liste_table.doubleClicked.connect(self._iade_detay_goster)
+        lay.addWidget(self.liste_table, 1)
+
+        return w
+
+    def _on_tab_changed(self, idx: int):
+        """Tab değişince liste sekmesine geçildiyse yükle"""
+        if idx == 1:
+            self._liste_yukle()
+
+    def _liste_yukle(self):
+        """İade listesini DB'den yükle"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT
+                    i.id, i.iade_no, i.tarih,
+                    COALESCE(c.unvan, c.kisa_ad, '-') AS musteri,
+                    ISNULL(ci.irsaliye_no, '-') AS ref_irsaliye,
+                    (SELECT COUNT(*) FROM siparis.iade_irsaliye_satirlar s WHERE s.irsaliye_id = i.id) AS satir_adedi,
+                    ISNULL((SELECT SUM(miktar) FROM siparis.iade_irsaliye_satirlar s WHERE s.irsaliye_id = i.id), 0) AS toplam_mik,
+                    i.durum, i.olusturma_tarihi
+                FROM siparis.iade_irsaliyeleri i
+                LEFT JOIN musteri.cariler c ON i.cari_id = c.id
+                LEFT JOIN siparis.cikis_irsaliyeleri ci ON i.referans_irsaliye_id = ci.id
+                WHERE (i.silindi_mi = 0 OR i.silindi_mi IS NULL)
+                ORDER BY i.id DESC
+            """)
+            rows = cursor.fetchall()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"İade listesi yüklenemedi:\n{e}")
+            return
+
+        self.liste_table.setRowCount(0)
+        durum_map = {
+            'TASLAK': '📝 Taslak',
+            'KABUL_EDILDI': '✅ Kabul Edildi',
+            'IPTAL': '❌ İptal',
+        }
+        for r in rows:
+            idx = self.liste_table.rowCount()
+            self.liste_table.insertRow(idx)
+            iade_id, iade_no, tarih, musteri, ref_irs, satir_adedi, toplam_mik, durum, olus = r
+
+            it_no = QTableWidgetItem(iade_no or '-')
+            it_no.setData(Qt.UserRole, iade_id)
+            self.liste_table.setItem(idx, 0, it_no)
+            self.liste_table.setItem(idx, 1, QTableWidgetItem(tarih.strftime('%d.%m.%Y') if tarih else '-'))
+            self.liste_table.setItem(idx, 2, QTableWidgetItem(musteri or '-'))
+            self.liste_table.setItem(idx, 3, QTableWidgetItem(ref_irs or '-'))
+
+            it_kalem = QTableWidgetItem(str(satir_adedi or 0))
+            it_kalem.setTextAlignment(Qt.AlignCenter)
+            self.liste_table.setItem(idx, 4, it_kalem)
+
+            it_tmk = QTableWidgetItem(f"{float(toplam_mik or 0):,.0f}")
+            it_tmk.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.liste_table.setItem(idx, 5, it_tmk)
+
+            self.liste_table.setItem(idx, 6, QTableWidgetItem(durum_map.get(durum, durum or '-')))
+            self.liste_table.setItem(idx, 7, QTableWidgetItem(olus.strftime('%d.%m.%Y %H:%M') if olus else '-'))
+
+        self.liste_info_label.setText(f"{len(rows)} kayıt")
+
+    def _iade_detay_goster(self):
+        """Çift tıklanan iadenin satırlarını dialog'da göster"""
+        row = self.liste_table.currentRow()
+        if row < 0:
+            return
+        iade_id_item = self.liste_table.item(row, 0)
+        iade_id = iade_id_item.data(Qt.UserRole) if iade_id_item else None
+        if not iade_id:
+            return
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT satir_no, stok_kodu, stok_adi, lot_no, miktar, birim, iade_nedeni
+                FROM siparis.iade_irsaliye_satirlar
+                WHERE irsaliye_id = ?
+                ORDER BY satir_no
+            """, (iade_id,))
+            satirlar = cursor.fetchall()
+            conn.close()
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Detay yüklenemedi:\n{e}")
+            return
+
+        iade_no = iade_id_item.text()
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"İade Detayı - {iade_no}")
+        dlg.setMinimumSize(800, 400)
+        dlg.setStyleSheet(f"QDialog {{ background: {brand.BG_MAIN}; }} QLabel {{ color: {brand.TEXT}; }}")
+
+        dl = QVBoxLayout(dlg)
+        dl.setContentsMargins(20, 20, 20, 20)
+        dl.setSpacing(12)
+
+        title = QLabel(f"📦 İade Kalemleri — {iade_no}")
+        title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {brand.PRIMARY};")
+        dl.addWidget(title)
+
+        tbl = QTableWidget()
+        tbl.setColumnCount(7)
+        tbl.setHorizontalHeaderLabels(["Sıra", "Stok Kodu", "Ürün Adı", "Lot No", "Miktar", "Birim", "Neden"])
+        tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
+        tbl.setColumnWidth(0, 50)
+        tbl.setColumnWidth(1, 100)
+        tbl.setColumnWidth(3, 140)
+        tbl.setColumnWidth(4, 90)
+        tbl.setColumnWidth(5, 60)
+        tbl.setColumnWidth(6, 180)
+        tbl.verticalHeader().setVisible(False)
+        tbl.setStyleSheet(f"""
+            QTableWidget {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER};
+                           border-radius: 8px; color: {brand.TEXT}; gridline-color: {brand.BORDER}; }}
+            QHeaderView::section {{ background: {brand.BG_INPUT}; color: {brand.TEXT};
+                                   padding: 8px; border: none; font-weight: bold; }}
+        """)
+        for s in satirlar:
+            r = tbl.rowCount()
+            tbl.insertRow(r)
+            tbl.setItem(r, 0, QTableWidgetItem(str(s[0])))
+            tbl.setItem(r, 1, QTableWidgetItem(s[1] or '-'))
+            tbl.setItem(r, 2, QTableWidgetItem(s[2] or '-'))
+            tbl.setItem(r, 3, QTableWidgetItem(s[3] or '-'))
+            it_m = QTableWidgetItem(f"{float(s[4] or 0):,.0f}")
+            it_m.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            tbl.setItem(r, 4, it_m)
+            tbl.setItem(r, 5, QTableWidgetItem(s[5] or '-'))
+            tbl.setItem(r, 6, QTableWidgetItem(s[6] or '-'))
+        dl.addWidget(tbl, 1)
+
+        kapat = QPushButton("Kapat")
+        kapat.setStyleSheet(f"""
+            QPushButton {{ background: {brand.PRIMARY}; color: white; border: none;
+                           border-radius: 6px; padding: 10px 24px; font-weight: bold; }}
+        """)
+        kapat.clicked.connect(dlg.accept)
+        b = QHBoxLayout()
+        b.addStretch()
+        b.addWidget(kapat)
+        dl.addLayout(b)
+
+        dlg.exec()
 
     # =========================================================================
     # YARDIMCI STYLE
@@ -547,13 +811,8 @@ class SevkIadePage(BasePage):
             self.satirlar_table.insertRow(idx)
 
             # Checkbox
-            chk = QCheckBox()
+            chk_widget, chk = make_cell_checkbox()
             chk.stateChanged.connect(self._toplam_guncelle)
-            chk_widget = QWidget()
-            chk_layout = QHBoxLayout(chk_widget)
-            chk_layout.addWidget(chk)
-            chk_layout.setAlignment(Qt.AlignCenter)
-            chk_layout.setContentsMargins(0, 0, 0, 0)
             self.satirlar_table.setCellWidget(idx, 0, chk_widget)
 
             self.satirlar_table.setItem(idx, 1, QTableWidgetItem(row[1] or ''))
@@ -564,35 +823,14 @@ class SevkIadePage(BasePage):
             sevk_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.satirlar_table.setItem(idx, 4, sevk_item)
 
-            # İade miktar (SpinBox)
-            spin = QDoubleSpinBox()
-            spin.setDecimals(0)
-            spin.setRange(0, float(row[4] or 0))
-            spin.setValue(float(row[4] or 0))
-            spin.setStyleSheet(f"""
-                QDoubleSpinBox {{
-                    background: {brand.BG_INPUT};
-                    border: 1px solid {brand.BORDER};
-                    border-radius: 4px;
-                    padding: 4px;
-                    color: {brand.TEXT};
-                }}
-            """)
+            # İade miktar (standart spinbox - no-buttons, saga hizali)
+            max_mik = float(row[4] or 0)
+            spin = make_cell_spinbox(max_val=max_mik, initial=max_mik, decimals=0)
             spin.valueChanged.connect(self._toplam_guncelle)
             self.satirlar_table.setCellWidget(idx, 5, spin)
 
-            # Neden
-            neden = QLineEdit()
-            neden.setPlaceholderText("Neden...")
-            neden.setStyleSheet(f"""
-                QLineEdit {{
-                    background: {brand.BG_INPUT};
-                    border: 1px solid {brand.BORDER};
-                    border-radius: 4px;
-                    padding: 4px;
-                    color: {brand.TEXT};
-                }}
-            """)
+            # Neden (standart lineedit)
+            neden = make_cell_lineedit(placeholder="Neden...")
             self.satirlar_table.setCellWidget(idx, 6, neden)
 
             self.satirlar_table.setRowHeight(idx, 40)
@@ -700,6 +938,7 @@ class SevkIadePage(BasePage):
                 INSERT INTO siparis.iade_irsaliyeleri
                     (iade_no, referans_irsaliye_id, cari_id, tarih, iade_nedeni,
                      arac_plaka, sofor_adi, teslim_alan, durum)
+                OUTPUT INSERTED.id
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'KABUL_EDILDI')
             """, (
                 iade_no,
@@ -712,7 +951,6 @@ class SevkIadePage(BasePage):
                 self.teslim_alan_input.text().strip() or None,
             ))
 
-            cursor.execute("SELECT SCOPE_IDENTITY()")
             iade_id = int(cursor.fetchone()[0])
 
             # Stok girişi için HareketMotoru
@@ -729,28 +967,63 @@ class SevkIadePage(BasePage):
             sevk_depo_id = sevk_depo_row[0] if sevk_depo_row else None
 
             # Satırları kaydet ve stok girişi yap
+            # Savunma amacli truncate (migration_iade_satirlar_kolon_genislet.sql
+            # calistirildiktan sonra: stok_adi 250, iade_nedeni 500)
+            def _trunc(val, n):
+                if val is None:
+                    return None
+                s = str(val)
+                return s[:n] if len(s) > n else s
+
             for satir_no, satir in enumerate(secili, 1):
+                # Sevkiyat satirindaki lot_no coklu lot birlesimi olabilir
+                # ("LOT-A, LOT-B"). Iade icin ayri bir IAD lot uretiyoruz:
+                # - stok_bakiye.lot_no sinirina sigar (<50)
+                # - Her iade satiri takip edilebilir lot'a sahip olur
+                # - Orijinal lot bilgisi aciklamaya yazilir
+                iade_lot_no = f"{iade_no}-S{satir_no:02d}"
+                orijinal_lotlar = satir['lot_no'] or ''
+
                 cursor.execute("""
                     INSERT INTO siparis.iade_irsaliye_satirlar
                         (irsaliye_id, satir_no, urun_id, stok_kodu, stok_adi,
                          lot_no, miktar, birim, iade_nedeni, referans_satir_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    iade_id, satir_no, satir['urun_id'], satir['stok_kodu'],
-                    satir['stok_adi'], satir['lot_no'], satir['miktar'],
-                    satir['birim'], satir['neden'], satir['ref_satir_id']
+                    iade_id, satir_no, satir['urun_id'],
+                    _trunc(satir['stok_kodu'], 50),
+                    _trunc(satir['stok_adi'], 250),
+                    _trunc(iade_lot_no, 50),
+                    satir['miktar'],
+                    _trunc(satir['birim'], 20),
+                    _trunc(satir['neden'], 500),
+                    satir['ref_satir_id']
                 ))
 
-                # Stok girişi
-                if satir['lot_no'] and satir['miktar'] > 0:
-                    motor.stok_giris(
+                # Stok girişi - iade icin yeni lot, orijinal lot aciklamada
+                if satir['miktar'] > 0:
+                    aciklama = (
+                        f"İade girişi - {iade_no} "
+                        f"(Ref: {self.ref_irsaliye['irsaliye_no']}"
+                    )
+                    if orijinal_lotlar:
+                        aciklama += f" / Orijinal lot: {orijinal_lotlar}"
+                    aciklama = _trunc(aciklama + ")", 500)
+
+                    sonuc = motor.stok_giris(
                         urun_id=satir['urun_id'] or 1,
                         miktar=satir['miktar'],
-                        lot_no=satir['lot_no'],
+                        lot_no=iade_lot_no,
                         depo_id=sevk_depo_id,
                         kalite_durumu='IADE',
-                        aciklama=f"İade girişi - {iade_no} (Ref: {self.ref_irsaliye['irsaliye_no']})"
+                        aciklama=aciklama
                     )
+                    # HareketMotoru hatasi sessizce yutmasin
+                    if not getattr(sonuc, 'basarili', False):
+                        raise RuntimeError(
+                            f"Stok girişi başarısız (satır {satir_no}): "
+                            f"{getattr(sonuc, 'mesaj', 'bilinmeyen hata')}"
+                        )
 
             conn.commit()
             conn.close()
@@ -770,6 +1043,11 @@ class SevkIadePage(BasePage):
             )
 
             self._temizle()
+            # Liste sekmesini tazele (acikken veya bir sonraki geciste guncel olsun)
+            try:
+                self._liste_yukle()
+            except Exception:
+                pass
 
         except Exception as e:
             import traceback

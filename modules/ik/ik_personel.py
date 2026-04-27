@@ -25,7 +25,11 @@ from core.database import get_db_connection
 from core.log_manager import LogManager
 from core.nexor_brand import brand
 
-NAS_PERSONEL_PATH = r"\\AtlasNAS\Personel"
+try:
+    from config import NAS_PATHS
+    NAS_PERSONEL_PATH = NAS_PATHS.get("personel_path", r"\\AtlasNAS\Personel")
+except Exception:
+    NAS_PERSONEL_PATH = r"\\AtlasNAS\Personel"
 ATLAS_LOGO_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "assets", "Atlas.png")
 
 

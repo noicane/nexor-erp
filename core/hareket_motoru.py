@@ -332,16 +332,18 @@ class HareketMotoru:
         lot_no: str,
         onay_durumu: str,  # "ONAYLANDI" veya "REDDEDILDI"
         onaylayan_id: int = None,
-        aciklama: str = None
+        aciklama: str = None,
+        is_emri_id: int = None
     ) -> HareketSonuc:
         """
         Kalite onay/red işlemi
-        
+
         Args:
             lot_no: Lot numarası
             onay_durumu: ONAYLANDI veya REDDEDILDI
             onaylayan_id: Onaylayan kullanıcı ID
-        
+            is_emri_id: Varsa, islem sonrasi IE durumu otomatik tazelenir
+
         Returns:
             HareketSonuc
         """
@@ -394,9 +396,13 @@ class HareketMotoru:
                 referans_id=None,
                 aciklama=aciklama or f"Kalite {onay_durumu.lower()}: {lot_no}"
             )
-            
+
             # self.conn.commit()  # ❌ Caller commit yapacak
-            
+
+            # IE durumu otomatik tazele (verildiyse)
+            if is_emri_id:
+                self.is_emri_durum_tazele(is_emri_id)
+
             return HareketSonuc(
                 basarili=True,
                 hareket_id=hareket_id,
@@ -482,17 +488,19 @@ class HareketMotoru:
         miktar: float = None,
         kaynak: str = None,
         kaynak_id: int = None,
-        aciklama: str = None
+        aciklama: str = None,
+        is_emri_id: int = None
     ) -> HareketSonuc:
         """
         Stok çıkışı yap (Sevkiyat için)
-        
+
         Args:
             lot_no: Çıkış yapılacak lot
             miktar: Çıkış miktarı (None ise tüm bakiye)
             kaynak: Referans tipi (IRSALIYE, SEVKIYAT vb.)
             kaynak_id: Referans ID
-        
+            is_emri_id: Varsa, cikis sonrasi IE durumu otomatik tazelenir
+
         Returns:
             HareketSonuc
         """
@@ -546,9 +554,13 @@ class HareketMotoru:
                 referans_id=kaynak_id,
                 aciklama=aciklama or f"Stok çıkışı - {lot_no}"
             )
-            
+
             # self.conn.commit()  # ❌ Caller commit yapacak
-            
+
+            # IE durumu otomatik tazele (verildiyse)
+            if is_emri_id:
+                self.is_emri_durum_tazele(is_emri_id)
+
             return HareketSonuc(
                 basarili=True,
                 hareket_id=hareket_id,
@@ -563,7 +575,141 @@ class HareketMotoru:
                 hata=str(e),
                 mesaj=f"Stok çıkışı hatası: {str(e)}"
             )
-    
+
+    # =========================================================================
+    # İŞ EMRİ DURUM YÖNETİMİ (merkezi)
+    # =========================================================================
+
+    # Dokunulmayacak durumlar (manuel iptal/arşiv gibi)
+    _KORUNAN_DURUMLAR = ('IPTAL', 'IPTAL_EDILDI', 'ARSIV')
+
+    def is_emri_durum_hesapla(self, is_emri_id: int) -> Optional[str]:
+        """
+        Is emrinin olmasi gereken durumu hesaplar (UPDATE yapmaz, sadece dondurur).
+
+        Mantik (oncelikli):
+          IPTAL/ARSIV           -> korunur (None doner, dokunma)
+          sevk_edilen >= toplam -> SEVK_EDILDI
+          sevk_edilen > 0       -> KISMI_SEVK
+          kontrol == toplam:
+              hata == 0          -> ONAYLANDI
+              saglam == 0        -> REDDEDILDI
+              ikisi de > 0       -> KISMI_RED
+          kontrol > 0            -> URETIMDE (kismi kontrol, henuz bitmedi)
+          uretilen > 0           -> URETIMDE
+          PLANLI korunur         -> PLANLI
+          default                -> BEKLIYOR
+        """
+        self.cursor.execute("""
+            SELECT ie.durum, ISNULL(ie.toplam_miktar, 0), ISNULL(ie.uretilen_miktar, 0),
+                   ISNULL((SELECT SUM(fk.kontrol_miktar) FROM kalite.final_kontrol fk
+                           WHERE fk.is_emri_id = ie.id), 0) AS kontrol_toplam,
+                   ISNULL((SELECT SUM(fk.saglam_adet) FROM kalite.final_kontrol fk
+                           WHERE fk.is_emri_id = ie.id), 0) AS saglam_toplam,
+                   ISNULL((SELECT SUM(fk.hatali_adet) FROM kalite.final_kontrol fk
+                           WHERE fk.is_emri_id = ie.id), 0) AS hatali_toplam,
+                   ISNULL((SELECT SUM(sat.miktar)
+                           FROM siparis.cikis_irsaliye_satirlar sat
+                           LEFT JOIN siparis.cikis_irsaliyeleri ci ON sat.irsaliye_id = ci.id
+                           WHERE sat.is_emri_id = ie.id
+                             AND ISNULL(ci.durum, '') <> 'IPTAL'), 0) AS sevk_edilen
+            FROM siparis.is_emirleri ie
+            WHERE ie.id = ?
+        """, (is_emri_id,))
+        row = self.cursor.fetchone()
+        if not row:
+            return None
+
+        mevcut_durum = row[0]
+        toplam = float(row[1] or 0)
+        uretilen = float(row[2] or 0)
+        kontrol = float(row[3] or 0)
+        saglam = float(row[4] or 0)
+        hatali = float(row[5] or 0)
+        sevk = float(row[6] or 0)
+
+        # Korunan durumlara dokunma
+        if mevcut_durum in self._KORUNAN_DURUMLAR:
+            return None
+
+        # Toplam 0 ise karar verilemez; mevcut durumu koru
+        if toplam <= 0:
+            return mevcut_durum
+
+        # Sevk oncelikli
+        if sevk >= toplam:
+            return 'SEVK_EDILDI'
+        if sevk > 0:
+            return 'KISMI_SEVK'
+
+        # Kalite kontrol tamamlandiysa
+        if kontrol >= toplam:
+            if hatali == 0:
+                return 'ONAYLANDI'
+            if saglam == 0:
+                return 'REDDEDILDI'
+            return 'KISMI_RED'
+
+        # Kismi kontrol veya uretim baslamis ise URETIMDE
+        if kontrol > 0 or uretilen > 0:
+            return 'URETIMDE'
+
+        # PLANLI'yi koru (henuz uretim baslamamis)
+        if mevcut_durum == 'PLANLI':
+            return 'PLANLI'
+
+        return 'BEKLIYOR'
+
+    def is_emri_durum_tazele(self, is_emri_id: int) -> HareketSonuc:
+        """
+        Is emrinin durumunu yeniden hesaplayip yazar.
+        Degisiklik yoksa UPDATE atilmaz (log kirlenmez).
+        Her hareket (sevk/kalite/iade) sonrasi cagrilmalidir.
+        """
+        try:
+            yeni_durum = self.is_emri_durum_hesapla(is_emri_id)
+            if yeni_durum is None:
+                return HareketSonuc(
+                    basarili=True,
+                    mesaj=f"IE {is_emri_id}: durum korundu (iptal/arsiv veya kayit yok)"
+                )
+
+            # Mevcut durumu tekrar al (karar verirken okuduk ama net olmasi icin)
+            self.cursor.execute(
+                "SELECT durum FROM siparis.is_emirleri WHERE id = ?", (is_emri_id,)
+            )
+            row = self.cursor.fetchone()
+            if not row:
+                return HareketSonuc(
+                    basarili=False,
+                    hata="IE_BULUNAMADI",
+                    mesaj=f"Is emri yok: {is_emri_id}"
+                )
+            mevcut = row[0]
+
+            if mevcut == yeni_durum:
+                return HareketSonuc(
+                    basarili=True,
+                    mesaj=f"IE {is_emri_id}: durum ayni ({mevcut})"
+                )
+
+            self.cursor.execute("""
+                UPDATE siparis.is_emirleri
+                SET durum = ?, guncelleme_tarihi = GETDATE()
+                WHERE id = ?
+            """, (yeni_durum, is_emri_id))
+
+            return HareketSonuc(
+                basarili=True,
+                mesaj=f"IE {is_emri_id}: {mevcut} -> {yeni_durum}"
+            )
+        except Exception as e:
+            return HareketSonuc(
+                basarili=False,
+                hata=str(e),
+                mesaj=f"Durum tazele hatasi: {e}"
+            )
+
     # =========================================================================
     # YARDIMCI FONKSİYONLAR
     # =========================================================================

@@ -19,6 +19,7 @@ from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QPixmap, QCursor, QPainter, QColor, QPen, QFont
 
 from core.menu_structure import MENU_STRUCTURE, get_page_title, get_page_icon
+from core.modul_servisi import ModulServisi
 from core.yetki_manager import YetkiManager
 from core.nexor_brand import brand
 from core.nexor_icons import NexorIcon, _DRAW_MAP as _NEXOR_ICON_KINDS
@@ -521,9 +522,15 @@ class Sidebar(QFrame):
     
     def _build_menu(self):
         """Menu yapisini olustur"""
+        modul_servisi = ModulServisi.instance()
         for item_data in MENU_STRUCTURE:
             item_id = item_data['id']
-            
+
+            # Modul lisans kontrolu (ana modul seviyesi)
+            # Not: granulerlik ana seviyede - alt sayfalar ust modulun durumunu miras alir
+            if not modul_servisi.is_aktif(item_id):
+                continue
+
             # Yetki kontrolu
             if not self.yetki_manager.can_access_menu(item_id):
                 continue
@@ -556,7 +563,11 @@ class Sidebar(QFrame):
                 
                 for child_data in item_data.get('children', []):
                     child_id = child_data['id']
-                    
+
+                    # Gelistirici-only sayfalar (musteri yonetimi vb.)
+                    if child_data.get('gelistirici_only') and not modul_servisi.gelistirici_modu:
+                        continue
+
                     # Alt menu yetki kontrolu
                     if not self.yetki_manager.can_access_menu(child_id):
                         continue

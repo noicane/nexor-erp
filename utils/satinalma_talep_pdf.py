@@ -40,13 +40,16 @@ def satinalma_talep_pdf(talep_id: int):
                 d.ad as departman,
                 amir.ad + ' ' + amir.soyad as amir_adi,
                 COALESCE(sa.ad + ' ' + sa.soyad,
-                         LTRIM(RTRIM(ISNULL(uk.ad,'') + ' ' + ISNULL(uk.soyad,'')))) as satinalma_onaylayan
+                         LTRIM(RTRIM(ISNULL(uk.ad,'') + ' ' + ISNULL(uk.soyad,'')))) as satinalma_onaylayan,
+                ted.unvan as tedarikci_unvan,
+                ted.telefon as tedarikci_telefon
             FROM satinalma.talepler t
             JOIN ik.personeller p ON t.talep_eden_id = p.id
             LEFT JOIN ik.departmanlar d ON t.departman_id = d.id
             LEFT JOIN ik.personeller amir ON t.amir_id = amir.id
             LEFT JOIN sistem.kullanicilar uk ON t.satinalma_onaylayan_id = uk.id
             LEFT JOIN ik.personeller sa ON uk.personel_id = sa.id
+            LEFT JOIN musteri.cariler ted ON t.tedarikci_id = ted.id
             WHERE t.id = ?
         """, (talep_id,))
         row = cursor.fetchone()
@@ -64,6 +67,8 @@ def satinalma_talep_pdf(talep_id: int):
             'talep_eden': row[14] or '-', 'sicil_no': row[15] or '-',
             'departman': row[16] or '-',
             'amir_adi': row[17] or '-', 'sa_onaylayan': row[18] or '-',
+            'tedarikci': row[19] or '-',
+            'tedarikci_tel': row[20] or '-',
         }
 
         cursor.execute("""
@@ -106,6 +111,11 @@ def satinalma_talep_pdf(talep_id: int):
     y = tpl.field_row(y, "Departman", talep['departman'], "Talep Tarihi", format_tarih(talep['tarih']))
     y = tpl.field_row(y, "Istenen Termin", format_tarih(talep['istenen_termin']), "Oncelik", talep['oncelik'])
     y = tpl.field_row(y, "Durum", talep['durum'], "Tahmini Tutar", _fmt_para(talep['tahmini_tutar'], para_birimi))
+    # Tedarikci bilgisi (varsa)
+    if talep['tedarikci'] and talep['tedarikci'] != '-':
+        tel = talep['tedarikci_tel'] if talep['tedarikci_tel'] and talep['tedarikci_tel'] != '-' else ''
+        tel_txt = f" ({tel})" if tel else ""
+        y = tpl.field_row(y, "Tedarikci", f"{talep['tedarikci']}{tel_txt}"[:100])
     if talep['talep_nedeni']:
         y = tpl.field_row(y, "Talep Nedeni", talep['talep_nedeni'][:80])
     y -= 2 * mm

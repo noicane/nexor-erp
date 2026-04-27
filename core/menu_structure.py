@@ -194,6 +194,7 @@ MENU_STRUCTURE = [
         {"id": "sistem_yetki", "label": "İzinler"},
         {"id": "sistem_rol_izin", "label": "Rol İzinleri"},
         {"id": "sistem_kullanici_yetki", "label": "Kullanıcı Yetkileri"},
+        {"id": "sistem_musteri_yonetimi", "label": "👥 Müşteri Yönetimi", "gelistirici_only": True},
         {"id": "sistem_firma", "label": "Firma Bilgileri"},
         {"id": "sistem_ayar", "label": "Sistem Ayarları"},
         {"id": "sistem_log", "label": "İşlem Logları"},
@@ -222,3 +223,21 @@ def get_page_icon(page_id: str) -> str:
             if child['id'] == page_id:
                 return menu['icon']
     return "📄"
+
+
+def get_modul_kodu(page_id: str) -> str | None:
+    """
+    Bir page_id (ana menu ya da alt sayfa) icin lisans modul kodunu dondur.
+
+    Granulerlik = ana modul seviyesi: alt sayfa her zaman ust menunun
+    modul_kodu'nu paylasir. Ornek: 'ie_planlama' -> 'is_emirleri'.
+
+    Bu fonksiyon sidebar ve main.py guard tarafindan kullanilir.
+    """
+    for menu in MENU_STRUCTURE:
+        if menu['id'] == page_id:
+            return menu['id']
+        for child in menu.get('children', []):
+            if child['id'] == page_id:
+                return menu['id']
+    return None

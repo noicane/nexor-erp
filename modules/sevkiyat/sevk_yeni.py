@@ -1006,6 +1006,7 @@ class SevkYeniPage(BasePage):
                 """, (irsaliye_id, satir_no, ilk_paket.get('is_emri_id'), urun_id, data['miktar'], lot_nolar))
 
             # Stok cikisi ve IE durumu - her paket icin ayri (lot bazli)
+            # IE durumu motor tarafindan otomatik tazelenir (is_emri_id geciliyor)
             for paket in cari_paketleri:
                 lot_no = paket.get('lot_no', '')
                 if lot_no:
@@ -1014,20 +1015,13 @@ class SevkYeniPage(BasePage):
                         miktar=paket['miktar'],
                         kaynak="IRSALIYE",
                         kaynak_id=irsaliye_id,
-                        aciklama=f"Sevkiyat cikisi - {irsaliye_no}"
+                        aciklama=f"Sevkiyat cikisi - {irsaliye_no}",
+                        is_emri_id=paket.get('is_emri_id')
                     )
                     if cikis_sonuc.basarili:
                         print(f"Stok cikisi: {lot_no}, {paket['miktar']} adet")
                     else:
                         print(f"Stok cikisi hatasi: {cikis_sonuc.mesaj}")
-
-                if paket.get('is_emri_id'):
-                    cursor.execute("""
-                        UPDATE siparis.is_emirleri
-                        SET durum = 'SEVK_EDILDI',
-                            guncelleme_tarihi = GETDATE()
-                        WHERE id = ?
-                    """, (paket['is_emri_id'],))
             
             conn.commit()
             LogManager.log_update('sevkiyat', 'siparis.is_emirleri', None, 'Durum guncellendi')

@@ -6,14 +6,14 @@ Sağ: 14 adımlı timeline + kompakt onay matrisi
 """
 
 import traceback
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QLineEdit, QComboBox, QWidget, QScrollArea, QGridLayout,
     QSplitter, QTreeWidget, QTreeWidgetItem, QAbstractItemView,
-    QHeaderView
+    QHeaderView, QDateEdit
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QDate
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QBrush
 
 from components.base_page import BasePage
@@ -184,13 +184,62 @@ class UrunIzlenebilirlikPage(BasePage):
             return parts[0]
         return lot_no
 
+    def _op_name(self, alias='op'):
+        """Operator adi icin COALESCE ifadesi.
+        Oncelik sirasi: kullanici->personel zinciri > kullanici ad > direkt personel > kullanici_adi.
+        Bu sira sayesinde kullanici_id ile personel_id namespace cakismasi yanlis isim
+        donmesini engeller (ornek: bekci bir personelin id'si kullanici id'si ile ayni olursa)."""
+        return (f"COALESCE("
+                f"NULLIF(LTRIM(RTRIM(ISNULL({alias}_vp.ad,'') + ' ' + ISNULL({alias}_vp.soyad,''))), ''), "
+                f"NULLIF(LTRIM(RTRIM(ISNULL({alias}_u.ad,'') + ' ' + ISNULL({alias}_u.soyad,''))), ''), "
+                f"CASE WHEN {alias}_u.id IS NULL "
+                f"     THEN NULLIF(LTRIM(RTRIM(ISNULL({alias}_dp.ad,'') + ' ' + ISNULL({alias}_dp.soyad,''))), '') "
+                f"     ELSE NULL END, "
+                f"{alias}_u.kullanici_adi)")
+
+    def _op_join(self, id_col, alias='op'):
+        """Operator adi icin 3 JOIN: sistem.kullanicilar + 2x ik.personeller."""
+        return (f"LEFT JOIN sistem.kullanicilar {alias}_u ON {id_col} = {alias}_u.id "
+                f"LEFT JOIN ik.personeller {alias}_vp ON {alias}_u.personel_id = {alias}_vp.id "
+                f"LEFT JOIN ik.personeller {alias}_dp ON {id_col} = {alias}_dp.id")
+
+    def _parse_lot(self, lot_no):
+        """lot_no -> (ana_lot, kirim_no, turev_tipi).
+        Ornekler:
+          LOT-2604-1010          -> (LOT-2604-1010, None, None)
+          LOT-2604-1010-01       -> (LOT-2604-1010, '01', None)
+          LOT-2604-1010-01-SEV   -> (LOT-2604-1010, '01', 'SEV')
+          LOT-2604-1010-RED      -> (LOT-2604-1010, None, 'RED')
+        """
+        if not lot_no:
+            return lot_no, None, None
+        turev = None
+        base = lot_no
+        for suffix in ('-SEV', '-RED'):
+            if lot_no.upper().endswith(suffix):
+                turev = suffix[1:]
+                base = lot_no[:-len(suffix)]
+                break
+        parts = base.rsplit('-', 1)
+        kirim = None
+        ana = base
+        if len(parts) == 2 and parts[1].isdigit() and len(parts[1]) <= 3:
+            kirim = parts[1]
+            ana = parts[0]
+        return ana, kirim, turev
+
     def _setup_ui(self):
         s = self.s
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 10, 16, 10)
         layout.setSpacing(8)
 
-        # ── HEADER ──
+        input_css = (f"background:{s['input_bg']}; border:1px solid {s['border']}; "
+                     f"border-radius:4px; padding:0 8px; color:{s['text']}; font-size:11px;")
+        combo_css = (f"QComboBox {{ background:{s['input_bg']}; border:1px solid {s['border']}; "
+                     f"border-radius:4px; padding:0 8px; color:{s['text']}; font-size:11px; }}")
+
+        # ── HEADER (1. satir: baslik + arama) ──
         header = QFrame()
         header.setFixedHeight(50)
         header.setStyleSheet(f"QFrame {{ background:{s['card_bg']}; border:1px solid {s['border']}; border-radius:8px; }}")
@@ -205,15 +254,15 @@ class UrunIzlenebilirlikPage(BasePage):
         self.arama_tipi = QComboBox()
         self.arama_tipi.setFixedHeight(28)
         self.arama_tipi.setFixedWidth(130)
-        self.arama_tipi.setStyleSheet(f"QComboBox {{ background:{s['input_bg']}; border:1px solid {s['border']}; border-radius:4px; padding:0 8px; color:{s['text']}; font-size:11px; }}")
-        self.arama_tipi.addItems(["Lot No", "Stok Kodu", "İş Emri No"])
+        self.arama_tipi.setStyleSheet(combo_css)
+        self.arama_tipi.addItems(["Lot No", "Stok Kodu", "İş Emri No", "Cari / Müşteri"])
         hl.addWidget(self.arama_tipi)
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Lot no, stok kodu veya iş emri no...")
+        self.search_input.setPlaceholderText("Lot no, stok, iş emri veya cari...")
         self.search_input.setFixedHeight(28)
         self.search_input.setFixedWidth(300)
-        self.search_input.setStyleSheet(f"background:{s['input_bg']}; border:1px solid {s['border']}; border-radius:4px; padding:0 8px; color:{s['text']}; font-size:11px;")
+        self.search_input.setStyleSheet(input_css)
         self.search_input.returnPressed.connect(self._search)
         hl.addWidget(self.search_input)
 
@@ -232,6 +281,58 @@ class UrunIzlenebilirlikPage(BasePage):
             self.stat_labels[key] = l
             hl.addWidget(l)
         layout.addWidget(header)
+
+        # ── FILTRE BARI (2. satir: tarih + preset) ──
+        filtre = QFrame()
+        filtre.setFixedHeight(42)
+        filtre.setStyleSheet(f"QFrame {{ background:{s['card_bg']}; border:1px solid {s['border']}; border-radius:8px; }}")
+        fl = QHBoxLayout(filtre)
+        fl.setContentsMargins(12, 0, 12, 0)
+        fl.setSpacing(8)
+
+        date_css = (f"QDateEdit {{ background:{s['input_bg']}; border:1px solid {s['border']}; "
+                    f"border-radius:4px; padding:0 6px; color:{s['text']}; font-size:11px; }}")
+
+        fl.addWidget(QLabel("📅 Tarih:"))
+        self.dt_bas = QDateEdit()
+        self.dt_bas.setCalendarPopup(True)
+        self.dt_bas.setFixedHeight(26)
+        self.dt_bas.setFixedWidth(110)
+        self.dt_bas.setDisplayFormat("dd.MM.yyyy")
+        self.dt_bas.setStyleSheet(date_css)
+        fl.addWidget(self.dt_bas)
+
+        fl.addWidget(QLabel("-"))
+        self.dt_bit = QDateEdit()
+        self.dt_bit.setCalendarPopup(True)
+        self.dt_bit.setFixedHeight(26)
+        self.dt_bit.setFixedWidth(110)
+        self.dt_bit.setDisplayFormat("dd.MM.yyyy")
+        self.dt_bit.setStyleSheet(date_css)
+        fl.addWidget(self.dt_bit)
+
+        # Preset butonlar
+        preset_css = (f"QPushButton {{ background:{s['input_bg']}; color:{s['text2']}; "
+                      f"border:1px solid {s['border']}; border-radius:4px; padding:3px 10px; font-size:11px; }} "
+                      f"QPushButton:hover {{ background:{s['border']}; color:{s['text']}; }}")
+        for label, gun in [("Bugün", 0), ("7 Gün", 7), ("30 Gün", 30), ("Bu Ay", -1), ("Tümü", None)]:
+            b = QPushButton(label)
+            b.setFixedHeight(26)
+            b.setCursor(Qt.PointingHandCursor)
+            b.setStyleSheet(preset_css)
+            b.clicked.connect(lambda _, g=gun: self._preset_tarih(g))
+            fl.addWidget(b)
+
+        fl.addStretch()
+
+        self.kaynak_lbl = QLabel("")
+        self.kaynak_lbl.setStyleSheet(f"color:{s['text2']}; font-size:11px;")
+        fl.addWidget(self.kaynak_lbl)
+
+        layout.addWidget(filtre)
+
+        # Varsayilan: Son 30 gun
+        self._preset_tarih(30, reload=False)
 
         # ── SPLITTER ──
         sp = QSplitter(Qt.Horizontal)
@@ -309,110 +410,333 @@ class UrunIzlenebilirlikPage(BasePage):
         layout.addWidget(sp)
 
     # ═══════════════════════════════════════════════════════════
-    # LOAD → TREE
+    # TARIH PRESET
     # ═══════════════════════════════════════════════════════════
+    def _preset_tarih(self, gun, reload=True):
+        """gun: 0=bugun, 7/30=gun once, -1=bu ay, None=tumu"""
+        today = QDate.currentDate()
+        if gun is None:
+            # Tumu: cok eski bir tarih
+            self.dt_bas.setDate(QDate(2020, 1, 1))
+            self.dt_bit.setDate(today)
+        elif gun == -1:
+            # Bu ay
+            self.dt_bas.setDate(QDate(today.year(), today.month(), 1))
+            self.dt_bit.setDate(today)
+        elif gun == 0:
+            self.dt_bas.setDate(today)
+            self.dt_bit.setDate(today)
+        else:
+            self.dt_bas.setDate(today.addDays(-gun))
+            self.dt_bit.setDate(today)
+        if reload:
+            self._load_kayitlar()
+
+    # ═══════════════════════════════════════════════════════════
+    # LOAD → TREE (UNION: 5 kaynak)
+    # ═══════════════════════════════════════════════════════════
+    _UNION_SQL = """
+        SELECT lot_no, stok_kodu, stok_adi, is_emri_no, is_emri_id, cari_unvani, durum, tarih, kaynak
+        FROM (
+            SELECT ie.lot_no, ie.stok_kodu, ie.stok_adi, ie.is_emri_no, ie.id AS is_emri_id,
+                   ie.cari_unvani, ie.durum,
+                   CAST(ie.olusturma_tarihi AS datetime2) AS tarih, 'IS_EMRI' AS kaynak
+            FROM siparis.is_emirleri ie
+            WHERE ie.silindi_mi = 0 AND ie.lot_no IS NOT NULL
+
+            UNION ALL
+
+            SELECT gs.lot_no, gs.stok_kodu, gs.stok_adi, NULL, NULL,
+                   gi.cari_unvani, NULL,
+                   CAST(gi.tarih AS datetime2), 'GIRIS_IRSALIYE'
+            FROM siparis.giris_irsaliye_satirlar gs
+            INNER JOIN siparis.giris_irsaliyeleri gi ON gs.irsaliye_id = gi.id
+            WHERE gs.lot_no IS NOT NULL
+
+            UNION ALL
+
+            SELECT sb.lot_no, u.urun_kodu, u.urun_adi, NULL, NULL,
+                   NULL, sb.durum_kodu,
+                   CAST(sb.son_hareket_tarihi AS datetime2), 'STOK_BAKIYE'
+            FROM stok.stok_bakiye sb
+            LEFT JOIN stok.urunler u ON sb.urun_id = u.id
+            WHERE sb.lot_no IS NOT NULL
+
+            UNION ALL
+
+            SELECT sat.lot_no, u.urun_kodu, u.urun_adi, NULL, sat.is_emri_id,
+                   c.unvan, ci.durum,
+                   CAST(ci.tarih AS datetime2), 'CIKIS_IRSALIYE'
+            FROM siparis.cikis_irsaliye_satirlar sat
+            INNER JOIN siparis.cikis_irsaliyeleri ci ON sat.irsaliye_id = ci.id
+            LEFT JOIN stok.urunler u ON sat.urun_id = u.id
+            LEFT JOIN musteri.cariler c ON ci.cari_id = c.id
+            WHERE sat.lot_no IS NOT NULL
+
+            UNION ALL
+
+            SELECT ur.lot_no, NULL, NULL, NULL, ur.is_emri_id,
+                   NULL, ur.durum,
+                   CAST(ur.red_tarihi AS datetime2), 'RED'
+            FROM kalite.uretim_redler ur
+            WHERE ur.lot_no IS NOT NULL
+        ) t
+    """
+
+    def _build_filtered_sql(self, arama_text=None, arama_tipi_idx=0):
+        """Tarih + arama filtreli UNION sorgusu. Return (sql, params)."""
+        qb = self.dt_bas.date()
+        qe = self.dt_bit.date()
+        bas_start = datetime(qb.year(), qb.month(), qb.day(), 0, 0, 0)
+        bit_end = datetime(qe.year(), qe.month(), qe.day(), 23, 59, 59)
+
+        sql = self._UNION_SQL
+        params = []
+        where_parts = []
+
+        # Arama: dolu ise tarih filtresi YOK (istendigi gibi - her yerden bulsun)
+        if arama_text:
+            like = f"%{arama_text}%"
+            kolon = {
+                0: 't.lot_no',
+                1: 't.stok_kodu',
+                2: 't.is_emri_no',
+                3: 't.cari_unvani',
+            }.get(arama_tipi_idx, 't.lot_no')
+            where_parts.append(f"UPPER(ISNULL({kolon}, '')) LIKE UPPER(?)")
+            params.append(like)
+        else:
+            where_parts.append("t.tarih BETWEEN ? AND ?")
+            params.extend([bas_start, bit_end])
+
+        sql = sql + " WHERE " + " AND ".join(where_parts)
+        sql = sql + " ORDER BY t.tarih DESC"
+        return sql, params
+
     def _load_kayitlar(self):
         self.tree.clear()
         try:
+            arama = self.search_input.text().strip()
+            sql, params = self._build_filtered_sql(arama, self.arama_tipi.currentIndex())
+
             conn = get_db_connection()
             cur = conn.cursor()
-            cur.execute("""
-                SELECT ie.lot_no, ie.stok_kodu, ie.is_emri_no, ie.durum, 
-                       ie.olusturma_tarihi, ie.id
-                FROM siparis.is_emirleri ie
-                WHERE ie.silindi_mi = 0 AND ie.lot_no IS NOT NULL
-                ORDER BY ie.olusturma_tarihi DESC
-            """)
+            cur.execute(sql, params)
             rows = cur.fetchall()
             conn.close()
 
-            # Parent lot gruplama
-            parent_map = {}
-            for row in rows:
-                parent = self._get_parent_lot(row[0])
-                if parent not in parent_map:
-                    parent_map[parent] = []
-                parent_map[parent].append(row)
+            # Lot bazli birlestir (bir lot birden fazla kaynaktan gelebilir)
+            lots = {}
+            for r in rows:
+                lot_no = r[0]
+                if lot_no not in lots:
+                    lots[lot_no] = {
+                        'lot_no': lot_no,
+                        'stok_kodu': None, 'stok_adi': None,
+                        'is_emri_no': None, 'is_emri_id': None,
+                        'cari_unvani': None, 'durum': None,
+                        'tarih': r[7], 'kaynaklar': set(),
+                    }
+                l = lots[lot_no]
+                l['kaynaklar'].add(r[8])
+                if not l['stok_kodu'] and r[1]: l['stok_kodu'] = r[1]
+                if not l['stok_adi'] and r[2]: l['stok_adi'] = r[2]
+                if not l['is_emri_no'] and r[3]: l['is_emri_no'] = r[3]
+                if not l['is_emri_id'] and r[4]: l['is_emri_id'] = r[4]
+                if not l['cari_unvani'] and r[5]: l['cari_unvani'] = r[5]
+                if not l['durum'] and r[6]: l['durum'] = r[6]
+                if r[7] and (not l['tarih'] or r[7] > l['tarih']):
+                    l['tarih'] = r[7]
 
-            sorted_parents = sorted(parent_map.items(),
-                key=lambda x: max((r[4] for r in x[1] if r[4]), default=datetime.min),
-                reverse=True)
-
-            dc = {'TAMAMLANDI': '#10B981', 'STOKTA': '#F59E0B', 'URETIMDE': '#3B82F6', 'IPTAL': '#EF4444'}
-            tot = len(sorted_parents)
-            done = sum(1 for _, ch in sorted_parents if all(r[3] and 'TAMAMLAND' in r[3] for r in ch))
-            self.stat_labels['toplam'].setText(f"📦 {tot}")
-            self.stat_labels['ok'].setText(f"✅ {done}")
-            self.stat_labels['wip'].setText(f"🔄 {tot - done}")
-
-            for parent_lot, children in sorted_parents[:200]:
-                stok = children[0][1] or '-'
-                child_count = len(children)
-                all_done = all(r[3] and 'TAMAMLAND' in r[3] for r in children)
-                any_fail = any(r[3] and 'IPTAL' in r[3] for r in children)
-                durum_text = 'TAMAMLANDI' if all_done else ('IPTAL' if any_fail else 'DEVAM')
-
-                parent_item = QTreeWidgetItem(self.tree)
-                if child_count > 1:
-                    parent_item.setText(0, f"📁 {parent_lot}  ({child_count})")
+            # 3 seviyeli grouplama: ana_lot -> {ana_info, kirimlar{kirim:{info,turevler[]}}, ana_turevleri[]}
+            groups = {}
+            for l in lots.values():
+                ana, kirim, turev = self._parse_lot(l['lot_no'])
+                if ana not in groups:
+                    groups[ana] = {'ana_info': None, 'kirimlar': {}, 'ana_turevleri': []}
+                g = groups[ana]
+                if kirim is None and turev is None:
+                    g['ana_info'] = l
+                elif kirim is not None and turev is None:
+                    kd = g['kirimlar'].setdefault(kirim, {'info': None, 'turevler': []})
+                    kd['info'] = l
+                elif kirim is not None and turev is not None:
+                    kd = g['kirimlar'].setdefault(kirim, {'info': None, 'turevler': []})
+                    kd['turevler'].append({'type': turev, 'info': l})
                 else:
-                    parent_item.setText(0, f"📋 {parent_lot}")
-                parent_item.setText(1, stok)
-                parent_item.setText(2, durum_text)
-                parent_item.setData(0, Qt.UserRole, [c[5] for c in children])
-                parent_item.setData(0, Qt.UserRole + 1, parent_lot)
-                parent_item.setData(0, Qt.UserRole + 2, [c[0] for c in children])
+                    g['ana_turevleri'].append({'type': turev, 'info': l})
 
-                for k, c in dc.items():
-                    if k in durum_text:
-                        parent_item.setForeground(2, QColor(c))
-                        break
-                else:
-                    parent_item.setForeground(2, QColor('#3B82F6'))
+            def _grup_en_son_tarih(g):
+                tarihler = []
+                if g['ana_info'] and g['ana_info']['tarih']:
+                    tarihler.append(g['ana_info']['tarih'])
+                for kd in g['kirimlar'].values():
+                    if kd['info'] and kd['info']['tarih']:
+                        tarihler.append(kd['info']['tarih'])
+                    for t in kd['turevler']:
+                        if t['info']['tarih']:
+                            tarihler.append(t['info']['tarih'])
+                for t in g['ana_turevleri']:
+                    if t['info']['tarih']:
+                        tarihler.append(t['info']['tarih'])
+                return max(tarihler) if tarihler else datetime.min
 
-                if child_count > 1:
-                    for child in children:
-                        lot_no = child[0]
-                        suffix = lot_no.replace(parent_lot, '').lstrip('-')
-                        child_item = QTreeWidgetItem(parent_item)
-                        child_item.setText(0, f"  └ {suffix}" if suffix else f"  └ {lot_no}")
-                        child_item.setText(1, child[1] or '-')
-                        child_item.setText(2, child[3] or '-')
-                        child_item.setData(0, Qt.UserRole, [child[5]])
-                        child_item.setData(0, Qt.UserRole + 1, parent_lot)
-                        child_item.setData(0, Qt.UserRole + 2, [child[0]])
-                        for k, c in dc.items():
-                            if child[3] and k in child[3]:
-                                child_item.setForeground(2, QColor(c))
-                                break
-                        child_item.setForeground(0, QColor(self.s['text2']))
+            sorted_groups = sorted(groups.items(), key=lambda x: _grup_en_son_tarih(x[1]), reverse=True)
+
+            LIMIT = 1000
+            gosterilen = sorted_groups[:LIMIT]
+
+            tot_lot = len(lots)
+            ok_lot = sum(1 for l in lots.values()
+                         if l['durum'] and 'TAMAMLAND' in (l['durum'] or '').upper())
+            self.stat_labels['toplam'].setText(f"📦 {len(groups):,}")
+            self.stat_labels['ok'].setText(f"✅ {ok_lot:,}")
+            self.stat_labels['wip'].setText(f"🔄 {tot_lot - ok_lot:,}")
+
+            # Kaynak rozeti
+            kaynak_sayisi = {'IS_EMRI': 0, 'GIRIS_IRSALIYE': 0, 'STOK_BAKIYE': 0, 'CIKIS_IRSALIYE': 0, 'RED': 0}
+            for l in lots.values():
+                for k in l['kaynaklar']:
+                    kaynak_sayisi[k] = kaynak_sayisi.get(k, 0) + 1
+            self.kaynak_lbl.setText(
+                f"🏭 {kaynak_sayisi['IS_EMRI']}  📦 {kaynak_sayisi['GIRIS_IRSALIYE']}  "
+                f"📋 {kaynak_sayisi['STOK_BAKIYE']}  🚚 {kaynak_sayisi['CIKIS_IRSALIYE']}  "
+                f"⚠️ {kaynak_sayisi['RED']}  |  {tot_lot:,} lot"
+                + (f"  (ilk {LIMIT} ana lot gosteriliyor)" if len(sorted_groups) > LIMIT else "")
+            )
+
+            dc = {'TAMAMLANDI': '#10B981', 'STOKTA': '#F59E0B', 'URETIMDE': '#3B82F6', 'IPTAL': '#EF4444',
+                  'KISMI_SEVK': '#F59E0B', 'SEVK_EDILDI': '#10B981', 'ONAYLANDI': '#10B981',
+                  'RED': '#EF4444', 'REDDEDILDI': '#EF4444'}
+
+            def _emoji_for(kaynaklar):
+                e = ''
+                if 'IS_EMRI' in kaynaklar: e += '🏭'
+                if 'GIRIS_IRSALIYE' in kaynaklar: e += '📦'
+                if 'CIKIS_IRSALIYE' in kaynaklar: e += '🚚'
+                if 'RED' in kaynaklar: e += '⚠️'
+                return e
+
+            def _set_durum_rengi(item, col_idx, durum):
+                if not durum:
+                    item.setForeground(col_idx, QColor('#3B82F6'))
+                    return
+                up = durum.upper()
+                for k, col in dc.items():
+                    if k in up:
+                        item.setForeground(col_idx, QColor(col))
+                        return
+                item.setForeground(col_idx, QColor('#3B82F6'))
+
+            for ana_lot, g in gosterilen:
+                # Tum lotlar ve IE'ler (ana lot tiklandiginda hepsini timeline'a yolla)
+                tum_lotlar = []
+                tum_ieler = []
+                tum_kaynaklar = set()
+
+                def _ekle(info):
+                    if info:
+                        tum_lotlar.append(info['lot_no'])
+                        if info['is_emri_id']:
+                            tum_ieler.append(info['is_emri_id'])
+                        tum_kaynaklar.update(info['kaynaklar'])
+
+                _ekle(g['ana_info'])
+                for kd in g['kirimlar'].values():
+                    _ekle(kd['info'])
+                    for t in kd['turevler']:
+                        _ekle(t['info'])
+                for t in g['ana_turevleri']:
+                    _ekle(t['info'])
+
+                # ── Ana lot satiri ──
+                ana_info = g['ana_info']
+                stok = ana_info['stok_kodu'] if ana_info and ana_info['stok_kodu'] else \
+                       next((kd['info']['stok_kodu'] for kd in g['kirimlar'].values()
+                             if kd['info'] and kd['info']['stok_kodu']), '-')
+                durum_text = ana_info['durum'] if ana_info and ana_info['durum'] else \
+                             next((kd['info']['durum'] for kd in g['kirimlar'].values()
+                                   if kd['info'] and kd['info']['durum']), '-')
+
+                emoji = _emoji_for(tum_kaynaklar) or '📁'
+                kirim_n = len(g['kirimlar'])
+                ek_etiket = f"  ({kirim_n} kırım)" if kirim_n > 0 else ""
+
+                ana_item = QTreeWidgetItem(self.tree)
+                ana_item.setText(0, f"{emoji} {ana_lot}{ek_etiket}")
+                ana_item.setText(1, stok or '-')
+                ana_item.setText(2, (durum_text or '-')[:20])
+                ana_item.setData(0, Qt.UserRole, tum_ieler)
+                ana_item.setData(0, Qt.UserRole + 1, ana_lot)
+                ana_item.setData(0, Qt.UserRole + 2, tum_lotlar)
+                _set_durum_rengi(ana_item, 2, durum_text)
+
+                # ── Kırımlar (sıralı) ──
+                for kirim_no in sorted(g['kirimlar'].keys()):
+                    kd = g['kirimlar'][kirim_no]
+                    kinfo = kd['info']
+                    k_durum = kinfo['durum'] if kinfo else '-'
+                    k_stok = kinfo['stok_kodu'] if kinfo and kinfo['stok_kodu'] else stok
+                    k_kaynaklar = set(kinfo['kaynaklar']) if kinfo else set()
+                    for t in kd['turevler']:
+                        k_kaynaklar.update(t['info']['kaynaklar'])
+
+                    k_lot_no = kinfo['lot_no'] if kinfo else f"{ana_lot}-{kirim_no}"
+                    k_emoji = _emoji_for(k_kaynaklar) or '📋'
+
+                    k_item = QTreeWidgetItem(ana_item)
+                    k_item.setText(0, f"  └ {k_emoji} {kirim_no}")
+                    k_item.setText(1, k_stok or '-')
+                    k_item.setText(2, (k_durum or '-')[:20])
+                    k_ieler = [kinfo['is_emri_id']] if kinfo and kinfo['is_emri_id'] else []
+                    k_lotlar = [k_lot_no] + [t['info']['lot_no'] for t in kd['turevler']]
+                    k_item.setData(0, Qt.UserRole, k_ieler)
+                    k_item.setData(0, Qt.UserRole + 1, ana_lot)
+                    k_item.setData(0, Qt.UserRole + 2, k_lotlar)
+                    _set_durum_rengi(k_item, 2, k_durum)
+                    k_item.setForeground(0, QColor(self.s['text2']))
+
+                    # Türevler (SEV, RED) — kırımın altında
+                    for t in sorted(kd['turevler'], key=lambda x: x['type']):
+                        ti = t['info']
+                        t_emoji = '🚚' if t['type'] == 'SEV' else '⚠️'
+                        t_item = QTreeWidgetItem(k_item)
+                        t_item.setText(0, f"      └ {t_emoji} {t['type']}")
+                        t_item.setText(1, ti['stok_kodu'] or k_stok or '-')
+                        t_item.setText(2, (ti['durum'] or '-')[:20])
+                        t_item.setData(0, Qt.UserRole, [ti['is_emri_id']] if ti['is_emri_id'] else [])
+                        t_item.setData(0, Qt.UserRole + 1, ana_lot)
+                        t_item.setData(0, Qt.UserRole + 2, [ti['lot_no']])
+                        _set_durum_rengi(t_item, 2, ti['durum'])
+                        t_item.setForeground(0, QColor(self.s['muted']))
+
+                # ── Ana lot'a direkt bağlı türevler (örn LOT-...-RED, kırımsız) ──
+                for t in sorted(g['ana_turevleri'], key=lambda x: x['type']):
+                    ti = t['info']
+                    t_emoji = '🚚' if t['type'] == 'SEV' else '⚠️'
+                    t_item = QTreeWidgetItem(ana_item)
+                    t_item.setText(0, f"  └ {t_emoji} {t['type']}")
+                    t_item.setText(1, ti['stok_kodu'] or stok or '-')
+                    t_item.setText(2, (ti['durum'] or '-')[:20])
+                    t_item.setData(0, Qt.UserRole, [ti['is_emri_id']] if ti['is_emri_id'] else [])
+                    t_item.setData(0, Qt.UserRole + 1, ana_lot)
+                    t_item.setData(0, Qt.UserRole + 2, [ti['lot_no']])
+                    _set_durum_rengi(t_item, 2, ti['durum'])
+                    t_item.setForeground(0, QColor(self.s['text2']))
 
         except Exception as e:
             print(f"[İZLENEBİLİRLİK YÜKLEME HATASI] {e}")
             traceback.print_exc()
 
     def _search(self):
-        t = self.search_input.text().strip().upper()
-        if not t:
-            for i in range(self.tree.topLevelItemCount()):
-                self.tree.topLevelItem(i).setHidden(False)
-            return
-        col = {0: 0, 1: 1, 2: 0}.get(self.arama_tipi.currentIndex(), 0)
-        for i in range(self.tree.topLevelItemCount()):
-            item = self.tree.topLevelItem(i)
-            match = t in (item.text(col) or '').upper()
-            if not match:
-                for j in range(item.childCount()):
-                    if t in (item.child(j).text(col) or '').upper():
-                        match = True
-                        break
-            item.setHidden(not match)
+        """Server-side arama: _load_kayitlar arama kriteriyle yeniden yuklenir."""
+        self._load_kayitlar()
 
     def _on_tree_click(self, item, column):
-        ie_ids = item.data(0, Qt.UserRole)
+        ie_ids = item.data(0, Qt.UserRole) or []
         parent_lot = item.data(0, Qt.UserRole + 1)
         lot_nos = item.data(0, Qt.UserRole + 2)
-        if not ie_ids or not lot_nos:
+        if not lot_nos:
             return
 
         stok = item.text(1)
@@ -453,8 +777,10 @@ class UrunIzlenebilirlikPage(BasePage):
             if ie_ids:
                 try:
                     cur.execute(f"""SELECT ie.is_emri_no, ie.lot_no, ie.cari_unvani, ie.stok_kodu, ie.stok_adi,
-                        ie.planlanan_miktar, ie.durum, ie.olusturma_tarihi, ie.termin_tarihi, p.ad+' '+p.soyad
-                        FROM siparis.is_emirleri ie LEFT JOIN ik.personeller p ON ie.olusturan_id=p.id
+                        ie.planlanan_miktar, ie.durum, ie.olusturma_tarihi, ie.termin_tarihi,
+                        {self._op_name('o')}
+                        FROM siparis.is_emirleri ie
+                        {self._op_join('ie.olusturan_id', 'o')}
                         WHERE ie.id IN ({iph})""", (*ie_ids,))
                     for r in cur.fetchall():
                         steps.append(('is_emri', {'status': 'completed', 'tarih': r[7],
@@ -487,11 +813,11 @@ class UrunIzlenebilirlikPage(BasePage):
             # ③ MAL KABUL
             try:
                 cur.execute(f"""SELECT mk.kabul_no, mk.tarih, mk.tedarikci_irsaliye_no, mk.durum,
-                    p1.ad+' '+p1.soyad, mks.teslim_miktar, mks.kabul_miktar, mks.red_miktar,
-                    mks.kalite_durumu, mks.sertifika_no, p2.ad+' '+p2.soyad, mks.kalite_kontrol_tarihi
+                    {self._op_name('ta')}, mks.teslim_miktar, mks.kabul_miktar, mks.red_miktar,
+                    mks.kalite_durumu, mks.sertifika_no, {self._op_name('kk')}, mks.kalite_kontrol_tarihi
                     FROM satinalma.mal_kabuller mk JOIN satinalma.mal_kabul_satirlari mks ON mks.kabul_id=mk.id
-                    LEFT JOIN ik.personeller p1 ON mk.teslim_alan_id=p1.id
-                    LEFT JOIN ik.personeller p2 ON mks.kalite_kontrol_eden_id=p2.id
+                    {self._op_join('mk.teslim_alan_id', 'ta')}
+                    {self._op_join('mks.kalite_kontrol_eden_id', 'kk')}
                     WHERE mks.lot_no IN ({lph}) ORDER BY mk.tarih""", (*lot_nos,))
                 for r in cur.fetchall():
                     st = 'completed' if r[3] == 'TAMAMLANDI' else ('failed' if r[8] == 'RED' else 'active')
@@ -511,10 +837,12 @@ class UrunIzlenebilirlikPage(BasePage):
             try:
                 cur.execute(f"""SELECT hl.miktar, COALESCE(dh.kod,dk.kod,'-'), COALESCE(dh.ad,dk.ad,'-'),
                     hl.hareket_zamani, ht.ad, ht.yon,
-                    COALESCE(dk.kod+' - '+dk.ad,'') as kaynak, COALESCE(dh.kod+' - '+dh.ad,'') as hedef
+                    COALESCE(dk.kod+' - '+dk.ad,'') as kaynak, COALESCE(dh.kod+' - '+dh.ad,'') as hedef,
+                    COALESCE(hl.yapan_adi, {self._op_name('y')}) AS yapan
                     FROM stok.hareket_log hl JOIN tanim.hareket_tipleri ht ON hl.hareket_tipi_id=ht.id
                     LEFT JOIN tanim.depolar dh ON hl.hedef_depo_id=dh.id
                     LEFT JOIN tanim.depolar dk ON hl.kaynak_depo_id=dk.id
+                    {self._op_join('hl.yapan_id', 'y')}
                     WHERE hl.lot_no IN ({lph}) AND hl.iptal_mi=0 ORDER BY hl.hareket_zamani""", (*lot_nos,))
                 for r in cur.fetchall():
                     yon = {'GIRIS': 'GİRİŞ', 'CIKIS': 'ÇIKIŞ', 'TRANSFER': 'TRANSFER'}.get(r[5] or '', 'TRANSFER')
@@ -522,7 +850,10 @@ class UrunIzlenebilirlikPage(BasePage):
                     if r[6]: det.append(('Kaynak', r[6]))
                     if r[7]: det.append(('Hedef', r[7]))
                     steps.append(('depo_hareket', {'status': 'completed', 'status_text': yon, 'tarih': r[3],
-                        'detay': det}))
+                        'detay': det,
+                        'onay_bilgi': [{'role': 'Yapan', 'name': r[8] or '-', 'icon': '📥', 'result': ''}]}))
+                    if r[8]:
+                        appr.append({'step': f'Depo {yon}', 'person': r[8], 'result': yon, 'tarih': r[3]})
             except Exception as e:
                 print(f"④ {e}")
 
@@ -531,23 +862,33 @@ class UrunIzlenebilirlikPage(BasePage):
                 try:
                     cur.execute(f"""SELECT e.emir_no, e.lot_no, e.stok_kodu, e.stok_adi, e.talep_miktar,
                         e.transfer_miktar, e.durum, e.olusturma_tarihi, e.tamamlanma_tarihi,
-                        d.kod+' - '+d.ad as hedef_depo
+                        d.kod+' - '+d.ad as hedef_depo,
+                        {self._op_name('o')} AS olusturan,
+                        {self._op_name('t')} AS tamamlayan
                         FROM stok.depo_cikis_emirleri e
                         LEFT JOIN tanim.depolar d ON e.hedef_depo_id=d.id
+                        {self._op_join('e.olusturan_id', 'o')}
+                        {self._op_join('e.tamamlayan_id', 't')}
                         WHERE e.is_emri_id IN ({iph}) ORDER BY e.olusturma_tarihi""", (*ie_ids,))
                     for r in cur.fetchall():
                         st = 'completed' if r[6] == 'TAMAMLANDI' else ('active' if r[6] == 'BEKLIYOR' else 'warning')
+                        oa = [{'role': 'Oluşturan', 'name': r[10] or '-', 'icon': '📝', 'result': ''}]
+                        if r[11]:
+                            oa.append({'role': 'Tamamlayan', 'name': r[11], 'icon': '✅', 'result': r[6] or '-'})
+                            appr.append({'step': 'Depo Çıkış', 'person': r[11], 'result': r[6] or '-', 'tarih': r[8] or r[7]})
                         steps.append(('depo_hareket', {'status': st, 'status_text': f"ÇIKIŞ - {r[6] or '-'}", 'tarih': r[7],
                             'detay': [('Emir No', r[0] or '-'), ('Lot', r[1] or '-'), ('Stok', f"{r[2] or ''} {r[3] or ''}".strip() or '-'),
-                                      ('Talep', self._fmt(r[4])), ('Transfer', self._fmt(r[5])), ('Hedef Depo', r[9] or '-')]}))
+                                      ('Talep', self._fmt(r[4])), ('Transfer', self._fmt(r[5])), ('Hedef Depo', r[9] or '-')],
+                            'onay_bilgi': oa}))
                 except Exception as e:
                     print(f"④b {e}")
 
             # ⑤ GİRİŞ KALİTE (muayeneler)
             try:
-                cur.execute(f"""SELECT m.tarih, m.sonuc, p.ad+' '+p.soyad, m.numune_miktari,
+                cur.execute(f"""SELECT m.tarih, m.sonuc, {self._op_name('mu')}, m.numune_miktari,
                     m.kabul_miktari, m.red_miktari, m.notlar
-                    FROM kalite.muayeneler m LEFT JOIN ik.personeller p ON m.muayeneci_id=p.id
+                    FROM kalite.muayeneler m
+                    {self._op_join('m.muayeneci_id', 'mu')}
                     WHERE m.lot_no IN ({lph}) AND m.muayene_tipi='GIRIS' ORDER BY m.tarih""", (*lot_nos,))
                 for r in cur.fetchall():
                     st = 'completed' if r[1] == 'KABUL' else ('failed' if r[1] == 'RED' else 'warning')
@@ -561,13 +902,18 @@ class UrunIzlenebilirlikPage(BasePage):
             # ⑥ PLANLAMA
             if ie_ids:
                 try:
-                    cur.execute(f"""SELECT p.tarih, p.durum, h.ad, p.planlanan_bara
+                    cur.execute(f"""SELECT p.tarih, p.durum, h.ad, p.planlanan_bara,
+                        {self._op_name('pl')} AS planlayan
                         FROM uretim.planlama p LEFT JOIN tanim.uretim_hatlari h ON p.hat_id=h.id
+                        {self._op_join('p.olusturan_id', 'pl')}
                         WHERE p.is_emri_id IN ({iph}) ORDER BY p.tarih""", (*ie_ids,))
                     for r in cur.fetchall():
                         st = 'completed' if r[1] and 'TAMAMLAND' in r[1] else ('active' if r[1] and 'DEVAM' in r[1] else 'warning')
                         steps.append(('planlama', {'status': st, 'status_text': r[1] or '-', 'tarih': r[0],
-                            'detay': [('Hat', r[2] or '-'), ('Plan Bara', str(r[3]) if r[3] else '-'), ('Durum', r[1] or '-')]}))
+                            'detay': [('Hat', r[2] or '-'), ('Plan Bara', str(r[3]) if r[3] else '-'), ('Durum', r[1] or '-')],
+                            'onay_bilgi': [{'role': 'Planlayan', 'name': r[4] or '-', 'icon': '📅', 'result': ''}]}))
+                        if r[4]:
+                            appr.append({'step': 'Planlama', 'person': r[4], 'result': r[1] or '-', 'tarih': r[0]})
                 except Exception as e:
                     print(f"⑥ {e}")
 
@@ -602,9 +948,9 @@ class UrunIzlenebilirlikPage(BasePage):
                         if tr and tr[0] and tr[1]:
                             hph = self._lph(hat_ids)
                             cur.execute(f"""SELECT ba.tarih, bd.ad, bd.kod, ba.sicaklik, ba.ph, ba.iletkenlik,
-                                ba.kati_madde_yuzde, ba.pb_orani, ba.demir_ppm, p.ad+' '+p.soyad
+                                ba.kati_madde_yuzde, ba.pb_orani, ba.demir_ppm, {self._op_name('an')}
                                 FROM uretim.banyo_analiz_sonuclari ba JOIN uretim.banyo_tanimlari bd ON ba.banyo_id=bd.id
-                                LEFT JOIN ik.personeller p ON ba.analist_id=p.id
+                                {self._op_join('ba.analist_id', 'an')}
                                 WHERE bd.hat_id IN ({hph}) AND ba.tarih BETWEEN ? AND ? ORDER BY ba.tarih""", (*hat_ids, tr[0], tr[1]))
                             anl = cur.fetchall()
                             if anl:
@@ -623,9 +969,10 @@ class UrunIzlenebilirlikPage(BasePage):
 
             # ⑨ İLK ÜRÜN (FR.75)
             try:
-                cur.execute(f"""SELECT pc.kontrol_tarihi, pc.durum, p.ad+' '+p.soyad, pc.toplam_adet,
+                cur.execute(f"""SELECT pc.kontrol_tarihi, pc.durum, {self._op_name('ke')}, pc.toplam_adet,
                     pc.saglam_adet, pc.hatali_adet, pc.kalinlik_olcum, pc.not_text
-                    FROM kalite.proses_kontrol pc LEFT JOIN ik.personeller p ON pc.kontrol_eden_id=p.id
+                    FROM kalite.proses_kontrol pc
+                    {self._op_join('pc.kontrol_eden_id', 'ke')}
                     WHERE pc.lot_no IN ({lph}) ORDER BY pc.kontrol_tarihi""", (*lot_nos,))
                 for r in cur.fetchall():
                     st = 'completed' if r[1] == 'TAMAMLANDI' else 'warning'
@@ -641,11 +988,11 @@ class UrunIzlenebilirlikPage(BasePage):
             try:
                 cur.execute(f"""SELECT si.is_emri_no, si.sokum_tipi, si.miktar, si.baslangic_tarihi, si.durum,
                     sg.giris_miktar, sg.kalan_miktar, sg.kalite_durumu, sg.sokum_suresi,
-                    p1.ad+' '+p1.soyad, p2.ad+' '+p2.soyad
+                    {self._op_name('so')}, {self._op_name('gy')}
                     FROM uretim.sokum_is_emirleri si
                     LEFT JOIN uretim.sokum_giris sg ON sg.sokum_is_emri_id=si.id
-                    LEFT JOIN ik.personeller p1 ON si.sorumlu_id=p1.id
-                    LEFT JOIN ik.personeller p2 ON sg.giris_yapan_id=p2.id
+                    {self._op_join('si.sorumlu_id', 'so')}
+                    {self._op_join('sg.giris_yapan_id', 'gy')}
                     WHERE si.lot_no IN ({lph}) ORDER BY si.baslangic_tarihi""", (*lot_nos,))
                 for r in cur.fetchall():
                     st = 'completed' if r[4] and 'TAMAMLAND' in r[4] else 'active'
@@ -664,8 +1011,10 @@ class UrunIzlenebilirlikPage(BasePage):
             # ⑪ FİNAL KONTROL
             try:
                 cur.execute(f"""SELECT fc.kontrol_tarihi, fc.sonuc, fc.kontrol_miktar, fc.saglam_adet,
-                    fc.hatali_adet, fc.aciklama, p.ad+' '+p.soyad, fc.id
-                    FROM kalite.final_kontrol fc LEFT JOIN ik.personeller p ON fc.kontrol_eden_id=p.id
+                    fc.hatali_adet, fc.aciklama,
+                    COALESCE(fc.kontrol_eden_adi, {self._op_name('fk')}), fc.id
+                    FROM kalite.final_kontrol fc
+                    {self._op_join('fc.kontrol_eden_id', 'fk')}
                     WHERE fc.lot_no IN ({lph}) ORDER BY fc.kontrol_tarihi""", (*lot_nos,))
                 for r in cur.fetchall():
                     st = 'completed' if r[1] == 'KABUL' else ('warning' if r[1] == 'KISMI' else 'failed')
@@ -691,9 +1040,10 @@ class UrunIzlenebilirlikPage(BasePage):
             # ⑫ RED / UYGUNSUZLUK
             try:
                 cur.execute(f"""SELECT ur.red_tarihi, ur.red_miktar, ur.durum, ur.islem_tipi, ur.aciklama,
-                    ur.karar, p1.ad+' '+p1.soyad, p2.ad+' '+p2.soyad, ur.karar_tarihi, ht.ad
-                    FROM kalite.uretim_redler ur LEFT JOIN ik.personeller p1 ON ur.kontrol_eden_id=p1.id
-                    LEFT JOIN ik.personeller p2 ON ur.karar_veren_id=p2.id
+                    ur.karar, {self._op_name('te')}, {self._op_name('kv')}, ur.karar_tarihi, ht.ad
+                    FROM kalite.uretim_redler ur
+                    {self._op_join('ur.kontrol_eden_id', 'te')}
+                    {self._op_join('ur.karar_veren_id', 'kv')}
                     LEFT JOIN tanim.hata_turleri ht ON ur.hata_turu_id=ht.id
                     WHERE ur.lot_no IN ({lph}) ORDER BY ur.red_tarihi""", (*lot_nos,))
                 for r in cur.fetchall():
@@ -711,8 +1061,9 @@ class UrunIzlenebilirlikPage(BasePage):
 
             try:
                 cur.execute(f"""SELECT rk.karar_zamani, rk.karar, rk.miktar, rk.aciklama,
-                    p.ad+' '+p.soyad, ht.ad, d.ad
-                    FROM kalite.red_karar rk LEFT JOIN ik.personeller p ON rk.kararci_id=p.id
+                    {self._op_name('kc')}, ht.ad, d.ad
+                    FROM kalite.red_karar rk
+                    {self._op_join('rk.kararci_id', 'kc')}
                     LEFT JOIN tanim.hata_turleri ht ON rk.hata_turu_id=ht.id
                     LEFT JOIN tanim.depolar d ON rk.hedef_depo_id=d.id
                     WHERE rk.lot_no IN ({lph}) ORDER BY rk.karar_zamani""", (*lot_nos,))
@@ -727,9 +1078,10 @@ class UrunIzlenebilirlikPage(BasePage):
 
             try:
                 cur.execute(f"""SELECT u.kayit_no, u.kayit_tipi, u.kayit_tarihi, u.hata_tanimi, u.tespit_yeri,
-                    u.oncelik, u.durum, u.etkilenen_miktar, p1.ad+' '+p1.soyad, p2.ad+' '+p2.soyad
-                    FROM kalite.uygunsuzluklar u LEFT JOIN ik.personeller p1 ON u.bildiren_id=p1.id
-                    LEFT JOIN ik.personeller p2 ON u.sorumlu_id=p2.id
+                    u.oncelik, u.durum, u.etkilenen_miktar, {self._op_name('bi')}, {self._op_name('sr')}
+                    FROM kalite.uygunsuzluklar u
+                    {self._op_join('u.bildiren_id', 'bi')}
+                    {self._op_join('u.sorumlu_id', 'sr')}
                     WHERE u.lot_no IN ({lph}) AND (u.kayit_tipi IS NULL OR u.kayit_tipi!='MUSTERI_SIKAYETI')
                     ORDER BY u.kayit_tarihi""", (*lot_nos,))
                 for r in cur.fetchall():
@@ -746,39 +1098,44 @@ class UrunIzlenebilirlikPage(BasePage):
             # ⑬ SEVKİYAT & ÇIKIŞ İRSALİYE
             try:
                 # Çıkış irsaliyeleri - lot_no veya is_emri_id ile ara
-                if ie_ids:
-                    cur.execute(f"""SELECT DISTINCT ci.irsaliye_no, ci.tarih, ci.arac_plaka, ci.sofor_adi, ci.durum,
-                        cs.miktar, c.unvan, ci.tasiyici_firma, cs.lot_no
+                base_sql = f"""SELECT DISTINCT ci.irsaliye_no, ci.tarih, ci.arac_plaka, ci.sofor_adi, ci.durum,
+                        cs.miktar, c.unvan, ci.tasiyici_firma, cs.lot_no,
+                        {self._op_name('te')} AS teslim_eden
                         FROM siparis.cikis_irsaliyeleri ci
                         JOIN siparis.cikis_irsaliye_satirlar cs ON cs.irsaliye_id=ci.id
                         LEFT JOIN musteri.cariler c ON ci.cari_id=c.id
+                        {self._op_join('ci.teslim_eden_id', 'te')}"""
+                if ie_ids:
+                    cur.execute(base_sql + f"""
                         WHERE (cs.lot_no IN ({lph}) OR cs.is_emri_id IN ({iph}))
                           AND (ci.silindi_mi=0 OR ci.silindi_mi IS NULL)
                         ORDER BY ci.tarih""", (*lot_nos, *ie_ids))
                 else:
-                    cur.execute(f"""SELECT DISTINCT ci.irsaliye_no, ci.tarih, ci.arac_plaka, ci.sofor_adi, ci.durum,
-                        cs.miktar, c.unvan, ci.tasiyici_firma, cs.lot_no
-                        FROM siparis.cikis_irsaliyeleri ci
-                        JOIN siparis.cikis_irsaliye_satirlar cs ON cs.irsaliye_id=ci.id
-                        LEFT JOIN musteri.cariler c ON ci.cari_id=c.id
+                    cur.execute(base_sql + f"""
                         WHERE cs.lot_no IN ({lph})
                           AND (ci.silindi_mi=0 OR ci.silindi_mi IS NULL)
                         ORDER BY ci.tarih""", (*lot_nos,))
                 for r in cur.fetchall():
                     st_map = {'HAZIRLANDI': 'active', 'SEVK_EDILDI': 'completed', 'TESLIM_EDILDI': 'completed', 'IPTAL': 'failed'}
                     st = st_map.get(r[4], 'warning')
+                    oa = [{'role': 'Teslim Eden', 'name': r[9] or '-', 'icon': '🚚', 'result': r[4] or '-'}]
+                    if r[3]:
+                        oa.append({'role': 'Şoför', 'name': r[3], 'icon': '👤', 'result': ''})
                     steps.append(('sevkiyat', {'status': st, 'status_text': r[4] or '-', 'tarih': r[1],
                         'detay': [('İrsaliye No', r[0] or '-'), ('Müşteri', r[6] or '-'), ('Miktar', self._fmt(r[5])),
                                   ('Plaka', r[2] or '-'), ('Şoför', r[3] or '-'), ('Taşıyıcı', r[7] or '-')],
-                        'onay_bilgi': []}))
+                        'onay_bilgi': oa}))
+                    if r[9]:
+                        appr.append({'step': 'Sevkiyat', 'person': r[9], 'result': r[4] or '-', 'tarih': r[1]})
                     appr.append({'step': 'Çıkış İrsaliye', 'person': r[3] or '-', 'result': r[4] or '-', 'tarih': r[1]})
             except Exception as e:
                 print(f"⑬ {e}")
 
             # ⑭ MÜŞTERİ ŞİKAYETİ
             try:
-                cur.execute(f"""SELECT u.kayit_no, u.kayit_tarihi, u.hata_tanimi, u.durum, p.ad+' '+p.soyad, c.unvan
-                    FROM kalite.uygunsuzluklar u LEFT JOIN ik.personeller p ON u.sorumlu_id=p.id
+                cur.execute(f"""SELECT u.kayit_no, u.kayit_tarihi, u.hata_tanimi, u.durum, {self._op_name('ms')}, c.unvan
+                    FROM kalite.uygunsuzluklar u
+                    {self._op_join('u.sorumlu_id', 'ms')}
                     LEFT JOIN musteri.cariler c ON u.cari_id=c.id
                     WHERE u.lot_no IN ({lph}) AND u.kayit_tipi='MUSTERI_SIKAYETI' ORDER BY u.kayit_tarihi""", (*lot_nos,))
                 for r in cur.fetchall():
@@ -792,8 +1149,9 @@ class UrunIzlenebilirlikPage(BasePage):
 
             # Lot Durum Geçmişi
             try:
-                cur.execute(f"""SELECT ldg.eski_durum, ldg.yeni_durum, ldg.degisim_zamani, p.ad+' '+p.soyad
-                    FROM stok.lot_durum_gecmisi ldg LEFT JOIN ik.personeller p ON ldg.degistiren_id=p.id
+                cur.execute(f"""SELECT ldg.eski_durum, ldg.yeni_durum, ldg.degisim_zamani, {self._op_name('ld')}
+                    FROM stok.lot_durum_gecmisi ldg
+                    {self._op_join('ldg.degistiren_id', 'ld')}
                     WHERE ldg.lot_no IN ({lph}) ORDER BY ldg.degisim_zamani""", (*lot_nos,))
                 for r in cur.fetchall():
                     appr.append({'step': f"{r[0] or '?'}→{r[1] or '?'}", 'person': r[3] or '-', 'result': r[1] or '-', 'tarih': r[2]})

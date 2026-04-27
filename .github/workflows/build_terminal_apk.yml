@@ -1,0 +1,110 @@
+name: NEXOR Terminal APK Build
+
+# Tetikleyiciler:
+# 1. Manuel: Actions sekmesinden "Run workflow" butonu
+# 2. apps/nexor_terminal/ veya .github/workflows/ degisirse otomatik
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'NEXOR Terminal API URL (sunucu IP:port)'
+        required: true
+        default: 'http://192.168.10.66:8002'
+      build_mode:
+        description: 'Build mode'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - release
+          - debug
+  push:
+    branches: [master, main]
+    paths:
+      - 'apps/nexor_terminal/**'
+      - '.github/workflows/build_terminal_apk.yml'
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: apps/nexor_terminal
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Generate missing Flutter project files
+        # flutter create idempotent: var olan dosyalari ezmez, eksikleri uretir
+        run: flutter create . --project-name nexor_terminal --org com.nexor --platforms=android
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze (uyari amacli, hatada durmaz)
+        run: flutter analyze || true
+
+      - name: Build APK (release)
+        if: ${{ github.event_name == 'push' || inputs.build_mode == 'release' }}
+        run: |
+          flutter build apk --release \
+            --dart-define=API_BASE_URL=${{ inputs.api_base_url || 'http://192.168.10.66:8002' }}
+
+      - name: Build APK (debug)
+        if: ${{ inputs.build_mode == 'debug' }}
+        run: |
+          flutter build apk --debug \
+            --dart-define=API_BASE_URL=${{ inputs.api_base_url }}
+
+      - name: Rename APK
+        run: |
+          MODE=${{ inputs.build_mode || 'release' }}
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          APK_PATH="build/app/outputs/flutter-apk/app-${MODE}.apk"
+          NEW_NAME="nexor-terminal-${MODE}-${SHORT_SHA}.apk"
+          if [ -f "$APK_PATH" ]; then
+            cp "$APK_PATH" "build/app/outputs/flutter-apk/$NEW_NAME"
+            echo "APK_NAME=$NEW_NAME" >> $GITHUB_ENV
+            ls -la build/app/outputs/flutter-apk/
+          else
+            echo "APK bulunamadi: $APK_PATH"
+            exit 1
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: apps/nexor_terminal/build/app/outputs/flutter-apk/${{ env.APK_NAME }}
+          retention-days: 30
+
+      - name: Build summary
+        run: |
+          echo "## NEXOR Terminal APK Build" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK:** \`$APK_NAME\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** \`${{ inputs.api_base_url || 'http://192.168.10.66:8002' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mode:** \`${{ inputs.build_mode || 'release' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "APK indirmek icin asagidaki **Artifacts** bolumune git, ZIP'i indir, EDA51'e USB ile kur." >> $GITHUB_STEP_SUMMARY

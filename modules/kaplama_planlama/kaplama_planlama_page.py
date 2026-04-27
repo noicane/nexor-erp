@@ -1689,13 +1689,15 @@ class KaplamaPlanlamaPage(BasePage):
                     ))
                     is_emri_id = cursor.fetchone()[0]
 
+                    from core.yetki_manager import YetkiManager
+                    _olusturan_id = YetkiManager._current_user_id
                     cursor.execute("""
                         INSERT INTO uretim.planlama
                         (uuid, tarih, vardiya_id, is_emri_id, sira_no,
-                         planlanan_bara, durum, olusturma_tarihi)
+                         planlanan_bara, durum, olusturan_id, olusturma_tarihi)
                         VALUES (NEWID(), GETDATE(), ?, ?, ?,
-                                ?, 'PLANLANDI', GETDATE())
-                    """, (v_no, is_emri_id, sira, aski))
+                                ?, 'PLANLANDI', ?, GETDATE())
+                    """, (v_no, is_emri_id, sira, aski, _olusturan_id))
 
                     olusturulan += 1
                 except Exception as ie_err:

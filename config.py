@@ -201,25 +201,51 @@ else:
     print("[CONFIG] Veritabanı ayarları henüz yapılandırılmamış.")
 
 # =========================
-# NAS YOLLARI (config.json'dan yuklenir)
+# NAS YOLLARI (config.json aktif profilinden yuklenir)
 # =========================
+# Profil'deki nas.shares anahtar -> alias eslesmesi (geriye uyum):
+#   profile_key  -> NAS_PATHS_legacy_alias
+_NAS_SHARE_ALIAS = {
+    "mamul_resim":   "image_path",
+    "urunler":       "product_path",
+    "kimyasallar":   "chemical_path",
+    "logo":          "logo_path",
+    "tds":           "tds_path",
+    "aksiyonlar":    "aksiyon_path",
+    "kalite":        "quality_path",
+    "update_server": "update_server",
+    "personel":      "personel_path",
+}
+
 def _load_nas_paths():
-    """NAS yollarini config.json'dan yukle"""
+    """NAS yollarini aktif profilden yukle. Her musterinin kendi sunucusu/yollari olabilir."""
+    server = "AtlasNAS"
+    shares: dict = {}
     try:
         from core.external_config import config_manager
-        server = config_manager.get('nas.server', 'AtlasNAS')
+        server = config_manager.get('nas.server', 'AtlasNAS') or 'AtlasNAS'
+        shares = config_manager.get('nas.shares') or {}
     except Exception:
-        server = 'AtlasNAS'
-    return {
-        "image_path": rf"\\{server}\Data Yönetimi\MAMUL_RESIM",
-        "product_path": rf"\\{server}\Data Yönetimi\Urunler",
-        "chemical_path": rf"\\{server}\Data Yönetimi\Kimyasallar",
-        "logo_path": rf"\\{server}\Data Yönetimi\LOGO\atlas_logo.png",
-        "quality_path": rf"\\{server}\Kalite",
-        "update_server": rf"\\{server}\Atmo_Logic",
-        "aksiyon_path": rf"\\{server}\Data Yönetimi\Aksiyonlar",
-        "tds_path": rf"\\{server}\Data Yönetimi\TDS_Dokumanlari",
+        pass
+
+    # Varsayilanlar (profile'da bulunmayan key'ler icin fallback)
+    defaults = {
+        "mamul_resim":   "Data Yönetimi/MAMUL_RESIM",
+        "urunler":       "Data Yönetimi/Urunler",
+        "kimyasallar":   "Data Yönetimi/Kimyasallar",
+        "logo":          "Data Yönetimi/LOGO/atlas_logo.png",
+        "tds":           "Data Yönetimi/TDS_Dokumanlari",
+        "aksiyonlar":    "Data Yönetimi/Aksiyonlar",
+        "kalite":        "Kalite",
+        "update_server": "Atmo_Logic",
+        "personel":      "Personel",
     }
+
+    out = {}
+    for key, alias in _NAS_SHARE_ALIAS.items():
+        sub = (shares.get(key) or defaults[key]).replace('/', '\\')
+        out[alias] = rf"\\{server}\{sub}"
+    return out
 
 NAS_PATHS = _load_nas_paths()
 

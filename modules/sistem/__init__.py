@@ -19,6 +19,8 @@ from .sistem_yedekleme import SistemYedeklemePage
 from .sistem_whatsapp import SistemWhatsappPage
 from .sistem_firma import SistemFirmaPage
 from .bildirim_tercihleri import BildirimTercihleriPage
+from .sistem_modul_lisans import SistemModulLisansPage
+from .sistem_musteri_yonetimi import SistemMusteriYonetimiPage
 
 # Sayfa kayıtları
 PageRegistry.register("sistem_veritabani", VeriTabaniBaglantiPage, MODULE_NAME)
@@ -33,6 +35,8 @@ PageRegistry.register("sistem_yedekleme", SistemYedeklemePage, MODULE_NAME)
 PageRegistry.register("sistem_whatsapp", SistemWhatsappPage, MODULE_NAME)
 PageRegistry.register("sistem_firma", SistemFirmaPage, MODULE_NAME)
 PageRegistry.register("bildirim_tercihleri", BildirimTercihleriPage, MODULE_NAME)
+PageRegistry.register("sistem_modul_lisans", SistemModulLisansPage, MODULE_NAME)
+PageRegistry.register("sistem_musteri_yonetimi", SistemMusteriYonetimiPage, MODULE_NAME)
 
 __all__ = [
     "VeriTabaniBaglantiPage",
@@ -46,5 +50,7 @@ __all__ = [
     "SistemYedeklemePage",
     "SistemWhatsappPage",
     "SistemFirmaPage",
-    "BildirimTercihleriPage"
+    "BildirimTercihleriPage",
+    "SistemModulLisansPage",
+    "SistemMusteriYonetimiPage",
 ]
