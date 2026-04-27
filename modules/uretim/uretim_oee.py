@@ -21,21 +21,9 @@ from components.base_page import BasePage
 from core.database import get_db_connection
 from core.nexor_brand import brand
 from core.oee_calculator import DurusKayipPareto, OEECalculator, OEESonuc
-
-
-# ============================================================================
-# YARDIMCILAR
-# ============================================================================
-
-def _renk_oee(yuzde: float) -> str:
-    """OEE yuzdesine gore renk kodu."""
-    if yuzde >= 0.85:
-        return brand.SUCCESS  # Dunya klasi (>%85)
-    if yuzde >= 0.60:
-        return brand.WARNING  # Iyi
-    if yuzde >= 0.40:
-        return "#F97316"  # Orta
-    return brand.ERROR  # Dusuk
+from core.ui_components import (
+    make_kpi_card, renk_yuzde, setup_data_table, standart_stylesheet,
+)
 
 
 def _format_dakika(dk: int) -> str:
@@ -47,29 +35,6 @@ def _format_dakika(dk: int) -> str:
     if sa > 0:
         return f"{sa} sa {d} dk"
     return f"{d} dk"
-
-
-def _kpi_card(baslik: str, deger: str, renk: str, alt: str = "") -> QFrame:
-    f = QFrame()
-    f.setStyleSheet(
-        f"QFrame {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; "
-        f"border-radius: 10px; padding: 14px 18px; }}"
-    )
-    v = QVBoxLayout(f)
-    v.setContentsMargins(12, 10, 12, 10)
-    v.setSpacing(2)
-    b = QLabel(baslik)
-    b.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 11px; font-weight: bold;")
-    d = QLabel(deger)
-    d.setStyleSheet(f"color: {renk}; font-size: 28px; font-weight: bold;")
-    v.addWidget(b)
-    v.addWidget(d)
-    if alt:
-        a = QLabel(alt)
-        a.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 10px;")
-        a.setWordWrap(True)
-        v.addWidget(a)
-    return f
 
 
 # ============================================================================
@@ -91,6 +56,9 @@ class UretimOEEPage(BasePage):
     # ------------------------------------------------------------------
 
     def _setup_ui(self):
+        # NEXOR standart stylesheet
+        self.setStyleSheet(standart_stylesheet())
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(14)
@@ -170,24 +138,8 @@ class UretimOEEPage(BasePage):
             "Hat Kodu", "Hat Adi", "Plan", "Calisma", "Durus (OEE)",
             "Uretim", "Red", "Kullanilabilirlik", "Performans", "Kalite", "OEE"
         ])
-        self.tbl.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
-        self.tbl.verticalHeader().setVisible(False)
-        self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.tbl.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tbl.setAlternatingRowColors(True)
-        self.tbl.setStyleSheet(f"""
-            QTableWidget {{
-                background: {brand.BG_CARD}; color: {brand.TEXT};
-                border: 1px solid {brand.BORDER}; border-radius: 8px;
-                gridline-color: {brand.BORDER};
-                alternate-background-color: {brand.BG_INPUT};
-            }}
-            QHeaderView::section {{
-                background: {brand.BG_INPUT}; color: {brand.TEXT};
-                padding: 8px; border: none; font-weight: bold;
-            }}
-        """)
-        self.tbl.verticalHeader().setDefaultSectionSize(38)
+        # Standart tablo stili
+        setup_data_table(self.tbl, stretch_kolon_indexi=1, satir_yuksekligi=38)
         v_tbl.addWidget(self.tbl)
         layout.addWidget(gb_tbl, 2)
 
@@ -198,10 +150,7 @@ class UretimOEEPage(BasePage):
         self.tbl_pareto.setHorizontalHeaderLabels([
             "#", "Kategori", "Neden Kodu", "Aciklama", "Sure", "Pay"
         ])
-        self.tbl_pareto.horizontalHeader().setSectionResizeMode(3, QHeaderView.Stretch)
-        self.tbl_pareto.verticalHeader().setVisible(False)
-        self.tbl_pareto.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.tbl_pareto.setStyleSheet(self.tbl.styleSheet())
+        setup_data_table(self.tbl_pareto, stretch_kolon_indexi=3, satir_yuksekligi=32)
         v_p.addWidget(self.tbl_pareto)
         layout.addWidget(gb_p, 1)
 
@@ -309,13 +258,13 @@ class UretimOEEPage(BasePage):
         toplam_durus = sum(s.durus_oee_etkili_dk for s in sonuclar)
 
         kartlar = [
-            ("Genel OEE", f"%{ort_oee*100:.1f}", _renk_oee(ort_oee), self._oee_yorum(ort_oee)),
-            ("Kullanilabilirlik", f"%{ort_k*100:.1f}", _renk_oee(ort_k), f"Toplam durus: {_format_dakika(toplam_durus)}"),
-            ("Performans", f"%{ort_p*100:.1f}", _renk_oee(ort_p), f"Toplam uretim: {toplam_uretim}"),
-            ("Kalite", f"%{ort_q*100:.1f}", _renk_oee(ort_q), f"Red: {toplam_red}"),
+            ("Genel OEE", f"%{ort_oee*100:.1f}", renk_yuzde(ort_oee), self._oee_yorum(ort_oee)),
+            ("Kullanilabilirlik", f"%{ort_k*100:.1f}", renk_yuzde(ort_k), f"Toplam durus: {_format_dakika(toplam_durus)}"),
+            ("Performans", f"%{ort_p*100:.1f}", renk_yuzde(ort_p), f"Toplam uretim: {toplam_uretim}"),
+            ("Kalite", f"%{ort_q*100:.1f}", renk_yuzde(ort_q), f"Red: {toplam_red}"),
         ]
         for b, d, r, a in kartlar:
-            self.kpi_row.addWidget(_kpi_card(b, d, r, a))
+            self.kpi_row.addWidget(make_kpi_card(b, d, r, a))
         self.kpi_row.addStretch()
 
     def _oee_yorum(self, oee: float) -> str:
@@ -353,14 +302,14 @@ class UretimOEEPage(BasePage):
     def _yuzde_item(self, oran: float) -> QTableWidgetItem:
         it = QTableWidgetItem(f"%{oran*100:.1f}")
         it.setTextAlignment(Qt.AlignCenter)
-        renk = _renk_oee(oran)
+        renk = renk_yuzde(oran)
         it.setForeground(QColor(renk))
         return it
 
     def _oee_item(self, oee: float) -> QTableWidgetItem:
         it = QTableWidgetItem(f"%{oee*100:.1f}")
         it.setTextAlignment(Qt.AlignCenter)
-        renk = _renk_oee(oee)
+        renk = renk_yuzde(oee)
         it.setForeground(QColor(renk))
         f = it.font()
         f.setBold(True)

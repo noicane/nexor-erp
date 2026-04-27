@@ -22,38 +22,13 @@ from components.base_page import BasePage
 from core.database import get_db_connection
 from core.maliyet_calculator import ReceteMaliyetCalculator, ReceteMaliyetSonuc
 from core.nexor_brand import brand
+from core.ui_components import (
+    make_kpi_card, make_scrollable_form, setup_data_table,
+    setup_form, standart_stylesheet,
+)
 
 
 _PARA_BIRIMLERI = ["TRY", "USD", "EUR"]
-
-
-def _setup_form(form: QFormLayout) -> None:
-    """QFormLayout standart ayarlari: label sol, field genis, satir uzerine binmesin."""
-    form.setRowWrapPolicy(QFormLayout.DontWrapRows)
-    form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
-    form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-    form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
-    form.setHorizontalSpacing(14)
-    form.setVerticalSpacing(8)
-    form.setContentsMargins(14, 18, 14, 14)
-
-
-def _kpi_card(baslik: str, deger: str, renk: str) -> QFrame:
-    f = QFrame()
-    f.setStyleSheet(
-        f"QFrame {{ background: {brand.BG_CARD}; border: 1px solid {brand.BORDER}; "
-        f"border-radius: 8px; padding: 10px 14px; }}"
-    )
-    v = QVBoxLayout(f)
-    v.setContentsMargins(10, 8, 10, 8)
-    v.setSpacing(2)
-    b = QLabel(baslik)
-    b.setStyleSheet(f"color: {brand.TEXT_DIM}; font-size: 10px; font-weight: bold;")
-    d = QLabel(deger)
-    d.setStyleSheet(f"color: {renk}; font-size: 18px; font-weight: bold;")
-    v.addWidget(b)
-    v.addWidget(d)
-    return f
 
 
 class ReceteMaliyetPage(BasePage):
@@ -72,30 +47,8 @@ class ReceteMaliyetPage(BasePage):
     # ------------------------------------------------------------------
 
     def _setup_ui(self):
-        # Sayfa stylesheet (input alanlari icin min-height)
-        self.setStyleSheet(f"""
-            QGroupBox {{
-                color: {brand.TEXT}; border: 1px solid {brand.BORDER};
-                border-radius: 8px; margin-top: 14px;
-                font-weight: bold; padding-top: 10px;
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin; subcontrol-position: top left;
-                left: 12px; padding: 0 6px;
-                background: {brand.BG_MAIN}; color: {brand.TEXT};
-            }}
-            QLineEdit, QDoubleSpinBox, QSpinBox, QDateEdit, QComboBox, QTextEdit {{
-                background: {brand.BG_INPUT}; color: {brand.TEXT};
-                border: 1px solid {brand.BORDER}; border-radius: 6px;
-                padding: 5px 8px; min-height: 22px;
-                selection-background-color: {brand.PRIMARY};
-            }}
-            QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus,
-            QDateEdit:focus, QComboBox:focus, QTextEdit:focus {{
-                border-color: {brand.PRIMARY};
-            }}
-            QLabel {{ color: {brand.TEXT}; background: transparent; }}
-        """)
+        # NEXOR standart stylesheet (input min-height, groupbox, focus, vb.)
+        self.setStyleSheet(standart_stylesheet())
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -129,21 +82,16 @@ class ReceteMaliyetPage(BasePage):
         self.tbl.setHorizontalHeaderLabels([
             "Recete No", "Adi", "Cevrim", "Toplam Maliyet"
         ])
+        # Sabit kolonlar
         self.tbl.setColumnWidth(0, 70)
         self.tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
-        self.tbl.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         self.tbl.setColumnWidth(2, 75)
         self.tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
         self.tbl.setColumnWidth(3, 130)
         self.tbl.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
-        self.tbl.verticalHeader().setVisible(False)
-        self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.tbl.setSelectionBehavior(QTableWidget.SelectRows)
-        self.tbl.setSelectionMode(QTableWidget.SingleSelection)
-        self.tbl.setAlternatingRowColors(True)
-        self.tbl.setStyleSheet(self._tbl_style())
+        # Standart tablo stili + selection mode + alternating
+        setup_data_table(self.tbl, stretch_kolon_indexi=1, satir_yuksekligi=32)
         self.tbl.itemSelectionChanged.connect(self._secim_degisti)
-        self.tbl.verticalHeader().setDefaultSectionSize(32)
         v_sol.addWidget(self.tbl)
         splitter.addWidget(sol)
 
@@ -162,24 +110,14 @@ class ReceteMaliyetPage(BasePage):
         )
         v_sag.addWidget(self.lbl_recete_basinda)
 
-        # ScrollArea (form gruplari uzun)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        scroll.setStyleSheet(
-            f"QScrollArea {{ border: none; background: transparent; }}"
-            f"QScrollBar:vertical {{ background: {brand.BG_CARD}; width: 10px; }}"
-            f"QScrollBar::handle:vertical {{ background: {brand.BORDER}; border-radius: 5px; }}"
-        )
-        scroll_inner = QWidget()
-        v_inner = QVBoxLayout(scroll_inner)
-        v_inner.setContentsMargins(0, 0, 0, 0)
-        v_inner.setSpacing(10)
+        # ScrollArea standart wrapper
+        scroll = make_scrollable_form()
+        v_inner = scroll.widget().layout()
 
         # 1. Hammadde
         gb_h = QGroupBox("Hammadde")
         f_h = QFormLayout(gb_h)
-        _setup_form(f_h)
+        setup_form(f_h)
         self.sp_hammadde_fiyat = self._money_spin()
         f_h.addRow("Birim Fiyat (TL/kg):", self.sp_hammadde_fiyat)
         self.sp_hammadde_tuketim = self._kg_spin()
@@ -189,7 +127,7 @@ class ReceteMaliyetPage(BasePage):
         # 2. Iscilik
         gb_i = QGroupBox("Iscilik")
         f_i = QFormLayout(gb_i)
-        _setup_form(f_i)
+        setup_form(f_i)
         self.sp_iscilik_ucret = self._money_spin()
         f_i.addRow("Saat Ucreti (TL/saat):", self.sp_iscilik_ucret)
         self.sp_iscilik_kisi = QDoubleSpinBox()
@@ -206,7 +144,7 @@ class ReceteMaliyetPage(BasePage):
         # 3. Enerji
         gb_e = QGroupBox("Enerji")
         f_e = QFormLayout(gb_e)
-        _setup_form(f_e)
+        setup_form(f_e)
         self.sp_enerji_kwh = self._kg_spin()
         f_e.addRow("Ortalama kWh/saat:", self.sp_enerji_kwh)
         self.sp_enerji_fiyat = self._money_spin()
@@ -216,7 +154,7 @@ class ReceteMaliyetPage(BasePage):
         # 4. Kimyasal
         gb_k = QGroupBox("Kimyasal")
         f_k = QFormLayout(gb_k)
-        _setup_form(f_k)
+        setup_form(f_k)
         self.sp_kim_tuketim = self._kg_spin()
         f_k.addRow("Tuketim (kg/parca):", self.sp_kim_tuketim)
         self.sp_kim_fiyat = self._money_spin()
@@ -226,7 +164,7 @@ class ReceteMaliyetPage(BasePage):
         # 5. MOH + Marj
         gb_m = QGroupBox("Genel Uretim Gideri (MOH) + Kar Marji")
         f_m = QFormLayout(gb_m)
-        _setup_form(f_m)
+        setup_form(f_m)
         self.sp_moh_yuzde = QDoubleSpinBox()
         self.sp_moh_yuzde.setRange(0, 200)
         self.sp_moh_yuzde.setDecimals(2)
@@ -260,7 +198,6 @@ class ReceteMaliyetPage(BasePage):
         v_inner.addWidget(gb_n)
 
         v_inner.addStretch()
-        scroll.setWidget(scroll_inner)
         v_sag.addWidget(scroll, 1)
 
         # Hesap onizleme kartlari (sticky bottom)
@@ -534,13 +471,13 @@ class ReceteMaliyetPage(BasePage):
             w = it.widget()
             if w:
                 w.setParent(None)
-        self.kpi_row.addWidget(_kpi_card("Hammadde", f"{m_hammadde:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.INFO))
-        self.kpi_row.addWidget(_kpi_card("Iscilik", f"{m_iscilik:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.INFO))
-        self.kpi_row.addWidget(_kpi_card("Enerji", f"{m_enerji:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.WARNING))
-        self.kpi_row.addWidget(_kpi_card("Kimyasal", f"{m_kimyasal:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.INFO))
-        self.kpi_row.addWidget(_kpi_card("MOH", f"{m_moh:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.TEXT_DIM))
-        self.kpi_row.addWidget(_kpi_card("TOPLAM", f"{m_toplam:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.PRIMARY))
-        self.kpi_row.addWidget(_kpi_card(f"Satis (+%{self.sp_kar_marj.value():.1f})", f"{m_satis:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.SUCCESS))
+        self.kpi_row.addWidget(make_kpi_card("Hammadde", f"{m_hammadde:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.INFO))
+        self.kpi_row.addWidget(make_kpi_card("Iscilik", f"{m_iscilik:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.INFO))
+        self.kpi_row.addWidget(make_kpi_card("Enerji", f"{m_enerji:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.WARNING))
+        self.kpi_row.addWidget(make_kpi_card("Kimyasal", f"{m_kimyasal:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.INFO))
+        self.kpi_row.addWidget(make_kpi_card("MOH", f"{m_moh:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.TEXT_DIM))
+        self.kpi_row.addWidget(make_kpi_card("TOPLAM", f"{m_toplam:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.PRIMARY))
+        self.kpi_row.addWidget(make_kpi_card(f"Satis (+%{self.sp_kar_marj.value():.1f})", f"{m_satis:,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", "."), brand.SUCCESS))
 
     def _cevrim_dk(self, recete_no: int) -> float:
         try:
