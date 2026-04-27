@@ -14,8 +14,8 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox, QDateEdit, QDoubleSpinBox, QFormLayout, QFrame, QGroupBox,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPushButton,
-    QSpinBox, QSplitter, QTableWidget, QTableWidgetItem, QTextEdit,
-    QVBoxLayout, QWidget,
+    QScrollArea, QSpinBox, QSplitter, QTableWidget, QTableWidgetItem,
+    QTextEdit, QVBoxLayout, QWidget,
 )
 
 from components.base_page import BasePage
@@ -25,6 +25,17 @@ from core.nexor_brand import brand
 
 
 _PARA_BIRIMLERI = ["TRY", "USD", "EUR"]
+
+
+def _setup_form(form: QFormLayout) -> None:
+    """QFormLayout standart ayarlari: label sol, field genis, satir uzerine binmesin."""
+    form.setRowWrapPolicy(QFormLayout.DontWrapRows)
+    form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+    form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+    form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+    form.setHorizontalSpacing(14)
+    form.setVerticalSpacing(8)
+    form.setContentsMargins(14, 18, 14, 14)
 
 
 def _kpi_card(baslik: str, deger: str, renk: str) -> QFrame:
@@ -61,6 +72,31 @@ class ReceteMaliyetPage(BasePage):
     # ------------------------------------------------------------------
 
     def _setup_ui(self):
+        # Sayfa stylesheet (input alanlari icin min-height)
+        self.setStyleSheet(f"""
+            QGroupBox {{
+                color: {brand.TEXT}; border: 1px solid {brand.BORDER};
+                border-radius: 8px; margin-top: 14px;
+                font-weight: bold; padding-top: 10px;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin; subcontrol-position: top left;
+                left: 12px; padding: 0 6px;
+                background: {brand.BG_MAIN}; color: {brand.TEXT};
+            }}
+            QLineEdit, QDoubleSpinBox, QSpinBox, QDateEdit, QComboBox, QTextEdit {{
+                background: {brand.BG_INPUT}; color: {brand.TEXT};
+                border: 1px solid {brand.BORDER}; border-radius: 6px;
+                padding: 5px 8px; min-height: 22px;
+                selection-background-color: {brand.PRIMARY};
+            }}
+            QLineEdit:focus, QDoubleSpinBox:focus, QSpinBox:focus,
+            QDateEdit:focus, QComboBox:focus, QTextEdit:focus {{
+                border-color: {brand.PRIMARY};
+            }}
+            QLabel {{ color: {brand.TEXT}; background: transparent; }}
+        """)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
@@ -81,56 +117,79 @@ class ReceteMaliyetPage(BasePage):
         # Splitter: sol liste, sag form
         splitter = QSplitter(Qt.Horizontal)
         splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(6)
 
-        # SOL: Liste
+        # ============ SOL: Liste (sadelestirildi 4 kolon) ============
         sol = QWidget()
         v_sol = QVBoxLayout(sol)
-        v_sol.setContentsMargins(0, 0, 0, 0)
+        v_sol.setContentsMargins(0, 0, 4, 0)
+        v_sol.setSpacing(0)
 
-        self.tbl = QTableWidget(0, 9)
+        self.tbl = QTableWidget(0, 4)
         self.tbl.setHorizontalHeaderLabels([
-            "Recete No", "Adi", "Cevrim",
-            "Hammadde", "Iscilik", "Enerji", "Kimyasal", "MOH", "Toplam"
+            "Recete No", "Adi", "Cevrim", "Toplam Maliyet"
         ])
+        self.tbl.setColumnWidth(0, 70)
+        self.tbl.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
         self.tbl.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.tbl.setColumnWidth(2, 75)
+        self.tbl.horizontalHeader().setSectionResizeMode(2, QHeaderView.Fixed)
+        self.tbl.setColumnWidth(3, 130)
+        self.tbl.horizontalHeader().setSectionResizeMode(3, QHeaderView.Fixed)
         self.tbl.verticalHeader().setVisible(False)
         self.tbl.setEditTriggers(QTableWidget.NoEditTriggers)
         self.tbl.setSelectionBehavior(QTableWidget.SelectRows)
+        self.tbl.setSelectionMode(QTableWidget.SingleSelection)
         self.tbl.setAlternatingRowColors(True)
         self.tbl.setStyleSheet(self._tbl_style())
         self.tbl.itemSelectionChanged.connect(self._secim_degisti)
-        self.tbl.verticalHeader().setDefaultSectionSize(34)
+        self.tbl.verticalHeader().setDefaultSectionSize(32)
         v_sol.addWidget(self.tbl)
         splitter.addWidget(sol)
 
-        # SAG: Form
+        # ============ SAG: Form (ScrollArea icinde) ============
         sag = QWidget()
         v_sag = QVBoxLayout(sag)
-        v_sag.setContentsMargins(8, 0, 0, 0)
+        v_sag.setContentsMargins(4, 0, 0, 0)
         v_sag.setSpacing(10)
 
-        # Recete bilgi seridi
+        # Recete bilgi seridi (sticky top)
         self.lbl_recete_basinda = QLabel("Soldan bir recete secin")
         self.lbl_recete_basinda.setStyleSheet(
             f"font-size: 14px; font-weight: bold; color: {brand.PRIMARY}; "
-            f"padding: 6px 10px; background: {brand.BG_CARD}; "
+            f"padding: 8px 12px; background: {brand.BG_CARD}; "
             f"border: 1px solid {brand.BORDER}; border-radius: 6px;"
         )
         v_sag.addWidget(self.lbl_recete_basinda)
 
-        # Bilesen formu - 5 grup
+        # ScrollArea (form gruplari uzun)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setStyleSheet(
+            f"QScrollArea {{ border: none; background: transparent; }}"
+            f"QScrollBar:vertical {{ background: {brand.BG_CARD}; width: 10px; }}"
+            f"QScrollBar::handle:vertical {{ background: {brand.BORDER}; border-radius: 5px; }}"
+        )
+        scroll_inner = QWidget()
+        v_inner = QVBoxLayout(scroll_inner)
+        v_inner.setContentsMargins(0, 0, 0, 0)
+        v_inner.setSpacing(10)
+
         # 1. Hammadde
         gb_h = QGroupBox("Hammadde")
         f_h = QFormLayout(gb_h)
+        _setup_form(f_h)
         self.sp_hammadde_fiyat = self._money_spin()
         f_h.addRow("Birim Fiyat (TL/kg):", self.sp_hammadde_fiyat)
         self.sp_hammadde_tuketim = self._kg_spin()
         f_h.addRow("Tuketim (kg/parca):", self.sp_hammadde_tuketim)
-        v_sag.addWidget(gb_h)
+        v_inner.addWidget(gb_h)
 
         # 2. Iscilik
         gb_i = QGroupBox("Iscilik")
         f_i = QFormLayout(gb_i)
+        _setup_form(f_i)
         self.sp_iscilik_ucret = self._money_spin()
         f_i.addRow("Saat Ucreti (TL/saat):", self.sp_iscilik_ucret)
         self.sp_iscilik_kisi = QDoubleSpinBox()
@@ -142,29 +201,32 @@ class ReceteMaliyetPage(BasePage):
         self.sp_aski_kapasite.setRange(1, 9999)
         self.sp_aski_kapasite.setValue(1)
         f_i.addRow("1 Askıdaki Parca:", self.sp_aski_kapasite)
-        v_sag.addWidget(gb_i)
+        v_inner.addWidget(gb_i)
 
         # 3. Enerji
         gb_e = QGroupBox("Enerji")
         f_e = QFormLayout(gb_e)
+        _setup_form(f_e)
         self.sp_enerji_kwh = self._kg_spin()
         f_e.addRow("Ortalama kWh/saat:", self.sp_enerji_kwh)
         self.sp_enerji_fiyat = self._money_spin()
         f_e.addRow("Birim Fiyat (TL/kWh):", self.sp_enerji_fiyat)
-        v_sag.addWidget(gb_e)
+        v_inner.addWidget(gb_e)
 
         # 4. Kimyasal
         gb_k = QGroupBox("Kimyasal")
         f_k = QFormLayout(gb_k)
+        _setup_form(f_k)
         self.sp_kim_tuketim = self._kg_spin()
         f_k.addRow("Tuketim (kg/parca):", self.sp_kim_tuketim)
         self.sp_kim_fiyat = self._money_spin()
         f_k.addRow("Birim Fiyat (TL/kg):", self.sp_kim_fiyat)
-        v_sag.addWidget(gb_k)
+        v_inner.addWidget(gb_k)
 
         # 5. MOH + Marj
         gb_m = QGroupBox("Genel Uretim Gideri (MOH) + Kar Marji")
         f_m = QFormLayout(gb_m)
+        _setup_form(f_m)
         self.sp_moh_yuzde = QDoubleSpinBox()
         self.sp_moh_yuzde.setRange(0, 200)
         self.sp_moh_yuzde.setDecimals(2)
@@ -177,30 +239,36 @@ class ReceteMaliyetPage(BasePage):
         self.sp_kar_marj.setDecimals(2)
         self.sp_kar_marj.setSuffix(" %")
         f_m.addRow("Kar Marji (Satis icin):", self.sp_kar_marj)
-
         self.cb_para = QComboBox()
         self.cb_para.addItems(_PARA_BIRIMLERI)
         f_m.addRow("Para Birimi:", self.cb_para)
-
         self.dt_baslangic = QDateEdit()
         self.dt_baslangic.setCalendarPopup(True)
         self.dt_baslangic.setDisplayFormat("dd.MM.yyyy")
         self.dt_baslangic.setDate(QDate.currentDate())
         f_m.addRow("Gecerlilik Baslangic:", self.dt_baslangic)
-        v_sag.addWidget(gb_m)
+        v_inner.addWidget(gb_m)
 
         # Notlar
+        gb_n = QGroupBox("Notlar")
+        v_n = QVBoxLayout(gb_n)
+        v_n.setContentsMargins(14, 18, 14, 14)
         self.txt_notlar = QTextEdit()
-        self.txt_notlar.setMaximumHeight(60)
+        self.txt_notlar.setMaximumHeight(70)
         self.txt_notlar.setPlaceholderText("Notlar (opsiyonel)")
-        v_sag.addWidget(self.txt_notlar)
+        v_n.addWidget(self.txt_notlar)
+        v_inner.addWidget(gb_n)
 
-        # Hesap onizleme kartlari
+        v_inner.addStretch()
+        scroll.setWidget(scroll_inner)
+        v_sag.addWidget(scroll, 1)
+
+        # Hesap onizleme kartlari (sticky bottom)
         self.kpi_row = QHBoxLayout()
         self.kpi_row.setSpacing(8)
         v_sag.addLayout(self.kpi_row)
 
-        # Butonlar
+        # Butonlar (sticky bottom)
         h_btn = QHBoxLayout()
         h_btn.addStretch()
         self.btn_hesapla = QPushButton("Onizle")
@@ -214,10 +282,10 @@ class ReceteMaliyetPage(BasePage):
         h_btn.addWidget(self.btn_kaydet)
         v_sag.addLayout(h_btn)
 
-        v_sag.addStretch()
         splitter.addWidget(sag)
-        splitter.setStretchFactor(0, 3)
+        splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 2)
+        splitter.setSizes([400, 800])
         layout.addWidget(splitter, 1)
 
         # Baslangicta form devre disi
@@ -275,15 +343,16 @@ class ReceteMaliyetPage(BasePage):
     # ------------------------------------------------------------------
 
     def _listeyi_yukle(self):
-        """Recete listesini cache + recete tanimlari ile birlikte goster."""
+        """Recete listesi: 4 kolon (No / Adi / Cevrim / Toplam Maliyet)."""
         self.tbl.setRowCount(0)
         try:
             conn = get_db_connection()
             cur = conn.cursor()
             cur.execute("""
-                SELECT r.recete_no, r.recete_adi,
+                SELECT r.recete_no,
+                       ISNULL(NULLIF(LTRIM(RTRIM(r.recete_adi)), ''), '(adsiz)') AS adi,
                        ISNULL(r.toplam_sure_dk, 0) AS sure,
-                       c.m_hammadde, c.m_iscilik, c.m_enerji, c.m_kimyasal, c.m_moh, c.m_toplam
+                       c.m_toplam, c.para_birimi
                 FROM kaplama.plc_recete_tanimlari r
                 LEFT JOIN maliyet.recete_maliyet_cache c ON c.recete_no = r.recete_no
                 ORDER BY r.recete_no
@@ -294,20 +363,15 @@ class ReceteMaliyetPage(BasePage):
                 self.tbl.setItem(r, 0, self._sayi_item(str(row[0])))
                 self.tbl.setItem(r, 1, QTableWidgetItem(row[1] or ''))
                 self.tbl.setItem(r, 2, self._sayi_item(f"{float(row[2]):.0f} dk"))
-
                 if row[3] is not None:
-                    self.tbl.setItem(r, 3, self._tl_item(float(row[3])))
-                    self.tbl.setItem(r, 4, self._tl_item(float(row[4])))
-                    self.tbl.setItem(r, 5, self._tl_item(float(row[5])))
-                    self.tbl.setItem(r, 6, self._tl_item(float(row[6])))
-                    self.tbl.setItem(r, 7, self._tl_item(float(row[7])))
-                    self.tbl.setItem(r, 8, self._toplam_item(float(row[8])))
+                    para = row[4] or 'TRY'
+                    txt = f"{float(row[3]):,.4f} {para}".replace(",", "X").replace(".", ",").replace("X", ".")
+                    self.tbl.setItem(r, 3, self._toplam_item_text(txt))
                 else:
-                    for c in range(3, 9):
-                        it = QTableWidgetItem("-")
-                        it.setForeground(QColor(brand.TEXT_DIM))
-                        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                        self.tbl.setItem(r, c, it)
+                    it = QTableWidgetItem("- (bilesen yok)")
+                    it.setForeground(QColor(brand.TEXT_DIM))
+                    it.setTextAlignment(Qt.AlignCenter)
+                    self.tbl.setItem(r, 3, it)
             conn.close()
         except Exception as e:
             QMessageBox.warning(self, "Hata", f"Recete listesi yuklenemedi:\n{e}")
@@ -324,6 +388,15 @@ class ReceteMaliyetPage(BasePage):
 
     def _toplam_item(self, v: float) -> QTableWidgetItem:
         it = self._tl_item(v)
+        f = it.font()
+        f.setBold(True)
+        it.setFont(f)
+        it.setForeground(QColor(brand.PRIMARY))
+        return it
+
+    def _toplam_item_text(self, txt: str) -> QTableWidgetItem:
+        it = QTableWidgetItem(txt)
+        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         f = it.font()
         f.setBold(True)
         it.setFont(f)
