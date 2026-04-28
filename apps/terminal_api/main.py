@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from .config import API_TITLE, API_VERSION, CORS_ORIGINS, LOG_LEVEL
 from .routers import auth_router, sevk_yeni_router
@@ -54,8 +57,22 @@ app.include_router(auth_router.router)
 app.include_router(sevk_yeni_router.router)
 
 
+# ---------------------------------------------------------------------------
+# Web istemci (Flutter web build) - tablet tarayicisi icin
+# ---------------------------------------------------------------------------
+# Flutter web build, deploy sirasinda C:\Nexor\terminal_api\web\ altina kopyalanir
+# (GitHub Actions artifact -> robocopy ile sunucuya). Yoksa /web istegi 404 gider.
+_WEB_DIR = Path(__file__).resolve().parent / "web"
+if _WEB_DIR.exists() and (_WEB_DIR / "index.html").exists():
+    app.mount("/web", StaticFiles(directory=str(_WEB_DIR), html=True), name="web")
+    logger.info("Web istemci mount edildi: %s", _WEB_DIR)
+
+
 @app.get("/", tags=["meta"])
 def root():
+    # Web build varsa direkt yonlendir
+    if _WEB_DIR.exists() and (_WEB_DIR / "index.html").exists():
+        return RedirectResponse(url="/web/")
     return {
         "service": API_TITLE,
         "version": API_VERSION,

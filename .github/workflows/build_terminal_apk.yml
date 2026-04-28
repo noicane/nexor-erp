@@ -56,7 +56,7 @@ jobs:
 
       - name: Generate missing Flutter project files
         # flutter create idempotent: var olan dosyalari ezmez, eksikleri uretir
-        run: flutter create . --project-name nexor_terminal --org com.nexor --platforms=android
+        run: flutter create . --project-name nexor_terminal --org com.nexor --platforms=android,web
 
       - name: Resolve dependencies
         run: flutter pub get
@@ -98,13 +98,42 @@ jobs:
           path: apps/nexor_terminal/build/app/outputs/flutter-apk/${{ env.APK_NAME }}
           retention-days: 30
 
+      # ---------------------------------------------------------------------
+      # Web build (tabletler icin tarayici uzerinden) - terminal_api'nin
+      # /web/ altina mount edilecek, bu yuzden --base-href /web/
+      # ---------------------------------------------------------------------
+      - name: Build Web
+        run: |
+          flutter build web --release \
+            --base-href /web/ \
+            --dart-define=API_BASE_URL=
+
+      - name: Pack Web bundle
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          BUNDLE="nexor-terminal-web-${SHORT_SHA}.zip"
+          (cd build/web && zip -qr "../../$BUNDLE" .)
+          echo "WEB_BUNDLE=$BUNDLE" >> $GITHUB_ENV
+          ls -la "$BUNDLE"
+
+      - name: Upload Web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.WEB_BUNDLE }}
+          path: apps/nexor_terminal/${{ env.WEB_BUNDLE }}
+          retention-days: 30
+
       - name: Build summary
         run: |
-          echo "## NEXOR Terminal APK Build" >> $GITHUB_STEP_SUMMARY
+          echo "## NEXOR Terminal Build" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **APK:** \`$APK_NAME\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **API URL:** \`${{ inputs.api_base_url || 'http://192.168.10.66:8002' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK:** \`$APK_NAME\` (Honeywell EDA51)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Web:** \`$WEB_BUNDLE\` (tabletler icin)" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL (APK):** \`${{ inputs.api_base_url || 'http://192.168.10.66:8002' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL (Web):** same origin (Uri.base.origin)" >> $GITHUB_STEP_SUMMARY
           echo "- **Mode:** \`${{ inputs.build_mode || 'release' }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "APK indirmek icin asagidaki **Artifacts** bolumune git, ZIP'i indir, EDA51'e USB ile kur." >> $GITHUB_STEP_SUMMARY
+          echo "### Kurulum" >> $GITHUB_STEP_SUMMARY
+          echo "- **EDA51:** APK ZIP'i indir, ac, cihaza kur" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tablet:** Web ZIP'i indir, ac, icindekileri \`\\\\\\\\192.168.10.66\\\\c\$\\\\Nexor\\\\terminal_api\\\\web\\\\\` altina kopyala, NexorTerminal servisini restart et. Tarayicidan \`http://192.168.10.66:8002/\` -> /web/'e yonlendirir." >> $GITHUB_STEP_SUMMARY

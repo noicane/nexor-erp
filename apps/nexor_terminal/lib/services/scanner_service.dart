@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 
 /// Honeywell EDA51 scanner intent stream'ini Flutter'a tasir.
-/// Honeywell olmayan cihazlarda da hata vermez; sadece event akmaz.
+///
+/// - Native (Android): Honeywell broadcast intent dinler.
+/// - Web (tablet tarayici): platform channel kullanmaz - tabletteki USB barkod
+///   okuyucu klavye emulasyonuyla input field'ina yazar (autofocus + onSubmitted).
 class ScannerService {
   static const _eventChannel = EventChannel('com.nexor.terminal/scanner');
   static const _methodChannel = MethodChannel('com.nexor.terminal/device');
@@ -18,6 +22,10 @@ class ScannerService {
   static Future<void> start() async {
     if (_started) return;
     _started = true;
+
+    // Web'de native channel yok - sessizce skip
+    if (kIsWeb) return;
+
     try {
       _platformSub = _eventChannel.receiveBroadcastStream().listen(
         (event) {
@@ -41,6 +49,9 @@ class ScannerService {
   }
 
   static Future<Map<String, dynamic>> getDeviceInfo() async {
+    if (kIsWeb) {
+      return {'manufacturer': 'web', 'model': 'browser', 'isHoneywell': false};
+    }
     try {
       final r = await _methodChannel.invokeMethod('getDeviceInfo');
       return Map<String, dynamic>.from(r as Map);
