@@ -287,123 +287,6 @@ class _YeniSevkScreenState extends State<YeniSevkScreen> {
 
   String _kisalt(String s, int n) =>
       s.length <= n ? s : '${s.substring(0, n - 1)}…';
-}
-
-
-/// Kamera ile barkod tarama sayfasi (mobile_scanner)
-/// Tablet veya telefon kamerasini kullanir. Algilanan kodu Navigator.pop ile geri verir.
-class _KameraTarayiciPage extends StatefulWidget {
-  const _KameraTarayiciPage();
-
-  @override
-  State<_KameraTarayiciPage> createState() => _KameraTarayiciPageState();
-}
-
-class _KameraTarayiciPageState extends State<_KameraTarayiciPage> {
-  final MobileScannerController _ctl = MobileScannerController(
-    formats: const [
-      BarcodeFormat.code128,
-      BarcodeFormat.code39,
-      BarcodeFormat.qrCode,
-      BarcodeFormat.dataMatrix,
-      BarcodeFormat.ean13,
-      BarcodeFormat.ean8,
-    ],
-    detectionSpeed: DetectionSpeed.normal,
-  );
-  bool _algilandi = false;
-
-  @override
-  void dispose() {
-    _ctl.dispose();
-    super.dispose();
-  }
-
-  void _onDetect(BarcodeCapture capture) {
-    if (_algilandi) return;
-    final code = capture.barcodes
-        .map((b) => b.rawValue)
-        .firstWhere((v) => v != null && v.isNotEmpty, orElse: () => null);
-    if (code == null) return;
-    setState(() => _algilandi = true);
-    Navigator.of(context).pop(code);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kamera ile Tara'),
-        actions: [
-          IconButton(
-            tooltip: 'Flash',
-            icon: const Icon(Icons.flash_on),
-            onPressed: () => _ctl.toggleTorch(),
-          ),
-          IconButton(
-            tooltip: 'On/Arka kamera',
-            icon: const Icon(Icons.cameraswitch),
-            onPressed: () => _ctl.switchCamera(),
-          ),
-        ],
-      ),
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          MobileScanner(
-            controller: _ctl,
-            onDetect: _onDetect,
-            errorBuilder: (context, err, child) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Kamera acilamadi: ${err.errorCode}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Tarayicinin kamera iznini ver. HTTPS gerek (https://192.168.10.66:8002).',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white60),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // Hedef cercevesi
-          Container(
-            width: 280,
-            height: 180,
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(TerminalConfig.primaryColor), width: 3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          Positioned(
-            bottom: 40,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Barkodu cerceveye getirin',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ---------------------------------------------------------------- BUILD
 
@@ -725,6 +608,126 @@ class _KameraTarayiciPageState extends State<_KameraTarayiciPage> {
           ),
         );
       },
+    );
+  }
+}
+
+
+/// Kamera ile barkod tarama sayfasi (mobile_scanner)
+/// Tablet veya telefon kamerasini kullanir. Algilanan kodu Navigator.pop ile geri verir.
+class _KameraTarayiciPage extends StatefulWidget {
+  const _KameraTarayiciPage();
+
+  @override
+  State<_KameraTarayiciPage> createState() => _KameraTarayiciPageState();
+}
+
+class _KameraTarayiciPageState extends State<_KameraTarayiciPage> {
+  final MobileScannerController _ctl = MobileScannerController(
+    formats: const [
+      BarcodeFormat.code128,
+      BarcodeFormat.code39,
+      BarcodeFormat.qrCode,
+      BarcodeFormat.dataMatrix,
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+    ],
+    detectionSpeed: DetectionSpeed.normal,
+  );
+  bool _algilandi = false;
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_algilandi) return;
+    String? code;
+    for (final b in capture.barcodes) {
+      if (b.rawValue != null && b.rawValue!.isNotEmpty) {
+        code = b.rawValue;
+        break;
+      }
+    }
+    if (code == null) return;
+    setState(() => _algilandi = true);
+    Navigator.of(context).pop(code);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Kamera ile Tara'),
+        actions: [
+          IconButton(
+            tooltip: 'Flash',
+            icon: const Icon(Icons.flash_on),
+            onPressed: () => _ctl.toggleTorch(),
+          ),
+          IconButton(
+            tooltip: 'On/Arka kamera',
+            icon: const Icon(Icons.cameraswitch),
+            onPressed: () => _ctl.switchCamera(),
+          ),
+        ],
+      ),
+      body: Stack(
+        alignment: Alignment.center,
+        children: [
+          MobileScanner(
+            controller: _ctl,
+            onDetect: _onDetect,
+            errorBuilder: (context, err, child) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 64),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Kamera acilamadi: ${err.errorCode}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Tarayicinin kamera iznini ver. HTTPS gerek (https://192.168.10.66:8002).',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.white60),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Container(
+            width: 280,
+            height: 180,
+            decoration: BoxDecoration(
+              border: Border.all(color: const Color(TerminalConfig.primaryColor), width: 3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          Positioned(
+            bottom: 40,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Barkodu cerceveye getirin',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
