@@ -1,40 +1,55 @@
 import 'package:dio/dio.dart';
-import '../models/irsaliye.dart';
+import '../models/sevk_yeni.dart';
 import 'api_client.dart';
 
 class SevkService {
   SevkService(this._client);
   final ApiClient _client;
 
-  Future<List<IrsaliyeOzet>> acikIrsaliyeler({String? arama}) async {
+  /// Taşıyıcı/plaka/şoför dropdownları
+  Future<AracBilgileri> aracBilgileri() async {
+    final r = await _client.dio.get('/sevk-yeni/arac-bilgileri');
+    return AracBilgileri.fromJson(r.data as Map<String, dynamic>);
+  }
+
+  /// Sevke hazır lot listesi (filtre opsiyonel)
+  Future<List<HazirUrun>> hazirUrunler({String? arama}) async {
     final r = await _client.dio.get(
-      '/sevk/acik',
+      '/sevk-yeni/hazir-urunler',
       queryParameters: arama != null && arama.isNotEmpty ? {'arama': arama} : null,
     );
     final list = (r.data as List).cast<Map<String, dynamic>>();
-    return list.map(IrsaliyeOzet.fromJson).toList();
+    return list.map(HazirUrun.fromJson).toList();
   }
 
-  Future<IrsaliyeDetay> detay(int id) async {
-    final r = await _client.dio.get('/sevk/$id');
-    return IrsaliyeDetay.fromJson(r.data as Map<String, dynamic>);
-  }
-
-  Future<LotTaraSonuc> lotTara(int id, String lotNo) async {
+  /// Tek lot bilgisini doğrula (barkod okuma)
+  Future<LotDogrulaSonuc> lotDogrula(String lotNo) async {
     final r = await _client.dio.post(
-      '/sevk/$id/lot-tara',
+      '/sevk-yeni/lot-dogrula',
       data: {'lot_no': lotNo},
     );
-    return LotTaraSonuc.fromJson(r.data as Map<String, dynamic>);
+    return LotDogrulaSonuc.fromJson(r.data as Map<String, dynamic>);
   }
 
-  /// Yukleme tamam onayi. Eksik lot varsa [zorla] ile yine de tamamlanabilir.
-  Future<YuklenmeSonucu> yukle(int id, {bool zorla = false}) async {
+  /// Sevkiyat oluştur — backend cari'ye göre gruplar, her grup için ayrı irsaliye
+  Future<SevkOlusturSonuc> olustur({
+    String tasiyici = '',
+    String plaka = '',
+    String sofor = '',
+    String notlar = '',
+    required List<HazirUrun> lotlar,
+  }) async {
     final r = await _client.dio.post(
-      '/sevk/$id/yukle',
-      queryParameters: {'zorla': zorla.toString()},
+      '/sevk-yeni/olustur',
+      data: {
+        'tasiyici': tasiyici,
+        'plaka': plaka,
+        'sofor': sofor,
+        'notlar': notlar,
+        'lotlar': lotlar.map((l) => l.toSevkLotInput()).toList(),
+      },
     );
-    return YuklenmeSonucu.fromJson(r.data as Map<String, dynamic>);
+    return SevkOlusturSonuc.fromJson(r.data as Map<String, dynamic>);
   }
 
   String errorMessage(DioException e) {

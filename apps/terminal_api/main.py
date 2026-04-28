@@ -18,7 +18,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import API_TITLE, API_VERSION, CORS_ORIGINS, LOG_LEVEL
-from .routers import auth_router, sevk_router
+from .routers import auth_router, sevk_yeni_router
 
 logging.basicConfig(
     level=getattr(logging, LOG_LEVEL.upper(), logging.INFO),
@@ -51,7 +51,7 @@ app.add_middleware(
 
 # Routerlar
 app.include_router(auth_router.router)
-app.include_router(sevk_router.router)
+app.include_router(sevk_yeni_router.router)
 
 
 @app.get("/", tags=["meta"])
@@ -59,7 +59,12 @@ def root():
     return {
         "service": API_TITLE,
         "version": API_VERSION,
-        "endpoints": ["/auth/kart", "/auth/pin", "/auth/me", "/sevk/acik", "/sevk/{id}", "/docs"],
+        "endpoints": [
+            "/auth/kart", "/auth/pin", "/auth/me",
+            "/sevk-yeni/arac-bilgileri", "/sevk-yeni/hazir-urunler",
+            "/sevk-yeni/lot-dogrula", "/sevk-yeni/olustur",
+            "/docs",
+        ],
     }
 
 

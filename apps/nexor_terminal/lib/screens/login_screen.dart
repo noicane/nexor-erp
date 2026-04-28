@@ -6,7 +6,7 @@ import '../config.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
 import '../services/scanner_service.dart';
-import 'sevk_liste_screen.dart';
+import 'yeni_sevk_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -96,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _gotoSevk() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const SevkListeScreen()),
+      MaterialPageRoute(builder: (_) => const YeniSevkScreen()),
     );
   }
 
