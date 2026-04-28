@@ -113,28 +113,28 @@ class _YeniSevkScreenState extends State<YeniSevkScreen> {
     final lot = _barkodCtl.text.trim();
     if (lot.isEmpty) return;
 
-    // Zaten okutuldu mu?
-    if (_okutulanlar.any((p) => p.lotNo == lot)) {
-      _setMesaj('Bu lot zaten okutulmuş: $lot', hata: true);
-      _barkodCtl.clear();
-      _barkodFocus.requestFocus();
-      return;
-    }
-
     try {
+      // Backend lot'u normalize edip (-SEV/-SEVK strip) stok_bakiye'de bulur
       final r = await _sevk.lotDogrula(lot);
       if (!r.bulundu || r.urun == null) {
         _setMesaj(r.mesaj.isEmpty ? 'Lot bulunamadı' : r.mesaj, hata: true);
-      } else {
-        setState(() {
-          _okutulanlar.add(r.urun!);
-          _hazir.removeWhere((h) => h.lotNo == r.urun!.lotNo);
-        });
-        final u = r.urun!;
-        _setMesaj(
-          '✓ ${u.lotNo} · ${_kisalt(u.musteri, 22)} · ${u.miktar.toStringAsFixed(0)} ad',
-        );
+        return;
       }
+
+      // Duplicate kontrol normalized lot uzerinden (etiket -SEV'siz, bakiye -SEV'li)
+      final urun = r.urun!;
+      if (_okutulanlar.any((p) => p.lotNo == urun.lotNo)) {
+        _setMesaj('Bu lot zaten okutulmuş: ${urun.lotNo}', hata: true);
+        return;
+      }
+
+      setState(() {
+        _okutulanlar.add(urun);
+        _hazir.removeWhere((h) => h.lotNo == urun.lotNo);
+      });
+      _setMesaj(
+        '✓ ${urun.lotNo} · ${_kisalt(urun.musteri, 22)} · ${urun.miktar.toStringAsFixed(0)} ad',
+      );
     } on DioException catch (e) {
       _setMesaj(_sevk.errorMessage(e), hata: true);
     } finally {

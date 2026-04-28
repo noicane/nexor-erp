@@ -209,8 +209,20 @@ def hazir_urunler(
 # ENDPOINT: lot dogrula (tek barkod)
 # ============================================================================
 
+def _normalize_lot(s: str) -> str:
+    """Etikettekiyle stok_bakiye'deki lot_no'yu eslestirmek icin -SEV/-SEVK at."""
+    if not s:
+        return ""
+    return (
+        s.upper()
+        .replace("-SEVK", "")
+        .replace("-SEV", "")
+        .strip()
+    )
+
+
 @router.post("/lot-dogrula", response_model=LotDogrulaSonuc,
-             summary="Tek lot bilgisini cek (barkod okuma)")
+             summary="Tek lot bilgisini cek (barkod okuma) - -SEV/-SEVK normalize edilir")
 def lot_dogrula(
     payload: LotDogrulaInput = Body(...),
     user: dict = Depends(current_user),
@@ -219,8 +231,16 @@ def lot_dogrula(
     if not lot_no:
         return LotDogrulaSonuc(bulundu=False, mesaj="Lot numarasi bos")
 
-    sql = _HAZIR_SQL + " AND sb.lot_no = ?"
-    rows = fetch_all(sql, lot_no)
+    # Final kalite etiketleri -SEV eki olmadan basildigi icin normalize ederek arariz.
+    # Hem ham hem normalized hali eslesirse kabul (sb.lot_no'da -SEV varsa da olmasa da)
+    norm = _normalize_lot(lot_no)
+    sql = _HAZIR_SQL + """
+        AND (
+            sb.lot_no = ?
+            OR REPLACE(REPLACE(UPPER(sb.lot_no), N'-SEVK', N''), N'-SEV', N'') = ?
+        )
+    """
+    rows = fetch_all(sql, lot_no, norm)
     if not rows:
         return LotDogrulaSonuc(
             bulundu=False,
