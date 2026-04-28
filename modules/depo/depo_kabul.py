@@ -1895,7 +1895,7 @@ class IrsaliyeDetayDialog(QDialog):
                 if self.yeni_kayit:
                     from core.numara_uretici import yeni_giris_irsaliye_no
                     irsaliye_no = yeni_giris_irsaliye_no(cursor)
-                    print(f"[SAVE DEBUG] Yeni irsaliye_no={irsaliye_no} | next_id={next_id}")
+                    print(f"[SAVE DEBUG] Yeni irsaliye_no={irsaliye_no}")
                     
                     cursor.execute("""
                         INSERT INTO siparis.giris_irsaliyeleri 
