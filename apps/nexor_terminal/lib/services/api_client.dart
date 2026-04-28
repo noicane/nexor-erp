@@ -1,9 +1,14 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
 
 /// Singleton Dio client; auth token interceptor'i ekler.
+///
+/// Storage: SharedPreferences (web + native ayni davranis).
+/// flutter_secure_storage web'de localStorage uzerinde tutarsiz davranistigi
+/// icin tum platformlarda SharedPreferences kullaniyoruz. Token JWT, sunucu
+/// tarafinda imzali ve expire'li - LAN icinde gizlilik kritik degil.
 class ApiClient {
   ApiClient._() {
     _dio = Dio(BaseOptions(
@@ -16,7 +21,7 @@ class ApiClient {
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final token = await _storage.read(key: TerminalConfig.tokenKey);
+        final token = await getToken();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
@@ -32,32 +37,37 @@ class ApiClient {
   static ApiClient get instance => _instance;
 
   late final Dio _dio;
-  final _storage = const FlutterSecureStorage();
-
   Dio get dio => _dio;
 
+  Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
+
   Future<void> setToken(String token) async {
-    await _storage.write(key: TerminalConfig.tokenKey, value: token);
+    final p = await _prefs;
+    await p.setString(TerminalConfig.tokenKey, token);
   }
 
   Future<String?> getToken() async {
-    return _storage.read(key: TerminalConfig.tokenKey);
+    final p = await _prefs;
+    return p.getString(TerminalConfig.tokenKey);
   }
 
   Future<void> clearToken() async {
-    await _storage.delete(key: TerminalConfig.tokenKey);
-    await _storage.delete(key: TerminalConfig.userKey);
+    final p = await _prefs;
+    await p.remove(TerminalConfig.tokenKey);
+    await p.remove(TerminalConfig.userKey);
   }
 
   Future<void> setUser(Map<String, dynamic> user) async {
-    await _storage.write(
-      key: TerminalConfig.userKey,
-      value: '${user['id']}|${user['kullanici_adi']}|${user['ad_soyad']}',
+    final p = await _prefs;
+    await p.setString(
+      TerminalConfig.userKey,
+      '${user['id'] ?? user['kullanici_id']}|${user['kullanici_adi']}|${user['ad_soyad']}',
     );
   }
 
   Future<Map<String, String>?> getUser() async {
-    final s = await _storage.read(key: TerminalConfig.userKey);
+    final p = await _prefs;
+    final s = p.getString(TerminalConfig.userKey);
     if (s == null) return null;
     final parts = s.split('|');
     if (parts.length != 3) return null;
