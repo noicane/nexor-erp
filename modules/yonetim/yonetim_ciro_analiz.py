@@ -18,7 +18,8 @@ from PySide6.QtGui import QColor, QBrush, QPainter
 try:
     from PySide6.QtCharts import (
         QChart, QChartView, QPieSeries,
-        QBarSeries, QBarSet, QBarCategoryAxis, QValueAxis, QLineSeries
+        QBarSeries, QBarSet, QBarCategoryAxis, QValueAxis, QLineSeries,
+        QAbstractBarSeries,
     )
     HAS_CHARTS = True
 except ImportError:
@@ -620,31 +621,12 @@ class TrendTab(QWidget):
         self.firma_combo.setStyleSheet(combo_style)
         row1.addWidget(self.firma_combo, 1)
 
-        # Dönem hızlı butonları
-        row1.addWidget(QLabel("Dönem:", styleSheet=label_style))
-        donem_style = f"""
-            QPushButton {{
-                background: {brand.BG_MAIN};
-                color: {brand.TEXT};
-                border: 1px solid {brand.BORDER};
-                border-radius: 6px;
-                padding: 6px 14px;
-                font-size: 12px;
-            }}
-            QPushButton:hover {{ border-color: {brand.PRIMARY}; color: {brand.PRIMARY}; }}
-            QPushButton:checked {{ background: {brand.PRIMARY}; color: white; border-color: {brand.PRIMARY}; }}
-        """
-        self.donem_buttons = []
-        for ay, text in [(3, "3 Ay"), (6, "6 Ay"), (12, "12 Ay"), (24, "24 Ay")]:
-            btn = QPushButton(text)
-            btn.setCheckable(True)
-            btn.setStyleSheet(donem_style)
-            btn.clicked.connect(lambda checked, a=ay: self._set_donem(a))
-            row1.addWidget(btn)
-            self.donem_buttons.append((ay, btn))
-        # Varsayılan 6 ay seçili
-        self.donem_buttons[1][1].setChecked(True)
-        self.secili_donem = 6
+        # Yil secimi (Zirve'de her yil ayri DB)
+        row1.addWidget(QLabel("Yıl:", styleSheet=label_style))
+        self.yil_combo = QComboBox()
+        self.yil_combo.setStyleSheet(input_style)
+        self.yil_combo.setMinimumWidth(100)
+        row1.addWidget(self.yil_combo)
 
         btn = QPushButton("📈 Göster")
         btn.setCursor(Qt.PointingHandCursor)
@@ -703,8 +685,11 @@ class TrendTab(QWidget):
 
         layout.addWidget(filter_frame)
 
-        # Firma listesini yükle
+        # Yil ve firma listelerini yukle
+        self._load_yillar()
         self._load_firmalar()
+        # Yil degisince firma listesi de yenilensin
+        self.yil_combo.currentIndexChanged.connect(lambda _: self._load_firmalar())
 
         # İçerik: Grafik + Tablo
         content = QHBoxLayout()
@@ -755,16 +740,28 @@ class TrendTab(QWidget):
         content.addLayout(right, 2)
         layout.addLayout(content, 1)
 
-    def _set_donem(self, ay):
-        """Dönem butonunu seç"""
-        self.secili_donem = ay
-        for a, btn in self.donem_buttons:
-            btn.setChecked(a == ay)
+    def _load_yillar(self):
+        """Zirve sunucusunda mevcut yil DB'lerini combo'ya yukle."""
+        try:
+            from core.zirve_entegrasyon import list_zirve_yillar
+            yillar = list_zirve_yillar()
+        except Exception as e:
+            print(f"Yil listesi alinamadi: {e}")
+            yillar = []
+        if not yillar:
+            yillar = [datetime.now().year]
+        self.yil_combo.clear()
+        for y in yillar:
+            self.yil_combo.addItem(str(y), y)
+        # Varsayilan: en yeni yil
+        self.yil_combo.setCurrentIndex(0)
 
     def _load_firmalar(self):
-        """Zirve'deki cari listesini combobox'a yükle"""
+        """Secili yilin DB'sinden cari listesini combobox'a yukle"""
         try:
-            conn = _get_zirve_connection()
+            from core.zirve_entegrasyon import get_zirve_connection_for_year
+            yil = self.yil_combo.currentData() or datetime.now().year
+            conn = get_zirve_connection_for_year(yil)
             if not conn:
                 return
             cursor = conn.cursor()
@@ -802,7 +799,7 @@ class TrendTab(QWidget):
             self.secili_label.setText("")
 
     def _run_trend(self):
-        """Firma bazlı aylık trend verilerini çek"""
+        """Secili yilin 12 ayinda firma bazli ciro trendini cek"""
         # Seçili firmalar varsa onları kullan, yoksa combo'daki firmayı al
         if self.secili_firmalar:
             firma_list = list(self.secili_firmalar)
@@ -814,16 +811,15 @@ class TrendTab(QWidget):
             QMessageBox.warning(self, "Uyarı", "Lütfen bir firma seçin!")
             return
 
-        # Dönem hesapla
-        d2 = QDate.currentDate()
-        d1 = d2.addMonths(-self.secili_donem)
-
-        start_str = f"{d1.year()}-{d1.month():02d}-01"
-        end_date = d2.addMonths(1)
-        end_str = f"{end_date.year()}-{end_date.month():02d}-01"
+        yil = self.yil_combo.currentData()
+        if not yil:
+            QMessageBox.warning(self, "Uyarı", "Lütfen bir yıl seçin!")
+            return
+        self.secili_yil = int(yil)
 
         try:
-            conn = _get_zirve_connection()
+            from core.zirve_entegrasyon import get_zirve_connection_for_year
+            conn = get_zirve_connection_for_year(self.secili_yil)
             if not conn:
                 QMessageBox.warning(self, "Hata", "Zirve veritabanına bağlanılamadı!")
                 return
@@ -831,12 +827,12 @@ class TrendTab(QWidget):
             cursor = conn.cursor()
 
             placeholders = ','.join(['?' for _ in firma_list])
-            params = [start_str, end_str] + firma_list
+            params = list(firma_list)
 
             cursor.execute(f"""
                 SELECT
                     c.STA as FIRMA,
-                    FORMAT(f.EVRAKTAR, 'yyyy-MM') as AY,
+                    MONTH(f.EVRAKTAR) as AY_NO,
                     SUM(a.TUTARTL) as NET,
                     SUM(a.KDVTL) as KDV,
                     SUM(a.TUTARTL + a.KDVTL) as BRUT
@@ -844,10 +840,9 @@ class TrendTab(QWidget):
                 INNER JOIN dbo.FATURA_ALT a ON a.P_ID = f.P_ID
                 LEFT JOIN dbo.CARIGEN c ON c.REF = f.CARIREF
                 WHERE f.AORS = 'S'
-                  AND f.EVRAKTAR >= ? AND f.EVRAKTAR < ?
                   AND c.STA IN ({placeholders})
-                GROUP BY c.STA, FORMAT(f.EVRAKTAR, 'yyyy-MM')
-                ORDER BY c.STA, AY
+                GROUP BY c.STA, MONTH(f.EVRAKTAR)
+                ORDER BY c.STA, MONTH(f.EVRAKTAR)
             """, params)
 
             columns = [desc[0] for desc in cursor.description]
@@ -855,7 +850,7 @@ class TrendTab(QWidget):
             conn.close()
 
             if not rows:
-                QMessageBox.information(self, "Bilgi", "Veri bulunamadı.")
+                QMessageBox.information(self, "Bilgi", f"{self.secili_yil} yili icin veri bulunamadi.")
                 return
 
             df = pd.DataFrame.from_records(rows, columns=columns)
@@ -865,83 +860,101 @@ class TrendTab(QWidget):
             QMessageBox.critical(self, "Hata", f"Trend sorgu hatası:\n{str(e)}")
 
     def _render_trend(self, df: pd.DataFrame):
-        """Trend grafiği ve tabloyu oluştur"""
-        # Dönem içindeki tüm ayları oluştur (veri olmayan aylar da 0 gösterilsin)
-        d2 = QDate.currentDate()
-        d1 = d2.addMonths(-self.secili_donem)
-        all_months = []
-        cur = QDate(d1.year(), d1.month(), 1)
-        end = QDate(d2.year(), d2.month(), 1)
-        while cur <= end:
-            all_months.append(f"{cur.year()}-{cur.month():02d}")
-            cur = cur.addMonths(1)
+        """Secili yilin 12 ayina ait trend grafigi ve tablo"""
+        yil = getattr(self, 'secili_yil', datetime.now().year)
+        all_months = list(range(1, 13))  # 1..12
 
-        # Pivot: Firma x Ay -> BRUT
-        pivot = df.pivot_table(index='AY', columns='FIRMA', values='BRUT', aggfunc='sum').fillna(0)
-
-        # Tüm ayları dahil et (veri olmayan aylar 0)
+        # Pivot: AY_NO (1..12) x Firma -> BRUT
+        pivot = df.pivot_table(index='AY_NO', columns='FIRMA', values='BRUT', aggfunc='sum').fillna(0)
         pivot = pivot.reindex(all_months, fill_value=0)
 
         months = list(pivot.index)
         firms = list(pivot.columns)
 
-        # Ay kısaltmaları
         ay_kisaltma = {
-            '01': 'Oca', '02': 'Şub', '03': 'Mar', '04': 'Nis',
-            '05': 'May', '06': 'Haz', '07': 'Tem', '08': 'Ağu',
-            '09': 'Eyl', '10': 'Eki', '11': 'Kas', '12': 'Ara'
+            1: 'Oca', 2: 'Şub', 3: 'Mar', 4: 'Nis',
+            5: 'May', 6: 'Haz', 7: 'Tem', 8: 'Ağu',
+            9: 'Eyl', 10: 'Eki', 11: 'Kas', 12: 'Ara',
         }
-        ay_labels = []
-        for m in months:
-            parts = m.split('-')
-            kisa = ay_kisaltma.get(parts[1], parts[1])
-            ay_labels.append(f"{kisa}'{parts[0][2:]}")
+        ay_labels = [ay_kisaltma[m] for m in months]
 
         # ---- Grafik ----
         if HAS_CHARTS:
+            from PySide6.QtGui import QFont
+            text_color = QColor(brand.TEXT)
+            grid_color = QColor(brand.BORDER)
+
+            # Buyuk rakamlar dik yazinca da sigmaz -> Bin TL'ye cevir
+            scale = 1000
+            unit = "Bin TL"
+
             chart = QChart()
-            chart.setBackgroundBrush(QBrush(QColor(0, 0, 0, 0)))
-            chart.setTitle("Firma Bazlı Aylık Ciro Trendi")
-            chart.setTitleBrush(QBrush(QColor("white")))
+            chart.setBackgroundBrush(QBrush(QColor(brand.BG_CARD)))
+            chart.setTitle(f"{yil} Aylik Ciro Trendi  ({unit})")
+            chart.setTitleBrush(QBrush(text_color))
+            title_font = QFont()
+            title_font.setBold(True)
+            title_font.setPointSize(11)
+            chart.setTitleFont(title_font)
             chart.setAnimationOptions(QChart.SeriesAnimations)
 
-            # Bar series — her firma bir BarSet
-            bar_series = QBarSeries()
             max_val = 0
-
+            bar_series = QBarSeries()
             for i, firma in enumerate(firms):
-                bar_set = QBarSet(firma[:25])
+                bar_set = QBarSet(firma[:40])
                 bar_set.setColor(QColor(self.COLORS[i % len(self.COLORS)]))
+                bar_set.setLabelColor(text_color)
                 for ay in months:
-                    val = float(pivot.loc[ay, firma])
+                    val = float(pivot.loc[ay, firma]) / scale
                     bar_set.append(val)
                     if val > max_val:
                         max_val = val
                 bar_series.append(bar_set)
 
+            # Sutun ustunde rakam (TR binlik ayraci)
+            bar_series.setLabelsVisible(True)
+            bar_series.setLabelsPosition(QAbstractBarSeries.LabelsOutsideEnd)
+            bar_series.setLabelsFormat("@value")
+            bar_series.setLabelsAngle(-90)
+
             chart.addSeries(bar_series)
 
-            # X ekseni
+            # Eksen yazi tipleri
+            axis_font = QFont()
+            axis_font.setPointSize(10)
+
             axis_x = QBarCategoryAxis()
             axis_x.append(ay_labels)
-            axis_x.setLabelsColor(QColor("white"))
+            axis_x.setLabelsColor(text_color)
+            axis_x.setLabelsFont(axis_font)
+            axis_x.setGridLineVisible(False)
+            axis_x.setLinePenColor(grid_color)
             chart.addAxis(axis_x, Qt.AlignBottom)
             bar_series.attachAxis(axis_x)
 
-            # Y ekseni
             axis_y = QValueAxis()
-            axis_y.setRange(0, max_val * 1.15 if max_val > 0 else 1000)
+            axis_y.setRange(0, max_val * 1.25 if max_val > 0 else 1000)
             axis_y.setLabelFormat("%.0f")
-            axis_y.setLabelsColor(QColor("white"))
-            axis_y.setGridLineColor(QColor(60, 60, 60))
+            axis_y.setLabelsColor(text_color)
+            axis_y.setLabelsFont(axis_font)
+            axis_y.setGridLineColor(grid_color)
+            axis_y.setLinePenColor(grid_color)
+            axis_y.setTitleText(unit)
+            axis_y.setTitleBrush(QBrush(QColor(brand.TEXT_MUTED)))
             chart.addAxis(axis_y, Qt.AlignLeft)
             bar_series.attachAxis(axis_y)
 
+            # Cari'ler altta legend
+            legend_font = QFont()
+            legend_font.setPointSize(10)
+            legend_font.setBold(True)
             chart.legend().setVisible(True)
             chart.legend().setAlignment(Qt.AlignBottom)
-            chart.legend().setLabelColor(QColor("white"))
+            chart.legend().setLabelColor(text_color)
+            chart.legend().setFont(legend_font)
 
             self.chart_view.setChart(chart)
+            self.chart_view.setBackgroundBrush(QBrush(QColor(brand.BG_CARD)))
 
         # ---- Tablo ----
         # Firma | Ay1 | Ay2 | ... | TOPLAM
@@ -982,7 +995,7 @@ class TrendTab(QWidget):
 
         self.tbl_trend.resizeColumnsToContents()
         self.lbl_trend_total.setText(
-            f"Genel Toplam: {format_number(genel_toplam)} TL  |  "
+            f"{yil} Genel Toplam: {format_number(genel_toplam)} TL  |  "
             f"{len(firms)} firma  |  {len(months)} ay"
         )
 

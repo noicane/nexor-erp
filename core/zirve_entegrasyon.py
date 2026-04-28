@@ -142,6 +142,115 @@ def _get_zirve_connection():
     return conn
 
 
+def _get_zirve_credentials():
+    """Zirve baglanti bilgilerini (server/user/password/driver) cozumler."""
+    server = None
+    user = None
+    password = None
+    driver = 'ODBC Driver 18 for SQL Server'
+
+    try:
+        from core.database_manager import db_manager
+        erp_cfg = db_manager._configs.get('ERP') if hasattr(db_manager, '_configs') else None
+        if erp_cfg and erp_cfg.get('user') and erp_cfg.get('password'):
+            server = erp_cfg.get('server')
+            user = erp_cfg.get('user')
+            password = erp_cfg.get('password')
+            driver = erp_cfg.get('driver', driver)
+    except Exception:
+        pass
+
+    if not user or not password:
+        try:
+            from core.external_config import _UDL_FILE, parse_udl_file
+            if _UDL_FILE and parse_udl_file:
+                udl = parse_udl_file(_UDL_FILE)
+                if udl and udl.get('user'):
+                    server = server or udl.get('server')
+                    user = udl.get('user')
+                    password = udl.get('password', '')
+        except Exception:
+            pass
+
+    if not user or not password:
+        try:
+            with open("C:/NEXOR/config.json", 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            db = config.get('database', {})
+            server = server or db.get('server')
+            user = db.get('user')
+            pwd_b64 = db.get('password', '')
+            try:
+                password = base64.b64decode(pwd_b64).decode()
+            except Exception:
+                password = pwd_b64
+        except Exception:
+            pass
+
+    if not server:
+        server = os.environ.get('NEXOR_DB_SERVER', r'192.168.10.66\SQLEXPRESS')
+    if not user:
+        user = os.environ.get('NEXOR_DB_USER', '')
+    if not password:
+        password = os.environ.get('NEXOR_DB_PASS', '')
+
+    return server, user, password, driver
+
+
+def get_zirve_connection_for_year(yil: int):
+    """Belirtilen yila ait Zirve DB'sine baglan (ATLAS_KATAFOREZ_{yil}T)."""
+    server, user, password, driver = _get_zirve_credentials()
+    if not user or not password:
+        raise ConnectionError(
+            "Zirve baglantisi icin kullanici/sifre bulunamadi. "
+            "Sistem > Veritabani Baglantilari ekranindan kontrol edin."
+        )
+    db_name = f"ATLAS_KATAFOREZ_{int(yil)}T"
+    return pyodbc.connect(
+        f'DRIVER={{{driver}}};'
+        f'SERVER={server};'
+        f'DATABASE={db_name};'
+        f'UID={user};PWD={password};'
+        f'TrustServerCertificate=yes;'
+        f'Connection Timeout=10'
+    )
+
+
+def list_zirve_yillar():
+    """Server'da bulunan ATLAS_KATAFOREZ_YYYYT veritabanlarinin yillarini doner.
+    Yeniden eskiye sirali liste (ornek: [2026, 2025, 2024, ...])."""
+    server, user, password, driver = _get_zirve_credentials()
+    if not user or not password:
+        return []
+    try:
+        conn = pyodbc.connect(
+            f'DRIVER={{{driver}}};'
+            f'SERVER={server};'
+            f'DATABASE=master;'
+            f'UID={user};PWD={password};'
+            f'TrustServerCertificate=yes;'
+            f'Connection Timeout=5'
+        )
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT name FROM sys.databases
+            WHERE name LIKE 'ATLAS_KATAFOREZ_%T'
+              AND name NOT LIKE '%- Kopya%'
+        """)
+        yillar = []
+        for (name,) in cur.fetchall():
+            try:
+                # ATLAS_KATAFOREZ_2026T -> 2026
+                yil_str = name.replace('ATLAS_KATAFOREZ_', '').rstrip('T')
+                yillar.append(int(yil_str))
+            except Exception:
+                continue
+        conn.close()
+        return sorted(set(yillar), reverse=True)
+    except Exception:
+        return []
+
+
 def _get_zirve_cari(zirve_cursor, crk: str) -> Optional[dict]:
     """Zirve CARIGEN tablosundan cari bilgisi çek"""
     zirve_cursor.execute("""
