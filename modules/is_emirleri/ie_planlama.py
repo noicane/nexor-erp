@@ -1813,11 +1813,21 @@ class PlanlamaDialog(QDialog):
                 # ===== DEPO ÇIKIŞ EMRİ OLUŞTUR - ADET BAZLI =====
                 if lot_no and hat_basi_depo_id:
                     # Kaynak depo (mal kabul) ID'sini bul
-                    kaynak_depo_id = motor.get_depo_by_tip('KABUL')
+                    # NOT: depo_tipleri kod 'GRS' (Giriş Deposu), 'KABUL' degil.
+                    # Hardcoded id=7 fallback'i kaldirildi - aktif depo bulunamazsa hata atilir.
+                    kaynak_depo_id = motor.get_depo_by_tip('GRS')
                     if not kaynak_depo_id:
-                        cursor.execute("SELECT TOP 1 id FROM tanim.depolar WHERE kod LIKE 'KAB%' AND aktif_mi = 1")
+                        cursor.execute("""
+                            SELECT TOP 1 d.id FROM tanim.depolar d
+                            LEFT JOIN tanim.depo_tipleri dt ON d.depo_tipi_id = dt.id
+                            WHERE d.aktif_mi = 1
+                              AND (dt.kod = 'GRS' OR d.kod LIKE 'KAB%')
+                            ORDER BY d.id
+                        """)
                         row = cursor.fetchone()
-                        kaynak_depo_id = row[0] if row else 7  # Varsayılan KAB-01
+                        kaynak_depo_id = row[0] if row else None
+                    if not kaynak_depo_id:
+                        raise Exception("Aktif kabul/giris deposu bulunamadi (depo_tipi=GRS ya da kod=KAB*)")
                     
                     # Tablo yapısına uygun INSERT - ADET BAZLI
                     cursor.execute("""

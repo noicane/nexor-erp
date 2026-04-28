@@ -1604,10 +1604,21 @@ class KaliteRedPage(BasePage):
             motor = HareketMotoru(conn)
 
             # Depo ID'leri
-            RED_DEPO_ID = self._get_depo_id('RED') or 12
-            FKK_DEPO_ID = self._get_depo_id('FKK') or 10
-            SOKUM_DEPO_ID = self._get_depo_id('SOKUM') or self._get_depo_id('XI') or 13
-            KAR_DEPO_ID = self._get_depo_id('KAR')
+            # NOT: Hardcoded id fallback'lari kaldirildi (10/11/12 gibi sabitler depo
+            # silinince/deaktive edilince yanlis depoya yazma riski - MAMUL bug'i ornegi).
+            # Eksik depo varsa kullaniciya net hata gostermek daha guvenli.
+            RED_DEPO_ID = self._get_depo_id('RED')
+            FKK_DEPO_ID = self._get_depo_id('FKK')
+            SOKUM_DEPO_ID = self._get_depo_id('SOKUM') or self._get_depo_id('Yi')
+            KAR_DEPO_ID = self._get_depo_id('KARANTINA') or self._get_depo_id('KAR')
+
+            _eksik = []
+            if not RED_DEPO_ID: _eksik.append('RED')
+            if not FKK_DEPO_ID: _eksik.append('FKK')
+            if karar_tip == 'SOKUM' and not SOKUM_DEPO_ID: _eksik.append('SOKUM/Yi')
+            if karar_tip == 'MUSTERI_ONAY' and not KAR_DEPO_ID: _eksik.append('KARANTINA')
+            if _eksik:
+                raise Exception(f"Eksik/aktif olmayan depolar: {', '.join(_eksik)}")
 
             # Akis sablonu ID'lerini al
             sablon_id = None
