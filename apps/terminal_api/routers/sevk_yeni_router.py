@@ -164,7 +164,9 @@ LEFT JOIN siparis.is_emirleri ie
     ON REPLACE(REPLACE(sb.lot_no, N'-SEV', N''), N'-SEVK', N'') = ie.lot_no
 JOIN tanim.depolar d ON sb.depo_id = d.id
 WHERE d.kod IN ('SEV-01', 'SEVK', 'SEV', 'MAMUL')
-  AND sb.kalite_durumu IN ('ONAYLANDI', 'OK', 'SEVKE_HAZIR')
+  -- durum_kodu = 'SEVK_HAZIR' guvenilir; kalite_durumu yarim sevk sonrasi
+  -- yapilan yeni final kalite onaylarinda 'SEVK_EDILDI'de takili kaliyor
+  AND sb.durum_kodu = 'SEVK_HAZIR'
   AND sb.miktar > 0
 """
 
