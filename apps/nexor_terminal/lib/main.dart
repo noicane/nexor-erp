@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'config.dart';
 import 'screens/login_screen.dart';
-import 'screens/sevk_liste_screen.dart';
+import 'screens/yeni_sevk_screen.dart';
 import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/scanner_service.dart';
@@ -62,7 +62,7 @@ class _BootstrapState extends State<_Bootstrap> {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => ok ? const SevkListeScreen() : const LoginScreen(),
+        builder: (_) => ok ? const YeniSevkScreen() : const LoginScreen(),
       ),
     );
   }
