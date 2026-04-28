@@ -246,9 +246,57 @@ DIGER KURALLAR:
    Ornek: tabloda 6 satir varsa JSON'da 6 kalem olmali."""
 
 
+_ANTHROPIC_IMAGE_LIMIT = 5 * 1024 * 1024  # 5 MB - Claude Vision max
+_SAFE_IMAGE_LIMIT = 4 * 1024 * 1024       # 4 MB - guvenli alt sinir (base64 buyumesi icin)
+
+
+def _compress_image_if_needed(image_bytes: bytes, media_type: str) -> tuple[bytes, str]:
+    """Resim 4 MB'tan buyukse JPEG'e cevirip resize+compress et.
+    Anthropic Vision 5 MB sinirini astiginda 400 hatasi verir.
+    Tabletten gelen yuksek cozunurluklu resimler genelde 5-10 MB.
+    """
+    if len(image_bytes) <= _SAFE_IMAGE_LIMIT:
+        return image_bytes, media_type
+
+    try:
+        from io import BytesIO
+        from PIL import Image
+    except ImportError:
+        # Pillow yoksa olduğu gibi gönder (Anthropic 400 dönerse de net hata)
+        return image_bytes, media_type
+
+    img = Image.open(BytesIO(image_bytes))
+    # JPEG icin alpha kanal sorunu - RGB'ye cevir
+    if img.mode in ("RGBA", "LA", "P"):
+        img = img.convert("RGB")
+
+    # Once boyut kontrolu - max kenar 2000px (yeterli OCR icin)
+    max_side = 2000
+    if max(img.size) > max_side:
+        ratio = max_side / max(img.size)
+        new_size = (int(img.size[0] * ratio), int(img.size[1] * ratio))
+        img = img.resize(new_size, Image.LANCZOS)
+
+    # JPEG quality dusurerek 4 MB'in altina cek
+    for quality in (85, 75, 65, 55, 45):
+        buf = BytesIO()
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        out = buf.getvalue()
+        if len(out) <= _SAFE_IMAGE_LIMIT:
+            logger.info(
+                "Image compress: %d -> %d bytes (q=%d, %dx%d)",
+                len(image_bytes), len(out), quality, *img.size,
+            )
+            return out, "image/jpeg"
+
+    # En dusuk quality bile yetmedi - yine de don, Anthropic exception versin
+    return out, "image/jpeg"
+
+
 def parse_irsaliye_with_claude(image_bytes: bytes, media_type: str) -> dict:
     """Fotografi Claude Vision'a yolla, JSON cikarimi yap"""
     client = get_anthropic()
+    image_bytes, media_type = _compress_image_if_needed(image_bytes, media_type)
     b64 = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     msg = client.messages.create(
