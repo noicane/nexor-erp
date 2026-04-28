@@ -1802,21 +1802,36 @@ class KaliteFinalKontrolPage(BasePage):
                         print(f"Hata kaydı eklenemedi: {he}")
 
             # 3. Depo ID'lerini bul (SEVK ve RED)
-            sevk_depo_id = motor.get_depo_by_tip('SEVK')
+            # NOT: depo_tipleri.kod 'SVK' (3 harf), 'SEVK' degil. Hardcoded 11/12'ye
+            # asla dusmuyoruz - 11 = MAMUL (aktif degil) yanlis hedeftir.
+            sevk_depo_id = motor.get_depo_by_tip('SVK')
             if not sevk_depo_id:
                 cursor.execute("""
-                    SELECT id FROM tanim.depolar
-                    WHERE kod IN ('SEVK', 'MAMUL') AND aktif_mi = 1
-                    ORDER BY CASE WHEN kod = 'SEVK' THEN 0 ELSE 1 END
+                    SELECT TOP 1 d.id
+                    FROM tanim.depolar d
+                    LEFT JOIN tanim.depo_tipleri dt ON d.depo_tipi_id = dt.id
+                    WHERE d.aktif_mi = 1
+                      AND (dt.kod = 'SVK' OR d.kod IN ('SEV-01','SEVK-01','SEV','SEVK'))
+                    ORDER BY d.id
                 """)
                 row = cursor.fetchone()
-                sevk_depo_id = row[0] if row else 11
+                sevk_depo_id = row[0] if row else None
+            if not sevk_depo_id:
+                raise Exception("Aktif sevk deposu bulunamadi (depo_tipi=SVK ya da kod=SEV*/SEVK*)")
 
             red_depo_id = motor.get_depo_by_tip('RED')
             if not red_depo_id:
-                cursor.execute("SELECT id FROM tanim.depolar WHERE kod = 'RED' AND aktif_mi = 1")
+                cursor.execute("""
+                    SELECT TOP 1 d.id
+                    FROM tanim.depolar d
+                    LEFT JOIN tanim.depo_tipleri dt ON d.depo_tipi_id = dt.id
+                    WHERE d.aktif_mi = 1 AND (dt.kod = 'RED' OR d.kod = 'RED')
+                    ORDER BY d.id
+                """)
                 row = cursor.fetchone()
-                red_depo_id = row[0] if row else 12
+                red_depo_id = row[0] if row else None
+            if not red_depo_id:
+                raise Exception("Aktif red deposu bulunamadi")
 
             # 4. urun_id bul
             urun_id = gorev_data.get('urun_id')

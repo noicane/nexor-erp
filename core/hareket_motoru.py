@@ -134,12 +134,18 @@ class HareketMotoru:
             
             if existing:
                 # Mevcut kaydı güncelle
+                # NOT: Bakiye 0'dan yukseliyorsa (kapanmis kayit yeniden acilir),
+                # kalite_durumu/durum_kodu da yeni degerle tazelenir. Aksi halde
+                # eski kayitta SEVK_EDILDI takili kalip lot sevk hazir listede gorunmez.
                 bakiye_id = existing[0]
                 self.cursor.execute("""
-                    UPDATE stok.stok_bakiye 
-                    SET miktar = miktar + ?, son_hareket_tarihi = GETDATE()
+                    UPDATE stok.stok_bakiye
+                    SET miktar = miktar + ?,
+                        kalite_durumu = CASE WHEN miktar = 0 THEN ? ELSE kalite_durumu END,
+                        durum_kodu    = CASE WHEN miktar = 0 THEN ? ELSE durum_kodu END,
+                        son_hareket_tarihi = GETDATE()
                     WHERE id = ?
-                """, (miktar, bakiye_id))
+                """, (miktar, kalite_durumu, durum_kodu, bakiye_id))
             else:
                 # Yeni kayıt
                 self.cursor.execute("""
