@@ -2007,11 +2007,17 @@ class KaliteFinalKontrolPage(BasePage):
             else:
                 sonuc = 'KISMI'
 
+            # Etiket lot_no: SEV ekiyle (depo'daki lot ile esleser)
+            _etiket_lot = (gorev_data.get('lot_no', '') or '')
+            if _etiket_lot and not _etiket_lot.endswith('-SEV') and not _etiket_lot.endswith('-SEVK'):
+                _etiket_lot = f"{_etiket_lot}-SEV"
+            # QR datasi: lot|miktar formati - sevk taramada miktar bu etiketten okunur
             etiket_data = {
                 'musteri': gorev_data.get('cari_unvani', '') or '',
                 'stok_adi': gorev_data.get('stok_adi', '') or '',
                 'stok_kodu': gorev_data.get('stok_kodu', '') or '',
-                'lot_no': gorev_data.get('lot_no', '') or '',
+                'lot_no': _etiket_lot,
+                'qr_data': f"{_etiket_lot}|{int(saglam)}" if _etiket_lot else '',
                 'miktar': saglam,
                 'tarih': datetime.now(),
                 'kontrolcu': result.get('kontrolcu_ad', ''),

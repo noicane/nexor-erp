@@ -224,17 +224,29 @@ def _normalize_lot(s: str) -> str:
 
 
 @router.post("/lot-dogrula", response_model=LotDogrulaSonuc,
-             summary="Tek lot bilgisini cek (barkod okuma) - -SEV/-SEVK normalize edilir")
+             summary="Tek lot bilgisini cek (barkod okuma) - QR formati: 'LOT|miktar'")
 def lot_dogrula(
     payload: LotDogrulaInput = Body(...),
     user: dict = Depends(current_user),
 ):
-    lot_no = payload.lot_no.strip()
-    if not lot_no:
+    raw = payload.lot_no.strip()
+    if not raw:
         return LotDogrulaSonuc(bulundu=False, mesaj="Lot numarasi bos")
 
+    # QR formati: "LOT-X-SEV|20" -> lot=LOT-X-SEV, etiket_miktar=20
+    # Eski etiketler (sadece LOT-X) icin etiket_miktar None (bakiye fallback)
+    etiket_miktar: Optional[float] = None
+    if '|' in raw:
+        parcalar = raw.split('|', 1)
+        lot_no = parcalar[0].strip()
+        try:
+            etiket_miktar = float(parcalar[1].strip().replace(',', '.'))
+        except (ValueError, IndexError):
+            etiket_miktar = None
+    else:
+        lot_no = raw
+
     # Final kalite etiketleri -SEV eki olmadan basildigi icin normalize ederek arariz.
-    # Hem ham hem normalized hali eslesirse kabul (sb.lot_no'da -SEV varsa da olmasa da)
     norm = _normalize_lot(lot_no)
     sql = _HAZIR_SQL + """
         AND (
@@ -250,6 +262,20 @@ def lot_dogrula(
         )
 
     r = rows[0]
+    bakiye_miktar = float(r["miktar"] or 0)
+
+    # Etiket miktarı varsa onu kullan, ama bakiyeyi geçmesin (negatif stok onleme)
+    if etiket_miktar is not None and etiket_miktar > 0:
+        if etiket_miktar > bakiye_miktar:
+            return LotDogrulaSonuc(
+                bulundu=False,
+                mesaj=(f"Etikette {etiket_miktar:g} ad ama depoda {bakiye_miktar:g} ad var. "
+                       f"Etiket gecerli mi kontrol edin (zaten sevk edilmis olabilir)."),
+            )
+        kullanilacak_miktar = etiket_miktar
+    else:
+        kullanilacak_miktar = bakiye_miktar
+
     return LotDogrulaSonuc(
         bulundu=True,
         mesaj="OK",
@@ -259,7 +285,7 @@ def lot_dogrula(
             musteri=r["musteri"] or "Tanimsiz",
             stok_kodu=r["stok_kodu"] or "",
             stok_adi=r["stok_adi"] or "",
-            miktar=float(r["miktar"] or 0),
+            miktar=kullanilacak_miktar,
             cari_id=r["cari_id"],
             is_emri_id=r["is_emri_id"],
             gun=int(r["gun"] or 0),

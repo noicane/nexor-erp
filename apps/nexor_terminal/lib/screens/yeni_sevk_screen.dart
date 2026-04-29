@@ -115,23 +115,27 @@ class _YeniSevkScreenState extends State<YeniSevkScreen> {
     if (lot.isEmpty) return;
 
     try {
-      // Backend lot'u normalize edip (-SEV/-SEVK strip) stok_bakiye'de bulur
+      // Backend QR'i parse eder (lot|miktar), bakiye dogrulamasi yapar
       final r = await _sevk.lotDogrula(lot);
       if (!r.bulundu || r.urun == null) {
         _setMesaj(r.mesaj.isEmpty ? 'Lot bulunamadı' : r.mesaj, hata: true);
         return;
       }
 
-      // Duplicate kontrol normalized lot uzerinden (etiket -SEV'siz, bakiye -SEV'li)
+      // Duplicate: ayni etiket (lot+miktar) iki kez okutulamaz.
+      // Ama ayni lot icin farkli etiket (105 ve 35 gibi) ayri ayri eklenir.
       final urun = r.urun!;
-      if (_okutulanlar.any((p) => p.lotNo == urun.lotNo)) {
-        _setMesaj('Bu lot zaten okutulmuş: ${urun.lotNo}', hata: true);
+      if (_okutulanlar.any((p) => p.lotNo == urun.lotNo && p.miktar == urun.miktar)) {
+        _setMesaj(
+          'Bu etiket zaten okutulmuş: ${urun.lotNo} (${urun.miktar.toStringAsFixed(0)} ad)',
+          hata: true,
+        );
         return;
       }
 
       setState(() {
         _okutulanlar.add(urun);
-        _hazir.removeWhere((h) => h.lotNo == urun.lotNo);
+        // Hazir listesinden CIKARMIYORUZ - ayni lot'tan birden fazla etiket okutulabilir
       });
       _setMesaj(
         '✓ ${urun.lotNo} · ${_kisalt(urun.musteri, 22)} · ${urun.miktar.toStringAsFixed(0)} ad',
@@ -145,10 +149,17 @@ class _YeniSevkScreenState extends State<YeniSevkScreen> {
   }
 
   void _hazirEkle(HazirUrun h) {
-    if (_okutulanlar.any((p) => p.lotNo == h.lotNo)) return;
+    // Listeden ekleme: bakiye'nin tamami eklenir. Eger ayni lot QR ile
+    // etiket bazli okutuldysa, iki secim karistirma diye uyari ver.
+    if (_okutulanlar.any((p) => p.lotNo == h.lotNo)) {
+      _setMesaj(
+        '${h.lotNo} zaten listede - liste eklemesi yerine etiketten okutun',
+        hata: true,
+      );
+      return;
+    }
     setState(() {
       _okutulanlar.add(h);
-      _hazir.removeWhere((x) => x.lotNo == h.lotNo);
     });
     _setMesaj('✓ ${h.lotNo} listeden eklendi');
   }

@@ -1355,7 +1355,9 @@ def godex_ezpl_olustur(etiket: dict, etiket_w_mm: int = 100, etiket_h_mm: int = 
     # QR (Code128 yerine - kullanici talep, 2026-04-29)
     # Godex EZPL QR: W{x},{y},{type},{ECC},{cell_size},{mask},{rotation},{data}
     # type=4 (QR), ECC=1 (L low), cell=5 (~20mm kare)
-    ezpl.append(f"W{mm_to_dots(3)},{mm_to_dots(28)},4,1,5,0,0,{lot_no}")
+    # qr_data varsa onu kullan (lot|miktar formati), yoksa lot_no
+    _qr_value = etiket.get('qr_data') or lot_no
+    ezpl.append(f"W{mm_to_dots(3)},{mm_to_dots(28)},4,1,5,0,0,{_qr_value}")
 
     # Tarih (sağ alt)
     ezpl.append(f"AA,{mm_to_dots(75)},{mm_to_dots(45)},1,1,0,0,{tarih_str}")
@@ -1438,7 +1440,9 @@ def godex_zpl_olustur(etiket: dict, etiket_w_mm: int = 100, etiket_h_mm: int = 5
     # QR (Code128 yerine - kullanici talep, 2026-04-29)
     # ZPL QR: ^BQa,b,c -> N=normal, model=2, magnification=5
     # ^FD prefix QA = QR Code, M = mask (0 default)
-    zpl.append(f"^FO{mm_to_dots(3)},{mm_to_dots(28)}^BQN,2,5^FDQA,{lot_no}^FS")
+    # qr_data varsa onu kullan (lot|miktar formati), yoksa lot_no
+    _qr_value = etiket.get('qr_data') or lot_no
+    zpl.append(f"^FO{mm_to_dots(3)},{mm_to_dots(28)}^BQN,2,5^FDQA,{_qr_value}^FS")
 
     # Tarih (sağ alt)
     zpl.append(f"^FO{mm_to_dots(75)},{mm_to_dots(45)}^A0N,18,18^FD{tarih_str}^FS")

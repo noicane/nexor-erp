@@ -346,6 +346,7 @@ class PropertiesPanel(QFrame):
         lay.addWidget(QLabel("Veri:"), 1, 0)
         combo = QComboBox()
         combo.addItems([
+            "qr_data - LOT|Miktar (QR icin)",
             "lot_no - Lot Numarası", "stok_kodu - Stok Kodu",
             "palet_no - Palet No", "irsaliye_no - İrsaliye No",
             "siparis_no - Sipariş No"
