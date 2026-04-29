@@ -903,12 +903,17 @@ def _json_element_to_db_format(json_elem: dict, sira: int) -> dict:
         element['veri_alani'] = field
     
     elif elem_type == 'BARCODE':
-        element['genislik_mm'] = json_elem.get('width', 50)
-        element['yukseklik_mm'] = json_elem.get('height', 10)
-        element['barkod_yukseklik_mm'] = json_elem.get('height', 10)
-        element['barkod_tipi'] = json_elem.get('barcode_type', 'CODE128')
+        element['genislik_mm'] = json_elem.get('width', 25)
+        element['yukseklik_mm'] = json_elem.get('height', 25)
+        element['barkod_yukseklik_mm'] = json_elem.get('height', 25)
+        # kod_tipi >> barcode_type >> default QR (kullanici talep, 2026-04-29)
+        element['barkod_tipi'] = (
+            json_elem.get('kod_tipi')
+            or json_elem.get('barcode_type')
+            or 'QR'
+        )
         element['barkod_metin_goster'] = json_elem.get('show_text', True)
-        
+
         field = json_elem.get('field', 'lot_no')
         if field.startswith('{') and field.endswith('}'):
             field = field[1:-1]
@@ -1449,24 +1454,49 @@ def _field_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, 
 
 
 def _barcode_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, y: float):
-    """Barkod elementi çiz"""
+    """Kod elementi çiz - QR (default) veya Code128"""
     barkod_veri = _veri_alani_deger_al(element, etiket)
     if not barkod_veri:
         return
-    
-    barkod_yukseklik = element.get('barkod_yukseklik_mm', 8) * mm_unit
-    
+
+    kod_tipi = (element.get('barkod_tipi') or 'QR').upper()
+    show_text = element.get('barkod_metin_goster', True)
+
     try:
-        barcode = code128.Code128(
-            barkod_veri,
-            barWidth=0.35 * mm_unit,
-            barHeight=barkod_yukseklik
-        )
-        # Barkodu Y pozisyonundan yukarı doğru çiz
-        barcode.drawOn(c, x, y - barkod_yukseklik)
+        if kod_tipi == 'CODE128':
+            barkod_yukseklik = element.get('barkod_yukseklik_mm', 8) * mm_unit
+            barcode = code128.Code128(
+                barkod_veri,
+                barWidth=0.35 * mm_unit,
+                barHeight=barkod_yukseklik,
+            )
+            barcode.drawOn(c, x, y - barkod_yukseklik)
+        else:
+            # QR (default) - kare olmasi icin min(w,h)
+            from reportlab.graphics.barcode import qr
+            from reportlab.graphics.shapes import Drawing
+            from reportlab.graphics import renderPDF
+
+            w_mm = element.get('genislik_mm', 25)
+            h_mm = element.get('yukseklik_mm', 25)
+            side_mm = min(w_mm, h_mm)
+            side_pt = side_mm * mm_unit
+
+            qr_widget = qr.QrCodeWidget(barkod_veri)
+            bounds = qr_widget.getBounds()
+            qw = bounds[2] - bounds[0]
+            qh = bounds[3] - bounds[1]
+            d = Drawing(side_pt, side_pt, transform=[
+                side_pt / qw, 0, 0, side_pt / qh, 0, 0
+            ])
+            d.add(qr_widget)
+            renderPDF.draw(d, c, x, y - side_pt)
+
+            if show_text:
+                c.setFont('Helvetica', 7)
+                c.drawCentredString(x + side_pt / 2, y - side_pt - 8, barkod_veri)
     except Exception as e:
-        print(f"Barkod oluşturma hatası: {e}")
-        # Barkod oluşturulamazsa metin yaz
+        print(f"Kod oluşturma hatası ({kod_tipi}): {e}")
         c.setFont("Helvetica", 7)
         c.drawString(x, y - 10, f"*{barkod_veri}*")
 
