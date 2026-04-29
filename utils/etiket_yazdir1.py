@@ -1145,24 +1145,48 @@ def _text_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, y
 
 
 def _barcode_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, y: float):
-    """Barkod elementi çiz"""
+    """Kod elementi - QR (default) veya Code128"""
     barkod_veri = _veri_alani_deger_al(element, etiket)
     if not barkod_veri:
         return
-    
-    barkod_yukseklik = element.get('barkod_yukseklik_mm', 8) * mm_unit
-    
+
+    kod_tipi = (element.get('barkod_tipi') or 'QR').upper()
+    show_text = element.get('barkod_metin_goster', True)
+
     try:
-        barcode = code128.Code128(
-            barkod_veri,
-            barWidth=0.35 * mm_unit,
-            barHeight=barkod_yukseklik
-        )
-        # Barkodu Y pozisyonundan yukarı doğru çiz
-        barcode.drawOn(c, x, y - barkod_yukseklik)
+        if kod_tipi == 'CODE128':
+            barkod_yukseklik = element.get('barkod_yukseklik_mm', 8) * mm_unit
+            barcode = code128.Code128(
+                barkod_veri,
+                barWidth=0.35 * mm_unit,
+                barHeight=barkod_yukseklik,
+            )
+            barcode.drawOn(c, x, y - barkod_yukseklik)
+        else:
+            from reportlab.graphics.barcode import qr
+            from reportlab.graphics.shapes import Drawing
+            from reportlab.graphics import renderPDF
+
+            w_mm = element.get('genislik_mm', 25)
+            h_mm = element.get('yukseklik_mm', 25)
+            side_mm = min(w_mm, h_mm)
+            side_pt = side_mm * mm_unit
+
+            qr_widget = qr.QrCodeWidget(barkod_veri)
+            bounds = qr_widget.getBounds()
+            qw = bounds[2] - bounds[0]
+            qh = bounds[3] - bounds[1]
+            d = Drawing(side_pt, side_pt, transform=[
+                side_pt / qw, 0, 0, side_pt / qh, 0, 0
+            ])
+            d.add(qr_widget)
+            renderPDF.draw(d, c, x, y - side_pt)
+
+            if show_text:
+                c.setFont('Helvetica', 7)
+                c.drawCentredString(x + side_pt / 2, y - side_pt - 8, barkod_veri)
     except Exception as e:
-        print(f"Barkod oluşturma hatası: {e}")
-        # Barkod oluşturulamazsa metin yaz
+        print(f"Kod oluşturma hatası ({kod_tipi}): {e}")
         c.setFont("Helvetica", 7)
         c.drawString(x, y - 10, f"*{barkod_veri}*")
 
@@ -1328,9 +1352,11 @@ def godex_ezpl_olustur(etiket: dict, etiket_w_mm: int = 100, etiket_h_mm: int = 
     # Lot No
     ezpl.append(f"AB,{mm_to_dots(25)},{mm_to_dots(36)},1,1,0,0,LOT: {lot_no}")
     
-    # Barkod (Code128)
-    ezpl.append(f"BA,{mm_to_dots(3)},{mm_to_dots(42)},1,2,60,0,2,{lot_no}")
-    
+    # QR (Code128 yerine - kullanici talep, 2026-04-29)
+    # Godex EZPL QR: W{x},{y},{type},{ECC},{cell_size},{mask},{rotation},{data}
+    # type=4 (QR), ECC=1 (L low), cell=5 (~20mm kare)
+    ezpl.append(f"W{mm_to_dots(3)},{mm_to_dots(28)},4,1,5,0,0,{lot_no}")
+
     # Tarih (sağ alt)
     ezpl.append(f"AA,{mm_to_dots(75)},{mm_to_dots(45)},1,1,0,0,{tarih_str}")
     
@@ -1409,9 +1435,11 @@ def godex_zpl_olustur(etiket: dict, etiket_w_mm: int = 100, etiket_h_mm: int = 5
     # Lot No
     zpl.append(f"^FO{mm_to_dots(25)},{mm_to_dots(36)}^A0N,22,22^FDLOT: {lot_no}^FS")
     
-    # Barkod (Code128)
-    zpl.append(f"^FO{mm_to_dots(3)},{mm_to_dots(42)}^BCN,50,Y,N,N^FD{lot_no}^FS")
-    
+    # QR (Code128 yerine - kullanici talep, 2026-04-29)
+    # ZPL QR: ^BQa,b,c -> N=normal, model=2, magnification=5
+    # ^FD prefix QA = QR Code, M = mask (0 default)
+    zpl.append(f"^FO{mm_to_dots(3)},{mm_to_dots(28)}^BQN,2,5^FDQA,{lot_no}^FS")
+
     # Tarih (sağ alt)
     zpl.append(f"^FO{mm_to_dots(75)},{mm_to_dots(45)}^A0N,18,18^FD{tarih_str}^FS")
     
