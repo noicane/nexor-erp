@@ -243,19 +243,21 @@ def atlas_sablon_ekle():
                 "color": "#000000",
                 "name": "Footer Üst Çizgisi"
             },
-            # Barkod
+            # QR (eskiden Code128 idi - kullanici talep, 2026-04-29)
             {
                 "type": "BARCODE",
-                "x": 25,
-                "y": 85,
-                "width": 40,
-                "height": 9,
+                "x": 30,
+                "y": 80,
+                "width": 18,
+                "height": 18,
+                "w_mm": 18,
+                "h_mm": 18,
                 "content": "{lot_no}",
-                "barcode_type": "CODE128",
-                "bar_width": 0.28,
-                "show_text": False,
+                "field": "lot_no",
+                "kod_tipi": "QR",
+                "show_text": True,
                 "align": "center",
-                "name": "LOT Barkod"
+                "name": "LOT QR"
             },
             # Tarih
             {
@@ -392,7 +394,7 @@ if __name__ == '__main__':
     print("  • Miktar ve birim")
     print("  • Palet numarası")
     print("  • LOT numarası (çerçeveli)")
-    print("  • Code128 barkod")
+    print("  • QR kod (lot_no)")
     print("  • Tarih")
     print()
     

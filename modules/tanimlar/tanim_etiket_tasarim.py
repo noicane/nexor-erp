@@ -331,9 +331,19 @@ class PropertiesPanel(QFrame):
         lay.addWidget(align_combo, start_row + 1, 1, 1, 3)
 
     def _build_barcode_props(self, elem):
-        grp, lay = self._make_group("▪️ Barkod")
+        grp, lay = self._make_group("▪️ Kod (QR / Barkod)")
 
-        lay.addWidget(QLabel("Veri:"), 0, 0)
+        lay.addWidget(QLabel("Tip:"), 0, 0)
+        tip_combo = QComboBox()
+        tip_combo.addItems(["QR Kod", "Code128 (1D barkod)"])
+        cur_tip = elem.get('kod_tipi', 'QR')
+        tip_combo.setCurrentIndex(0 if cur_tip == 'QR' else 1)
+        tip_combo.currentIndexChanged.connect(
+            lambda i: self._update_prop('kod_tipi', 'QR' if i == 0 else 'CODE128')
+        )
+        lay.addWidget(tip_combo, 0, 1, 1, 3)
+
+        lay.addWidget(QLabel("Veri:"), 1, 0)
         combo = QComboBox()
         combo.addItems([
             "lot_no - Lot Numarası", "stok_kodu - Stok Kodu",
@@ -346,13 +356,13 @@ class PropertiesPanel(QFrame):
                 combo.setCurrentIndex(i)
                 break
         combo.currentTextChanged.connect(lambda t: self._update_prop('field', t.split(' - ')[0]))
-        lay.addWidget(combo, 0, 1, 1, 3)
+        lay.addWidget(combo, 1, 1, 1, 3)
 
-        # Show text under barcode
+        # Show text under barcode/QR
         show_text = QCheckBox("Altında metin göster")
         show_text.setChecked(elem.get('show_text', True))
         show_text.toggled.connect(lambda c: self._update_prop('show_text', c))
-        lay.addWidget(show_text, 1, 0, 1, 4)
+        lay.addWidget(show_text, 2, 0, 1, 4)
 
     def _build_line_props(self, elem):
         grp, lay = self._make_group("➖ Çizgi")
@@ -662,7 +672,7 @@ class DesignCanvas(QGraphicsView):
         defaults = {
             'TEXT': {'text': 'Metin', 'size': 10, 'bold': False, 'italic': False, 'align': 'left'},
             'FIELD': {'field': 'lot_no', 'size': 10, 'bold': False, 'italic': False, 'align': 'left'},
-            'BARCODE': {'field': 'lot_no', 'w_mm': 50, 'h_mm': 10, 'show_text': True},
+            'BARCODE': {'field': 'lot_no', 'kod_tipi': 'QR', 'w_mm': 25, 'h_mm': 25, 'show_text': True},
             'LINE': {'length': 50, 'width': 0.5, 'direction': 'Yatay', 'line_style': 'solid'},
             'RECT': {'w_mm': 30, 'h_mm': 15, 'border_width': 0.5, 'fill': False, 'rounded': False},
             'IMAGE': {'w_mm': 25, 'h_mm': 20, 'image_path': '', 'image_data': '', 'image_ext': '',
@@ -735,34 +745,61 @@ class DesignCanvas(QGraphicsView):
     def _draw_barcode(self, elem):
         x = elem['x_mm'] * MM_TO_PX
         y = elem['y_mm'] * MM_TO_PX
-        w = elem.get('w_mm', 50) * MM_TO_PX
-        h = elem.get('h_mm', 10) * MM_TO_PX
+        w = elem.get('w_mm', 25) * MM_TO_PX
+        h = elem.get('h_mm', 25) * MM_TO_PX
+        kod_tipi = elem.get('kod_tipi', 'QR')
 
-        # Container rect
         pen = QPen(QColor('#1e293b'), 1)
         brush = QBrush(QColor('#f8fafc'))
         rect_item = self.scene.addRect(0, 0, w, h, pen, brush)
         rect_item.setPos(x, y)
         self._make_movable(rect_item)
 
-        # Draw barcode lines simulation
-        bar_count = int(w / 3)
-        import random
-        for i in range(bar_count):
-            bx = 4 + i * 3
-            if bx > w - 4:
-                break
-            bw = random.choice([1, 1.5, 2])
-            bh_actual = h * 0.7
-            bar = self.scene.addRect(0, 0, bw, bh_actual, QPen(Qt.NoPen), QBrush(QColor('#1e293b')))
-            bar.setPos(bx, 2)
-            bar.setParentItem(rect_item)
+        if kod_tipi == 'QR':
+            # QR onizleme - 7x7 grid pseudo-random pattern
+            import random as _r
+            rng = _r.Random(elem.get('field', 'lot_no'))
+            grid = 7
+            cell = (min(w, h) - 6) / grid
+            offset_x = (w - grid * cell) / 2
+            offset_y = 3
+            for i in range(grid):
+                for j in range(grid):
+                    if (i, j) in [(0, 0), (0, 1), (1, 0), (1, 1),
+                                   (0, grid - 1), (0, grid - 2), (1, grid - 1), (1, grid - 2),
+                                   (grid - 1, 0), (grid - 1, 1), (grid - 2, 0), (grid - 2, 1)]:
+                        # Finder pattern (kose)
+                        fill = True
+                    else:
+                        fill = rng.random() > 0.5
+                    if fill:
+                        sq = self.scene.addRect(0, 0, cell, cell,
+                                                QPen(Qt.NoPen),
+                                                QBrush(QColor('#1e293b')))
+                        sq.setPos(offset_x + i * cell, offset_y + j * cell)
+                        sq.setParentItem(rect_item)
+        else:
+            # CODE128 onizleme - dikey cizgiler
+            import random as _r
+            bar_count = int(w / 3)
+            rng = _r.Random(0)
+            for i in range(bar_count):
+                bx = 4 + i * 3
+                if bx > w - 4:
+                    break
+                bw = rng.choice([1, 1.5, 2])
+                bh_actual = h * 0.7
+                bar = self.scene.addRect(0, 0, bw, bh_actual,
+                                         QPen(Qt.NoPen),
+                                         QBrush(QColor('#1e293b')))
+                bar.setPos(bx, 2)
+                bar.setParentItem(rect_item)
 
         # Label
         font = QFont("DejaVu Sans", 6)
         text = self.scene.addText(f"{elem.get('field', 'lot_no')}", font)
         text.setDefaultTextColor(QColor('#475569'))
-        text.setPos(4, h * 0.72)
+        text.setPos(4, h - 12)
         text.setParentItem(rect_item)
 
         elem['item'] = rect_item
@@ -1059,7 +1096,8 @@ class DesignCanvas(QGraphicsView):
                           'align': elem.get('align', 'left')})
             elif elem['type'] == 'BARCODE':
                 e.update({'field': elem.get('field', 'lot_no'),
-                          'width': elem.get('w_mm', 50), 'height': elem.get('h_mm', 10),
+                          'kod_tipi': elem.get('kod_tipi', 'QR'),
+                          'width': elem.get('w_mm', 25), 'height': elem.get('h_mm', 25),
                           'show_text': elem.get('show_text', True)})
             elif elem['type'] == 'LINE':
                 e.update({'length': elem.get('length', 50), 'width': elem.get('width', 0.5),
@@ -1106,7 +1144,8 @@ class DesignCanvas(QGraphicsView):
                     kwargs = {k: ed[k] for k in ('field', 'size', 'bold', 'italic', 'align') if k in ed}
                 elif et == 'BARCODE':
                     kwargs = {'field': ed.get('field', 'lot_no'),
-                              'w_mm': ed.get('width', 50), 'h_mm': ed.get('height', 10),
+                              'kod_tipi': ed.get('kod_tipi', 'QR'),
+                              'w_mm': ed.get('width', 25), 'h_mm': ed.get('height', 25),
                               'show_text': ed.get('show_text', True)}
                 elif et == 'LINE':
                     kwargs = {k: ed[k] for k in ('length', 'width', 'direction', 'line_style') if k in ed}
@@ -1382,32 +1421,55 @@ class PDFRenderer:
 
             c.drawString(x_pt, y_pt, text)
 
-        # ─── BARCODE ────────────────────────────────────────────────
-        elif t == 'BARCODE':
+        # ─── BARCODE / QR ───────────────────────────────────────────
+        # NOT: Default kod tipi 'QR'a cekildi (kullanici talep, 2026-04-29).
+        # Code128'i kasitli istersen elem['kod_tipi'] = 'CODE128' yap.
+        elif t in ('BARCODE', 'QRCODE'):
             try:
-                from reportlab.graphics.barcode import code128
-
-                w_bc = elem.get('w_mm', 50)
-                h_bc = elem.get('h_mm', 10)
+                kod_tipi = elem.get('kod_tipi') or ('QR' if t == 'QRCODE' else 'QR')
+                w_bc = elem.get('w_mm', 30)
+                h_bc = elem.get('h_mm', 30)
                 value = str(data.get(elem.get('field', 'lot_no'), 'NODATA'))
 
-                bar_height = h_bc * mm_unit
-                if elem.get('show_text', True):
-                    bar_height = h_bc * 0.75 * mm_unit
-
-                barcode = code128.Code128(
-                    value,
-                    barWidth=0.5 * mm_unit,
-                    barHeight=bar_height,
-                    humanReadable=elem.get('show_text', True),
-                )
-
-                x_pt = x_mm * mm_unit
-                y_pt = (page_h - y_mm - h_bc) * mm_unit
-
-                barcode.drawOn(c, x_pt, y_pt)
+                if kod_tipi == 'CODE128':
+                    from reportlab.graphics.barcode import code128
+                    bar_height = h_bc * mm_unit
+                    if elem.get('show_text', True):
+                        bar_height = h_bc * 0.75 * mm_unit
+                    bc = code128.Code128(
+                        value,
+                        barWidth=0.5 * mm_unit,
+                        barHeight=bar_height,
+                        humanReadable=elem.get('show_text', True),
+                    )
+                    x_pt = x_mm * mm_unit
+                    y_pt = (page_h - y_mm - h_bc) * mm_unit
+                    bc.drawOn(c, x_pt, y_pt)
+                else:
+                    # QR (default) - kare olmasi icin min(w,h) kullan
+                    from reportlab.graphics.barcode import qr
+                    from reportlab.graphics.shapes import Drawing
+                    from reportlab.graphics import renderPDF
+                    side_mm = min(w_bc, h_bc)
+                    side_pt = side_mm * mm_unit
+                    qr_widget = qr.QrCodeWidget(value)
+                    bounds = qr_widget.getBounds()
+                    qw = bounds[2] - bounds[0]
+                    qh = bounds[3] - bounds[1]
+                    d = Drawing(side_pt, side_pt, transform=[
+                        side_pt / qw, 0, 0, side_pt / qh, 0, 0
+                    ])
+                    d.add(qr_widget)
+                    x_pt = x_mm * mm_unit
+                    y_pt = (page_h - y_mm - side_mm) * mm_unit
+                    renderPDF.draw(d, c, x_pt, y_pt)
+                    # Altina lot/value text (show_text True ise)
+                    if elem.get('show_text', True):
+                        c.setFont('Helvetica', 7)
+                        text_y = (page_h - y_mm - side_mm - 2) * mm_unit
+                        c.drawCentredString(x_pt + side_pt / 2, text_y, value)
             except Exception as e:
-                print(f"Barcode render error: {e}")
+                print(f"Barcode/QR render error: {e}")
 
         # ─── LINE ──────────────────────────────────────────────────
         elif t == 'LINE':
@@ -1813,7 +1875,7 @@ class EtiketTasarimPage(BasePage):
         tools = [
             ("📝  Metin", 'TEXT'),
             ("📊  Veri Alanı", 'FIELD'),
-            ("▪️  Barkod", 'BARCODE'),
+            ("⬛  QR / Barkod", 'BARCODE'),
             ("📸  Ürün Görseli", 'PRODUCT_IMAGE'),
             ("🖼️  Logo / Resim", 'IMAGE'),
             ("➖  Çizgi", 'LINE'),
