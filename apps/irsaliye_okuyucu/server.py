@@ -612,16 +612,16 @@ def _stok_oneri_bul(
 # ---------------------------------------------------------------------------
 
 def _yeni_irsaliye_no(cursor) -> str:
-    """GRS-YYYYMM-NNNN. NEXOR core/numara_uretici.py ile ayni helper'i kullanir."""
-    # NEXOR proje kokunu sys.path'a koymak gerekiyor (apps/irsaliye_okuyucu/server.py
-    # cagrildiginda farkli cwd'den calistirilabilir).
-    import sys
-    from pathlib import Path
-    nexor_root = Path(__file__).resolve().parent.parent.parent
-    if str(nexor_root) not in sys.path:
-        sys.path.insert(0, str(nexor_root))
-    from core.numara_uretici import yeni_giris_irsaliye_no
-    return yeni_giris_irsaliye_no(cursor)
+    """GRS-YYYYMM-NNNN. siparis.seq_giris_irsaliye_id sequence'i kullanir.
+
+    NEXOR core/numara_uretici.py ile ayni mantik (inline) - server'da NEXOR
+    core klasoru yok, dependency'siz calismak icin yerel implementasyon.
+    Fallback YOK: sequence yoksa migration uygulanmali (UNIQUE KEY ihlali
+    risk i icin try/except MAX+1 yasak - feedback_seq_no_fallback).
+    """
+    cursor.execute("SELECT NEXT VALUE FOR siparis.seq_giris_irsaliye_id")
+    next_id = int(cursor.fetchone()[0])
+    return f"GRS-{datetime.now().strftime('%Y%m')}-{next_id:04d}"
 
 
 # ---------------------------------------------------------------------------
