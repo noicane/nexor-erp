@@ -1147,6 +1147,10 @@ def _text_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, y
 def _barcode_element_ciz(c: canvas.Canvas, element: dict, etiket: dict, x: float, y: float):
     """Kod elementi - QR (default) veya Code128"""
     barkod_veri = _veri_alani_deger_al(element, etiket)
+    # Fallback: qr_data bossa lot_no'ya dus (kalite disi etiket akislarinda qr_data yok)
+    if not barkod_veri:
+        if element.get('veri_alani') == 'qr_data':
+            barkod_veri = str(etiket.get('lot_no', '') or '')
     if not barkod_veri:
         return
 
